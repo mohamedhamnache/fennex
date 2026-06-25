@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fennex
+      POSTGRES_PASSWORD: fennex
+      POSTGRES_DB: fennex
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fennex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./apps/api
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - ./apps/api:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./apps/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - ./apps/api:/app
+    command: python -m arq app.workers.worker.WorkerSettings
+
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    env_file: .env
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+
+  # crawler and image-gen services are added in Phase 2
+  # crawler:
+  #   build: ./services/crawler
+  #   ports:
+  #     - "8001:8001"
+  #   env_file: .env
+
+volumes:
+  postgres_data:
+  redis_data:
