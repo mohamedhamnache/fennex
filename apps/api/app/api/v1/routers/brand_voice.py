@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 import httpx
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, update
@@ -79,7 +80,6 @@ async def _get_voice_or_404(voice_id: uuid.UUID, org_id: uuid.UUID, db) -> Brand
 async def _fetch_and_extract(url: str) -> Optional[str]:
     """Fetch URL and extract body text via BeautifulSoup. Returns None on failure."""
     try:
-        from bs4 import BeautifulSoup
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, follow_redirects=True)
             resp.raise_for_status()
