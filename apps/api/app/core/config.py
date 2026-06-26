@@ -43,7 +43,6 @@ class Settings(BaseSettings):
 
     # Internal service URLs
     CRAWLER_SERVICE_URL: str = "http://crawler:8001"
-    CRAWLER_URL: str = "http://crawler:8001"  # alias used by worker tasks
     IMAGE_GEN_SERVICE_URL: str = "http://image-gen:8002"
 
     @property

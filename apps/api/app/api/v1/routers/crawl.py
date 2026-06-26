@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.crawl import CrawlJob, CrawlStatus, CrawledPage
+from app.models.project import Project
 
 router = APIRouter()
 
@@ -48,6 +49,12 @@ async def trigger_crawl(
     current_user: CurrentUser,
     db: DB,
 ):
+    proj_result = await db.execute(
+        select(Project).where(Project.id == body.project_id, Project.org_id == current_user.org_id)
+    )
+    if proj_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     job = CrawlJob(
         org_id=current_user.org_id,
         project_id=body.project_id,
@@ -58,6 +65,8 @@ async def trigger_crawl(
     await db.refresh(job)
 
     job_id_str = str(job.id)
+
+    await db.commit()
 
     redis_pool = await arq.create_pool(settings.REDIS_SETTINGS)
     try:

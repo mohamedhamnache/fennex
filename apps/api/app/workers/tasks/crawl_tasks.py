@@ -17,7 +17,7 @@ async def crawl_website(ctx, job_id: str, url: str):
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
-                    f"{settings.CRAWLER_URL}/crawl",
+                    f"{settings.CRAWLER_SERVICE_URL}/crawl",
                     json={"url": url},
                 )
                 data = resp.json()
