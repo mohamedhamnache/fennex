@@ -394,6 +394,7 @@ export interface Article {
   body_markdown: string | null;
   body_html: string | null;
   word_count: number;
+  word_count_target: number;
   seo_score: number | null;
   meta_title: string | null;
   meta_description: string | null;

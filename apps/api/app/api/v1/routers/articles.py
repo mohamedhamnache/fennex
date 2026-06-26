@@ -26,6 +26,7 @@ class ArticleOut(BaseModel):
     body_markdown: Optional[str]
     body_html: Optional[str]
     word_count: int
+    word_count_target: int
     seo_score: Optional[float]
     meta_title: Optional[str]
     meta_description: Optional[str]
