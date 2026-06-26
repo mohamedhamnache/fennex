@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Plus,
   FolderOpen,
+  Mic2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { authLogout, listProjects } from "@/lib/api";
@@ -203,6 +204,17 @@ export function Sidebar() {
 
         {/* Footer */}
         <div className="border-t border-border p-2 space-y-0.5">
+          <Link
+            href="/brand-voice"
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+              pathname === "/brand-voice" || pathname.startsWith("/brand-voice/")
+                ? "nav-active text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <Mic2 className="h-[15px] w-[15px]" strokeWidth={1.8} />
+            Brand Voice
+          </Link>
           <Link
             href="/settings"
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-foreground"

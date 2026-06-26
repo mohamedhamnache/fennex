@@ -285,3 +285,97 @@ export async function generateContentPlan(
     seedKeyword ? { seed_keyword: seedKeyword } : {},
   );
 }
+
+// ─── Brand Voice types & helpers ───────────────────────────────────────────
+
+export type VoiceTone =
+  | "professional"
+  | "conversational"
+  | "authoritative"
+  | "friendly"
+  | "technical"
+  | "inspirational";
+
+export interface BrandVoiceSource {
+  id: string;
+  brand_voice_id: string;
+  source_type: "url" | "text";
+  content: string;
+  extracted_text: string | null;
+  created_at: string;
+}
+
+export interface BrandVoice {
+  id: string;
+  org_id: string;
+  name: string;
+  tone: VoiceTone;
+  description: string | null;
+  voice_prompt: string | null;
+  vocabulary: string[] | null;
+  avoid_words: string[] | null;
+  is_default: boolean;
+  created_at: string;
+  training_sources?: BrandVoiceSource[];
+}
+
+export async function getBrandVoices(): Promise<BrandVoice[]> {
+  return apiClient.get<BrandVoice[]>("/brand-voice");
+}
+
+export async function getBrandVoice(id: string): Promise<BrandVoice> {
+  return apiClient.get<BrandVoice>(`/brand-voice/${id}`);
+}
+
+export async function createBrandVoice(data: {
+  name: string;
+  tone?: VoiceTone;
+  description?: string;
+  vocabulary?: string[];
+  avoid_words?: string[];
+}): Promise<BrandVoice> {
+  return apiClient.post<BrandVoice>("/brand-voice", data);
+}
+
+export async function updateBrandVoice(
+  id: string,
+  patch: Partial<
+    Pick<
+      BrandVoice,
+      "name" | "tone" | "description" | "vocabulary" | "avoid_words" | "voice_prompt"
+    >
+  >,
+): Promise<BrandVoice> {
+  return apiClient.patch<BrandVoice>(`/brand-voice/${id}`, patch);
+}
+
+export async function deleteBrandVoice(id: string): Promise<void> {
+  await apiClient.delete<void>(`/brand-voice/${id}`);
+}
+
+export async function setDefaultBrandVoice(id: string): Promise<BrandVoice> {
+  return apiClient.post<BrandVoice>(`/brand-voice/${id}/set-default`, {});
+}
+
+export async function addBrandVoiceSource(
+  id: string,
+  source: { source_type: "url" | "text"; content: string },
+): Promise<BrandVoiceSource> {
+  return apiClient.post<BrandVoiceSource>(`/brand-voice/${id}/sources`, source);
+}
+
+export async function deleteBrandVoiceSource(
+  voiceId: string,
+  sourceId: string,
+): Promise<void> {
+  await apiClient.delete<void>(`/brand-voice/${voiceId}/sources/${sourceId}`);
+}
+
+export async function generateVoicePrompt(
+  id: string,
+): Promise<{ voice_id: string; voice_prompt: string }> {
+  return apiClient.post<{ voice_id: string; voice_prompt: string }>(
+    `/brand-voice/${id}/generate-prompt`,
+    {},
+  );
+}
