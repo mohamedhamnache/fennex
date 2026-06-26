@@ -166,3 +166,54 @@ export async function triggerAudit(
 export async function getAuditStatus(auditId: string): Promise<AuditResult> {
   return apiClient.get<AuditResult>(`/audit/${auditId}`);
 }
+
+// ─── Keyword Research types & helpers ─────────────────────────────────────────
+
+export interface KeywordResearchJob {
+  id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  seed_keyword: string;
+  keywords_found: number;
+  error?: string;
+}
+
+export interface Keyword {
+  id: string;
+  keyword: string;
+  search_volume: number | null;
+  difficulty: number | null; // 0–100
+  cpc: number | null;
+  intent: "informational" | "navigational" | "commercial" | "transactional" | null;
+  is_seed: boolean;
+  cluster_id: string | null;
+}
+
+export interface KeywordCluster {
+  id: string;
+  name: string;
+  topic: string | null;
+  keyword_count: number;
+  total_volume: number;
+}
+
+export async function triggerKeywordResearch(
+  projectId: string,
+  seedKeyword: string,
+): Promise<{ job_id: string; status: string }> {
+  return apiClient.post<{ job_id: string; status: string }>("/keywords/research", {
+    project_id: projectId,
+    seed_keyword: seedKeyword,
+  });
+}
+
+export async function getKeywordJobStatus(jobId: string): Promise<KeywordResearchJob> {
+  return apiClient.get<KeywordResearchJob>(`/keywords/research/${jobId}`);
+}
+
+export async function getKeywordResults(jobId: string): Promise<Keyword[]> {
+  return apiClient.get<Keyword[]>(`/keywords/research/${jobId}/keywords`);
+}
+
+export async function getKeywordClusters(jobId: string): Promise<KeywordCluster[]> {
+  return apiClient.get<KeywordCluster[]>(`/keywords/research/${jobId}/clusters`);
+}
