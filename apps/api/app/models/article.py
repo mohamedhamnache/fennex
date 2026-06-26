@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum as PyEnum
-from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, JSON, Float, Boolean
+from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, JSON, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
@@ -26,6 +26,7 @@ class Article(Base, TimestampMixin):
     body_markdown: Mapped[str | None] = mapped_column(Text)
     body_html: Mapped[str | None] = mapped_column(Text)
     word_count: Mapped[int] = mapped_column(Integer, default=0)
+    word_count_target: Mapped[int] = mapped_column(Integer, default=1500)
     seo_score: Mapped[float | None] = mapped_column(Float)
     meta_title: Mapped[str | None] = mapped_column(String(500))
     meta_description: Mapped[str | None] = mapped_column(Text)

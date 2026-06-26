@@ -5,7 +5,6 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
@@ -99,6 +98,7 @@ async def create_article(
         status=ArticleStatus.draft,
         brand_voice_id=body.brand_voice_id,
         content_item_id=body.content_item_id,
+        word_count_target=body.word_count_target or 1500,
     )
     db.add(article)
     await db.flush()
@@ -187,7 +187,7 @@ async def generate_article(
         title=article.title,
         keyword=article.target_keyword,
         tone=article.tone,
-        word_count_target=1500,
+        word_count_target=article.word_count_target,
     )
 
     # Save generated content

@@ -21,10 +21,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-
     # ── ensure enum exists ─────────────────────────────────────────────────────
-    bind.execute(sa.text(
+    op.execute(sa.text(
         "DO $$ BEGIN "
         "  CREATE TYPE article_status_enum AS ENUM "
         "    ('draft','generating','ready','published'); "
@@ -33,7 +31,7 @@ def upgrade() -> None:
     ))
 
     # ── articles ──────────────────────────────────────────────────────────────
-    bind.execute(sa.text(
+    op.execute(sa.text(
         "CREATE TABLE IF NOT EXISTS articles ("
         "  id UUID PRIMARY KEY, "
         "  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, "
@@ -45,6 +43,7 @@ def upgrade() -> None:
         "  body_markdown TEXT, "
         "  body_html TEXT, "
         "  word_count INTEGER NOT NULL DEFAULT 0, "
+        "  word_count_target INTEGER NOT NULL DEFAULT 1500, "
         "  seo_score FLOAT, "
         "  meta_title VARCHAR(500), "
         "  meta_description TEXT, "
@@ -56,15 +55,15 @@ def upgrade() -> None:
         "  updated_at TIMESTAMPTZ NOT NULL DEFAULT now() "
         ");"
     ))
-    bind.execute(sa.text(
+    op.execute(sa.text(
         "CREATE INDEX IF NOT EXISTS ix_articles_org_id ON articles (org_id);"
     ))
-    bind.execute(sa.text(
+    op.execute(sa.text(
         "CREATE INDEX IF NOT EXISTS ix_articles_project_id ON articles (project_id);"
     ))
 
     # ── article_revisions ─────────────────────────────────────────────────────
-    bind.execute(sa.text(
+    op.execute(sa.text(
         "CREATE TABLE IF NOT EXISTS article_revisions ("
         "  id UUID PRIMARY KEY, "
         "  article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE, "
@@ -75,13 +74,12 @@ def upgrade() -> None:
         "  updated_at TIMESTAMPTZ NOT NULL DEFAULT now() "
         ");"
     ))
-    bind.execute(sa.text(
+    op.execute(sa.text(
         "CREATE INDEX IF NOT EXISTS ix_article_revisions_article_id ON article_revisions (article_id);"
     ))
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    bind.execute(sa.text("DROP TABLE IF EXISTS article_revisions;"))
-    bind.execute(sa.text("DROP TABLE IF EXISTS articles;"))
-    bind.execute(sa.text("DROP TYPE IF EXISTS article_status_enum;"))
+    op.execute(sa.text("DROP TABLE IF EXISTS article_revisions;"))
+    op.execute(sa.text("DROP TABLE IF EXISTS articles;"))
+    op.execute(sa.text("DROP TYPE IF EXISTS article_status_enum;"))
