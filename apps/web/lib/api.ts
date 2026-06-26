@@ -379,3 +379,81 @@ export async function generateVoicePrompt(
     {},
   );
 }
+
+// ─── Article types & helpers ───────────────────────────────────────────────
+
+export type ArticleStatus = "draft" | "generating" | "ready" | "published";
+
+export interface Article {
+  id: string;
+  project_id: string;
+  title: string;
+  target_keyword: string | null;
+  tone: string;
+  status: ArticleStatus;
+  body_markdown: string | null;
+  body_html: string | null;
+  word_count: number;
+  seo_score: number | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  outline: { sections: { heading: string; content?: string }[] } | null;
+  brand_voice_id: string | null;
+  content_item_id: string | null;
+  error: string | null;
+  created_at: string;
+}
+
+export interface SEOScoreBreakdown {
+  score: number;
+  breakdown: Record<string, number>;
+}
+
+export async function listArticles(projectId: string): Promise<Article[]> {
+  return apiClient.get<Article[]>(`/articles?project_id=${projectId}`);
+}
+
+export async function getArticle(id: string): Promise<Article> {
+  return apiClient.get<Article>(`/articles/${id}`);
+}
+
+export async function createArticle(data: {
+  project_id: string;
+  title: string;
+  target_keyword?: string;
+  tone?: string;
+  word_count_target?: number;
+}): Promise<Article> {
+  return apiClient.post<Article>("/articles", data);
+}
+
+export async function updateArticle(
+  id: string,
+  patch: Partial<
+    Pick<Article, "title" | "target_keyword" | "tone" | "body_markdown" | "meta_title" | "meta_description">
+  >,
+): Promise<Article> {
+  return apiClient.patch<Article>(`/articles/${id}`, patch);
+}
+
+export async function deleteArticle(id: string): Promise<void> {
+  await apiClient.delete<void>(`/articles/${id}`);
+}
+
+export async function generateArticle(id: string): Promise<Article> {
+  return apiClient.post<Article>(`/articles/${id}/generate`, {});
+}
+
+export async function saveRevision(
+  id: string,
+  note?: string,
+): Promise<{ revision_id: string; created_at: string }> {
+  return apiClient.post<{ revision_id: string; created_at: string }>(
+    `/articles/${id}/save-revision`,
+    note ? { note } : {},
+  );
+}
+
+export async function getArticleSeoScore(id: string): Promise<SEOScoreBreakdown> {
+  return apiClient.get<SEOScoreBreakdown>(`/articles/${id}/seo-score`);
+}
