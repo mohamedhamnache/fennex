@@ -1,6 +1,5 @@
 # apps/api/app/workers/tasks/analytics_tasks.py
 """ARQ tasks for analytics data: historical seed + daily sync."""
-import math
 import random
 import uuid
 from datetime import date, timedelta
@@ -9,7 +8,7 @@ from sqlalchemy import select
 
 from app.core.database import async_session_factory
 from app.models.analytics import AnalyticsSnapshot, KeywordRanking
-from app.models.keyword import Keyword, KeywordResearchJob, ResearchStatus
+from app.models.keyword import Keyword
 
 
 def _base_position(difficulty: float | None) -> float:
@@ -92,8 +91,8 @@ async def seed_analytics_history(ctx, project_id: str):
         await session.commit()
 
 
-async def sync_analytics_data(ctx, project_id: str):
-    """Daily sync: write today's analytics row and keyword ranking rows."""
+async def _sync_one_project(project_id: str):
+    """Sync today's analytics row and keyword ranking rows for a single project."""
     pid = uuid.UUID(project_id)
     today = date.today()
 
@@ -146,3 +145,20 @@ async def sync_analytics_data(ctx, project_id: str):
             session.add(ranking)
 
         await session.commit()
+
+
+async def sync_analytics_data(ctx, project_id: str | None = None):
+    """Daily sync: write today's analytics row and keyword ranking rows.
+    Called by cron (no project_id → syncs all projects) or directly per-project.
+    """
+    if project_id is None:
+        # Called from cron — sync all projects
+        async with async_session_factory() as session:
+            from app.models.project import Project
+            result = await session.execute(select(Project))
+            projects = result.scalars().all()
+        for p in projects:
+            await _sync_one_project(str(p.id))
+        return
+
+    await _sync_one_project(project_id)
