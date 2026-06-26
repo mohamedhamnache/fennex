@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -53,7 +53,7 @@ function Spinner({ size = 16 }: { size?: number }) {
 // ─── Status badge ──────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<ArticleStatus, string> = {
-  draft: "bg-gray-100 text-gray-600",
+  draft: "bg-gray-50 text-gray-600",
   generating: "bg-blue-50 text-blue-600",
   ready: "bg-emerald-50 text-emerald-600",
   published: "bg-indigo-50 text-indigo-600",
@@ -338,7 +338,7 @@ function ArticleEditor({
   const { data: seoData, refetch: refetchSeo } = useQuery<SEOScoreBreakdown>({
     queryKey: ["article-seo", articleId],
     queryFn: () => getArticleSeoScore(articleId),
-    enabled: !!article && article.status === "ready",
+    enabled: !!articleId && (article?.status === "ready" || article?.status === "published"),
   });
 
   const [tab, setTab] = useState<"edit" | "preview">("edit");
@@ -349,10 +349,19 @@ function ArticleEditor({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [revisionMsg, setRevisionMsg] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialized = useRef(false);
 
-  // Populate local state once article loads
+  // Cleanup debounce timeout on unmount
   useEffect(() => {
-    if (article) {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
+
+  // Populate local state once article loads (guard against re-seeding on background refetch)
+  useEffect(() => {
+    if (article && !initialized.current) {
+      initialized.current = true;
       setBody(article.body_markdown ?? "");
       setTitle(article.title);
       setMetaTitle(article.meta_title ?? "");
