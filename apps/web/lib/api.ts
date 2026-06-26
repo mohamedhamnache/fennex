@@ -193,7 +193,7 @@ export interface KeywordCluster {
   name: string;
   topic: string | null;
   keyword_count: number;
-  total_volume: number;
+  total_volume: number | null;
 }
 
 export async function triggerKeywordResearch(
@@ -211,9 +211,77 @@ export async function getKeywordJobStatus(jobId: string): Promise<KeywordResearc
 }
 
 export async function getKeywordResults(jobId: string): Promise<Keyword[]> {
-  return apiClient.get<Keyword[]>(`/keywords/research/${jobId}/keywords`);
+  const res = await apiClient.get<{ keywords: Keyword[] }>(`/keywords/research/${jobId}/keywords`);
+  return res.keywords ?? [];
 }
 
 export async function getKeywordClusters(jobId: string): Promise<KeywordCluster[]> {
-  return apiClient.get<KeywordCluster[]>(`/keywords/research/${jobId}/clusters`);
+  const res = await apiClient.get<{ clusters: KeywordCluster[] }>(`/keywords/research/${jobId}/clusters`);
+  return res.clusters ?? [];
+}
+
+// ─── Content Plan types & helpers ─────────────────────────────────────────────
+
+export type ContentItemStatus = "idea" | "draft" | "in_review" | "approved" | "published";
+export type ContentItemType = "article" | "landing_page" | "social_post" | "email";
+
+export interface ContentItem {
+  id: string;
+  plan_id: string;
+  title: string;
+  content_type: ContentItemType;
+  status: ContentItemStatus;
+  target_keyword: string | null;
+  notes: string | null;
+  scheduled_date: string | null; // "YYYY-MM-DD"
+  word_count_target: number | null;
+  created_at: string;
+}
+
+export interface ContentPlan {
+  id: string;
+  project_id: string;
+  name: string;
+  items: ContentItem[];
+  created_at: string;
+}
+
+export async function getContentPlans(projectId: string): Promise<ContentPlan[]> {
+  return apiClient.get<ContentPlan[]>(`/content-plans?project_id=${projectId}`);
+}
+
+export async function createContentPlan(projectId: string, name?: string): Promise<ContentPlan> {
+  return apiClient.post<ContentPlan>("/content-plans", {
+    project_id: projectId,
+    ...(name ? { name } : {}),
+  });
+}
+
+export async function addContentItem(
+  planId: string,
+  item: Partial<ContentItem> & { title: string },
+): Promise<ContentItem> {
+  return apiClient.post<ContentItem>(`/content-plans/${planId}/items`, item);
+}
+
+export async function updateContentItem(
+  planId: string,
+  itemId: string,
+  patch: Partial<ContentItem>,
+): Promise<ContentItem> {
+  return apiClient.patch<ContentItem>(`/content-plans/${planId}/items/${itemId}`, patch);
+}
+
+export async function deleteContentItem(planId: string, itemId: string): Promise<void> {
+  await apiClient.delete<void>(`/content-plans/${planId}/items/${itemId}`);
+}
+
+export async function generateContentPlan(
+  planId: string,
+  seedKeyword?: string,
+): Promise<{ plan_id: string; items_added: number }> {
+  return apiClient.post<{ plan_id: string; items_added: number }>(
+    `/content-plans/${planId}/generate`,
+    seedKeyword ? { seed_keyword: seedKeyword } : {},
+  );
 }
