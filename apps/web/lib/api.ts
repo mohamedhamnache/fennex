@@ -660,3 +660,128 @@ export async function deleteImage(id: string): Promise<void> {
 export async function attachImage(id: string, data: { article_id?: string; social_post_id?: string }): Promise<GeneratedImage> {
   return apiClient.post<GeneratedImage>(`/images/${id}/attach`, data);
 }
+
+// ─── Analytics types & helpers ─────────────────────────────────────────────
+
+export interface AnalyticsOverview {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  avg_position: number;
+  clicks_change: number;
+  impressions_change: number;
+  ctr_change: number;
+  position_change: number;
+}
+
+export interface TrafficDataPoint {
+  date: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  avg_position: number;
+}
+
+export interface RankingRow {
+  keyword_id: string;
+  keyword: string;
+  search_volume: number | null;
+  intent: string | null;
+  difficulty: number | null;
+  current_position: number | null;
+  position_change: number | null;
+}
+
+export interface ContentPerformanceRow {
+  article_id: string;
+  title: string;
+  published_url: string | null;
+  status: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+}
+
+export interface TopPageRow {
+  url: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  avg_position: number;
+}
+
+export interface TopQueryRow {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  avg_position: number;
+}
+
+export interface GscStatus {
+  is_connected: boolean;
+  google_email: string | null;
+  site_url: string | null;
+  last_synced_at: string | null;
+}
+
+export type AnalyticsRange = "7d" | "28d" | "90d";
+
+export async function getAnalyticsOverview(
+  projectId: string,
+  range: AnalyticsRange = "28d",
+): Promise<AnalyticsOverview> {
+  return apiClient.get<AnalyticsOverview>(
+    `/analytics/overview?project_id=${projectId}&range=${range}`,
+  );
+}
+
+export async function getAnalyticsTraffic(
+  projectId: string,
+  range: AnalyticsRange = "28d",
+): Promise<TrafficDataPoint[]> {
+  return apiClient.get<TrafficDataPoint[]>(
+    `/analytics/traffic?project_id=${projectId}&range=${range}`,
+  );
+}
+
+export async function getAnalyticsRankings(
+  projectId: string,
+  sortBy: "position" | "volume" | "change" = "position",
+  page: number = 1,
+): Promise<RankingRow[]> {
+  return apiClient.get<RankingRow[]>(
+    `/analytics/rankings?project_id=${projectId}&sort_by=${sortBy}&page=${page}`,
+  );
+}
+
+export async function getTopPages(projectId: string): Promise<TopPageRow[]> {
+  return apiClient.get<TopPageRow[]>(`/analytics/top-pages?project_id=${projectId}`);
+}
+
+export async function getTopQueries(projectId: string): Promise<TopQueryRow[]> {
+  return apiClient.get<TopQueryRow[]>(`/analytics/top-queries?project_id=${projectId}`);
+}
+
+export async function getContentPerformance(
+  projectId: string,
+): Promise<ContentPerformanceRow[]> {
+  return apiClient.get<ContentPerformanceRow[]>(
+    `/analytics/content-performance?project_id=${projectId}`,
+  );
+}
+
+export async function getGscStatus(projectId: string): Promise<GscStatus> {
+  return apiClient.get<GscStatus>(`/analytics/gsc/status?project_id=${projectId}`);
+}
+
+export async function connectGsc(projectId: string): Promise<{ redirect_url: string }> {
+  return apiClient.post<{ redirect_url: string }>(
+    `/analytics/gsc/connect?project_id=${projectId}`,
+    {},
+  );
+}
+
+export async function disconnectGsc(projectId: string): Promise<void> {
+  return apiClient.delete<void>(`/analytics/gsc/disconnect?project_id=${projectId}`);
+}
