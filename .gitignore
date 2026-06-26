@@ -67,3 +67,9 @@ Thumbs.db
 
 # Superpowers SDD
 .superpowers/
+
+# pnpm content-addressable store
+.pnpm-store/
+
+# Claude Code session files
+.claude/
