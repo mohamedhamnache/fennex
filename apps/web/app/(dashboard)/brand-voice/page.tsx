@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FennecMascot } from "@fennex/ui";
 import {
@@ -247,7 +247,6 @@ function VoiceDetailPanel({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const { data: voice, isLoading } = useQuery({
     queryKey: ["brand-voice", voiceId],
@@ -295,6 +294,8 @@ function VoiceDetailPanel({
     mutationFn: (sourceId: string) => deleteBrandVoiceSource(voiceId, sourceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["brand-voice", voiceId] });
+    },
+    onSettled: () => {
       setIsDeletingSource(null);
     },
   });
@@ -358,7 +359,6 @@ function VoiceDetailPanel({
 
       {/* Panel */}
       <div
-        ref={panelRef}
         className="absolute right-0 top-0 bottom-0 w-[440px] bg-card border-l border-border shadow-xl overflow-y-auto flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
