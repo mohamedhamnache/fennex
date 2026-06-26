@@ -533,3 +533,78 @@ export async function publishArticle(data: {
 export async function listPublishJobs(projectId: string): Promise<PublishJob[]> {
   return apiClient.get<PublishJob[]>(`/publishing/jobs?project_id=${projectId}`);
 }
+
+// ─── Social Media types & helpers ──────────────────────────────────────────
+
+export type SocialPlatform = "linkedin" | "twitter" | "instagram" | "facebook";
+export type SocialPostStatus = "draft" | "scheduled" | "published" | "failed";
+export type SocialPostType = "article_share" | "tip" | "question" | "announcement";
+
+export interface SocialPost {
+  id: string;
+  project_id: string;
+  platform: SocialPlatform;
+  post_type: SocialPostType;
+  status: SocialPostStatus;
+  content: string;
+  hashtags: string[] | null;
+  media_urls: string[] | null;
+  scheduled_at: string | null;
+  published_at: string | null;
+  article_id: string | null;
+  engagement_stats: Record<string, number> | null;
+  error: string | null;
+  char_count: number;
+  created_at: string;
+}
+
+export async function listSocialPosts(
+  projectId: string,
+  platform?: SocialPlatform,
+  status?: SocialPostStatus,
+): Promise<SocialPost[]> {
+  const params = new URLSearchParams({ project_id: projectId });
+  if (platform) params.set("platform", platform);
+  if (status) params.set("status", status);
+  return apiClient.get<SocialPost[]>(`/social?${params.toString()}`);
+}
+
+export async function createSocialPost(data: {
+  project_id: string;
+  platform: SocialPlatform;
+  post_type?: SocialPostType;
+  content: string;
+  hashtags?: string[];
+  scheduled_at?: string;
+  article_id?: string;
+}): Promise<SocialPost> {
+  return apiClient.post<SocialPost>("/social", data);
+}
+
+export async function updateSocialPost(
+  id: string,
+  patch: Partial<Pick<SocialPost, "content" | "hashtags" | "scheduled_at" | "status" | "media_urls">>,
+): Promise<SocialPost> {
+  return apiClient.patch<SocialPost>(`/social/${id}`, patch);
+}
+
+export async function deleteSocialPost(id: string): Promise<void> {
+  await apiClient.delete<void>(`/social/${id}`);
+}
+
+export async function generateSocialPost(data: {
+  project_id: string;
+  platform: SocialPlatform;
+  post_type?: SocialPostType;
+  article_id?: string;
+}): Promise<SocialPost> {
+  return apiClient.post<SocialPost>("/social/generate", data);
+}
+
+export async function scheduleSocialPost(id: string, scheduled_at: string): Promise<SocialPost> {
+  return apiClient.post<SocialPost>(`/social/${id}/schedule`, { scheduled_at });
+}
+
+export async function publishSocialPost(id: string): Promise<SocialPost> {
+  return apiClient.post<SocialPost>(`/social/${id}/publish`, {});
+}
