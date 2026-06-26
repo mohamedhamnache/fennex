@@ -174,13 +174,21 @@ function SocialPostCard({
   }, [menuOpen]);
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      generateSocialPost({
+    mutationFn: async () => {
+      const newPost = await generateSocialPost({
         project_id: post.project_id,
         platform: post.platform,
         post_type: post.post_type,
         ...(post.article_id ? { article_id: post.article_id } : {}),
-      }),
+      });
+      // Update the original post in-place with generated content
+      await updateSocialPost(post.id, {
+        content: newPost.content,
+        hashtags: newPost.hashtags ?? undefined,
+      });
+      // Remove the duplicate post created by generateSocialPost
+      await deleteSocialPost(newPost.id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["social-posts", projectId] });
     },
@@ -612,7 +620,7 @@ function EditDrawer({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const patch: Parameters<typeof updateSocialPost>[1] = { content, hashtags };
     updateMutation.mutate(patch);
-    if (scheduledAt && post.status === "scheduled") {
+    if (scheduledAt) {
       scheduleMutation.mutate(scheduledAt);
     }
   }
@@ -634,7 +642,6 @@ function EditDrawer({
 
   const handleContentChange = useCallback((val: string) => {
     setContent(val);
-    setSaveState("saving");
   }, []);
 
   return (
