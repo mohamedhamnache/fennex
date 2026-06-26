@@ -21,6 +21,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Tables were already created by a prior run — this stub resolves the chain.
+    # Chain verified clean: b7c8d9e0f1a2 → fad4be7d80f8 → c1d2e3f4a5b6 (single head).
+    # Alembic reports exactly 1 head (c1d2e3f4a5b6); stub is intentionally kept in place.
     pass
 
 

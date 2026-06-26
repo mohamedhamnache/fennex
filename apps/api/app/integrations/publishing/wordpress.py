@@ -1,6 +1,9 @@
 """WordPress REST API v2 connector."""
+import logging
 import httpx
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class WordPressConnector:
@@ -111,6 +114,6 @@ class WordPressConnector:
                     cr = await client.post(f"{self.api_base}/tags", json={"name": name}, auth=self.auth)
                     if cr.status_code in (200, 201):
                         return cr.json()["id"]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to resolve/create tag '%s': %s", name, e)
         return None

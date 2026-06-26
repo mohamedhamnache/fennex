@@ -243,21 +243,31 @@ async def publish_article(
     db.add(job)
     await db.flush()
 
-    # Decrypt credentials and call WordPress
-    creds = decrypt_credentials(conn.credentials_encrypted)
-    wp = WordPressConnector(
-        site_url=conn.site_url,
-        username=creds["username"],
-        app_password=creds["app_password"],
-    )
+    # Guard: credentials must be present before attempting decrypt
+    if not conn.credentials_encrypted:
+        raise HTTPException(status_code=400, detail="Connection has no credentials stored")
 
-    result = await wp.publish_post(
-        title=article.title,
-        content_html=article.body_html or "",
-        status=body.publish_status,
-        meta_title=article.meta_title,
-        meta_description=article.meta_description,
-    )
+    # Decrypt credentials and call WordPress; mark job failed on any exception
+    try:
+        creds = decrypt_credentials(conn.credentials_encrypted)
+        wp = WordPressConnector(
+            site_url=conn.site_url,
+            username=creds["username"],
+            app_password=creds["app_password"],
+        )
+
+        result = await wp.publish_post(
+            title=article.title,
+            content_html=article.body_html or "",
+            status=body.publish_status,
+            meta_title=article.meta_title,
+            meta_description=article.meta_description,
+        )
+    except Exception as exc:
+        job.status = PublishJobStatus.failed
+        job.error = str(exc)
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"Publish failed: {exc}") from exc
 
     if result.get("ok"):
         job.status = PublishJobStatus.done
