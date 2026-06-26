@@ -4,3 +4,4 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.models.project import Project
 from app.models.crawl import CrawlJob, CrawledPage, SEOAudit  # noqa: F401
+from app.models.keyword import KeywordResearchJob, Keyword, KeywordCluster  # noqa: F401

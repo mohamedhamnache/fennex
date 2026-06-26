@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     CRAWLER_SERVICE_URL: str = "http://crawler:8001"
     IMAGE_GEN_SERVICE_URL: str = "http://image-gen:8002"
 
+    # DataForSEO credentials
+    DATAFORSEO_LOGIN: str = ""
+    DATAFORSEO_PASSWORD: str = ""
+
     @property
     def REDIS_SETTINGS(self) -> Any:
         from arq.connections import RedisSettings
