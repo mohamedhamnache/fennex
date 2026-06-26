@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.project import Project
 
@@ -61,6 +62,15 @@ async def create_project(
     db.add(project)
     await db.flush()
     await db.refresh(project)
+
+    try:
+        import arq
+        redis_pool = await arq.create_pool(settings.REDIS_SETTINGS)
+        await redis_pool.enqueue_job("seed_analytics_history", str(project.id))
+        await redis_pool.aclose()
+    except Exception:
+        pass  # Worker may not be running in dev — seed can be run manually
+
     return project
 
 
