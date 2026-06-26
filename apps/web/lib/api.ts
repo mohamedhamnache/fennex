@@ -608,3 +608,55 @@ export async function scheduleSocialPost(id: string, scheduled_at: string): Prom
 export async function publishSocialPost(id: string): Promise<SocialPost> {
   return apiClient.post<SocialPost>(`/social/${id}/publish`, {});
 }
+
+// ─── Image Studio types & helpers ─────────────────────────────────────────────
+
+export type ImageStyle = "photorealistic" | "illustration" | "minimalist" | "abstract" | "professional";
+export type ImageStatus = "pending" | "generating" | "ready" | "failed";
+export type ImageUsage = "article_cover" | "social_post" | "brand_asset" | "custom";
+
+export interface GeneratedImage {
+  id: string;
+  project_id: string;
+  prompt: string;
+  revised_prompt: string | null;
+  style: ImageStyle;
+  usage: ImageUsage;
+  status: ImageStatus;
+  image_url: string | null;
+  thumbnail_url: string | null;
+  width: number;
+  height: number;
+  article_id: string | null;
+  social_post_id: string | null;
+  cost_usd: number | null;
+  error: string | null;
+  created_at: string;
+}
+
+export async function listImages(projectId: string, usage?: ImageUsage): Promise<GeneratedImage[]> {
+  const params = new URLSearchParams({ project_id: projectId });
+  if (usage) params.set("usage", usage);
+  return apiClient.get<GeneratedImage[]>(`/images?${params.toString()}`);
+}
+
+export async function generateImage(data: {
+  project_id: string;
+  prompt?: string;
+  title?: string;
+  keyword?: string;
+  style?: ImageStyle;
+  usage?: ImageUsage;
+  article_id?: string;
+  social_post_id?: string;
+}): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>("/images/generate", data);
+}
+
+export async function deleteImage(id: string): Promise<void> {
+  await apiClient.delete<void>(`/images/${id}`);
+}
+
+export async function attachImage(id: string, data: { article_id?: string; social_post_id?: string }): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>(`/images/${id}/attach`, data);
+}
