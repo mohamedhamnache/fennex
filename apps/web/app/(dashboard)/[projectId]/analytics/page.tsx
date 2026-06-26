@@ -138,7 +138,11 @@ function GscBanner({ projectId }: { projectId: string }) {
     window.location.reload();
   }
 
-  if (status?.is_connected) {
+  if (!status) {
+    return <div className="h-10 rounded-lg border bg-muted/20 animate-pulse" />;
+  }
+
+  if (status.is_connected) {
     return (
       <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2.5 text-sm">
         <span className="text-muted-foreground">
@@ -394,6 +398,47 @@ function RankingsTab({ projectId }: { projectId: string }) {
   );
 }
 
+// ─── MetricsTable ────────────────────────────────────────────────────────────
+
+function MetricsTable<T extends { clicks: number; impressions: number; ctr: number; avg_position: number }>({
+  rows,
+  labelKey,
+  labelHeader,
+}: {
+  rows: T[];
+  labelKey: keyof T;
+  labelHeader: string;
+}) {
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="border-b bg-muted/40">
+          <tr>
+            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{labelHeader}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Clicks</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Impressions</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">CTR</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Avg Pos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+              <td className="px-4 py-3 max-w-xs truncate text-muted-foreground font-mono text-xs">
+                {String(row[labelKey])}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums">{row.clicks.toLocaleString()}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{row.impressions.toLocaleString()}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{(row.ctr * 100).toFixed(2)}%</td>
+              <td className="px-4 py-3 text-right tabular-nums">{row.avg_position.toFixed(1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── PagesQueriesTab ─────────────────────────────────────────────────────────
 
 function PagesQueriesTab({ projectId }: { projectId: string }) {
@@ -408,45 +453,6 @@ function PagesQueriesTab({ projectId }: { projectId: string }) {
     queryFn: () => getTopQueries(projectId),
     staleTime: 5 * 60_000,
   });
-
-  function MetricsTable<T extends { clicks: number; impressions: number; ctr: number; avg_position: number }>({
-    rows,
-    labelKey,
-    labelHeader,
-  }: {
-    rows: T[];
-    labelKey: keyof T;
-    labelHeader: string;
-  }) {
-    return (
-      <div className="rounded-lg border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40">
-            <tr>
-              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{labelHeader}</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Clicks</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Impressions</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">CTR</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Avg Pos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                <td className="px-4 py-3 max-w-xs truncate text-muted-foreground font-mono text-xs">
-                  {String(row[labelKey])}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">{row.clicks.toLocaleString()}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{row.impressions.toLocaleString()}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{(row.ctr * 100).toFixed(2)}%</td>
-                <td className="px-4 py-3 text-right tabular-nums">{row.avg_position.toFixed(1)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
