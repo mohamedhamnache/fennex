@@ -126,12 +126,13 @@ async def get_rankings(
         return []
 
     keyword_ids = [kw.id for kw in keywords]
-    kw_map = {kw.id: kw for kw in keywords}
 
     latest_result = await db.execute(
         select(KeywordRanking).where(
             KeywordRanking.keyword_id.in_(keyword_ids),
             KeywordRanking.date == today,
+            KeywordRanking.project_id == project_id,
+            KeywordRanking.org_id == org_id,
         )
     )
     latest_map = {r.keyword_id: r for r in latest_result.scalars().all()}
@@ -140,6 +141,8 @@ async def get_rankings(
         select(KeywordRanking).where(
             KeywordRanking.keyword_id.in_(keyword_ids),
             KeywordRanking.date == week_ago,
+            KeywordRanking.project_id == project_id,
+            KeywordRanking.org_id == org_id,
         )
     )
     week_map = {r.keyword_id: r for r in week_result.scalars().all()}
