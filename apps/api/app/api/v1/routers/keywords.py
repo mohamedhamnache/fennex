@@ -176,9 +176,9 @@ async def list_job_clusters(
 
 @router.get("")
 async def list_keywords(
+    current_user: CurrentUser,
+    db: DB,
     project_id: uuid.UUID = Query(...),
-    current_user: CurrentUser = None,
-    db: DB = None,
 ):
     # Verify project belongs to org
     proj_result = await db.execute(

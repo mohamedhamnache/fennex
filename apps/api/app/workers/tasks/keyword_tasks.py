@@ -60,6 +60,14 @@ async def run_keyword_research(ctx, job_id: str):
                 )
                 session.add(kw_row)
 
+            # Sum volumes per cluster
+            for cluster_name, cluster_id in cluster_id_map.items():
+                cluster_kws = [kd for kd in keyword_data_list if _get_cluster_key_for(kd.keyword) == cluster_name]
+                total_vol = sum(kd.search_volume or 0 for kd in cluster_kws)
+                cluster_row = await session.get(KeywordCluster, cluster_id)
+                if cluster_row:
+                    cluster_row.total_volume = total_vol
+
             # Update job status
             job_row = await session.get(KeywordResearchJob, uuid.UUID(job_id))
             job_row.keywords_found = len(keyword_data_list)
