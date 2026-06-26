@@ -1,4 +1,5 @@
 import base64
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -64,3 +65,18 @@ def encrypt_value(value: str) -> str:
 def decrypt_value(encrypted: str) -> str:
     f = _get_fernet()
     return f.decrypt(encrypted.encode()).decode()
+
+
+# Aliases used by older code
+encrypt_api_key = encrypt_value
+decrypt_api_key = decrypt_value
+
+
+def encrypt_credentials(data: dict) -> str:
+    """Encrypt a dict to a string using encrypt_value."""
+    return encrypt_value(json.dumps(data))
+
+
+def decrypt_credentials(encrypted: str) -> dict:
+    """Decrypt a string back to a dict using decrypt_value."""
+    return json.loads(decrypt_value(encrypted))

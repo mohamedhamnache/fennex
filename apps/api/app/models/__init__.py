@@ -8,3 +8,4 @@ from app.models.keyword import KeywordResearchJob, Keyword, KeywordCluster  # no
 from app.models.content import ContentPlan, ContentItem  # noqa: F401
 from app.models.brand_voice import BrandVoice, BrandVoiceSource  # noqa: F401
 from app.models.article import Article, ArticleRevision  # noqa: F401
+from app.models.publishing import PublishingConnection, PublishJob  # noqa: F401
