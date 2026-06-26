@@ -772,7 +772,7 @@ export default function ContentPage({ params }: { params: { projectId: string } 
       setSuccessMessage(`${result.items_added} items added to your plan`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      setSuccessMessage(`❌ ${err instanceof Error ? err.message : "Generation failed"}`);
+      setSuccessMessage(`Error: ${err instanceof Error ? err.message : "Generation failed"}`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } finally {
       setIsGenerating(false);
@@ -821,7 +821,7 @@ export default function ContentPage({ params }: { params: { projectId: string } 
       {successMessage && (
         <div
           className={`rounded-lg border px-4 py-3 text-sm font-medium ${
-            successMessage.startsWith("❌")
+            successMessage.startsWith("Error:")
               ? "border-red-200 bg-red-50 text-red-600"
               : "border-emerald-200 bg-emerald-50 text-emerald-600"
           }`}

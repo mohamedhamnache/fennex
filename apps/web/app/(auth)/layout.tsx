@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated } from "@/lib/api";
+import { TrendingUp, PenLine, Send, BarChart2 } from "lucide-react";
 
 const features = [
-  { icon: "📈", title: "Keyword Research", desc: "Find high-ROI opportunities with AI clustering" },
-  { icon: "✍️", title: "AI Article Generation", desc: "SEO-optimized long-form content in minutes" },
-  { icon: "🚀", title: "Auto-Publish", desc: "Push to WordPress, Shopify, Ghost & more" },
-  { icon: "📊", title: "Rank Tracking", desc: "Monitor positions & traffic in real-time" },
+  { icon: TrendingUp, title: "Keyword Research", desc: "Find high-ROI opportunities with AI clustering" },
+  { icon: PenLine, title: "AI Article Generation", desc: "SEO-optimized long-form content in minutes" },
+  { icon: Send, title: "Auto-Publish", desc: "Push to WordPress, Shopify, Ghost & more" },
+  { icon: BarChart2, title: "Rank Tracking", desc: "Monitor positions & traffic in real-time" },
 ];
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -59,7 +60,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="grid grid-cols-1 gap-3">
             {features.map((f) => (
               <div key={f.title} className="flex items-start gap-3 rounded-xl bg-white/5 border border-white/8 p-3.5 backdrop-blur-sm">
-                <span className="text-lg leading-none">{f.icon}</span>
+                <f.icon size={16} className="mt-0.5 shrink-0 text-white/70" />
                 <div>
                   <p className="text-sm font-semibold text-white">{f.title}</p>
                   <p className="text-xs text-white/50 mt-0.5">{f.desc}</p>
