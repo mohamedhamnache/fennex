@@ -11,7 +11,7 @@ export function TopBar() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="flex h-13 items-center justify-between border-b border-border bg-card/60 px-5 py-2.5 backdrop-blur-sm">
+    <header className="flex h-13 items-center justify-between border-b border-border bg-background/80 px-5 py-2.5 backdrop-blur-sm">
       {/* Search */}
       <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm text-muted-foreground w-64 cursor-text">
         <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
