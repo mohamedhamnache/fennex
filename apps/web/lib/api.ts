@@ -83,3 +83,86 @@ export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
   return !!localStorage.getItem("fennex_access_token");
 }
+
+// ─── Project types & helpers ───────────────────────────────────────────────
+
+export interface Project {
+  id: string;
+  org_id: string;
+  name: string;
+  domain: string;
+  locale: string;
+  target_country: string | null;
+  industry: string | null;
+  created_at: string;
+}
+
+export interface CrawlStatus {
+  job_id: string;
+  status: string;
+  pages_crawled: number;
+  error?: string;
+}
+
+export interface AuditIssue {
+  severity: "critical" | "warning" | "info";
+  issue_type: string;
+  url: string;
+  message: string;
+}
+
+export interface AuditResult {
+  id: string;
+  status: string;
+  overall_score: number;
+  technical_score: number;
+  content_score: number;
+  onpage_score: number;
+  issues: AuditIssue[];
+  summary: {
+    pages_audited: number;
+    critical_issues: number;
+    warnings: number;
+  };
+}
+
+export async function createProject(data: {
+  name: string;
+  domain: string;
+  locale?: string;
+  target_country?: string;
+}): Promise<Project> {
+  return apiClient.post<Project>("/projects", data);
+}
+
+export async function listProjects(): Promise<Project[]> {
+  return apiClient.get<Project[]>("/projects");
+}
+
+export async function triggerCrawl(
+  projectId: string,
+  url: string,
+): Promise<{ job_id: string; status: string }> {
+  return apiClient.post<{ job_id: string; status: string }>("/crawl", {
+    project_id: projectId,
+    url,
+  });
+}
+
+export async function getCrawlStatus(jobId: string): Promise<CrawlStatus> {
+  return apiClient.get<CrawlStatus>(`/crawl/${jobId}`);
+}
+
+export async function triggerAudit(
+  projectId: string,
+  crawlJobId?: string,
+): Promise<{ audit_id: string; status: string }> {
+  return apiClient.post<{ audit_id: string; status: string }>("/audit", {
+    project_id: projectId,
+    ...(crawlJobId ? { crawl_job_id: crawlJobId } : {}),
+  });
+}
+
+export async function getAuditStatus(auditId: string): Promise<AuditResult> {
+  return apiClient.get<AuditResult>(`/audit/${auditId}`);
+}

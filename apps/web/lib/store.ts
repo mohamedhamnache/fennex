@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { User, Project, Organization } from "@fennex/types";
+import type { User, Organization } from "@fennex/types";
 
 interface AppState {
   // Auth
@@ -30,5 +30,22 @@ export const useAppStore = create<AppState>()(
       setActiveProject: (id) => set({ activeProjectId: id }),
     }),
     { name: "fennex-app-state" },
+  ),
+);
+
+// ─── Project store ──────────────────────────────────────────────────────────
+
+interface ProjectStore {
+  currentProjectId: string | null;
+  setCurrentProject: (id: string | null) => void;
+}
+
+export const useProjectStore = create<ProjectStore>()(
+  persist(
+    (set) => ({
+      currentProjectId: null,
+      setCurrentProject: (id) => set({ currentProjectId: id }),
+    }),
+    { name: "fennex-project-state" },
   ),
 );
