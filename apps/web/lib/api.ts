@@ -458,3 +458,78 @@ export async function saveRevision(
 export async function getArticleSeoScore(id: string): Promise<SEOScoreBreakdown> {
   return apiClient.get<SEOScoreBreakdown>(`/articles/${id}/seo-score`);
 }
+
+// ─── Publishing types & helpers ────────────────────────────────────────────
+
+export type PublishingPlatform = "wordpress" | "ghost" | "notion" | "custom";
+export type PublishJobStatus = "pending" | "running" | "done" | "failed";
+
+export interface PublishingConnection {
+  id: string;
+  project_id: string;
+  name: string;
+  platform: PublishingPlatform;
+  site_url: string;
+  is_active: boolean;
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
+  created_at: string;
+}
+
+export interface PublishJob {
+  id: string;
+  project_id: string;
+  connection_id: string;
+  article_id: string | null;
+  status: PublishJobStatus;
+  platform_post_id: string | null;
+  published_url: string | null;
+  error: string | null;
+  created_at: string;
+}
+
+export async function listPublishingConnections(projectId: string): Promise<PublishingConnection[]> {
+  return apiClient.get<PublishingConnection[]>(`/publishing/connections?project_id=${projectId}`);
+}
+
+export async function createPublishingConnection(data: {
+  project_id: string;
+  name: string;
+  platform: string;
+  site_url: string;
+  credentials: { username: string; app_password: string };
+}): Promise<PublishingConnection> {
+  return apiClient.post<PublishingConnection>("/publishing/connections", data);
+}
+
+export async function updatePublishingConnection(
+  id: string,
+  patch: Partial<Pick<PublishingConnection, "name" | "site_url" | "is_active">>,
+): Promise<PublishingConnection> {
+  return apiClient.patch<PublishingConnection>(`/publishing/connections/${id}`, patch);
+}
+
+export async function deletePublishingConnection(id: string): Promise<void> {
+  await apiClient.delete<void>(`/publishing/connections/${id}`);
+}
+
+export async function testPublishingConnection(
+  id: string,
+): Promise<{ ok: boolean; user?: string; error?: string }> {
+  return apiClient.post<{ ok: boolean; user?: string; error?: string }>(
+    `/publishing/connections/${id}/test`,
+    {},
+  );
+}
+
+export async function publishArticle(data: {
+  article_id: string;
+  connection_id: string;
+  publish_status: "draft" | "publish";
+}): Promise<PublishJob> {
+  return apiClient.post<PublishJob>("/publishing/publish", data);
+}
+
+export async function listPublishJobs(projectId: string): Promise<PublishJob[]> {
+  return apiClient.get<PublishJob[]>(`/publishing/jobs?project_id=${projectId}`);
+}

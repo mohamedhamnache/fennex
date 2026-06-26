@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
+  Send,
+  ExternalLink,
 } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import { useProjectStore } from "@/lib/store";
@@ -23,9 +25,12 @@ import {
   generateArticle,
   saveRevision,
   getArticleSeoScore,
+  listPublishingConnections,
+  publishArticle,
   type Article,
   type ArticleStatus,
   type SEOScoreBreakdown,
+  type PublishingConnection,
 } from "@/lib/api";
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
@@ -319,13 +324,180 @@ function NewArticleModal({
   );
 }
 
+// ─── Publish Modal ─────────────────────────────────────────────────────────
+
+function PublishModal({
+  articleId,
+  projectId,
+  onClose,
+}: {
+  articleId: string;
+  projectId: string;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [connectionId, setConnectionId] = useState("");
+  const [publishStatus, setPublishStatus] = useState<"draft" | "publish">("publish");
+  const [result, setResult] = useState<{ url: string } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { data: connections = [], isLoading: connectionsLoading } = useQuery<PublishingConnection[]>({
+    queryKey: ["publishing-connections", projectId],
+    queryFn: () => listPublishingConnections(projectId),
+  });
+
+  // Default to first connection once loaded
+  useEffect(() => {
+    if (connections.length > 0 && !connectionId) {
+      setConnectionId(connections[0].id);
+    }
+  }, [connections, connectionId]);
+
+  const publishMutation = useMutation({
+    mutationFn: () =>
+      publishArticle({ article_id: articleId, connection_id: connectionId, publish_status: publishStatus }),
+    onSuccess: (job) => {
+      queryClient.invalidateQueries({ queryKey: ["article", articleId] });
+      queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["publish-jobs", projectId] });
+      if (job.published_url) {
+        setResult({ url: job.published_url });
+      } else {
+        setResult({ url: "" });
+      }
+    },
+    onError: (err) => {
+      setErrorMsg(err instanceof Error ? err.message : "Publishing failed");
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">Publish Article</h2>
+        </div>
+
+        <div className="p-6 flex flex-col gap-4">
+          {errorMsg && (
+            <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+              {errorMsg}
+            </p>
+          )}
+
+          {result !== null ? (
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Published successfully</p>
+                {result.url && (
+                  <a
+                    href={result.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                  >
+                    View published post
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="btn-primary px-6 py-2 text-sm"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Choose connection
+                </label>
+                {connectionsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading connections…</p>
+                ) : connections.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No connections available. Add one in the Publishing page.
+                  </p>
+                ) : (
+                  <select
+                    value={connectionId}
+                    onChange={(e) => setConnectionId(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    {connections.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.platform})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Publish as
+                </label>
+                <div className="flex gap-4">
+                  {(["draft", "publish"] as const).map((opt) => (
+                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="publish_status"
+                        value={opt}
+                        checked={publishStatus === opt}
+                        onChange={() => setPublishStatus(opt)}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm text-foreground capitalize">{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => publishMutation.mutate()}
+                  disabled={publishMutation.isPending || !connectionId || connections.length === 0}
+                  className="flex-1 btn-primary px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {publishMutation.isPending ? (
+                    <>
+                      <Spinner size={14} /> Publishing…
+                    </>
+                  ) : (
+                    "Publish Now"
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Article Editor ────────────────────────────────────────────────────────
 
 function ArticleEditor({
   articleId,
+  projectId,
   onBack,
 }: {
   articleId: string;
+  projectId: string;
   onBack: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -348,6 +520,7 @@ function ArticleEditor({
   const [metaDesc, setMetaDesc] = useState<string>("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [revisionMsg, setRevisionMsg] = useState<string | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized = useRef(false);
 
@@ -484,6 +657,15 @@ function ArticleEditor({
         >
           Save
         </button>
+        {(article.status === "ready" || article.status === "published") && (
+          <button
+            onClick={() => setShowPublishModal(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors shrink-0"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Publish
+          </button>
+        )}
       </div>
 
       {/* Editor body */}
@@ -653,6 +835,14 @@ function ArticleEditor({
           </div>
         </div>
       </div>
+
+      {showPublishModal && (
+        <PublishModal
+          articleId={articleId}
+          projectId={projectId}
+          onClose={() => setShowPublishModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -700,6 +890,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     return (
       <ArticleEditor
         articleId={selectedId}
+        projectId={projectId}
         onBack={() => setSelectedId(null)}
       />
     );
