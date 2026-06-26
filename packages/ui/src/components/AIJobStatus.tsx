@@ -1,5 +1,6 @@
 import React from "react";
-import type { JobStatus } from "@fennex/types";
+
+type JobStatus = "pending" | "running" | "completed" | "failed";
 
 interface AIJobStatusProps {
   status: JobStatus;

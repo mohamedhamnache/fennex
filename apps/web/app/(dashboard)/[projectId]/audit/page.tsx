@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Play, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { AlertCircle, CheckCircle2, Clock, Play } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { ScoreGauge } from "@/components/ui/ScoreGauge";
 import {
   triggerCrawl,
@@ -13,6 +14,7 @@ import {
   type AuditIssue,
 } from "@/lib/api";
 import { useProjectStore } from "@/lib/store";
+import { FennecMascot } from "@fennex/ui";
 
 type FlowState = "idle" | "crawling" | "auditing" | "done" | "error";
 
@@ -53,107 +55,104 @@ export default function AuditPage({ params }: { params: { projectId: string } })
   const { projectId } = params;
   const { setCurrentProject } = useProjectStore();
 
-  const [flowState, setFlowState] = useState<FlowState>("idle");
+  const [phase, setPhase] = useState<FlowState>("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Keep a ref to the polling interval so we can clear it
-  const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [crawlJobId, setCrawlJobId] = useState<string | null>(null);
+  const [auditId, setAuditId] = useState<string | null>(null);
 
   // Sync current project to store when navigating directly via URL
   useEffect(() => {
     setCurrentProject(projectId);
   }, [projectId, setCurrentProject]);
 
-  function clearPoll() {
-    if (pollInterval.current) {
-      clearInterval(pollInterval.current);
-      pollInterval.current = null;
-    }
-  }
+  // Query projects list so runAudit can use cache instead of a fresh fetch
+  const { data: projects } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    staleTime: 30_000,
+  });
 
-  // Cleanup on unmount
-  useEffect(() => () => clearPoll(), []);
+  // Poll crawl job status
+  const crawlQuery = useQuery({
+    queryKey: ["crawl", crawlJobId],
+    queryFn: () => getCrawlStatus(crawlJobId!),
+    enabled: !!crawlJobId && phase === "crawling",
+    refetchInterval: phase === "crawling" ? 2000 : false,
+  });
+
+  // Poll audit status
+  const auditQuery = useQuery({
+    queryKey: ["audit", auditId],
+    queryFn: () => getAuditStatus(auditId!),
+    enabled: !!auditId && phase === "auditing",
+    refetchInterval: phase === "auditing" ? 2000 : false,
+  });
+
+  // Advance phase when crawl completes
+  useEffect(() => {
+    if (!crawlQuery.data || phase !== "crawling") return;
+    if (crawlQuery.data.status === "completed") {
+      setPhase("auditing");
+      setStatusMessage("Starting audit analysis…");
+      // Trigger audit job
+      triggerAudit(projectId, crawlJobId!)
+        .then((resp) => {
+          setAuditId(resp.audit_id);
+        })
+        .catch((err) => {
+          setPhase("error");
+          setErrorMessage(err instanceof Error ? err.message : "Failed to start audit");
+        });
+    } else if (crawlQuery.data.status === "failed") {
+      setPhase("error");
+      setErrorMessage(crawlQuery.data.error ?? "Crawl failed");
+    } else {
+      setStatusMessage(`Crawling pages… ${crawlQuery.data.pages_crawled ?? 0} pages found`);
+    }
+  }, [crawlQuery.data, phase, projectId, crawlJobId]);
+
+  // Advance phase when audit completes
+  useEffect(() => {
+    if (!auditQuery.data || phase !== "auditing") return;
+    if (auditQuery.data.status === "completed") {
+      setAuditResult(auditQuery.data);
+      setPhase("done");
+      setStatusMessage("Audit complete");
+    } else if (auditQuery.data.status === "failed") {
+      setPhase("error");
+      setErrorMessage("Audit failed");
+    } else {
+      setStatusMessage("Analyzing SEO signals…");
+    }
+  }, [auditQuery.data, phase]);
 
   async function runAudit() {
-    if (flowState !== "idle" && flowState !== "error" && flowState !== "done") return;
+    if (phase !== "idle" && phase !== "error" && phase !== "done") return;
 
-    setFlowState("crawling");
-    setStatusMessage("Fetching project domain…");
+    setPhase("crawling");
+    setStatusMessage("Starting crawler…");
     setAuditResult(null);
     setErrorMessage(null);
+    setCrawlJobId(null);
+    setAuditId(null);
 
     try {
-      // Resolve project domain
-      const projects = await listProjects();
-      const project = projects.find((p) => p.id === projectId);
+      // Resolve project domain from cache (populated by the projects query above)
+      const project = projects?.find((p) => p.id === projectId);
       if (!project) throw new Error("Project not found");
 
-      // 1. Trigger crawl
-      setStatusMessage("Starting crawler…");
+      // Trigger crawl; polling is handled by crawlQuery
       const crawlResp = await triggerCrawl(projectId, project.domain);
-      const jobId = crawlResp.job_id;
-
-      // 2. Poll crawl status
-      await new Promise<void>((resolve, reject) => {
-        pollInterval.current = setInterval(async () => {
-          try {
-            const status = await getCrawlStatus(jobId);
-            setStatusMessage(
-              `Crawling pages… ${status.pages_crawled ?? 0} pages found`,
-            );
-            if (status.status === "completed") {
-              clearPoll();
-              resolve();
-            } else if (status.status === "failed") {
-              clearPoll();
-              reject(new Error(status.error ?? "Crawl failed"));
-            }
-          } catch (err) {
-            clearPoll();
-            reject(err);
-          }
-        }, 2000);
-      });
-
-      // 3. Trigger audit
-      setFlowState("auditing");
-      setStatusMessage("Starting audit analysis…");
-      const auditResp = await triggerAudit(projectId, jobId);
-      const auditId = auditResp.audit_id;
-
-      // 4. Poll audit status
-      await new Promise<void>((resolve, reject) => {
-        pollInterval.current = setInterval(async () => {
-          try {
-            const status = await getAuditStatus(auditId);
-            setStatusMessage("Analyzing SEO signals…");
-            if (status.status === "completed") {
-              clearPoll();
-              setAuditResult(status);
-              resolve();
-            } else if (status.status === "failed") {
-              clearPoll();
-              reject(new Error("Audit failed"));
-            }
-          } catch (err) {
-            clearPoll();
-            reject(err);
-          }
-        }, 2000);
-      });
-
-      setFlowState("done");
-      setStatusMessage("Audit complete");
+      setCrawlJobId(crawlResp.job_id);
     } catch (err) {
-      clearPoll();
-      setFlowState("error");
+      setPhase("error");
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong");
     }
   }
 
-  const isRunning = flowState === "crawling" || flowState === "auditing";
+  const isRunning = phase === "crawling" || phase === "auditing";
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -185,11 +184,9 @@ export default function AuditPage({ params }: { params: { projectId: string } })
       </div>
 
       {/* ── Idle state ── */}
-      {flowState === "idle" && (
+      {phase === "idle" && (
         <div className="flex flex-col items-center justify-center gap-4 py-20">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <Play className="h-7 w-7 text-primary" />
-          </div>
+          <FennecMascot />
           <div className="text-center">
             <p className="text-base font-semibold text-foreground">No audit yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -207,20 +204,20 @@ export default function AuditPage({ params }: { params: { projectId: string } })
           </div>
           <div className="text-center">
             <p className="text-sm font-semibold text-foreground">
-              {flowState === "crawling" ? "Crawling pages…" : "Analysing SEO signals…"}
+              {phase === "crawling" ? "Crawling pages…" : "Analysing SEO signals…"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{statusMessage}</p>
           </div>
           <div className="flex items-center gap-6 text-xs text-muted-foreground mt-2">
             <span className="flex items-center gap-1.5">
               <span
-                className={`h-1.5 w-1.5 rounded-full ${flowState === "crawling" ? "bg-primary animate-pulse-dot" : "bg-emerald-500"}`}
+                className={`h-1.5 w-1.5 rounded-full ${phase === "crawling" ? "bg-primary animate-pulse-dot" : "bg-emerald-500"}`}
               />
               Crawl
             </span>
             <span className="flex items-center gap-1.5">
               <span
-                className={`h-1.5 w-1.5 rounded-full ${flowState === "auditing" ? "bg-primary animate-pulse-dot" : "bg-border"}`}
+                className={`h-1.5 w-1.5 rounded-full ${phase === "auditing" ? "bg-primary animate-pulse-dot" : "bg-border"}`}
               />
               Audit
             </span>
@@ -229,7 +226,7 @@ export default function AuditPage({ params }: { params: { projectId: string } })
       )}
 
       {/* ── Error state ── */}
-      {flowState === "error" && errorMessage && (
+      {phase === "error" && errorMessage && (
         <div className="card-base p-5 flex items-start gap-3 border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800/30">
           <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
           <div>
@@ -240,7 +237,7 @@ export default function AuditPage({ params }: { params: { projectId: string } })
       )}
 
       {/* ── Done state ── */}
-      {flowState === "done" && auditResult && (
+      {phase === "done" && auditResult && (
         <>
           {/* Success banner */}
           <div className="card-base p-4 flex items-center gap-3 border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10 dark:border-emerald-800/30">
