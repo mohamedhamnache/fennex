@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,7 +43,13 @@ class Settings(BaseSettings):
 
     # Internal service URLs
     CRAWLER_SERVICE_URL: str = "http://crawler:8001"
+    CRAWLER_URL: str = "http://crawler:8001"  # alias used by worker tasks
     IMAGE_GEN_SERVICE_URL: str = "http://image-gen:8002"
+
+    @property
+    def REDIS_SETTINGS(self) -> Any:
+        from arq.connections import RedisSettings
+        return RedisSettings.from_dsn(self.REDIS_URL)
 
 
 settings = Settings()

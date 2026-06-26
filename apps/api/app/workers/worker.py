@@ -1,6 +1,8 @@
 from arq.connections import RedisSettings
 
 from app.core.config import settings
+from app.workers.tasks.crawl_tasks import crawl_website
+from app.workers.tasks.audit_tasks import run_seo_audit
 
 
 async def startup(ctx):
@@ -17,7 +19,7 @@ async def _noop(ctx):
 
 
 class WorkerSettings:
-    functions = [_noop]  # Real tasks registered in Phase 2+
+    functions = [_noop, crawl_website, run_seo_audit]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
