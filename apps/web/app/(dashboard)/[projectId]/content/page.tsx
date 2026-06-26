@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FennecMascot } from "@fennex/ui";
+import { Sparkles, Key, Calendar, FileText, CheckCircle } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
   getContentPlans,
@@ -126,17 +127,17 @@ function ContentItemCard({
 
       <div className="mt-2 flex flex-wrap gap-1">
         <span className={`badge text-[10px] ${TYPE_COLORS[item.content_type]}`}>
-          📄 {TYPE_LABELS[item.content_type]}
+          <FileText size={10} className="inline mr-0.5" />{TYPE_LABELS[item.content_type]}
         </span>
       </div>
 
       {item.target_keyword && (
         <p className="mt-1.5 text-xs text-muted-foreground truncate">
-          🔑 {item.target_keyword}
+          <Key size={10} className="inline mr-0.5" />{item.target_keyword}
         </p>
       )}
       {item.scheduled_date && (
-        <p className="mt-0.5 text-xs text-muted-foreground">📅 {formatDate(item.scheduled_date)}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground"><Calendar size={10} className="inline mr-0.5" />{formatDate(item.scheduled_date)}</p>
       )}
       {item.word_count_target && (
         <p className="mt-0.5 text-xs text-muted-foreground">{item.word_count_target.toLocaleString()} words</p>
@@ -219,6 +220,14 @@ function DetailDrawer({
 }) {
   const queryClient = useQueryClient();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const [localStatus, setLocalStatus] = useState(item.status);
+  const [localType, setLocalType] = useState(item.content_type);
+
+  useEffect(() => {
+    setLocalStatus(item.status);
+    setLocalType(item.content_type);
+  }, [item.status, item.content_type]);
 
   const updateMutation = useMutation({
     mutationFn: (patch: Partial<ContentItem>) => updateContentItem(planId, item.id, patch),
@@ -314,8 +323,12 @@ function DetailDrawer({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">Status</label>
             <select
-              defaultValue={item.status}
-              onChange={(e) => updateMutation.mutate({ status: e.target.value as ContentItemStatus })}
+              value={localStatus}
+              onChange={(e) => {
+                const newStatus = e.target.value as ContentItemStatus;
+                setLocalStatus(newStatus);
+                updateMutation.mutate({ status: newStatus });
+              }}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
             >
               {STATUSES.map((s) => (
@@ -330,8 +343,12 @@ function DetailDrawer({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">Type</label>
             <select
-              defaultValue={item.content_type}
-              onChange={(e) => updateMutation.mutate({ content_type: e.target.value as ContentItemType })}
+              value={localType}
+              onChange={(e) => {
+                const newType = e.target.value as ContentItemType;
+                setLocalType(newType);
+                updateMutation.mutate({ content_type: newType });
+              }}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
             >
               {(["article", "landing_page", "social_post", "email"] as ContentItemType[]).map((t) => (
@@ -482,7 +499,8 @@ function GenerateModal({
                 Generating...
               </>
             ) : (
-              "✨ Generate"
+              <><Sparkles size={14} className="inline mr-1" />Generate</>
+
             )}
           </button>
         </div>
@@ -595,10 +613,12 @@ function ListView({
   onRowClick: (item: ContentItem) => void;
 }) {
   const queryClient = useQueryClient();
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (itemId: string) => deleteContentItem(planId, itemId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["content-plans"] }),
+    onSettled: () => setDeletingItemId(null),
   });
 
   const statusMutation = useMutation({
@@ -669,11 +689,14 @@ function ListView({
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => deleteMutation.mutate(item.id)}
-                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        setDeletingItemId(item.id);
+                        deleteMutation.mutate(item.id);
+                      }}
+                      disabled={deletingItemId === item.id}
                       className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50 transition-colors"
                     >
-                      {deleteMutation.isPending ? <Spinner size={10} /> : "Delete"}
+                      {deletingItemId === item.id ? <Spinner size={10} /> : "Delete"}
                     </button>
                   </td>
                 </tr>
@@ -746,7 +769,7 @@ export default function ContentPage({ params }: { params: { projectId: string } 
       const result = await generateContentPlan(targetPlanId, seedKeyword || undefined);
       await queryClient.invalidateQueries({ queryKey: ["content-plans"] });
       setShowGenerateModal(false);
-      setSuccessMessage(`✅ ${result.items_added} items added to your plan`);
+      setSuccessMessage(`${result.items_added} items added to your plan`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       setSuccessMessage(`❌ ${err instanceof Error ? err.message : "Generation failed"}`);
@@ -769,15 +792,10 @@ export default function ContentPage({ params }: { params: { projectId: string } 
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              if (plan) {
-                setShowNewItemForm(true);
-              } else {
-                setShowNewItemForm(true);
-              }
-            }}
-            disabled={isLoading}
-            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+            onClick={() => setShowNewItemForm(true)}
+            disabled={isLoading || !plan}
+            title={!plan ? "Generate a plan first" : undefined}
+            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             + New Item
           </button>
@@ -792,7 +810,8 @@ export default function ContentPage({ params }: { params: { projectId: string } 
                 Generating...
               </>
             ) : (
-              "✨ Generate Plan"
+              <><Sparkles size={14} className="inline mr-1" />Generate Plan</>
+
             )}
           </button>
         </div>
@@ -840,7 +859,7 @@ export default function ContentPage({ params }: { params: { projectId: string } 
             onClick={() => setShowGenerateModal(true)}
             className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm mt-2"
           >
-            ✨ Generate your first plan
+            <Sparkles size={14} className="inline mr-1" />Generate your first plan
           </button>
         </div>
       )}
