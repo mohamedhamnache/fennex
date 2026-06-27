@@ -983,3 +983,37 @@ export async function upsertSocialConnection(
 export async function deleteSocialConnection(platform: string): Promise<void> {
   return apiClient.delete<void>(`/social/connections/${platform}`);
 }
+
+// ── Team / RBAC ───────────────────────────────────────────────────────────────
+
+export interface OrgMember {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string | null;
+}
+
+export interface OrgInvite {
+  id: string;
+  email: string;
+  role: string;
+  invite_link: string;
+}
+
+export async function listOrgMembers(orgId: string): Promise<OrgMember[]> {
+  return apiClient.get<OrgMember[]>(`/organizations/${orgId}/members`);
+}
+
+export async function inviteMember(orgId: string, email: string, role: string): Promise<OrgInvite> {
+  return apiClient.post<OrgInvite>(`/organizations/${orgId}/invites`, { email, role });
+}
+
+export async function updateMemberRole(orgId: string, userId: string, role: string): Promise<OrgMember> {
+  return apiClient.patch<OrgMember>(`/organizations/${orgId}/members/${userId}`, { role });
+}
+
+export async function deactivateMember(orgId: string, userId: string): Promise<void> {
+  return apiClient.delete<void>(`/organizations/${orgId}/members/${userId}`);
+}

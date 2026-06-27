@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Plus, Eye, EyeOff, Link2, Link2Off } from "lucide-react";
-import { getMe, listApiKeys, createApiKey, deleteApiKey, type ApiKey, listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection } from "@/lib/api";
+import { Trash2, Plus, Eye, EyeOff, Link2, Link2Off, UserX, UserPlus, Copy, Check } from "lucide-react";
+import { getMe, listApiKeys, createApiKey, deleteApiKey, type ApiKey, listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection, listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember } from "@/lib/api";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -309,6 +309,185 @@ function SocialAccountsSection() {
   );
 }
 
+const ROLE_OPTIONS = [
+  "owner", "admin", "seo_manager", "content_writer",
+  "editor", "designer", "marketing_manager", "viewer",
+] as const;
+
+function initials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myRole: string }) {
+  const qc = useQueryClient();
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: "", role: "viewer" });
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const canManage = myRole === "owner" || myRole === "admin";
+
+  const { data: members = [], isLoading } = useQuery({
+    queryKey: ["org-members", orgId],
+    queryFn: () => listOrgMembers(orgId),
+    staleTime: 60_000,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: () => inviteMember(orgId, inviteForm.email, inviteForm.role),
+    onSuccess: (data) => {
+      setInviteLink(data.invite_link);
+      setInviteForm({ email: "", role: "viewer" });
+    },
+  });
+
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
+      updateMemberRole(orgId, userId, role),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-members", orgId] }),
+  });
+
+  const deactivateMutationFn = useMutation({
+    mutationFn: (userId: string) => deactivateMember(orgId, userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-members", orgId] }),
+  });
+
+  const copyLink = async () => {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="border-b px-6 py-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold">Team Members</h2>
+        {canManage && (
+          <button
+            onClick={() => { setShowInvite((v) => !v); setInviteLink(null); }}
+            className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <UserPlus className="h-3 w-3" /> Invite
+          </button>
+        )}
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-4">
+        {showInvite && canManage && (
+          <div className="flex flex-col gap-3 rounded-md border p-4">
+            {inviteLink ? (
+              <>
+                <p className="text-sm font-medium text-green-600">Invite link generated</p>
+                <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                  <p className="flex-1 truncate font-mono text-xs text-muted-foreground">{inviteLink}</p>
+                  <button onClick={copyLink} className="shrink-0 text-muted-foreground hover:text-foreground">
+                    {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+                <button
+                  onClick={() => { setShowInvite(false); setInviteLink(null); }}
+                  className="self-start rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="email"
+                  placeholder="colleague@company.com"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value }))}
+                  className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => inviteMutation.mutate()}
+                    disabled={!inviteForm.email.trim() || inviteMutation.isPending}
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {inviteMutation.isPending ? "Sending…" : "Generate invite link"}
+                  </button>
+                  <button
+                    onClick={() => setShowInvite(false)}
+                    className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="h-10 animate-pulse rounded bg-muted/30" />
+        ) : (
+          <div className="flex flex-col gap-2">
+            {members.map((m: OrgMember) => (
+              <div
+                key={m.id}
+                className={`flex items-center justify-between rounded-md border px-4 py-3 ${!m.is_active ? "opacity-50" : ""}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    {initials(m.full_name)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{m.full_name}</p>
+                    <p className="text-xs text-muted-foreground">{m.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {canManage && m.id !== myId ? (
+                    <select
+                      value={m.role}
+                      onChange={(e) => roleMutation.mutate({ userId: m.id, role: e.target.value })}
+                      disabled={roleMutation.isPending}
+                      className="rounded-md border bg-background px-2 py-1 text-xs focus:outline-none"
+                    >
+                      {ROLE_OPTIONS.map((r) => (
+                        <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                      {ROLE_LABELS[m.role] ?? m.role}
+                    </span>
+                  )}
+                  {!m.is_active && (
+                    <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+                      Inactive
+                    </span>
+                  )}
+                  {canManage && m.id !== myId && m.is_active && (
+                    <button
+                      onClick={() => deactivateMutationFn.mutate(m.id)}
+                      disabled={deactivateMutationFn.isPending}
+                      className="text-muted-foreground hover:text-destructive"
+                      title="Deactivate member"
+                    >
+                      <UserX className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { data: me, isLoading } = useQuery({
     queryKey: ["me"],
@@ -367,6 +546,10 @@ export default function SettingsPage() {
       <LLMKeysSection />
 
       <SocialAccountsSection />
+
+      {me && (
+        <TeamSection orgId={me.org_id} myId={me.id} myRole={me.role} />
+      )}
 
       <Section title="Integrations">
         <p className="text-sm text-muted-foreground">
