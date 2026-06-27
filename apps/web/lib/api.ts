@@ -938,3 +938,24 @@ export async function getExchangeMessages(requestId: string): Promise<ExchangeMe
 export async function sendExchangeMessage(requestId: string, body: string): Promise<ExchangeMessage> {
   return apiClient.post<ExchangeMessage>(`/backlinks/exchange/requests/${requestId}/messages`, { body });
 }
+
+// ── LLM API Keys ─────────────────────────────────────────────────────────────
+
+export interface ApiKey {
+  id: string;
+  provider: string;
+  masked_value: string;
+  created_at: string | null;
+}
+
+export async function listApiKeys(): Promise<ApiKey[]> {
+  return apiClient.get<ApiKey[]>("/api-keys");
+}
+
+export async function createApiKey(provider: string, value: string): Promise<ApiKey> {
+  return apiClient.post<ApiKey>("/api-keys", { provider, value });
+}
+
+export async function deleteApiKey(keyId: string): Promise<void> {
+  return apiClient.delete<void>(`/api-keys/${keyId}`);
+}
