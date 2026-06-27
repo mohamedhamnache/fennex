@@ -2,7 +2,6 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.backlinks import BacklinkProfile, Backlink, BacklinkOpportunity
-from app.schemas.backlinks import BacklinkProfileOut, BacklinkOut, BacklinkOpportunityOut
 
 PAGE_SIZE = 25
 

@@ -3,7 +3,7 @@ import uuid
 from typing import Optional
 
 import arq
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query
 
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
