@@ -186,6 +186,34 @@ async def generate_post(
     return post
 
 
+# ── Social Connections schemas (must be defined before GET /connections route) ─
+from pydantic import BaseModel as _BaseModel
+
+
+class SocialConnectionOut(_BaseModel):
+    id: str
+    platform: str
+    handle: str | None
+    model_config = {"from_attributes": True}
+
+
+class SocialConnectionUpsert(_BaseModel):
+    handle: str | None = None
+    token: str
+
+
+# NOTE: GET /connections is registered here (before GET /{post_id}) so that
+# FastAPI does not try to coerce "connections" as a UUID path parameter.
+@router.get("/connections", response_model=list[SocialConnectionOut])
+async def list_social_connections(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.social_connections_service import list_connections
+    conns = await list_connections(current_user.org_id, db)
+    return [SocialConnectionOut(id=str(c.id), platform=c.platform, handle=c.handle) for c in conns]
+
+
 @router.get("/{post_id}", response_model=SocialPostOut)
 async def get_social_post(
     post_id: uuid.UUID,
@@ -264,3 +292,34 @@ async def publish_post(
     await db.commit()
     await db.refresh(post)
     return post
+
+
+# ── Social Connections endpoints (PUT / DELETE) ───────────────────────────────
+
+@router.put("/connections/{platform}", response_model=SocialConnectionOut)
+async def upsert_social_connection(
+    platform: str,
+    body: SocialConnectionUpsert,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.social_connections_service import upsert_connection, VALID_PLATFORMS
+    if platform not in VALID_PLATFORMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid platform. Must be one of: {', '.join(sorted(VALID_PLATFORMS))}",
+        )
+    conn = await upsert_connection(current_user.org_id, platform, body.handle, body.token, db)
+    return SocialConnectionOut(id=str(conn.id), platform=conn.platform, handle=conn.handle)
+
+
+@router.delete("/connections/{platform}", status_code=204)
+async def delete_social_connection(
+    platform: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.social_connections_service import delete_connection
+    deleted = await delete_connection(current_user.org_id, platform, db)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Connection not found")
