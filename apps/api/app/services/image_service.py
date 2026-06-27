@@ -1,6 +1,7 @@
 """Image generation service — DALL-E 3 with placeholder fallback."""
 import httpx
 import logging
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ async def generate_image_dalle(
     style: str,
     usage: str,
     openai_api_key: str,
-    quality: str = "standard",   # NEW — "standard" or "hd"
+    quality: Literal["standard", "hd"] = "standard",
 ) -> dict:
     """
     Generate image via DALL-E 3 API.
@@ -51,6 +52,10 @@ async def generate_image_dalle(
 
     Timeout: 60s.
     """
+    # Validate quality parameter
+    if quality not in {"standard", "hd"}:
+        return {"ok": False, "error": f"Invalid quality '{quality}': must be 'standard' or 'hd'"}
+
     # Determine size and cost based on usage and quality
     if usage == "article_cover":
         size = "1792x1024"

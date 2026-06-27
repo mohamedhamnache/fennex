@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
@@ -47,7 +47,7 @@ class GenerateImageRequest(BaseModel):
     usage: Optional[str] = ImageUsage.article_cover
     article_id: Optional[uuid.UUID] = None
     social_post_id: Optional[uuid.UUID] = None
-    quality: Optional[str] = "standard"   # NEW — "standard" or "hd"
+    quality: Optional[Literal["standard", "hd"]] = "standard"
 
 
 class AttachImageRequest(BaseModel):

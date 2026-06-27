@@ -403,3 +403,17 @@ async def test_generate_image_dalle_hd_article_cover_cost():
         )
 
     assert result["cost_usd"] == 0.12  # hd 1792x1024
+
+
+@pytest.mark.asyncio
+async def test_generate_image_dalle_invalid_quality():
+    """Invalid quality returns ok=False without hitting the API."""
+    result = await generate_image_dalle(
+        prompt="test",
+        style="professional",
+        usage="social_post",
+        openai_api_key="sk-test",
+        quality="ultra",
+    )
+    assert result["ok"] is False
+    assert "ultra" in result["error"]
