@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
-import { getMe, listApiKeys, createApiKey, deleteApiKey, type ApiKey } from "@/lib/api";
+import { Trash2, Plus, Eye, EyeOff, Link2, Link2Off } from "lucide-react";
+import { getMe, listApiKeys, createApiKey, deleteApiKey, type ApiKey, listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection } from "@/lib/api";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -176,6 +176,139 @@ function LLMKeysSection() {
   );
 }
 
+const SOCIAL_PLATFORMS = [
+  { id: "twitter", label: "Twitter / X", icon: "𝕏", placeholder: "Bearer eyJ..." },
+  { id: "linkedin", label: "LinkedIn", icon: "in", placeholder: "AQX..." },
+  { id: "instagram", label: "Instagram", icon: "📷", placeholder: "EAA..." },
+  { id: "facebook", label: "Facebook", icon: "f", placeholder: "EAA..." },
+] as const;
+
+type PlatformId = (typeof SOCIAL_PLATFORMS)[number]["id"];
+
+function SocialAccountsSection() {
+  const qc = useQueryClient();
+  const [connecting, setConnecting] = useState<PlatformId | null>(null);
+  const [form, setForm] = useState({ handle: "", token: "" });
+
+  const { data: connections = [], isLoading } = useQuery({
+    queryKey: ["social-connections"],
+    queryFn: listSocialConnections,
+    staleTime: 60_000,
+  });
+
+  const connected = new Map(connections.map((c: SocialConnection) => [c.platform, c]));
+
+  const connectMutation = useMutation({
+    mutationFn: () =>
+      upsertSocialConnection(connecting!, form.handle || null, form.token),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["social-connections"] });
+      setConnecting(null);
+      setForm({ handle: "", token: "" });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: (platform: string) => deleteSocialConnection(platform),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["social-connections"] }),
+  });
+
+  const platform = SOCIAL_PLATFORMS.find((p) => p.id === connecting);
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="border-b px-6 py-4">
+        <h2 className="text-sm font-semibold">Social Accounts</h2>
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-3">
+        {isLoading ? (
+          <div className="h-10 animate-pulse rounded bg-muted/30" />
+        ) : (
+          SOCIAL_PLATFORMS.map((p) => {
+            const conn = connected.get(p.id);
+            return (
+              <div key={p.id} className="flex items-center justify-between rounded-md border px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="w-6 text-center text-sm font-bold">{p.icon}</span>
+                  <div>
+                    <p className="text-sm font-medium">{p.label}</p>
+                    {conn?.handle && (
+                      <p className="text-xs text-muted-foreground">{conn.handle}</p>
+                    )}
+                  </div>
+                </div>
+                {conn ? (
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+                      Connected
+                    </span>
+                    <button
+                      onClick={() => disconnectMutation.mutate(p.id)}
+                      disabled={disconnectMutation.isPending}
+                      className="text-muted-foreground hover:text-destructive"
+                      title="Disconnect"
+                    >
+                      <Link2Off className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConnecting(p.id)}
+                    className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground"
+                  >
+                    <Link2 className="h-3 w-3" /> Connect
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+
+        {connecting && platform && (
+          <div className="flex flex-col gap-3 rounded-md border p-4 bg-muted/20">
+            <p className="text-sm font-medium">Connect {platform.label}</p>
+            <input
+              type="text"
+              placeholder="Handle (e.g. @yourcompany)"
+              value={form.handle}
+              onChange={(e) => setForm((f) => ({ ...f, handle: e.target.value }))}
+              className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <input
+              type="password"
+              placeholder={platform.placeholder}
+              value={form.token}
+              onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
+              className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste your access token. Get it from the {platform.label} developer portal.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => connectMutation.mutate()}
+                disabled={!form.token.trim() || connectMutation.isPending}
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {connectMutation.isPending ? "Connecting…" : "Connect"}
+              </button>
+              <button
+                onClick={() => { setConnecting(null); setForm({ handle: "", token: "" }); }}
+                className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+            {connectMutation.isError && (
+              <p className="text-xs text-destructive">Failed to connect. Check your token and try again.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { data: me, isLoading } = useQuery({
     queryKey: ["me"],
@@ -232,6 +365,8 @@ export default function SettingsPage() {
       </Section>
 
       <LLMKeysSection />
+
+      <SocialAccountsSection />
 
       <Section title="Integrations">
         <p className="text-sm text-muted-foreground">

@@ -959,3 +959,27 @@ export async function createApiKey(provider: string, value: string): Promise<Api
 export async function deleteApiKey(keyId: string): Promise<void> {
   return apiClient.delete<void>(`/api-keys/${keyId}`);
 }
+
+// ── Social Connections ────────────────────────────────────────────────────────
+
+export interface SocialConnection {
+  id: string;
+  platform: string;
+  handle: string | null;
+}
+
+export async function listSocialConnections(): Promise<SocialConnection[]> {
+  return apiClient.get<SocialConnection[]>("/social/connections");
+}
+
+export async function upsertSocialConnection(
+  platform: string,
+  handle: string | null,
+  token: string
+): Promise<SocialConnection> {
+  return apiClient.put<SocialConnection>(`/social/connections/${platform}`, { handle, token });
+}
+
+export async function deleteSocialConnection(platform: string): Promise<void> {
+  return apiClient.delete<void>(`/social/connections/${platform}`);
+}
