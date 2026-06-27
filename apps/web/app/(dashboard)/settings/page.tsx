@@ -315,7 +315,7 @@ const ROLE_OPTIONS = [
 ] as const;
 
 function initials(name: string): string {
-  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  return name.split(" ").map((n) => n[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "?";
 }
 
 function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myRole: string }) {
