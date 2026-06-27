@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BacklinkProfileOut(BaseModel):
@@ -50,6 +50,8 @@ class AnalyzeResponse(BaseModel):
 
 
 class ExchangeListingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     project_id: uuid.UUID
     site_url: str
@@ -69,6 +71,8 @@ class ExchangeListingCreate(BaseModel):
 
 
 class ExchangeRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     requester_project_id: uuid.UUID
     target_project_id: uuid.UUID
@@ -93,6 +97,8 @@ class ExchangeRequestUpdate(BaseModel):
 
 
 class ExchangeMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     request_id: uuid.UUID
     sender_org_id: uuid.UUID

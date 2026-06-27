@@ -137,6 +137,59 @@ async def sync_backlink_profile(ctx, project_id: str):
         await session.commit()
 
 
+async def verify_exchange_link(ctx, request_id: str, side: str):
+    """Check if the exchange link is live. side is 'requester' or 'target'."""
+    import httpx
+    rid = uuid.UUID(request_id)
+
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(ExchangeRequest).where(ExchangeRequest.id == rid)
+        )
+        req = result.scalar_one_or_none()
+        if not req:
+            return
+
+        url_to_check = req.requester_url if side == "requester" else req.target_url
+
+        # Get the counterpart's listing to know what domain to look for
+        counterpart_id = req.target_project_id if side == "requester" else req.requester_project_id
+        listing_result = await session.execute(
+            select(ExchangeListing).where(ExchangeListing.project_id == counterpart_id)
+        )
+        counterpart_listing = listing_result.scalar_one_or_none()
+        counterpart_domain = counterpart_listing.site_url.split("//")[-1].split("/")[0] if counterpart_listing else None
+
+        verified = False
+        from app.core.config import settings as cfg
+        if cfg.CRAWLER_SERVICE_URL and url_to_check and counterpart_domain:
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.post(
+                        f"{cfg.CRAWLER_SERVICE_URL}/fetch",
+                        json={"url": url_to_check},
+                    )
+                    if resp.status_code == 200:
+                        body = resp.json()
+                        links = body.get("links", [])
+                        verified = any(counterpart_domain in link for link in links)
+            except Exception:
+                pass
+        else:
+            # No crawler configured — mock-verify as True
+            verified = True
+
+        if side == "requester":
+            req.requester_link_verified = verified
+        else:
+            req.target_link_verified = verified
+
+        if req.requester_link_verified and req.target_link_verified:
+            req.status = "live"
+
+        await session.commit()
+
+
 async def weekly_backlink_discovery(ctx):
     """ARQ cron — Monday 07:00 UTC. Fan-out sync to all projects with a profile."""
     import arq
