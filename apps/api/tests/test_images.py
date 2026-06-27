@@ -322,7 +322,7 @@ from app.services.image_service import generate_image_dalle
 
 @pytest.mark.asyncio
 async def test_generate_image_dalle_standard_quality():
-    """Standard quality sends quality=standard and correct cost."""
+    """Standard quality maps to gpt-image-1 'medium' and correct cost."""
     captured = {}
 
     async def fake_post(url, **kwargs):
@@ -330,7 +330,7 @@ async def test_generate_image_dalle_standard_quality():
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json = MagicMock(return_value={
-            "data": [{"url": "https://example.com/img.png", "revised_prompt": None}]
+            "data": [{"b64_json": "abc123", "revised_prompt": None}]
         })
         return mock_resp
 
@@ -345,14 +345,16 @@ async def test_generate_image_dalle_standard_quality():
             quality="standard",
         )
 
-    assert captured["payload"]["quality"] == "standard"
+    assert captured["payload"]["model"] == "gpt-image-1"
+    assert captured["payload"]["quality"] == "medium"  # standard maps to medium
     assert result["ok"] is True
+    assert result["image_url"].startswith("data:image/png;base64,")
     assert result["cost_usd"] == 0.04  # standard 1024x1024
 
 
 @pytest.mark.asyncio
 async def test_generate_image_dalle_hd_quality():
-    """HD quality sends quality=hd and doubles cost."""
+    """HD quality maps to gpt-image-1 'high' and doubles cost."""
     captured = {}
 
     async def fake_post(url, **kwargs):
@@ -360,7 +362,7 @@ async def test_generate_image_dalle_hd_quality():
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json = MagicMock(return_value={
-            "data": [{"url": "https://example.com/img.png", "revised_prompt": "HD image"}]
+            "data": [{"b64_json": "xyz789", "revised_prompt": "HD image"}]
         })
         return mock_resp
 
@@ -375,19 +377,23 @@ async def test_generate_image_dalle_hd_quality():
             quality="hd",
         )
 
-    assert captured["payload"]["quality"] == "hd"
+    assert captured["payload"]["model"] == "gpt-image-1"
+    assert captured["payload"]["quality"] == "high"  # hd maps to high
     assert result["ok"] is True
-    assert result["cost_usd"] == 0.08  # hd 1024x1024 = double standard
+    assert result["cost_usd"] == 0.08  # hd 1024x1024
 
 
 @pytest.mark.asyncio
 async def test_generate_image_dalle_hd_article_cover_cost():
-    """HD article_cover (1792x1024) costs $0.12."""
+    """HD article_cover (1536x1024) costs $0.12."""
+    captured = {}
+
     async def fake_post(url, **kwargs):
+        captured["payload"] = kwargs["json"]
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json = MagicMock(return_value={
-            "data": [{"url": "https://example.com/img.png", "revised_prompt": None}]
+            "data": [{"b64_json": "cover123", "revised_prompt": None}]
         })
         return mock_resp
 
@@ -402,7 +408,8 @@ async def test_generate_image_dalle_hd_article_cover_cost():
             quality="hd",
         )
 
-    assert result["cost_usd"] == 0.12  # hd 1792x1024
+    assert captured["payload"]["size"] == "1536x1024"  # gpt-image-1 landscape size
+    assert result["cost_usd"] == 0.12  # hd 1536x1024
 
 
 @pytest.mark.asyncio

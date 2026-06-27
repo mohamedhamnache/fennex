@@ -149,7 +149,7 @@ async def generate_image(
         image.cost_usd = result.get("cost_usd")
         image.generation_meta = {
             "provider": "openai" if api_key_row else "placeholder",
-            "model": "dall-e-3" if api_key_row else None,
+            "model": "gpt-image-1" if api_key_row else None,
             "quality": body.quality or "standard",   # NEW
         }
     else:
