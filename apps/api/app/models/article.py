@@ -12,6 +12,7 @@ class ArticleStatus(str, PyEnum):
     generating = "generating"
     ready = "ready"
     published = "published"
+    failed = "failed"
 
 
 class Article(Base, TimestampMixin):
