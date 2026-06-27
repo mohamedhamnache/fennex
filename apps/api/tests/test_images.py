@@ -312,3 +312,94 @@ async def test_attach_image_to_article(client, org_and_project, article):
     assert attach_resp.status_code == 200
     data = attach_resp.json()
     assert data["article_id"] == str(article.id)
+
+
+# ── Quality parameter tests ───────────────────────────────────────────────────
+
+from unittest.mock import MagicMock
+from app.services.image_service import generate_image_dalle
+
+
+@pytest.mark.asyncio
+async def test_generate_image_dalle_standard_quality():
+    """Standard quality sends quality=standard and correct cost."""
+    captured = {}
+
+    async def fake_post(url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = MagicMock(return_value={
+            "data": [{"url": "https://example.com/img.png", "revised_prompt": None}]
+        })
+        return mock_resp
+
+    with patch("httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value.__aenter__.return_value
+        instance.post = fake_post
+        result = await generate_image_dalle(
+            prompt="A blog image",
+            style="professional",
+            usage="social_post",
+            openai_api_key="sk-test",
+            quality="standard",
+        )
+
+    assert captured["payload"]["quality"] == "standard"
+    assert result["ok"] is True
+    assert result["cost_usd"] == 0.04  # standard 1024x1024
+
+
+@pytest.mark.asyncio
+async def test_generate_image_dalle_hd_quality():
+    """HD quality sends quality=hd and doubles cost."""
+    captured = {}
+
+    async def fake_post(url, **kwargs):
+        captured["payload"] = kwargs["json"]
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = MagicMock(return_value={
+            "data": [{"url": "https://example.com/img.png", "revised_prompt": "HD image"}]
+        })
+        return mock_resp
+
+    with patch("httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value.__aenter__.return_value
+        instance.post = fake_post
+        result = await generate_image_dalle(
+            prompt="A blog image",
+            style="professional",
+            usage="social_post",
+            openai_api_key="sk-test",
+            quality="hd",
+        )
+
+    assert captured["payload"]["quality"] == "hd"
+    assert result["ok"] is True
+    assert result["cost_usd"] == 0.08  # hd 1024x1024 = double standard
+
+
+@pytest.mark.asyncio
+async def test_generate_image_dalle_hd_article_cover_cost():
+    """HD article_cover (1792x1024) costs $0.12."""
+    async def fake_post(url, **kwargs):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = MagicMock(return_value={
+            "data": [{"url": "https://example.com/img.png", "revised_prompt": None}]
+        })
+        return mock_resp
+
+    with patch("httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value.__aenter__.return_value
+        instance.post = fake_post
+        result = await generate_image_dalle(
+            prompt="A blog cover",
+            style="professional",
+            usage="article_cover",
+            openai_api_key="sk-test",
+            quality="hd",
+        )
+
+    assert result["cost_usd"] == 0.12  # hd 1792x1024

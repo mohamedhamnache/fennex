@@ -47,6 +47,7 @@ class GenerateImageRequest(BaseModel):
     usage: Optional[str] = ImageUsage.article_cover
     article_id: Optional[uuid.UUID] = None
     social_post_id: Optional[uuid.UUID] = None
+    quality: Optional[str] = "standard"   # NEW — "standard" or "hd"
 
 
 class AttachImageRequest(BaseModel):
@@ -133,6 +134,7 @@ async def generate_image(
             style=style,
             usage=usage,
             openai_api_key=openai_key,
+            quality=body.quality or "standard",   # NEW
         )
     else:
         result = get_placeholder_url(usage)
@@ -148,6 +150,7 @@ async def generate_image(
         image.generation_meta = {
             "provider": "openai" if api_key_row else "placeholder",
             "model": "dall-e-3" if api_key_row else None,
+            "quality": body.quality or "standard",   # NEW
         }
     else:
         image.status = ImageStatus.failed

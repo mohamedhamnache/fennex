@@ -41,6 +41,7 @@ async def generate_image_dalle(
     style: str,
     usage: str,
     openai_api_key: str,
+    quality: str = "standard",   # NEW — "standard" or "hd"
 ) -> dict:
     """
     Generate image via DALL-E 3 API.
@@ -50,24 +51,24 @@ async def generate_image_dalle(
 
     Timeout: 60s.
     """
-    # Determine size based on usage
+    # Determine size and cost based on usage and quality
     if usage == "article_cover":
         size = "1792x1024"
         width = 1792
         height = 1024
-        cost_usd = 0.08  # dall-e-3 standard 1792x1024
+        cost_usd = 0.12 if quality == "hd" else 0.08
     else:
         size = "1024x1024"
         width = 1024
         height = 1024
-        cost_usd = 0.04  # dall-e-3 standard 1024x1024
+        cost_usd = 0.08 if quality == "hd" else 0.04
 
     payload = {
         "model": "dall-e-3",
         "prompt": prompt,
         "n": 1,
         "size": size,
-        "quality": "standard",
+        "quality": quality,      # was hardcoded "standard"
         "response_format": "url",
     }
 
