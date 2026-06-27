@@ -99,8 +99,15 @@ async def generate_article_task(ctx, article_id: str, org_id: str):
             await db.commit()
             return
 
-        available_providers = {LLMProvider(p) for p in org_keys}
-        provider, model = LLMRouter(available_providers).resolve(TaskType.LONG_FORM_ARTICLE)
+        try:
+            available_providers = {LLMProvider(p) for p in org_keys}
+            provider, model = LLMRouter(available_providers).resolve(TaskType.LONG_FORM_ARTICLE)
+        except (ValueError, KeyError) as e:
+            article.status = ArticleStatus.failed
+            article.error = str(e)
+            await db.commit()
+            return
+
         api_key = org_keys[provider.value]
 
         system_prompt = _build_system_prompt(brand_voice)
