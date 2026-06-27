@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle, RefreshCw, ExternalLink, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import {
-  getBacklinkProfile, analyzeBacklinks, listBacklinks, listOpportunities,
+  getMe, getBacklinkProfile, analyzeBacklinks, listBacklinks, listOpportunities,
   updateOpportunityStatus, getExchangeBoard, getOwnListing, upsertExchangeListing,
   deleteExchangeListing, listExchangeRequests, createExchangeRequest,
   updateExchangeRequest, verifyExchangeLink, getExchangeMessages, sendExchangeMessage,
@@ -396,6 +396,17 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
     retry: false,
   });
 
+  useEffect(() => {
+    if (listing) {
+      setListingForm({
+        site_url: listing.site_url ?? '',
+        niche: listing.niche ?? '',
+        language: listing.language ?? '',
+        description: listing.description ?? '',
+      });
+    }
+  }, [listing]);
+
   const { data: board = [] } = useQuery<ExchangeListing[]>({
     queryKey: ["backlinks", "exchange", "board", null, null],
     queryFn: () => getExchangeBoard(projectId),
@@ -411,24 +422,32 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
   });
 
   async function saveListing() {
-    await upsertExchangeListing(projectId, {
-      site_url: listingForm.site_url,
-      niche: listingForm.niche || undefined,
-      language: listingForm.language || undefined,
-      description: listingForm.description || undefined,
-    });
-    qc.invalidateQueries({ queryKey: ["backlinks", "exchange", "listing", projectId] });
+    try {
+      await upsertExchangeListing(projectId, {
+        site_url: listingForm.site_url,
+        niche: listingForm.niche || undefined,
+        language: listingForm.language || undefined,
+        description: listingForm.description || undefined,
+      });
+      qc.invalidateQueries({ queryKey: ["backlinks", "exchange", "listing", projectId] });
+    } catch (e) {
+      console.error('Failed to save listing', e);
+    }
   }
 
   async function sendRequest() {
-    await createExchangeRequest(projectId, {
-      target_project_id: requestForm.targetProjectId,
-      requester_url: requestForm.requesterUrl,
-      target_url: requestForm.targetUrl,
-      initial_message: requestForm.message || undefined,
-    });
-    setRequestForm(f => ({ ...f, open: false }));
-    qc.invalidateQueries({ queryKey: ["backlinks", "exchange"] });
+    try {
+      await createExchangeRequest(projectId, {
+        target_project_id: requestForm.targetProjectId,
+        requester_url: requestForm.requesterUrl,
+        target_url: requestForm.targetUrl,
+        initial_message: requestForm.message || undefined,
+      });
+      setRequestForm(f => ({ ...f, open: false }));
+      qc.invalidateQueries({ queryKey: ["backlinks", "exchange"] });
+    } catch (e) {
+      console.error('Failed to send exchange request', e);
+    }
   }
 
   return (
@@ -439,25 +458,25 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input
             placeholder="Site URL"
-            defaultValue={listing?.site_url}
+            value={listingForm.site_url}
             onChange={(e) => setListingForm(f => ({ ...f, site_url: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <input
             placeholder="Niche (e.g. tech, finance)"
-            defaultValue={listing?.niche ?? ""}
+            value={listingForm.niche}
             onChange={(e) => setListingForm(f => ({ ...f, niche: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <input
             placeholder="Language (e.g. en)"
-            defaultValue={listing?.language ?? ""}
+            value={listingForm.language}
             onChange={(e) => setListingForm(f => ({ ...f, language: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <input
             placeholder="Description"
-            defaultValue={listing?.description ?? ""}
+            value={listingForm.description}
             onChange={(e) => setListingForm(f => ({ ...f, description: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
@@ -562,12 +581,10 @@ export default function BacklinksPage({ params }: { params: { projectId: string 
   const { projectId } = params;
   const [activeTab, setActiveTab] = useState<Tab>("profile");
 
-  // We need orgId for message thread alignment — pull from profile or use a placeholder
-  const { data: profile } = useQuery<BacklinkProfile>({
-    queryKey: ["backlinks", "profile", projectId],
-    queryFn: () => getBacklinkProfile(projectId),
-    staleTime: 5 * 60_000,
-    retry: false,
+  // Fetch the current user's org_id for message thread alignment
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
   });
 
   const tabs: { key: Tab; label: string }[] = [
@@ -594,7 +611,7 @@ export default function BacklinksPage({ params }: { params: { projectId: string 
       {activeTab === "profile" && <ProfileTab projectId={projectId} />}
       {activeTab === "backlinks" && <BacklinksTab projectId={projectId} />}
       {activeTab === "opportunities" && <OpportunitiesTab projectId={projectId} />}
-      {activeTab === "exchange" && <ExchangeTab projectId={projectId} orgId={profile?.project_id ?? ""} />}
+      {activeTab === "exchange" && <ExchangeTab projectId={projectId} orgId={me?.org_id ?? ""} />}
     </div>
   );
 }
