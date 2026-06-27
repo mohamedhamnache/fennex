@@ -175,20 +175,37 @@ function GscBanner({ projectId }: { projectId: string }) {
 
 // ─── OverviewTab ─────────────────────────────────────────────────────────────
 
+function OverviewSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-lg border bg-card p-5 h-24 animate-pulse bg-muted/30" />
+        ))}
+      </div>
+      <div className="rounded-lg border bg-card p-5 h-56 animate-pulse bg-muted/30" />
+    </div>
+  );
+}
+
 function OverviewTab({ projectId, range }: { projectId: string; range: AnalyticsRange }) {
-  const { data: overview } = useQuery({
+  const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ["analytics", "overview", projectId, range],
     queryFn: () => getAnalyticsOverview(projectId, range),
     staleTime: 5 * 60_000,
   });
 
-  const { data: traffic = [] } = useQuery({
+  const { data: traffic = [], isLoading: trafficLoading } = useQuery({
     queryKey: ["analytics", "traffic", projectId, range],
     queryFn: () => getAnalyticsTraffic(projectId, range),
     staleTime: 5 * 60_000,
   });
 
   const chartData = traffic.map((d) => ({ ...d, date: fmtDate(d.date) }));
+
+  if (overviewLoading || trafficLoading) {
+    return <OverviewSkeleton />;
+  }
 
   if (!overview) {
     return (

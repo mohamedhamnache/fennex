@@ -84,6 +84,24 @@ export function isAuthenticated(): boolean {
   return !!localStorage.getItem("fennex_access_token");
 }
 
+// ─── User / org ──────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  org_id: string;
+  org_name: string;
+  org_slug: string;
+  plan_tier: string;
+  created_at: string | null;
+}
+
+export async function getMe(): Promise<UserProfile> {
+  return apiClient.get<UserProfile>("/users/me");
+}
+
 // ─── Project types & helpers ───────────────────────────────────────────────
 
 export interface Project {
