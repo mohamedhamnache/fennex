@@ -44,3 +44,48 @@ class MockSEOProvider:
                 serp_features=[],
             ))
         return results
+
+    async def get_backlink_profile(self, domain: str) -> dict:
+        h = abs(hash(domain)) & 0x7FFFFFFF
+        return {
+            "domain_authority": round(20.0 + (h % 60), 1),
+            "trust_score": round(15.0 + (h % 50), 1),
+            "spam_score": round((h % 20), 1),
+            "total_backlinks": 100 + (h % 5000),
+            "referring_domains": 10 + (h % 500),
+        }
+
+    async def get_backlinks(self, domain: str) -> list[dict]:
+        tlds = [".com", ".org", ".net", ".io", ".co"]
+        link_types = ["dofollow", "nofollow"]
+        results = []
+        for i in range(20):
+            h = abs(hash(f"{domain}-bl-{i}")) & 0x7FFFFFFF
+            src_domain = f"site{h % 9999}{tlds[h % len(tlds)]}"
+            results.append({
+                "source_url": f"https://{src_domain}/page-{i}",
+                "source_domain": src_domain,
+                "target_url": f"https://{domain}/",
+                "anchor_text": f"anchor text {i}",
+                "domain_authority": round(10.0 + (h % 70), 1),
+                "trust_score": round(5.0 + (h % 60), 1),
+                "spam_score": round(h % 15, 1),
+                "link_type": link_types[h % 2],
+            })
+        return results
+
+    async def get_backlink_opportunities(self, domain: str) -> list[dict]:
+        competitors = ["competitor1.com", "competitor2.com", "competitor3.com"]
+        results = []
+        for i in range(10):
+            h = abs(hash(f"{domain}-opp-{i}")) & 0x7FFFFFFF
+            src_domain = f"referring{h % 9999}.com"
+            results.append({
+                "source_url": f"https://{src_domain}/article-{i}",
+                "source_domain": src_domain,
+                "domain_authority": round(20.0 + (h % 60), 1),
+                "trust_score": round(15.0 + (h % 50), 1),
+                "spam_score": round(h % 10, 1),
+                "linking_to_competitor": competitors[h % len(competitors)],
+            })
+        return results
