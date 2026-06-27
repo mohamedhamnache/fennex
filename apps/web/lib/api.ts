@@ -400,7 +400,7 @@ export async function generateVoicePrompt(
 
 // ─── Article types & helpers ───────────────────────────────────────────────
 
-export type ArticleStatus = "draft" | "generating" | "ready" | "published";
+export type ArticleStatus = "draft" | "generating" | "ready" | "published" | "failed";
 
 export interface Article {
   id: string;

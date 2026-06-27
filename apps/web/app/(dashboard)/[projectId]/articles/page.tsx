@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Send,
   ExternalLink,
+  Zap,
 } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import { useProjectStore } from "@/lib/store";
@@ -32,6 +33,10 @@ import {
   type SEOScoreBreakdown,
   type PublishingConnection,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/cn";
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
@@ -57,17 +62,16 @@ function Spinner({ size = 16 }: { size?: number }) {
 
 // ─── Status badge ──────────────────────────────────────────────────────────
 
-const STATUS_STYLES: Record<ArticleStatus, string> = {
-  draft: "bg-gray-50 text-gray-600",
-  generating: "bg-blue-50 text-blue-600",
-  ready: "bg-emerald-50 text-emerald-600",
-  published: "bg-indigo-50 text-indigo-600",
+const STATUS_TONE: Record<ArticleStatus, BadgeTone> = {
+  draft: "neutral",
+  generating: "warning",
+  ready: "info",
+  published: "success",
+  failed: "danger",
 };
 
 function StatusBadge({ status }: { status: ArticleStatus }) {
-  return (
-    <span className={`badge capitalize ${STATUS_STYLES[status]}`}>{status}</span>
-  );
+  return <Badge tone={STATUS_TONE[status]} className="capitalize">{status}</Badge>;
 }
 
 // ─── SEO score chip ────────────────────────────────────────────────────────
@@ -152,7 +156,7 @@ function ArticleCard({
               </button>
               <button
                 onClick={() => { setMenuOpen(false); onDelete(); }}
-                className="w-full px-4 py-2.5 text-sm text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
               >
                 <XCircle className="h-3.5 w-3.5" />
                 Delete
@@ -387,8 +391,8 @@ function PublishModal({
 
           {result !== null ? (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
+                <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">Published successfully</p>
@@ -501,10 +505,12 @@ function ArticleEditor({
   onBack: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { success, error } = useToast();
 
   const { data: article, isLoading } = useQuery<Article>({
     queryKey: ["article", articleId],
     queryFn: () => getArticle(articleId),
+    refetchInterval: (query) => query.state.data?.status === "generating" ? 3000 : false,
   });
 
   const { data: seoData, refetch: refetchSeo } = useQuery<SEOScoreBreakdown>({
@@ -523,6 +529,7 @@ function ArticleEditor({
   const [showPublishModal, setShowPublishModal] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized = useRef(false);
+  const prevStatusRef = useRef<string | null>(null);
 
   // Cleanup debounce timeout on unmount
   useEffect(() => {
@@ -533,7 +540,13 @@ function ArticleEditor({
 
   // Populate local state once article loads (guard against re-seeding on background refetch)
   useEffect(() => {
-    if (article && !initialized.current) {
+    if (!article) return;
+    // Re-seed editor when article leaves the generating state
+    if (prevStatusRef.current === "generating" && article.status !== "generating") {
+      initialized.current = false;
+    }
+    prevStatusRef.current = article.status;
+    if (!initialized.current) {
       initialized.current = true;
       setBody(article.body_markdown ?? "");
       setTitle(article.title);
@@ -550,6 +563,7 @@ function ArticleEditor({
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
     },
+    onError: () => { setSaveState("idle"); error("Couldn't save changes"); },
   });
 
   const generateMutation = useMutation({
@@ -558,7 +572,9 @@ function ArticleEditor({
       queryClient.setQueryData(["article", articleId], updated);
       setBody(updated.body_markdown ?? "");
       queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
+      success("Article regenerated");
     },
+    onError: () => error("Couldn't regenerate article"),
   });
 
   const revisionMutation = useMutation({
@@ -567,6 +583,7 @@ function ArticleEditor({
       setRevisionMsg("Revision saved");
       setTimeout(() => setRevisionMsg(null), 2500);
     },
+    onError: () => error("Couldn't save revision"),
   });
 
   function handleBodyChange(val: string) {
@@ -619,17 +636,17 @@ function ArticleEditor({
   }
 
   return (
-    <div className="flex flex-col gap-0 animate-fade-in">
+    <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 pb-4 border-b border-border">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground lg:hidden"
         >
           <ArrowLeft className="h-4 w-4" />
-          Articles
+          List
         </button>
-        <ChevronRight className="h-4 w-4 text-border" />
+        <ChevronRight className="hidden h-4 w-4 text-border lg:block" />
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -669,7 +686,7 @@ function ArticleEditor({
       </div>
 
       {/* Editor body */}
-      <div className="flex gap-0 h-[calc(100vh-180px)] mt-4">
+      <div className="flex min-h-0 flex-1 gap-0 px-5 py-4">
         {/* Left: editor / preview */}
         <div className="flex-1 flex flex-col min-w-0 pr-6">
           {/* Tab bar */}
@@ -853,6 +870,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   const { projectId } = params;
   const { setCurrentProject } = useProjectStore();
   const queryClient = useQueryClient();
+  const { success, error } = useToast();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -864,20 +882,28 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   const { data: articles = [], isLoading } = useQuery<Article[]>({
     queryKey: ["articles", projectId],
     queryFn: () => listArticles(projectId),
+    refetchInterval: (query) => {
+      const data = query.state.data ?? [];
+      return data.some((a) => a.status === "generating") ? 3000 : false;
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteArticle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
+      success("Article deleted");
     },
+    onError: () => error("Couldn't delete article"),
   });
 
   const generateMutation = useMutation({
     mutationFn: generateArticle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
+      success("Regeneration started", { message: "Your article is being rewritten." });
     },
+    onError: () => error("Couldn't regenerate article"),
   });
 
   function handleCreated(article: Article) {
@@ -886,74 +912,110 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     setSelectedId(article.id);
   }
 
-  if (selectedId) {
-    return (
-      <ArticleEditor
-        articleId={selectedId}
-        projectId={projectId}
-        onBack={() => setSelectedId(null)}
-      />
-    );
-  }
+  const selectedArticle = articles.find((a) => a.id === selectedId) ?? null;
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Articles</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            AI-generated, SEO-optimized content
-          </p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          New Article
-        </button>
-      </div>
-
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Spinner size={28} />
-        </div>
-      ) : articles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 py-20">
-          <FennecMascot />
-          <div className="text-center">
-            <p className="text-base font-semibold text-foreground">Create your first article</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              AI will generate a full draft optimized for your target keyword.
-            </p>
-          </div>
+    <div className="flex h-[calc(100vh-108px)] flex-col gap-4 animate-fade-in">
+      <PageHeader
+        className="mb-0"
+        title="Articles"
+        icon={Zap}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Articles" }]}
+        description="AI-generated, SEO-optimized content."
+        actions={
           <button
             onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center gap-2 px-5 py-2 text-sm mt-2"
+            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             New Article
           </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {articles.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              onEdit={() => setSelectedId(article.id)}
-              onRegenerate={() => generateMutation.mutate(article.id)}
-              onDelete={() => {
-                if (confirm(`Delete "${article.title}"?`)) {
-                  deleteMutation.mutate(article.id);
-                }
-              }}
+        }
+      />
+
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* ── List pane ── */}
+        <aside className={cn(
+          "glass flex w-full shrink-0 flex-col overflow-hidden lg:w-[340px]",
+          selectedId && "hidden lg:flex",
+        )}>
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+            <p className="text-sm font-semibold">All articles</p>
+            <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-muted-foreground">{articles.length}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            {isLoading ? (
+              <div className="space-y-2 p-2">
+                {[...Array(5)].map((_, i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-white/[0.04]" />)}
+              </div>
+            ) : articles.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+                <FennecMascot />
+                <p className="text-sm font-medium">No articles yet</p>
+                <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
+                  <Plus className="h-3.5 w-3.5" /> New Article
+                </button>
+              </div>
+            ) : (
+              articles.map((a) => {
+                const isSel = a.id === selectedId;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => setSelectedId(a.id)}
+                    className={cn(
+                      "group relative mb-1 flex w-full flex-col gap-1.5 rounded-xl px-3 py-2.5 text-left transition-colors",
+                      isSel ? "bg-primary/12" : "hover:bg-white/[0.04]",
+                    )}
+                  >
+                    {isSel && <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
+                    <p className={cn("line-clamp-1 text-sm font-medium", isSel ? "text-foreground" : "text-foreground/85")}>{a.title}</p>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={a.status} />
+                      {a.seo_score !== null && (
+                        <span className={`text-[11px] font-semibold tabular-nums ${seoColor(a.seo_score)}`}>SEO {a.seo_score}</span>
+                      )}
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        {new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </aside>
+
+        {/* ── Editor pane ── */}
+        <section className={cn(
+          "glass min-w-0 flex-1 overflow-hidden",
+          !selectedId && "hidden lg:block",
+        )}>
+          {selectedArticle ? (
+            <ArticleEditor
+              key={selectedArticle.id}
+              articleId={selectedArticle.id}
+              projectId={projectId}
+              onBack={() => setSelectedId(null)}
             />
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary">
+                <Zap className="h-6 w-6 text-white" strokeWidth={1.9} />
+              </div>
+              <div>
+                <p className="text-base font-semibold">Select an article to edit</p>
+                <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+                  Pick one from the list, or generate a new AI-written draft.
+                </p>
+              </div>
+              <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
+                <Plus className="h-3.5 w-3.5" /> New Article
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* New article modal */}
       {showModal && (
