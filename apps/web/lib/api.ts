@@ -670,6 +670,7 @@ export async function generateImage(data: {
   usage?: ImageUsage;
   article_id?: string;
   social_post_id?: string;
+  quality?: "standard" | "hd";
 }): Promise<GeneratedImage> {
   return apiClient.post<GeneratedImage>("/images/generate", data);
 }

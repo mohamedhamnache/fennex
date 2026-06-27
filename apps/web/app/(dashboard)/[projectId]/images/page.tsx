@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   X,
 } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { useProjectStore } from "@/lib/store";
 import {
   listImages,
@@ -250,6 +251,7 @@ function GenerateModal({
 }) {
   const [usage, setUsage] = useState<ImageUsage>("article_cover");
   const [style, setStyle] = useState<ImageStyle>("professional");
+  const [quality, setQuality] = useState<"standard" | "hd">("standard");
   const [prompt, setPrompt] = useState("");
   const [title, setTitle] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -274,6 +276,7 @@ function GenerateModal({
         project_id: projectId,
         usage,
         style,
+        quality,
         ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
         ...(title.trim() ? { title: title.trim() } : {}),
         ...(keyword.trim() ? { keyword: keyword.trim() } : {}),
@@ -359,6 +362,32 @@ function GenerateModal({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Quality
+              </label>
+              <div className="flex gap-2">
+                {(["standard", "hd"] as const).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setQuality(q)}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                      quality === q
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    <span className="capitalize">{q}</span>
+                    <span className="block text-[10px] font-normal mt-0.5 opacity-70">
+                      {q === "standard" ? "from $0.04" : "from $0.08"}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
