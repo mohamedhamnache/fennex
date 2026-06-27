@@ -6,10 +6,12 @@ from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
+import arq
+
+from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
 from app.models.project import Project
-from app.services.article_service import generate_article_mock
 
 router = APIRouter()
 
@@ -179,40 +181,22 @@ async def generate_article(
 ):
     article = await _get_article_or_404(article_id, current_user.org_id, db)
 
-    # Set status to generating
     article.status = ArticleStatus.generating
+    article.error = None
     await db.flush()
-
-    # Call mock generator synchronously
-    result = generate_article_mock(
-        title=article.title,
-        keyword=article.target_keyword,
-        tone=article.tone,
-        word_count_target=article.word_count_target,
-    )
-
-    # Save generated content
-    article.body_markdown = result["body_markdown"]
-    article.body_html = result["body_html"]
-    article.word_count = result["word_count"]
-    article.seo_score = result["seo_score"]
-    article.meta_title = result["meta_title"]
-    article.meta_description = result["meta_description"]
-    article.outline = result["outline"]
-    article.status = ArticleStatus.ready
-
-    # Create revision
-    revision = ArticleRevision(
-        article_id=article.id,
-        body_markdown=result["body_markdown"],
-        word_count=result["word_count"],
-        note="Initial generation",
-    )
-    db.add(revision)
-
-    await db.flush()
-    await db.refresh(article)
     await db.commit()
+    await db.refresh(article)
+
+    redis_pool = await arq.create_pool(settings.REDIS_SETTINGS)
+    try:
+        await redis_pool.enqueue_job(
+            "generate_article_task",
+            str(article.id),
+            str(current_user.org_id),
+        )
+    finally:
+        await redis_pool.aclose()
+
     return ArticleOut.model_validate(article)
 
 

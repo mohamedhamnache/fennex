@@ -151,9 +151,10 @@ async def test_list_articles(client, org_and_project):
 
 
 @pytest.mark.asyncio
-async def test_generate_article(client, org_and_project):
-    """POST /articles/{id}/generate generates content and sets status to ready."""
-    # Create draft article
+async def test_generate_article_enqueues_job(client, org_and_project):
+    """POST /articles/{id}/generate sets status=generating and enqueues arq job."""
+    from unittest.mock import AsyncMock, patch
+
     create_resp = await client.post(
         "/api/v1/articles",
         json={
@@ -165,47 +166,51 @@ async def test_generate_article(client, org_and_project):
     assert create_resp.status_code == 201
     article_id = create_resp.json()["id"]
 
-    # Generate
-    gen_resp = await client.post(f"/api/v1/articles/{article_id}/generate")
+    mock_pool = AsyncMock()
+    mock_pool.enqueue_job = AsyncMock()
+    mock_pool.aclose = AsyncMock()
+
+    with patch("app.api.v1.routers.articles.arq.create_pool", return_value=mock_pool):
+        gen_resp = await client.post(f"/api/v1/articles/{article_id}/generate")
+
     assert gen_resp.status_code == 200
     data = gen_resp.json()
-    assert data["status"] == "ready"
-    assert data["body_markdown"] is not None
-    assert data["body_html"] is not None
-    assert data["word_count"] > 0
-    assert data["seo_score"] is not None
-    assert data["meta_title"] is not None
-    assert data["meta_description"] is not None
-    assert data["outline"] is not None
-    # Verify outline structure
-    assert "sections" in data["outline"]
-    assert len(data["outline"]["sections"]) > 0
+    assert data["status"] == "generating"
+    assert data["body_markdown"] is None
+    mock_pool.enqueue_job.assert_awaited_once_with(
+        "generate_article_task", article_id, str(FAKE_ORG_ID)
+    )
 
 
 @pytest.mark.asyncio
-async def test_seo_score_endpoint(client, org_and_project):
+async def test_seo_score_endpoint(client, org_and_project, db_session):
     """GET /articles/{id}/seo-score returns score with breakdown."""
-    # Create and generate article
-    create_resp = await client.post(
-        "/api/v1/articles",
-        json={
-            "project_id": str(FAKE_PROJECT_ID),
-            "title": "SEO Best Practices Guide",
-            "target_keyword": "seo",
-        },
-    )
-    article_id = create_resp.json()["id"]
-    await client.post(f"/api/v1/articles/{article_id}/generate")
+    from app.models.article import Article, ArticleStatus
 
-    # Get SEO score
-    score_resp = await client.get(f"/api/v1/articles/{article_id}/seo-score")
+    # Create article directly in the ready state (bypasses generate endpoint)
+    article = Article(
+        org_id=FAKE_ORG_ID,
+        project_id=FAKE_PROJECT_ID,
+        title="SEO Best Practices Guide",
+        target_keyword="seo",
+        tone="professional",
+        status=ArticleStatus.ready,
+        body_markdown="# SEO Best Practices Guide\n\nLearn seo fundamentals.\n\n## Why SEO Matters\n\nSEO drives traffic.",
+        body_html="<h1>SEO Best Practices Guide</h1><p>Learn seo fundamentals.</p>",
+        word_count=12,
+        meta_description="Learn seo best practices.",
+        word_count_target=1500,
+    )
+    db_session.add(article)
+    await db_session.commit()
+
+    score_resp = await client.get(f"/api/v1/articles/{article.id}/seo-score")
     assert score_resp.status_code == 200
     data = score_resp.json()
     assert "score" in data
     assert "breakdown" in data
     assert isinstance(data["score"], (int, float))
     assert 0 <= data["score"] <= 100
-    # Verify breakdown keys are present
     expected_keys = {
         "keyword_in_title",
         "keyword_in_first_paragraph",
@@ -237,23 +242,27 @@ async def test_update_article(client, org_and_project):
 
 
 @pytest.mark.asyncio
-async def test_save_revision(client, org_and_project):
+async def test_save_revision(client, org_and_project, db_session):
     """POST /articles/{id}/save-revision saves current content as revision."""
-    # Create and generate article so it has content
-    create_resp = await client.post(
-        "/api/v1/articles",
-        json={
-            "project_id": str(FAKE_PROJECT_ID),
-            "title": "Revision Test Article",
-            "target_keyword": "revision testing",
-        },
-    )
-    article_id = create_resp.json()["id"]
-    await client.post(f"/api/v1/articles/{article_id}/generate")
+    from app.models.article import Article, ArticleStatus
 
-    # Save revision
+    article = Article(
+        org_id=FAKE_ORG_ID,
+        project_id=FAKE_PROJECT_ID,
+        title="Revision Test Article",
+        target_keyword="revision testing",
+        tone="professional",
+        status=ArticleStatus.ready,
+        body_markdown="# Revision Test\n\nContent to revise.",
+        body_html="<h1>Revision Test</h1><p>Content to revise.</p>",
+        word_count=6,
+        word_count_target=1500,
+    )
+    db_session.add(article)
+    await db_session.commit()
+
     rev_resp = await client.post(
-        f"/api/v1/articles/{article_id}/save-revision",
+        f"/api/v1/articles/{article.id}/save-revision",
         json={"note": "First manual revision"},
     )
     assert rev_resp.status_code == 200
