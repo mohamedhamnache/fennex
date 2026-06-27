@@ -27,6 +27,7 @@ import {
   type Article,
   type SocialPost,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -65,13 +66,13 @@ function CostChip({ cost }: { cost: number | null }) {
   if (cost === null) return null;
   if (cost === 0) {
     return (
-      <span className="bg-gray-50 text-gray-500 text-xs px-1.5 py-0.5 rounded">
+      <span className="bg-muted text-muted-foreground text-xs px-1.5 py-0.5 rounded">
         free
       </span>
     );
   }
   return (
-    <span className="bg-emerald-50 text-emerald-700 text-xs px-1.5 py-0.5 rounded">
+    <span className="bg-success/12 text-success text-xs px-1.5 py-0.5 rounded">
       ${cost.toFixed(2)}
     </span>
   );
@@ -222,7 +223,7 @@ function ImageCard({
                       deleteMutation.mutate();
                     }
                   }}
-                  className="w-full px-4 py-2.5 text-sm text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                  className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
@@ -269,7 +270,7 @@ function GenerateModal({
     setError(null);
     setIsGenerating(true);
     try {
-      await generateImage({
+      const image = await generateImage({
         project_id: projectId,
         usage,
         style,
@@ -278,6 +279,11 @@ function GenerateModal({
         ...(keyword.trim() ? { keyword: keyword.trim() } : {}),
         ...(articleId ? { article_id: articleId } : {}),
       });
+      if (image.status === "failed") {
+        setError(image.error ?? "Image generation failed");
+        setIsGenerating(false);
+        return;
+      }
       onGenerated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
@@ -677,38 +683,37 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground font-display">Image Studio</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            AI-generated visuals for articles and social posts
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Style filter */}
-          <select
-            value={styleFilter}
-            onChange={(e) => setStyleFilter(e.target.value as ImageStyle | "all")}
-            className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="all">All Styles</option>
-            {STYLES.map((s) => (
-              <option key={s} value={s}>
-                {STYLE_LABELS[s]}
-              </option>
-            ))}
-          </select>
+      <PageHeader
+        title="Image Studio"
+        icon={ImageIcon}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Images" }]}
+        description="AI-generated visuals for articles and social posts."
+        actions={
+          <>
+            {/* Style filter */}
+            <select
+              value={styleFilter}
+              onChange={(e) => setStyleFilter(e.target.value as ImageStyle | "all")}
+              className="rounded-lg border border-border bg-input px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="all">All Styles</option>
+              {STYLES.map((s) => (
+                <option key={s} value={s}>
+                  {STYLE_LABELS[s]}
+                </option>
+              ))}
+            </select>
 
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-          >
-            <Plus className="h-4 w-4" />
-            Generate Image
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Generate Image
+            </button>
+          </>
+        }
+      />
 
       {/* Usage tabs */}
       <UsageTabs active={usageFilter} onChange={setUsageFilter} />

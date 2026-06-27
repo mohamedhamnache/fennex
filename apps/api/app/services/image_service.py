@@ -93,8 +93,13 @@ async def generate_image_dalle(
                 "cost_usd": cost_usd,
             }
     except httpx.HTTPStatusError as e:
-        logger.error("DALL-E API HTTP error: %s", e)
-        return {"ok": False, "error": f"DALL-E API error: {e.response.status_code}"}
+        try:
+            error_body = e.response.json()
+            error_msg = error_body.get("error", {}).get("message", f"HTTP {e.response.status_code}")
+        except Exception:
+            error_msg = f"HTTP {e.response.status_code}"
+        logger.error("DALL-E API HTTP error %s: %s", e.response.status_code, error_msg)
+        return {"ok": False, "error": f"DALL-E error: {error_msg}"}
     except Exception as e:
         logger.error("DALL-E API error: %s", e)
         return {"ok": False, "error": str(e)}
