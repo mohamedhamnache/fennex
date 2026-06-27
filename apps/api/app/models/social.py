@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum as PyEnum
-from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, Boolean, JSON
+from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, Boolean, JSON, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
@@ -45,3 +45,21 @@ class SocialPost(Base, TimestampMixin):
     engagement_stats: Mapped[dict | None] = mapped_column(JSON)              # {likes, shares, comments, clicks}
     error: Mapped[str | None] = mapped_column(Text)
     char_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SocialConnection(Base, TimestampMixin):
+    __tablename__ = "social_connections"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    platform: Mapped[SocialPlatform] = mapped_column(
+        SAEnum(SocialPlatform, name="social_platform_enum"), nullable=False
+    )
+    handle: Mapped[str | None] = mapped_column(String(200))          # @username or page name
+    encrypted_token: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("org_id", "platform", name="uq_social_connection_org_platform"),
+    )
