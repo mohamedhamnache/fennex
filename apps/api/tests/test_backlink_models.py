@@ -6,8 +6,6 @@ from app.models.backlinks import (
     BacklinkProfile, Backlink, BacklinkOpportunity,
     ExchangeListing, ExchangeRequest, ExchangeMessage,
 )
-from app.models.organization import Organization
-from app.models.project import Project
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
