@@ -459,8 +459,11 @@ export async function deleteArticle(id: string): Promise<void> {
   await apiClient.delete<void>(`/articles/${id}`);
 }
 
-export async function generateArticle(id: string): Promise<Article> {
-  return apiClient.post<Article>(`/articles/${id}/generate`, {});
+export async function generateArticle(
+  id: string,
+  options?: { provider?: string; model?: string },
+): Promise<Article> {
+  return apiClient.post<Article>(`/articles/${id}/generate`, options ?? {});
 }
 
 export async function saveRevision(

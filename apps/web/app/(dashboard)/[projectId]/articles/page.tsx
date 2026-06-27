@@ -28,6 +28,7 @@ import {
   getArticleSeoScore,
   listPublishingConnections,
   publishArticle,
+  listApiKeys,
   type Article,
   type ArticleStatus,
   type SEOScoreBreakdown,
@@ -37,6 +38,34 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+
+// ─── Provider/Model options ────────────────────────────────────────────────
+
+const PROVIDER_MODELS: Record<string, { label: string; models: { id: string; label: string }[] }> = {
+  anthropic: {
+    label: "Anthropic",
+    models: [
+      { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+      { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+      { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+    ],
+  },
+  openai: {
+    label: "OpenAI",
+    models: [
+      { id: "gpt-4o", label: "GPT-4o" },
+      { id: "gpt-4.1", label: "GPT-4.1" },
+      { id: "gpt-4o-mini", label: "GPT-4o mini" },
+    ],
+  },
+  google: {
+    label: "Google",
+    models: [
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+    ],
+  },
+};
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
@@ -527,9 +556,20 @@ function ArticleEditor({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [revisionMsg, setRevisionMsg] = useState<string | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized = useRef(false);
   const prevStatusRef = useRef<string | null>(null);
+
+  const { data: apiKeys = [] } = useQuery({
+    queryKey: ["api-keys"],
+    queryFn: listApiKeys,
+  });
+
+  const connectedProviders = apiKeys
+    .map((k) => k.provider)
+    .filter((p) => p in PROVIDER_MODELS);
 
   // Cleanup debounce timeout on unmount
   useEffect(() => {
@@ -567,7 +607,13 @@ function ArticleEditor({
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => generateArticle(articleId),
+    mutationFn: () =>
+      generateArticle(
+        articleId,
+        selectedProvider && selectedModel
+          ? { provider: selectedProvider, model: selectedModel }
+          : undefined,
+      ),
     onSuccess: (updated) => {
       queryClient.setQueryData(["article", articleId], updated);
       setBody(updated.body_markdown ?? "");
@@ -812,6 +858,49 @@ function ArticleEditor({
           </div>
 
           <div className="border-t border-border pt-4 flex flex-col gap-2">
+            {/* Model picker */}
+            {connectedProviders.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Model
+                </label>
+                <div className="flex gap-1.5">
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) => {
+                      setSelectedProvider(e.target.value);
+                      setSelectedModel(
+                        e.target.value
+                          ? (PROVIDER_MODELS[e.target.value]?.models[0]?.id ?? "")
+                          : "",
+                      );
+                    }}
+                    className="flex-1 rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  >
+                    <option value="">Auto</option>
+                    {connectedProviders.map((p) => (
+                      <option key={p} value={p}>
+                        {PROVIDER_MODELS[p]?.label ?? p}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedProvider && (
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="flex-1 rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    >
+                      {(PROVIDER_MODELS[selectedProvider]?.models ?? []).map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Regenerate */}
             <button
               onClick={() => generateMutation.mutate()}
@@ -898,7 +987,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   });
 
   const generateMutation = useMutation({
-    mutationFn: generateArticle,
+    mutationFn: (id: string) => generateArticle(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
       success("Regeneration started", { message: "Your article is being rewritten." });
