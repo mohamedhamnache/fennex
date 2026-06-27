@@ -319,7 +319,12 @@ async def delete_social_connection(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.services.social_connections_service import delete_connection
+    from app.services.social_connections_service import delete_connection, VALID_PLATFORMS
+    if platform not in VALID_PLATFORMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid platform. Must be one of: {', '.join(sorted(VALID_PLATFORMS))}",
+        )
     deleted = await delete_connection(current_user.org_id, platform, db)
     if not deleted:
         raise HTTPException(status_code=404, detail="Connection not found")
