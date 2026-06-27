@@ -142,13 +142,21 @@ async def list_exchange_requests(
     db: AsyncSession,
 ) -> list[ExchangeRequest]:
     if role == "sent":
-        q = select(ExchangeRequest).where(ExchangeRequest.requester_project_id == project_id)
+        q = select(ExchangeRequest).where(
+            ExchangeRequest.requester_project_id == project_id,
+            ExchangeRequest.requester_org_id == org_id,
+        )
     elif role == "received":
-        q = select(ExchangeRequest).where(ExchangeRequest.target_project_id == project_id)
+        q = select(ExchangeRequest).where(
+            ExchangeRequest.target_project_id == project_id,
+            ExchangeRequest.target_org_id == org_id,
+        )
     else:
         q = select(ExchangeRequest).where(
             or_(ExchangeRequest.requester_project_id == project_id,
-                ExchangeRequest.target_project_id == project_id)
+                ExchangeRequest.target_project_id == project_id),
+            or_(ExchangeRequest.requester_org_id == org_id,
+                ExchangeRequest.target_org_id == org_id),
         )
     result = await db.execute(q.order_by(ExchangeRequest.created_at.desc()))
     return list(result.scalars().all())
@@ -171,7 +179,9 @@ async def create_exchange_request(
             select(Project).where(Project.id == data.target_project_id)
         )
         tp = target_project.scalar_one_or_none()
-        target_org_id = tp.org_id if tp else requester_org_id  # fallback
+        if tp is None:
+            raise ValueError("Target project not found")
+        target_org_id = tp.org_id
 
     req = ExchangeRequest(
         requester_project_id=requester_project_id,
@@ -210,6 +220,8 @@ async def update_exchange_request(
     req = result.scalar_one_or_none()
     if not req:
         return None
+    if acting_org_id not in (req.requester_org_id, req.target_org_id):
+        return None
     req.status = new_status
     await db.commit()
     await db.refresh(req)
@@ -219,6 +231,14 @@ async def update_exchange_request(
 async def list_messages(
     request_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
 ) -> list[ExchangeMessage]:
+    req_result = await db.execute(
+        select(ExchangeRequest).where(
+            ExchangeRequest.id == request_id,
+            or_(ExchangeRequest.requester_org_id == org_id, ExchangeRequest.target_org_id == org_id),
+        )
+    )
+    if not req_result.scalar_one_or_none():
+        return []
     result = await db.execute(
         select(ExchangeMessage)
         .where(ExchangeMessage.request_id == request_id)
@@ -232,7 +252,15 @@ async def send_message(
     sender_org_id: uuid.UUID,
     body: str,
     db: AsyncSession,
-) -> ExchangeMessage:
+) -> ExchangeMessage | None:
+    req_result = await db.execute(
+        select(ExchangeRequest).where(
+            ExchangeRequest.id == request_id,
+            or_(ExchangeRequest.requester_org_id == sender_org_id, ExchangeRequest.target_org_id == sender_org_id),
+        )
+    )
+    if not req_result.scalar_one_or_none():
+        return None
     msg = ExchangeMessage(request_id=request_id, sender_org_id=sender_org_id, body=body)
     db.add(msg)
     await db.commit()
