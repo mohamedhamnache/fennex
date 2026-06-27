@@ -73,8 +73,7 @@ async def generate_image_dalle(
         "prompt": prompt,
         "n": 1,
         "size": size,
-        "quality": quality,      # was hardcoded "standard"
-        "response_format": "url",
+        "quality": quality,
     }
 
     try:
