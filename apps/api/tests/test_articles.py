@@ -171,14 +171,15 @@ async def test_generate_article_enqueues_job(client, org_and_project):
     mock_pool.aclose = AsyncMock()
 
     with patch("app.api.v1.routers.articles.arq.create_pool", return_value=mock_pool):
-        gen_resp = await client.post(f"/api/v1/articles/{article_id}/generate")
+        gen_resp = await client.post(f"/api/v1/articles/{article_id}/generate", json={})
 
     assert gen_resp.status_code == 200
     data = gen_resp.json()
     assert data["status"] == "generating"
     assert data["body_markdown"] is None
     mock_pool.enqueue_job.assert_awaited_once_with(
-        "generate_article_task", article_id, str(FAKE_ORG_ID)
+        "generate_article_task", article_id, str(FAKE_ORG_ID),
+        provider_override=None, model_override=None,
     )
 
 
@@ -296,3 +297,39 @@ async def test_create_article_project_not_found(client, org_and_project):
         json={"project_id": str(uuid.uuid4()), "title": "Test"},
     )
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_generate_article_with_provider_override(client, org_and_project):
+    """Passing provider+model in body is forwarded to arq as kwargs."""
+    from unittest.mock import AsyncMock, patch
+
+    create_resp = await client.post(
+        "/api/v1/articles",
+        json={
+            "project_id": str(FAKE_PROJECT_ID),
+            "title": "Override Test Article",
+            "target_keyword": "override",
+        },
+    )
+    assert create_resp.status_code == 201
+    article_id = create_resp.json()["id"]
+
+    enqueued_kwargs = {}
+
+    async def fake_enqueue(fn, *args, **kwargs):
+        enqueued_kwargs.update(kwargs)
+
+    mock_pool = AsyncMock()
+    mock_pool.enqueue_job = fake_enqueue
+    mock_pool.aclose = AsyncMock()
+
+    with patch("app.api.v1.routers.articles.arq.create_pool", return_value=mock_pool):
+        resp = await client.post(
+            f"/api/v1/articles/{article_id}/generate",
+            json={"provider": "openai", "model": "gpt-4o"},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "generating"
+    assert enqueued_kwargs.get("provider_override") == "openai"
+    assert enqueued_kwargs.get("model_override") == "gpt-4o"

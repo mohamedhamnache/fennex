@@ -61,6 +61,11 @@ class UpdateArticleRequest(BaseModel):
     brand_voice_id: Optional[uuid.UUID] = None
 
 
+class GenerateArticleRequest(BaseModel):
+    provider: Optional[str] = None
+    model: Optional[str] = None
+
+
 class SaveRevisionRequest(BaseModel):
     note: Optional[str] = None
 
@@ -176,6 +181,7 @@ async def delete_article(
 @router.post("/{article_id}/generate", response_model=ArticleOut)
 async def generate_article(
     article_id: uuid.UUID,
+    body: GenerateArticleRequest,
     current_user: CurrentUser,
     db: DB,
 ):
@@ -193,6 +199,8 @@ async def generate_article(
             "generate_article_task",
             str(article.id),
             str(current_user.org_id),
+            provider_override=body.provider,
+            model_override=body.model,
         )
     finally:
         await redis_pool.aclose()

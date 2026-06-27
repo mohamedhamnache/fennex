@@ -77,7 +77,13 @@ def _build_user_prompt(article: Article) -> str:
     )
 
 
-async def generate_article_task(ctx, article_id: str, org_id: str):
+async def generate_article_task(
+    ctx,
+    article_id: str,
+    org_id: str,
+    provider_override: str | None = None,
+    model_override: str | None = None,
+):
     """ARQ task: call LLM and save generated article content."""
     article_id_uuid = uuid.UUID(article_id)
     org_id_uuid = uuid.UUID(org_id)
@@ -100,15 +106,20 @@ async def generate_article_task(ctx, article_id: str, org_id: str):
             return
 
         try:
-            available_providers = {LLMProvider(p) for p in org_keys}
-            provider, model = LLMRouter(available_providers).resolve(TaskType.LONG_FORM_ARTICLE)
+            if provider_override and model_override and provider_override in org_keys:
+                provider_val = provider_override
+                model = model_override
+            else:
+                available_providers = {LLMProvider(p) for p in org_keys}
+                resolved_provider, model = LLMRouter(available_providers).resolve(TaskType.LONG_FORM_ARTICLE)
+                provider_val = resolved_provider.value
         except (ValueError, KeyError) as e:
             article.status = ArticleStatus.failed
             article.error = str(e)
             await db.commit()
             return
 
-        api_key = org_keys[provider.value]
+        api_key = org_keys[provider_val]
 
         system_prompt = _build_system_prompt(brand_voice)
         user_prompt = _build_user_prompt(article)
@@ -116,7 +127,7 @@ async def generate_article_task(ctx, article_id: str, org_id: str):
 
     # Phase 2: call LLM (outside DB session)
     try:
-        raw = await call_llm(provider.value, model, api_key, system_prompt, user_prompt)
+        raw = await call_llm(provider_val, model, api_key, system_prompt, user_prompt)
     except Exception as e:
         async with async_session_factory() as db:
             art = await db.get(Article, article_id_uuid)

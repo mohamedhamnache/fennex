@@ -185,3 +185,32 @@ async def test_generate_article_task_missing_article():
         result = await generate_article_task(ctx={}, article_id=str(uuid.uuid4()), org_id=str(FAKE_ORG_ID))
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_article_task_provider_override():
+    """When provider_override + model_override are given, LLMRouter is bypassed."""
+    from app.workers.tasks.article_tasks import generate_article_task
+    article_id = await _seed(with_key=True)  # seeds anthropic key
+
+    fake_raw = "META_TITLE: Override Title\nMETA_DESCRIPTION: Desc\n\n---\n\n# Body"
+
+    with (
+        patch("app.workers.tasks.article_tasks.async_session_factory", TestSessionLocal),
+        patch("app.workers.tasks.article_tasks.call_llm", new_callable=AsyncMock, return_value=fake_raw) as mock_call,
+    ):
+        await generate_article_task(
+            {}, str(article_id), str(FAKE_ORG_ID),
+            provider_override="anthropic",
+            model_override="claude-haiku-4-5-20251001",
+        )
+
+    # call_llm was called with the overridden model, not the router's default
+    mock_call.assert_called_once()
+    call_args = mock_call.call_args
+    assert call_args[0][0] == "anthropic"
+    assert call_args[0][1] == "claude-haiku-4-5-20251001"
+
+    async with TestSessionLocal() as s:
+        art = await s.get(Article, article_id)
+    assert art.status == ArticleStatus.ready
