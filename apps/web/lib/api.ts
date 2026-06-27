@@ -803,3 +803,138 @@ export async function connectGsc(projectId: string): Promise<{ redirect_url: str
 export async function disconnectGsc(projectId: string): Promise<void> {
   return apiClient.delete<void>(`/analytics/gsc/disconnect?project_id=${projectId}`);
 }
+
+// ─── Backlinks ────────────────────────────────────────────────────────────────
+
+export interface BacklinkProfile {
+  id: string;
+  project_id: string;
+  domain: string | null;
+  total_backlinks: number;
+  domain_authority: number | null;
+  trust_score: number | null;
+  spam_score: number | null;
+  referring_domains: number;
+  last_synced_at: string | null;
+}
+
+export interface BacklinkItem {
+  id: string;
+  source_url: string;
+  source_domain: string | null;
+  target_url: string | null;
+  anchor_text: string | null;
+  domain_authority: number | null;
+  trust_score: number | null;
+  is_spam: boolean;
+  link_type: string;
+  first_seen: string | null;
+  last_seen: string | null;
+}
+
+export interface BacklinkOpportunity {
+  id: string;
+  source_domain: string | null;
+  source_url: string;
+  domain_authority: number | null;
+  trust_score: number | null;
+  is_spam: boolean;
+  linking_to_competitor: string | null;
+  status: string;
+}
+
+export interface ExchangeListing {
+  id: string;
+  project_id: string;
+  site_url: string;
+  niche: string | null;
+  language: string | null;
+  domain_authority: number | null;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface ExchangeRequest {
+  id: string;
+  requester_project_id: string;
+  target_project_id: string;
+  requester_org_id: string;
+  target_org_id: string;
+  status: string;
+  requester_url: string | null;
+  target_url: string | null;
+  requester_link_verified: boolean;
+  target_link_verified: boolean;
+}
+
+export interface ExchangeMessage {
+  id: string;
+  request_id: string;
+  sender_org_id: string;
+  body: string;
+  created_at: string | null;
+}
+
+export async function getBacklinkProfile(projectId: string): Promise<BacklinkProfile> {
+  return apiClient.get<BacklinkProfile>(`/backlinks/profile?project_id=${projectId}`);
+}
+
+export async function analyzeBacklinks(projectId: string): Promise<{ job_id: string; status: string }> {
+  return apiClient.post<{ job_id: string; status: string }>(`/backlinks/analyze?project_id=${projectId}`, {});
+}
+
+export async function listBacklinks(projectId: string, page: number, isSpam?: boolean): Promise<BacklinkItem[]> {
+  const spam = isSpam !== undefined ? `&is_spam=${isSpam}` : "";
+  return apiClient.get<BacklinkItem[]>(`/backlinks?project_id=${projectId}&page=${page}${spam}`);
+}
+
+export async function listOpportunities(projectId: string, status?: string): Promise<BacklinkOpportunity[]> {
+  const q = status ? `&status=${status}` : "";
+  return apiClient.get<BacklinkOpportunity[]>(`/backlinks/opportunities?project_id=${projectId}${q}`);
+}
+
+export async function updateOpportunityStatus(id: string, status: string): Promise<BacklinkOpportunity> {
+  return apiClient.patch<BacklinkOpportunity>(`/backlinks/opportunities/${id}`, { status });
+}
+
+export async function getExchangeBoard(projectId: string, niche?: string, language?: string): Promise<ExchangeListing[]> {
+  const q = [niche ? `niche=${niche}` : "", language ? `language=${language}` : ""].filter(Boolean).join("&");
+  return apiClient.get<ExchangeListing[]>(`/backlinks/exchange/board?project_id=${projectId}${q ? `&${q}` : ""}`);
+}
+
+export async function getOwnListing(projectId: string): Promise<ExchangeListing> {
+  return apiClient.get<ExchangeListing>(`/backlinks/exchange/listing?project_id=${projectId}`);
+}
+
+export async function upsertExchangeListing(projectId: string, data: { site_url: string; niche?: string; language?: string; domain_authority?: number; description?: string }): Promise<ExchangeListing> {
+  return apiClient.post<ExchangeListing>(`/backlinks/exchange/listing?project_id=${projectId}`, data);
+}
+
+export async function deleteExchangeListing(projectId: string): Promise<void> {
+  return apiClient.delete<void>(`/backlinks/exchange/listing?project_id=${projectId}`);
+}
+
+export async function listExchangeRequests(projectId: string, role?: "sent" | "received"): Promise<ExchangeRequest[]> {
+  const q = role ? `&role=${role}` : "";
+  return apiClient.get<ExchangeRequest[]>(`/backlinks/exchange/requests?project_id=${projectId}${q}`);
+}
+
+export async function createExchangeRequest(projectId: string, data: { target_project_id: string; requester_url: string; target_url: string; initial_message?: string }): Promise<ExchangeRequest> {
+  return apiClient.post<ExchangeRequest>(`/backlinks/exchange/requests?project_id=${projectId}`, data);
+}
+
+export async function updateExchangeRequest(requestId: string, status: string): Promise<ExchangeRequest> {
+  return apiClient.patch<ExchangeRequest>(`/backlinks/exchange/requests/${requestId}`, { status });
+}
+
+export async function verifyExchangeLink(requestId: string, side: "requester" | "target"): Promise<{ job_id: string; status: string }> {
+  return apiClient.post<{ job_id: string; status: string }>(`/backlinks/exchange/requests/${requestId}/verify?side=${side}`, {});
+}
+
+export async function getExchangeMessages(requestId: string): Promise<ExchangeMessage[]> {
+  return apiClient.get<ExchangeMessage[]>(`/backlinks/exchange/requests/${requestId}/messages`);
+}
+
+export async function sendExchangeMessage(requestId: string, body: string): Promise<ExchangeMessage> {
+  return apiClient.post<ExchangeMessage>(`/backlinks/exchange/requests/${requestId}/messages`, { body });
+}
