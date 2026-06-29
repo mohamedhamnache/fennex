@@ -16,7 +16,35 @@ function getToken(): string | null {
   return localStorage.getItem("fennex_access_token");
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+// Shared in-flight refresh promise — prevents parallel refresh storms
+let _refreshPromise: Promise<void> | null = null;
+
+async function _attemptRefresh(): Promise<void> {
+  const refreshToken =
+    typeof window !== "undefined"
+      ? localStorage.getItem("fennex_refresh_token")
+      : null;
+  if (!refreshToken) throw new Error("no refresh token");
+
+  const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!res.ok) throw new Error("refresh failed");
+
+  const data: TokenResponse = await res.json();
+  localStorage.setItem("fennex_access_token", data.access_token);
+  localStorage.setItem("fennex_refresh_token", data.refresh_token);
+}
+
+function _redirectToLogin(): never {
+  authLogout();
+  window.location.href = "/login";
+  throw new ApiError(401, "Session expired");
+}
+
+async function request<T>(path: string, init: RequestInit = {}, _isRetry = false): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -25,6 +53,20 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}/api/v1${path}`, { ...init, headers });
+
+  if (res.status === 401 && !_isRetry && !path.startsWith("/auth/")) {
+    // Coalesce concurrent 401s into a single refresh attempt
+    if (!_refreshPromise) {
+      _refreshPromise = _attemptRefresh().finally(() => { _refreshPromise = null; });
+    }
+    try {
+      await _refreshPromise;
+      return request<T>(path, init, true);
+    } catch {
+      _redirectToLogin();
+    }
+  }
+
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     let detail: Record<string, unknown> | undefined;
@@ -1048,12 +1090,14 @@ export interface BillingUsage {
 }
 
 export async function createCheckoutSession(
-  priceId: string,
+  tier: string,
+  annual: boolean,
   successUrl: string,
   cancelUrl: string,
 ): Promise<{ checkout_url: string }> {
   return apiClient.post<{ checkout_url: string }>("/billing/checkout", {
-    price_id: priceId,
+    tier,
+    annual,
     success_url: successUrl,
     cancel_url: cancelUrl,
   });

@@ -88,8 +88,6 @@ const PLANS = [
     monthlyPrice: 0,
     annualPrice: 0,
     features: ["1 project", "4 articles/month", "5 images/month", "1 seat"],
-    monthlyPriceId: null,
-    annualPriceId: null,
   },
   {
     id: "starter",
@@ -97,8 +95,6 @@ const PLANS = [
     monthlyPrice: 49,
     annualPrice: 39,
     features: ["5 projects", "20 articles/month", "50 images/month", "3 seats"],
-    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_MONTHLY ?? "",
-    annualPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL ?? "",
   },
   {
     id: "pro",
@@ -106,8 +102,6 @@ const PLANS = [
     monthlyPrice: 99,
     annualPrice: 79,
     features: ["10 projects", "40 articles/month", "150 images/month", "10 seats"],
-    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ?? "",
-    annualPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL ?? "",
   },
   {
     id: "agency",
@@ -115,8 +109,6 @@ const PLANS = [
     monthlyPrice: 249,
     annualPrice: 199,
     features: ["100 projects", "400 articles/month", "Unlimited images", "Unlimited seats"],
-    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_MONTHLY ?? "",
-    annualPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_ANNUAL ?? "",
   },
 ] as const;
 
@@ -784,9 +776,10 @@ function BillingSection() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: ({ priceId }: { priceId: string }) =>
+    mutationFn: ({ tier, annual }: { tier: string; annual: boolean }) =>
       createCheckoutSession(
-        priceId,
+        tier,
+        annual,
         `${window.location.origin}/settings?billing=success`,
         `${window.location.origin}/settings`,
       ),
@@ -886,7 +879,6 @@ function BillingSection() {
             const planIdx = tierOrder.indexOf(plan.id);
             const isCurrent = plan.id === currentTier;
             const isUpgrade = planIdx > currentIdx;
-            const priceId = annual ? plan.annualPriceId : plan.monthlyPriceId;
 
             return (
               <div
@@ -913,16 +905,12 @@ function BillingSection() {
                   <button disabled className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground cursor-default">
                     Current plan
                   </button>
-                ) : isUpgrade && priceId ? (
+                ) : isUpgrade ? (
                   <button
-                    onClick={() => checkoutMutation.mutate({ priceId })}
+                    onClick={() => checkoutMutation.mutate({ tier: plan.id, annual })}
                     disabled={checkoutMutation.isPending}
                     className="btn-aurora w-full py-2 text-xs"
                   >
-                    Upgrade →
-                  </button>
-                ) : isUpgrade ? (
-                  <button disabled className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground opacity-40 cursor-not-allowed">
                     Upgrade →
                   </button>
                 ) : (

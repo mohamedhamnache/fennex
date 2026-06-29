@@ -15,22 +15,10 @@ const RESOURCE_LABELS: Record<string, string> = {
   backlinks: "backlink analyses",
 };
 
-const NEXT_TIER: Record<string, { name: string; priceId: string; price: number }> = {
-  free: {
-    name: "Starter",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_MONTHLY ?? "",
-    price: 49,
-  },
-  starter: {
-    name: "Pro",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ?? "",
-    price: 99,
-  },
-  pro: {
-    name: "Agency",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_MONTHLY ?? "",
-    price: 249,
-  },
+const NEXT_TIER: Record<string, { name: string; tier: string; price: number }> = {
+  free:    { name: "Starter", tier: "starter", price: 49 },
+  starter: { name: "Pro",     tier: "pro",     price: 99 },
+  pro:     { name: "Agency",  tier: "agency",  price: 249 },
 };
 
 interface UpgradeModalProps {
@@ -49,7 +37,8 @@ export function UpgradeModal({ resource, used, limit, currentTier, onClose }: Up
     mutationFn: () => {
       if (!next) return Promise.reject(new Error("No upgrade available"));
       return createCheckoutSession(
-        next.priceId,
+        next.tier,
+        false,
         `${window.location.origin}/settings?billing=success`,
         window.location.href,
       );

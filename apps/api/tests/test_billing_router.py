@@ -91,11 +91,13 @@ async def test_create_checkout_session(client):
     with (
         patch("app.api.v1.routers.billing.stripe.Customer.create", return_value=mock_customer),
         patch("app.api.v1.routers.billing.stripe.checkout.Session.create", return_value=mock_session),
+        patch("app.api.v1.routers.billing._PRICE_MAP", {("starter", False): "price_test"}),
     ):
         resp = await client.post(
             "/api/v1/billing/checkout",
             json={
-                "price_id": "price_test",
+                "tier": "starter",
+                "annual": False,
                 "success_url": "http://localhost:3001/settings?billing=success",
                 "cancel_url": "http://localhost:3001/settings",
             },
