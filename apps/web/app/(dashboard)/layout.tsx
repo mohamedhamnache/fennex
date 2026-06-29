@@ -42,10 +42,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   }, [queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (typeof window !== "undefined" && !isAuthenticated()) {
-    return null;
-  }
-
   // Poll usage every 60 s
   useQuery({
     queryKey: ["billing-usage-global"],
@@ -56,7 +52,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     },
     refetchInterval: 60_000,
     retry: false,
+    enabled: typeof window !== "undefined" && isAuthenticated(),
   });
+
+  if (typeof window !== "undefined" && !isAuthenticated()) {
+    return null;
+  }
 
   const upgradeInfo =
     upgradeResource && usage
