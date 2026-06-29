@@ -8,6 +8,7 @@ Strategy:
 """
 import uuid
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -120,8 +121,9 @@ async def article(db_session, org_and_project):
 async def client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
+    with patch("app.api.v1.routers.social.increment_usage", new=AsyncMock()):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            yield ac
     app.dependency_overrides.clear()
 
 

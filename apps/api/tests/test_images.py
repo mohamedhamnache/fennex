@@ -124,8 +124,9 @@ async def article(db_session, org_and_project):
 async def client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
+    with patch("app.api.v1.routers.images.increment_usage", new=AsyncMock()):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            yield ac
     app.dependency_overrides.clear()
 
 
@@ -354,7 +355,7 @@ async def test_generate_image_dalle_standard_quality():
 
 @pytest.mark.asyncio
 async def test_generate_image_dalle_hd_quality():
-    """HD quality maps to gpt-image-1 'high' and doubles cost."""
+    """HD quality maps to gpt-image-1 'high' and correct cost."""
     captured = {}
 
     async def fake_post(url, **kwargs):
@@ -380,12 +381,12 @@ async def test_generate_image_dalle_hd_quality():
     assert captured["payload"]["model"] == "gpt-image-1"
     assert captured["payload"]["quality"] == "high"  # hd maps to high
     assert result["ok"] is True
-    assert result["cost_usd"] == 0.08  # hd 1024x1024
+    assert result["cost_usd"] == 0.17  # hd 1024x1024 (gpt-image-1 approximate)
 
 
 @pytest.mark.asyncio
 async def test_generate_image_dalle_hd_article_cover_cost():
-    """HD article_cover (1536x1024) costs $0.12."""
+    """HD article_cover (1536x1024) costs $0.25 (gpt-image-1 approximate)."""
     captured = {}
 
     async def fake_post(url, **kwargs):
@@ -409,7 +410,7 @@ async def test_generate_image_dalle_hd_article_cover_cost():
         )
 
     assert captured["payload"]["size"] == "1536x1024"  # gpt-image-1 landscape size
-    assert result["cost_usd"] == 0.12  # hd 1536x1024
+    assert result["cost_usd"] == 0.25  # hd 1536x1024 (gpt-image-1 approximate)
 
 
 @pytest.mark.asyncio

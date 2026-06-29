@@ -1,13 +1,14 @@
 """Social media studio endpoints."""
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.billing import check_usage_limit, increment_usage
 from app.core.dependencies import get_current_user, get_db
 from app.models.article import Article
 from app.models.social import SocialPost, SocialPlatform, SocialPostStatus, SocialPostType
@@ -93,6 +94,7 @@ async def create_social_post(
     body: SocialPostCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(check_usage_limit("social")),
 ):
     """Create a social post manually."""
     post = SocialPost(
@@ -110,6 +112,7 @@ async def create_social_post(
     db.add(post)
     await db.commit()
     await db.refresh(post)
+    await increment_usage(current_user.org_id, "social", db)
     return post
 
 

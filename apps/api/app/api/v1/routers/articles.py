@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
 import arq
 
+from app.core.billing import check_usage_limit, increment_usage
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
@@ -184,6 +185,7 @@ async def generate_article(
     body: GenerateArticleRequest,
     current_user: CurrentUser,
     db: DB,
+    _: Annotated[None, Depends(check_usage_limit("articles"))],
 ):
     article = await _get_article_or_404(article_id, current_user.org_id, db)
 
@@ -205,6 +207,7 @@ async def generate_article(
     finally:
         await redis_pool.aclose()
 
+    await increment_usage(current_user.org_id, "articles", db)
     return ArticleOut.model_validate(article)
 
 

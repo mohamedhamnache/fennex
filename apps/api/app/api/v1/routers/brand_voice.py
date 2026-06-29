@@ -1,14 +1,15 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
+from app.core.billing import check_usage_limit, increment_usage
 from app.core.dependencies import CurrentUser, DB
 from app.models.brand_voice import BrandVoice, BrandVoiceSource, VoiceTone
 
@@ -100,6 +101,7 @@ async def create_brand_voice(
     body: CreateBrandVoiceRequest,
     current_user: CurrentUser,
     db: DB,
+    _: Annotated[None, Depends(check_usage_limit("brand_voices"))],
 ):
     # Check if this is the first voice (to set is_default)
     count_result = await db.execute(
@@ -129,6 +131,7 @@ async def create_brand_voice(
         .where(BrandVoice.id == voice.id)
     )
     voice = result.scalar_one()
+    await increment_usage(current_user.org_id, "brand_voices", db)
     return BrandVoiceOut.model_validate(voice)
 
 

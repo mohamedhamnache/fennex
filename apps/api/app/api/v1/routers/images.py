@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Annotated, Optional, Literal
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
+from app.core.billing import check_usage_limit, increment_usage
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.image import GeneratedImage, ImageStyle, ImageStatus, ImageUsage
@@ -77,6 +78,7 @@ async def generate_image(
     body: GenerateImageRequest,
     current_user: CurrentUser,
     db: DB,
+    _: Annotated[None, Depends(check_usage_limit("images"))],
 ):
     # Verify project belongs to org
     proj_result = await db.execute(
@@ -159,6 +161,7 @@ async def generate_image(
     await db.flush()
     await db.refresh(image)
     await db.commit()
+    await increment_usage(current_user.org_id, "images", db)
     return ImageOut.model_validate(image)
 
 

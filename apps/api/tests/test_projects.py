@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base
 from app.core.dependencies import get_current_user, get_db
 from app.main import app
+from app.models.organization import Organization
 from app.models.user import User, UserRole
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
@@ -70,12 +71,22 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
+@pytest.fixture(autouse=True)
+async def seed_org(setup_db):
+    """Seed the fake org so check_usage_limit can find it."""
+    async with TestSessionLocal() as session:
+        org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+        session.add(org)
+        await session.commit()
+
+
 @pytest.fixture
 async def client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
+    with patch("app.api.v1.routers.projects.increment_usage", new=AsyncMock()):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            yield ac
     app.dependency_overrides.clear()
 
 
