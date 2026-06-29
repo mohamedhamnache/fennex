@@ -118,7 +118,8 @@ async def setup_db():
 async def seed_org(setup_db):
     """Seed the fake org so check_usage_limit can find it."""
     async with TestSessionLocal() as session:
-        org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+        from app.models.organization import PlanTier
+        org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", plan_tier=PlanTier.PRO)
         session.add(org)
         await session.commit()
 
