@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,5 +20,7 @@ class Project(Base, TimestampMixin):
     locale: Mapped[str] = mapped_column(String(10), default="en")
     target_country: Mapped[str | None] = mapped_column(String(10))
     industry: Mapped[str | None] = mapped_column(String(100))
+    locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    locked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     organization: Mapped["Organization"] = relationship("Organization", back_populates="projects")

@@ -35,5 +35,7 @@ class User(Base, TimestampMixin):
         SAEnum(UserRole, name="user_role_enum"), default=UserRole.VIEWER
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    locked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     organization: Mapped["Organization"] = relationship("Organization", back_populates="users")

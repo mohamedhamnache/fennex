@@ -27,6 +27,8 @@ class BrandVoice(Base, TimestampMixin):
     vocabulary: Mapped[list | None] = mapped_column(JSON)           # preferred words/phrases list
     avoid_words: Mapped[list | None] = mapped_column(JSON)          # words to avoid
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    locked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
     training_sources: Mapped[list["BrandVoiceSource"]] = relationship(
         "BrandVoiceSource", back_populates="brand_voice", cascade="all, delete-orphan"
     )

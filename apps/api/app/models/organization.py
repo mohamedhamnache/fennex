@@ -1,5 +1,6 @@
 import uuid
 import enum
+from datetime import datetime
 
 from sqlalchemy import String, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
@@ -28,6 +29,8 @@ class Organization(Base, TimestampMixin):
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255))
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255))
+    trial_ends_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    plan_locked_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     users: Mapped[list["User"]] = relationship("User", back_populates="organization")
     projects: Mapped[list["Project"]] = relationship("Project", back_populates="organization")
