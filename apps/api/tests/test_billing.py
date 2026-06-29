@@ -74,7 +74,7 @@ async def test_check_usage_limit_unlimited_passes():
     mock_db = AsyncMock()
     mock_response = MagicMock()
 
-    dep = check_usage_limit("articles")
+    dep = check_usage_limit("images")
     await dep(org=org, db=mock_db, response=mock_response)
     # no exception = pass
 

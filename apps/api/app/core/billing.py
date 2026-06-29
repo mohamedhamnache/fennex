@@ -32,7 +32,7 @@ PLAN_LIMITS: dict[str, dict[str, int]] = {
         "keywords": 2000, "seats": 10, "brand_voices": 10, "audits": 20, "backlinks": 20,
     },
     "agency": {
-        "projects": -1, "articles": -1, "images": -1, "social": -1,
+        "projects": 100, "articles": 400, "images": -1, "social": -1,
         "keywords": -1, "seats": -1, "brand_voices": -1, "audits": -1, "backlinks": -1,
     },
 }
