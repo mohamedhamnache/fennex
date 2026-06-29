@@ -125,7 +125,8 @@ async def db_session():
 @pytest.fixture
 async def org(db_session):
     """Create an org in the test DB."""
-    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+    from app.models.organization import PlanTier
+    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", plan_tier=PlanTier.PRO)
     db_session.add(org)
     await db_session.commit()
     return org
