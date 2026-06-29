@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
-from app.core.billing import check_usage_limit, increment_usage
+from app.core.billing import check_usage_limit, check_project_not_locked, increment_usage
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.image import GeneratedImage, ImageStyle, ImageStatus, ImageUsage
@@ -89,6 +89,7 @@ async def generate_image(
     )
     if proj_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    await check_project_not_locked(body.project_id, db)
 
     # Build prompt
     style = body.style or ImageStyle.professional

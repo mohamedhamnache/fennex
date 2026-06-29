@@ -4,12 +4,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.billing import PLAN_LIMITS, get_billing_usage, _get_org, current_billing_period_start
-from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 
 router = APIRouter()
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────

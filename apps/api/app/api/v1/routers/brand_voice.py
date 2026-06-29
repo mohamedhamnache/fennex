@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
-from app.core.billing import check_usage_limit, increment_usage
+from app.core.billing import check_usage_limit
 from app.core.dependencies import CurrentUser, DB
 from app.models.brand_voice import BrandVoice, BrandVoiceSource, VoiceTone
 
@@ -131,7 +131,6 @@ async def create_brand_voice(
         .where(BrandVoice.id == voice.id)
     )
     voice = result.scalar_one()
-    await increment_usage(current_user.org_id, "brand_voices", db)
     return BrandVoiceOut.model_validate(voice)
 
 

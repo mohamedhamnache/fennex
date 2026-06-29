@@ -5,7 +5,7 @@ from datetime import date
 from typing import Annotated, Callable
 
 from fastapi import Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,9 @@ from app.core.dependencies import get_current_user
 from app.models.billing import OrgUsage
 from app.models.organization import Organization
 from app.models.user import User
+
+# Resources that are capacity limits (count existing rows) rather than monthly counters
+CAPACITY_RESOURCES = {"projects", "brand_voices"}
 
 # ── Plan limits ────────────────────────────────────────────────────────────────
 # -1 means unlimited.
@@ -109,7 +112,18 @@ def check_usage_limit(resource: str) -> Callable:
         if limit == -1:
             return  # unlimited
 
-        used = await get_current_usage(org.id, resource, db)
+        if resource in CAPACITY_RESOURCES:
+            # Capacity check: count existing rows instead of reading org_usage
+            from app.models.project import Project
+            from app.models.brand_voice import BrandVoice
+            model_map = {"projects": Project, "brand_voices": BrandVoice}
+            model = model_map[resource]
+            count_result = await db.execute(
+                select(func.count()).select_from(model).where(model.org_id == org.id)
+            )
+            used = count_result.scalar() or 0
+        else:
+            used = await get_current_usage(org.id, resource, db)
         pct = used / limit
 
         if pct >= 1.0:
@@ -151,12 +165,12 @@ async def get_billing_usage(org: Organization, db: AsyncSession) -> dict:
     )
     row = result.scalar_one_or_none()
 
-    # Resources tracked in OrgUsage table
-    tracked_resources = {"articles", "images", "social", "keywords", "audits", "backlinks"}
+    # Resources NOT tracked in OrgUsage table (capacity limits or handled separately)
+    SKIP_RESOURCES = {"seats", "projects", "brand_voices"}
 
     usage: dict[str, dict] = {}
     for resource, limit in limits.items():
-        if resource not in tracked_resources:
+        if resource in SKIP_RESOURCES:
             continue  # seats, projects, brand_voices checked differently
         used_val = getattr(row, f"{resource}_used", 0) if row else 0
         usage[resource] = {
@@ -165,3 +179,19 @@ async def get_billing_usage(org: Organization, db: AsyncSession) -> dict:
             "pct": round(used_val / limit, 2) if limit > 0 else 0.0,
         }
     return usage
+
+
+async def check_project_not_locked(project_id: uuid.UUID, db: AsyncSession) -> None:
+    """Raise 423 if the project is locked (downgrade or payment failure)."""
+    from app.models.project import Project
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if project and project.locked:
+        raise HTTPException(
+            status_code=423,
+            detail={
+                "code": "RESOURCE_LOCKED",
+                "reason": project.locked_reason or "downgrade",
+                "message": "This project is locked. Upgrade your plan to unlock it.",
+            },
+        )

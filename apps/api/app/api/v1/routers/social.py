@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.billing import check_usage_limit, increment_usage
+from app.core.billing import check_usage_limit, check_project_not_locked, increment_usage
 from app.core.dependencies import get_current_user, get_db
 from app.models.article import Article
 from app.models.social import SocialPost, SocialPlatform, SocialPostStatus, SocialPostType
@@ -97,6 +97,7 @@ async def create_social_post(
     _: None = Depends(check_usage_limit("social")),
 ):
     """Create a social post manually."""
+    await check_project_not_locked(body.project_id, db)
     post = SocialPost(
         org_id=current_user.org_id,
         project_id=body.project_id,

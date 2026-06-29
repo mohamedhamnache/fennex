@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+import stripe
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -7,6 +8,8 @@ from fastapi.responses import JSONResponse
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import engine, Base
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 @asynccontextmanager

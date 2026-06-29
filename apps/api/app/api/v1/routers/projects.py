@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.core.billing import check_usage_limit, increment_usage
+from app.core.billing import check_usage_limit
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.project import Project
@@ -73,7 +73,6 @@ async def create_project(
     except Exception:
         pass  # Worker may not be running in dev — seed can be run manually
 
-    await increment_usage(current_user.org_id, "projects", db)
     return project
 
 

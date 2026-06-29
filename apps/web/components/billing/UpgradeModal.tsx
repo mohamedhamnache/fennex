@@ -46,12 +46,14 @@ export function UpgradeModal({ resource, used, limit, currentTier, onClose }: Up
   const label = RESOURCE_LABELS[resource] ?? resource;
 
   const checkoutMutation = useMutation({
-    mutationFn: () =>
-      createCheckoutSession(
+    mutationFn: () => {
+      if (!next) return Promise.reject(new Error("No upgrade available"));
+      return createCheckoutSession(
         next.priceId,
         `${window.location.origin}/settings?billing=success`,
         window.location.href,
-      ),
+      );
+    },
     onSuccess: ({ checkout_url }) => {
       window.location.href = checkout_url;
     },
