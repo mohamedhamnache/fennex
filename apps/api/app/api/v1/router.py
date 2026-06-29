@@ -20,6 +20,7 @@ from app.api.v1.routers import (
     backlinks,
     analytics,
     webhooks,
+    billing,
 )
 
 api_router = APIRouter()
@@ -43,3 +44,4 @@ api_router.include_router(publishing.router, prefix="/publishing", tags=["publis
 api_router.include_router(backlinks.router, prefix="/backlinks", tags=["backlinks"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
