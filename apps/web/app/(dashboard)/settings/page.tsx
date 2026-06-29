@@ -921,6 +921,10 @@ function BillingSection() {
                   >
                     Upgrade →
                   </button>
+                ) : isUpgrade ? (
+                  <button disabled className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground opacity-40 cursor-not-allowed">
+                    Upgrade →
+                  </button>
                 ) : (
                   <button
                     onClick={() => portalMutation.mutate()}
