@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base
 from app.core.dependencies import get_current_user, get_db
 from app.main import app
+from app.models.billing import OrgUsage, SubscriptionEvent  # noqa: F401 — register with Base.metadata
 from app.models.organization import Organization
 from app.models.user import User, UserRole
 
@@ -25,6 +26,42 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
+
+# Tables needed for tests (excludes subscription_events which uses JSONB)
+SQLITE_COMPATIBLE_TABLES = [
+    "organizations",
+    "users",
+    "projects",
+    "crawl_jobs",
+    "crawled_pages",
+    "seo_audits",
+    "keyword_research_jobs",
+    "keywords",
+    "keyword_clusters",
+    "content_plans",
+    "content_items",
+    "brand_voices",
+    "brand_voice_sources",
+    "articles",
+    "article_revisions",
+    "publishing_connections",
+    "publish_jobs",
+    "social_posts",
+    "social_connections",
+    "api_keys",
+    "generated_images",
+    "analytics_snapshots",
+    "keyword_rankings",
+    "gsc_connections",
+    "backlink_profiles",
+    "backlinks",
+    "backlink_opportunities",
+    "exchange_listings",
+    "exchange_requests",
+    "exchange_messages",
+    "org_invites",
+    "org_usage",
+]
 
 
 async def override_get_db():
@@ -64,11 +101,17 @@ async def override_get_current_user():
 @pytest.fixture(autouse=True)
 async def setup_db():
     """Create all tables before each test and drop after."""
+    # Only create SQLite-compatible tables (subscription_events uses JSONB which SQLite can't handle)
+    tables = [
+        Base.metadata.tables[name]
+        for name in SQLITE_COMPATIBLE_TABLES
+        if name in Base.metadata.tables
+    ]
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all, tables=tables)
     yield
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all, tables=tables)
 
 
 @pytest.fixture(autouse=True)
@@ -84,9 +127,8 @@ async def seed_org(setup_db):
 async def client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
-    with patch("app.api.v1.routers.projects.increment_usage", new=AsyncMock()):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            yield ac
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
     app.dependency_overrides.clear()
 
 
