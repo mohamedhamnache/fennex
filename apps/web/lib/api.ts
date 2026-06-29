@@ -1,7 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+    public detail?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -23,11 +27,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}/api/v1${path}`, { ...init, headers });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
+    let detail: Record<string, unknown> | undefined;
     try {
       const body = await res.json();
-      msg = body.detail ?? body.message ?? msg;
+      if (typeof body.detail === "object" && body.detail !== null) {
+        detail = body.detail as Record<string, unknown>;
+        msg = (detail.code as string) ?? msg;
+      } else {
+        msg = body.detail ?? body.message ?? msg;
+      }
     } catch {}
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, detail);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -1020,4 +1030,43 @@ export async function updateMemberRole(orgId: string, userId: string, role: stri
 
 export async function deactivateMember(orgId: string, userId: string): Promise<void> {
   return apiClient.delete<void>(`/organizations/${orgId}/members/${userId}`);
+}
+
+// ── Billing ────────────────────────────────────────────────────────────────
+
+export interface BillingUsageResource {
+  used: number;
+  limit: number;
+  pct: number;
+}
+
+export interface BillingUsage {
+  plan_tier: string;
+  trial_ends_at: string | null;
+  period_start: string;
+  usage: Record<string, BillingUsageResource>;
+}
+
+export async function createCheckoutSession(
+  priceId: string,
+  successUrl: string,
+  cancelUrl: string,
+): Promise<{ checkout_url: string }> {
+  return apiClient.post<{ checkout_url: string }>("/billing/checkout", {
+    price_id: priceId,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  });
+}
+
+export async function createPortalSession(
+  returnUrl: string,
+): Promise<{ portal_url: string }> {
+  return apiClient.post<{ portal_url: string }>("/billing/portal", {
+    return_url: returnUrl,
+  });
+}
+
+export async function getBillingUsage(): Promise<BillingUsage> {
+  return apiClient.get<BillingUsage>("/billing/usage");
 }
