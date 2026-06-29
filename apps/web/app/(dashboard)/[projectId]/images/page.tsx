@@ -381,9 +381,9 @@ function GenerateModal({
                         : "border-border text-muted-foreground hover:bg-accent",
                     )}
                   >
-                    <span className="capitalize">{q}</span>
+                    <span>{q === "hd" ? "HD" : "Standard"}</span>
                     <span className="block text-[10px] font-normal mt-0.5 opacity-70">
-                      {q === "standard" ? "from $0.04" : "from $0.08"}
+                      {q === "standard" ? "from $0.04" : "from $0.17"}
                     </span>
                   </button>
                 ))}

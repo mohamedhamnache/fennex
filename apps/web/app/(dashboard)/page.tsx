@@ -1,171 +1,320 @@
+"use client";
+
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
-  TrendingUp,
-  FileText,
-  Target,
-  Zap,
-  ArrowRight,
-  Clock,
-  CheckCircle2,
-  Circle,
-  Search,
-  Globe,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
+import {
+  TrendingUp, TrendingDown, FileText, MousePointerClick, Eye, Crosshair,
+  Search, Zap, Globe, ArrowRight, CheckCircle2, Circle, Sparkles, FolderPlus,
 } from "lucide-react";
+import {
+  listProjects, listArticles, listApiKeys, getGscStatus,
+  getAnalyticsOverview, getAnalyticsTraffic, type Article,
+} from "@/lib/api";
+import { useProjectStore } from "@/lib/store";
+import { StatCard } from "@/components/ui/StatCard";
+import { ProgressRing } from "@/components/ui/ProgressRing";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
-const stats = [
-  {
-    label: "Organic Sessions",
-    value: "—",
-    icon: TrendingUp,
-    color: "text-violet-500",
-    iconBg: "bg-violet-500/8",
-  },
-  {
-    label: "Published Articles",
-    value: "—",
-    icon: FileText,
-    color: "text-indigo-500",
-    iconBg: "bg-indigo-500/8",
-  },
-  {
-    label: "Keywords Tracked",
-    value: "—",
-    icon: Target,
-    color: "text-emerald-500",
-    iconBg: "bg-emerald-500/8",
-  },
-  {
-    label: "AI Tasks Run",
-    value: "—",
-    icon: Zap,
-    color: "text-amber-500",
-    iconBg: "bg-amber-500/8",
-  },
-];
+function fmtNum(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-const quickActions = [
-  {
-    label: "Keyword research",
-    description: "Find high-ROI opportunities",
-    href: "/keywords",
-    icon: Search,
-    color: "text-violet-500",
-    bg: "bg-violet-500/8",
-  },
-  {
-    label: "Generate article",
-    description: "AI-written, SEO-optimized",
-    href: "/articles",
-    icon: Zap,
-    color: "text-indigo-500",
-    bg: "bg-indigo-500/8",
-  },
-  {
-    label: "Audit your site",
-    description: "Find and fix SEO issues",
-    href: "/audit",
-    icon: Globe,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/8",
-  },
-];
+const ARTICLE_TONE: Record<string, BadgeTone> = {
+  draft: "neutral", generating: "warning", ready: "info", published: "success", failed: "danger",
+};
 
-const checklist = [
-  { label: "Connect AI keys",       href: "/settings/api-keys" },
-  { label: "Create a project",      href: "#" },
-  { label: "Run your first audit",  href: "#" },
-  { label: "Generate an article",   href: "#" },
-];
+// ─── No-project onboarding ─────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function NoProjectState() {
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Overview</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Connect a project to start growing your organic traffic.
-        </p>
+    <div className="flex flex-col gap-6 animate-fade-in">
+      <header className="aurora-header px-6 py-7">
+        <div className="relative z-10 flex items-center gap-3.5">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl gradient-brand text-white glow-primary">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="font-display text-[28px] font-bold tracking-tight">Welcome to Fennex</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Your AI SEO growth platform.</p>
+          </div>
+        </div>
+      </header>
+      <div className="glass flex flex-col items-center justify-center gap-4 px-6 py-20 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand glow-primary">
+          <FolderPlus className="h-7 w-7 text-white" strokeWidth={1.9} />
+        </div>
+        <div>
+          <p className="text-base font-semibold">No projects yet</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+            A project connects a website so Fennex can research keywords, write articles, and track rankings.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">Use the workspace switcher in the sidebar to create one.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Hero traffic tile ─────────────────────────────────────────────────────────
+
+function HeroTile({
+  projectId, clicks, change, traffic,
+}: {
+  projectId: string | null;
+  clicks: number | null;
+  change: number | null;
+  traffic: { date: string; clicks: number; impressions: number }[];
+}) {
+  const data = traffic.map((t) => ({ ...t, label: fmtDate(t.date) }));
+  const up = (change ?? 0) >= 0;
+  return (
+    <div className="glass relative flex flex-col overflow-hidden p-5 lg:col-span-2 lg:row-span-2">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Organic clicks · 28d</p>
+          <div className="mt-1 flex items-end gap-3">
+            <span className="font-display text-4xl font-bold tracking-tight tabular-nums">
+              {clicks !== null ? fmtNum(clicks) : "—"}
+            </span>
+            {change !== null && (
+              <span className={`mb-1 flex items-center gap-1 text-sm font-semibold ${up ? "text-success" : "text-destructive"}`}>
+                {up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                {Math.abs(change).toFixed(1)}%
+              </span>
+            )}
+          </div>
+        </div>
+        {projectId && (
+          <Link href={`/${projectId}/analytics`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">
+            Analytics →
+          </Link>
+        )}
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-5">
-            <div className={`inline-flex items-center justify-center rounded-lg p-2 ${stat.iconBg} mb-4`}>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} strokeWidth={1.8} />
-            </div>
-            <p className="font-display text-3xl font-bold tracking-tight text-foreground leading-none">
-              {stat.value}
-            </p>
-            <p className="mt-1.5 text-xs text-muted-foreground">{stat.label}</p>
+      <div className="mt-4 min-h-[200px] flex-1">
+        {data.length > 1 ? (
+          <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+            <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -18 }}>
+              <defs>
+                <linearGradient id="heroClicks" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="heroStroke" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#d946ef" />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={32} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={44} />
+              <Tooltip
+                contentStyle={{ background: "hsl(224 44% 8%)", border: "1px solid hsl(0 0% 100% / 0.1)", borderRadius: 10, fontSize: 12, color: "hsl(var(--foreground))" }}
+                labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+              />
+              <Area type="monotone" dataKey="clicks" stroke="url(#heroStroke)" strokeWidth={2.5} fill="url(#heroClicks)"
+                style={{ filter: "drop-shadow(0 4px 12px hsl(256 92% 55% / 0.35))" }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 text-center">
+            <Globe className="h-6 w-6 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Connect Search Console to see traffic trends.</p>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Setup progress tile ───────────────────────────────────────────────────────
+
+function SetupTile({ items }: { items: { label: string; done: boolean; href: string }[] }) {
+  const done = items.filter((i) => i.done).length;
+  const pct = Math.round((done / items.length) * 100);
+  return (
+    <div className="glass flex flex-col items-center gap-4 p-5">
+      <div className="flex w-full items-center justify-between">
+        <p className="text-sm font-semibold">Setup</p>
+        <Badge tone={done === items.length ? "success" : "primary"}>{done}/{items.length}</Badge>
+      </div>
+      <ProgressRing value={pct} size={128}>
+        <span className="font-display text-2xl font-bold tabular-nums">{pct}%</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">complete</span>
+      </ProgressRing>
+      <div className="w-full space-y-1">
+        {items.map((it) => (
+          <Link key={it.label} href={it.href}
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors hover:bg-white/[0.04]">
+            {it.done
+              ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={2.2} />
+              : <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" strokeWidth={2} />}
+            <span className={it.done ? "text-muted-foreground line-through" : "text-foreground/80"}>{it.label}</span>
+          </Link>
         ))}
       </div>
+    </div>
+  );
+}
 
-      {/* Content row */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Quick actions */}
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-3">Get started</h2>
-          <div className="space-y-1.5">
-            {quickActions.map((action) => (
-              <a
-                key={action.label}
-                href={action.href}
-                className="group flex items-center gap-4 rounded-lg px-4 py-3.5 transition-all hover:bg-accent"
-              >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${action.bg}`}>
-                  <action.icon className={`h-3.5 w-3.5 ${action.color}`} strokeWidth={1.8} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{action.label}</p>
-                  <p className="text-xs text-muted-foreground">{action.description}</p>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30 transition-all group-hover:text-primary group-hover:translate-x-0.5 shrink-0" strokeWidth={2} />
-              </a>
-            ))}
-          </div>
-        </div>
+// ─── Quick actions tile ────────────────────────────────────────────────────────
 
-        {/* Activity */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-3">Recent activity</h2>
-          <div className="flex flex-col items-center justify-center h-36 gap-3 text-center">
-            <div className="rounded-full bg-muted/60 p-3">
-              <Clock className="h-4 w-4 text-muted-foreground/50" strokeWidth={1.5} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">No activity yet</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Actions appear here</p>
-            </div>
-          </div>
+function QuickActionsTile({ projectId }: { projectId: string }) {
+  const actions = [
+    { label: "Keyword research", href: `/${projectId}/keywords`, icon: Search, tone: "text-violet-400 bg-violet-500/15" },
+    { label: "Generate article", href: `/${projectId}/articles`, icon: Zap, tone: "text-primary bg-primary/15" },
+    { label: "Audit your site", href: `/${projectId}/audit`, icon: Globe, tone: "text-emerald-400 bg-emerald-500/15" },
+  ];
+  return (
+    <div className="glass p-5">
+      <h2 className="mb-3 text-sm font-semibold">Quick actions</h2>
+      <div className="space-y-1.5">
+        {actions.map((a) => (
+          <Link key={a.label} href={a.href}
+            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.04]">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${a.tone}`}>
+              <a.icon className="h-4 w-4" strokeWidth={1.9} />
+            </span>
+            <span className="flex-1 text-sm font-medium">{a.label}</span>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" strokeWidth={2} />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
+export default function DashboardPage() {
+  const { currentProjectId } = useProjectStore();
+
+  const { data: projects = [], isLoading: projectsLoading } = useQuery({
+    queryKey: ["projects"], queryFn: listProjects, staleTime: 30_000,
+  });
+  const project = projects.find((p) => p.id === currentProjectId) ?? projects[0] ?? null;
+  const projectId = project?.id ?? null;
+
+  const { data: overview } = useQuery({
+    queryKey: ["analytics", "overview", projectId, "28d"],
+    queryFn: () => getAnalyticsOverview(projectId!, "28d"),
+    enabled: !!projectId, staleTime: 5 * 60_000,
+  });
+  const { data: traffic = [] } = useQuery({
+    queryKey: ["analytics", "traffic", projectId, "28d"],
+    queryFn: () => getAnalyticsTraffic(projectId!, "28d"),
+    enabled: !!projectId, staleTime: 5 * 60_000,
+  });
+  const { data: articles = [] } = useQuery({
+    queryKey: ["articles", projectId], queryFn: () => listArticles(projectId!),
+    enabled: !!projectId, staleTime: 60_000,
+  });
+  const { data: apiKeys = [] } = useQuery({ queryKey: ["api-keys"], queryFn: listApiKeys, staleTime: 60_000 });
+  const { data: gsc } = useQuery({
+    queryKey: ["gsc-status", projectId], queryFn: () => getGscStatus(projectId!),
+    enabled: !!projectId, staleTime: 60_000,
+  });
+
+  if (!projectsLoading && projects.length === 0) return <NoProjectState />;
+
+  const publishedCount = articles.filter((a) => a.status === "published").length;
+  const recentArticles = [...articles]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  const checklist = [
+    { label: "Create a project", done: projects.length > 0, href: "#" },
+    { label: "Connect AI keys", done: apiKeys.length > 0, href: "/settings" },
+    { label: "Connect Search Console", done: !!gsc?.is_connected, href: projectId ? `/${projectId}/analytics` : "#" },
+    { label: "Generate an article", done: articles.length > 0, href: projectId ? `/${projectId}/articles` : "#" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in">
+      {/* Greeting header */}
+      <header className="aurora-header flex items-center justify-between px-6 py-5">
+        <div className="relative z-10">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Command Center</p>
+          <h1 className="mt-1 font-display text-[28px] font-bold tracking-tight">
+            Welcome back{project ? <span className="text-gradient-brand">, {project.name}</span> : ""}
+          </h1>
         </div>
+        {projectId && (
+          <Link href={`/${projectId}/overview`} className="btn-aurora relative z-10 inline-flex items-center gap-1.5 px-4 py-2 text-xs">
+            Project overview <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </header>
+
+      {/* Bento: hero + setup */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <HeroTile
+          projectId={projectId}
+          clicks={overview?.clicks ?? null}
+          change={overview?.clicks_change ?? null}
+          traffic={traffic.map((t) => ({ date: t.date, clicks: t.clicks, impressions: t.impressions }))}
+        />
+        <SetupTile items={checklist} />
       </div>
 
-      {/* Setup checklist */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-primary" strokeWidth={2} />
-            <h2 className="text-sm font-semibold text-foreground">Setup checklist</h2>
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard label="Impressions" tone="violet" icon={Eye}
+          value={overview ? fmtNum(overview.impressions) : "—"} change={overview?.impressions_change}
+          spark={traffic.map((t) => t.impressions)} href={projectId ? `/${projectId}/analytics` : undefined} />
+        <StatCard label="Avg CTR" tone="emerald" icon={TrendingUp}
+          value={overview ? `${(overview.ctr * 100).toFixed(1)}%` : "—"} change={overview?.ctr_change}
+          href={projectId ? `/${projectId}/analytics` : undefined} />
+        <StatCard label="Avg Position" tone="amber" icon={Crosshair}
+          value={overview ? overview.avg_position.toFixed(1) : "—"} change={overview?.position_change} invertChange
+          href={projectId ? `/${projectId}/analytics` : undefined} />
+        <StatCard label="Published" tone="primary" icon={FileText}
+          value={String(publishedCount)} href={projectId ? `/${projectId}/articles` : undefined} />
+      </div>
+
+      {/* Activity + quick actions */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="glass overflow-hidden lg:col-span-2">
+          <div className="flex items-center justify-between px-5 py-4">
+            <h2 className="text-sm font-semibold">Recent articles</h2>
+            {projectId && (
+              <Link href={`/${projectId}/articles`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">View all →</Link>
+            )}
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            0 / 4
-          </span>
+          {recentArticles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+              <div className="rounded-full bg-white/[0.04] p-3"><FileText className="h-4 w-4 text-muted-foreground/50" strokeWidth={1.5} /></div>
+              <div>
+                <p className="text-sm font-medium">No articles yet</p>
+                {projectId && <Link href={`/${projectId}/articles`} className="text-xs text-primary hover:underline">Generate your first article →</Link>}
+              </div>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <tbody>
+                {recentArticles.map((a: Article) => (
+                  <tr key={a.id} className="border-t border-white/[0.05] transition-colors hover:bg-white/[0.03]">
+                    <td className="px-5 py-3">
+                      <Link href={projectId ? `/${projectId}/articles` : "#"} className="line-clamp-1 font-medium hover:underline">{a.title}</Link>
+                      {a.target_keyword && <p className="mt-0.5 truncate text-xs text-muted-foreground">{a.target_keyword}</p>}
+                    </td>
+                    <td className="px-5 py-3 text-right"><Badge tone={ARTICLE_TONE[a.status] ?? "neutral"}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</Badge></td>
+                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs text-muted-foreground">{fmtDate(a.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {checklist.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="group flex items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground transition-all hover:border-primary/25 hover:bg-primary/4 hover:text-foreground"
-            >
-              <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/30 group-hover:text-primary/50 transition-colors" strokeWidth={2} />
-              {item.label}
-              <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground/20 group-hover:text-primary/50 group-hover:translate-x-0.5 transition-all shrink-0" strokeWidth={2} />
-            </a>
-          ))}
-        </div>
+
+        {projectId ? <QuickActionsTile projectId={projectId} /> : <div className="glass p-5 text-center text-sm text-muted-foreground">Select a project.</div>}
       </div>
     </div>
   );

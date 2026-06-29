@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle, RefreshCw, ExternalLink, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { AlertTriangle, CheckCircle, RefreshCw, ExternalLink, ChevronDown, ChevronUp, Send, Link2 } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import {
   getMe, getBacklinkProfile, analyzeBacklinks, listBacklinks, listOpportunities,
@@ -12,28 +12,30 @@ import {
   type BacklinkProfile, type BacklinkItem, type BacklinkOpportunity,
   type ExchangeListing, type ExchangeRequest, type ExchangeMessage,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function DaChip({ da }: { da: number | null }) {
   if (da === null) return <span className="text-muted-foreground text-xs">—</span>;
-  const color = da >= 60 ? "bg-emerald-50 text-emerald-700" : da >= 30 ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground";
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${color}`}>DA {Math.round(da)}</span>;
+  const tone: BadgeTone = da >= 60 ? "success" : da >= 30 ? "warning" : "neutral";
+  return <Badge tone={tone}>DA {Math.round(da)}</Badge>;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700",
-  accepted: "bg-blue-50 text-blue-700",
-  live: "bg-emerald-50 text-emerald-700",
-  rejected: "bg-red-50 text-red-600",
-  cancelled: "bg-muted text-muted-foreground",
+const STATUS_TONE: Record<string, BadgeTone> = {
+  pending: "warning",
+  accepted: "info",
+  live: "success",
+  rejected: "danger",
+  cancelled: "neutral",
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[status] ?? "bg-muted text-muted-foreground"}`}>
+    <Badge tone={STATUS_TONE[status] ?? "neutral"}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
+    </Badge>
   );
 }
 
@@ -58,7 +60,7 @@ function ProfileTab({ projectId }: { projectId: string }) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-        {[...Array(5)].map((_, i) => <div key={i} className="rounded-lg border bg-card p-5 h-20 animate-pulse bg-muted/30" />)}
+        {[...Array(5)].map((_, i) => <div key={i} className="glass h-20 animate-pulse p-5" />)}
       </div>
     );
   }
@@ -104,7 +106,7 @@ function ProfileTab({ projectId }: { projectId: string }) {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
         {stats.map(({ label, value }) => (
-          <div key={label} className="rounded-lg border bg-card p-5 flex flex-col gap-1">
+          <div key={label} className="glass flex flex-col gap-1 p-5">
             <span className="text-xs text-muted-foreground">{label}</span>
             <span className="text-2xl font-semibold tabular-nums">{value}</span>
           </div>
@@ -142,7 +144,7 @@ function BacklinksTab({ projectId }: { projectId: string }) {
           <p className="text-sm text-muted-foreground">No backlinks found yet. Run analysis first.</p>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="glass overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
@@ -160,9 +162,7 @@ function BacklinksTab({ projectId }: { projectId: string }) {
                   <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[160px]">{bl.anchor_text ?? "—"}</td>
                   <td className="px-4 py-3"><DaChip da={bl.domain_authority} /></td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bl.link_type === "dofollow" ? "bg-blue-50 text-blue-700" : "bg-muted text-muted-foreground"}`}>
-                      {bl.link_type}
-                    </span>
+                    <Badge tone={bl.link_type === "dofollow" ? "info" : "neutral"}>{bl.link_type}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -190,11 +190,12 @@ function BacklinksTab({ projectId }: { projectId: string }) {
 // ─── OpportunitiesTab ─────────────────────────────────────────────────────────
 
 const OPP_STATUSES = ["new", "contacted", "won", "lost", "ignored"];
-const OPP_STATUS_STYLES: Record<string, string> = {
-  new: "bg-blue-50 text-blue-700",
-  contacted: "bg-amber-50 text-amber-700",
-  won: "bg-emerald-50 text-emerald-700",
-  lost: "bg-red-50 text-red-600",
+// Dark-mode-safe classes for the inline status <select> (can't use <Badge> there).
+const OPP_STATUS_CLASS: Record<string, string> = {
+  new: "bg-info/12 text-info",
+  contacted: "bg-warning/12 text-warning",
+  won: "bg-success/12 text-success",
+  lost: "bg-destructive/12 text-destructive",
   ignored: "bg-muted text-muted-foreground",
 };
 
@@ -242,7 +243,7 @@ function OpportunitiesTab({ projectId }: { projectId: string }) {
                 <select
                   value={opp.status}
                   onChange={(e) => handleStatusChange(opp.id, e.target.value)}
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium border-0 outline-none cursor-pointer ${OPP_STATUS_STYLES[opp.status] ?? "bg-muted"}`}
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium border-0 outline-none cursor-pointer ${OPP_STATUS_CLASS[opp.status] ?? "bg-muted"}`}
                 >
                   {OPP_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                 </select>
@@ -332,7 +333,7 @@ function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgI
   }
 
   return (
-    <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
+    <div className="glass flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Project {counterpart.slice(0, 8)}…</p>
@@ -348,14 +349,14 @@ function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgI
 
       {/* Verification row */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className={`flex items-center gap-1 ${req.requester_link_verified ? "text-emerald-600" : ""}`}>
+        <span className={`flex items-center gap-1 ${req.requester_link_verified ? "text-success" : ""}`}>
           {req.requester_link_verified ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
           Requester link
           {!req.requester_link_verified && isSender && (
             <button onClick={() => handleVerify("requester")} className="ml-1 underline hover:text-foreground">Verify</button>
           )}
         </span>
-        <span className={`flex items-center gap-1 ${req.target_link_verified ? "text-emerald-600" : ""}`}>
+        <span className={`flex items-center gap-1 ${req.target_link_verified ? "text-success" : ""}`}>
           {req.target_link_verified ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
           Target link
           {!req.target_link_verified && !isSender && (
@@ -453,7 +454,7 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
   return (
     <div className="flex flex-col gap-6">
       {/* Listing panel */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="glass p-5">
         <h3 className="text-sm font-medium mb-4">{listing ? "Your Listing" : "List Your Site"}</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input
@@ -517,7 +518,7 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {board.map((item) => (
-                <div key={item.id} className="rounded-lg border bg-card p-4 flex flex-col gap-3">
+                <div key={item.id} className="glass flex flex-col gap-3 p-4">
                   <div>
                     <p className="text-sm font-medium truncate">{item.site_url}</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -595,7 +596,13 @@ export default function BacklinksPage({ params }: { params: { projectId: string 
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 animate-fade-in">
+      <PageHeader
+        title="Backlinks"
+        icon={Link2}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Backlinks" }]}
+        description="Monitor your link profile, find opportunities, and exchange links."
+      />
       <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
         {tabs.map((t) => (
           <button

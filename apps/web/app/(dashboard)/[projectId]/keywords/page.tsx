@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Search, SearchCode, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -14,6 +14,9 @@ import {
   type KeywordCluster,
   type KeywordResearchJob,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
@@ -57,20 +60,19 @@ function DifficultyBar({ score }: { score: number | null }) {
 
 // ─── IntentBadge ───────────────────────────────────────────────────────────
 
+const INTENT_TONE: Record<NonNullable<Keyword["intent"]>, BadgeTone> = {
+  informational: "info",
+  navigational: "primary",
+  commercial: "warning",
+  transactional: "success",
+};
+
 function IntentBadge({ intent }: { intent: Keyword["intent"] }) {
   if (!intent) return <span className="text-muted-foreground">—</span>;
-
-  const styles: Record<NonNullable<Keyword["intent"]>, string> = {
-    informational: "bg-blue-50 text-blue-600",
-    navigational: "bg-violet-50 text-violet-600",
-    commercial: "bg-amber-50 text-amber-600",
-    transactional: "bg-emerald-50 text-emerald-600",
-  };
-
   return (
-    <span className={`badge ${styles[intent]}`}>
+    <Badge tone={INTENT_TONE[intent]}>
       {intent.charAt(0).toUpperCase() + intent.slice(1)}
-    </span>
+    </Badge>
   );
 }
 
@@ -185,13 +187,11 @@ function KeywordsTable({
                 <td className="px-5 py-3 font-medium text-foreground">
                   <span className="flex items-center gap-2">
                     {kw.keyword}
-                    {kw.is_seed && (
-                      <span className="badge bg-indigo-50 text-indigo-600">Seed</span>
-                    )}
+                    {kw.is_seed && <Badge tone="primary">Seed</Badge>}
                   </span>
                 </td>
                 <td className="px-5 py-3 tabular-nums text-muted-foreground">
-                  {kw.search_volume !== null
+                  {kw.search_volume != null
                     ? kw.search_volume.toLocaleString()
                     : "—"}
                 </td>
@@ -199,7 +199,7 @@ function KeywordsTable({
                   <DifficultyBar score={kw.difficulty} />
                 </td>
                 <td className="px-5 py-3 tabular-nums text-muted-foreground">
-                  {kw.cpc !== null ? `$${kw.cpc.toFixed(2)}` : "—"}
+                  {kw.cpc != null ? `$${kw.cpc.toFixed(2)}` : "—"}
                 </td>
                 <td className="px-5 py-3">
                   <IntentBadge intent={kw.intent} />
@@ -244,7 +244,7 @@ function ClustersGrid({
             )}
             <p className="mt-2 text-xs text-muted-foreground">
               {cluster.keyword_count} keywords &middot;{" "}
-              {cluster.total_volume.toLocaleString()} total vol
+              {(cluster.total_volume ?? 0).toLocaleString()} total vol
             </p>
           </button>
         );
@@ -264,7 +264,6 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"keywords" | "clusters">("keywords");
   const [activeClusterId, setActiveClusterId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -324,25 +323,20 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
     }
   }
 
-  function handleClusterClick(id: string) {
-    // Toggle: click same cluster deselects it; also switch to keywords tab to show filter
-    setActiveClusterId((prev) => (prev === id ? null : id));
-    setActiveTab("keywords");
-  }
-
   const seedKeyword = jobQuery.data?.seed_keyword ?? seedInput.trim();
+  const activeCluster = clusters.find((c) => c.id === activeClusterId) ?? null;
+  const filteredCount = activeClusterId
+    ? keywords.filter((k) => k.cluster_id === activeClusterId).length
+    : keywords.length;
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Keywords</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Discover high-ROI opportunities
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Keywords"
+        icon={SearchCode}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Keywords" }]}
+        description="Discover high-ROI keyword opportunities and group them into clusters."
+      />
 
       {/* Seed input */}
       <form onSubmit={handleAnalyze} className="card-base p-4 flex gap-3 items-center">
@@ -375,8 +369,8 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
 
       {/* Submit error */}
       {submitError && (
-        <div className="card-base p-4 border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800/30">
-          <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+          <p className="text-sm font-medium text-destructive">{submitError}</p>
         </div>
       )}
 
@@ -412,68 +406,83 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
 
       {/* ── Failed state ── */}
       {isFailed && (
-        <div className="card-base p-5 flex items-start gap-3 border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800/30">
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-5">
           <div>
-            <p className="text-sm font-semibold text-red-600 dark:text-red-400">Research failed</p>
-            <p className="mt-0.5 text-xs text-red-500/80 dark:text-red-400/70">
+            <p className="text-sm font-semibold text-destructive">Research failed</p>
+            <p className="mt-0.5 text-xs text-destructive/80">
               {jobQuery.data?.error ?? "An unexpected error occurred. Please try again."}
             </p>
           </div>
         </div>
       )}
 
-      {/* ── Done state ── */}
+      {/* ── Done state — clusters rail + table ── */}
       {isDone && (
-        <>
-          {/* Stats strip */}
-          <p className="text-xs text-muted-foreground">
-            {keywords.length.toLocaleString()} keywords found &bull; {clusters.length} clusters
-          </p>
-
-          {/* Tab bar */}
-          <div className="flex gap-1 border-b border-border">
-            {(["keywords", "clusters"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  activeTab === tab
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab === "keywords" ? "Keywords" : "Clusters"}
-                {tab === "keywords" && activeClusterId && (
-                  <span className="ml-1.5 badge bg-primary/10 text-primary text-[10px]">
-                    Filtered
-                  </span>
-                )}
-              </button>
-            ))}
-            {activeClusterId && (
+        <div className="flex flex-col gap-4 lg:flex-row">
+          {/* Clusters rail */}
+          <aside className="glass shrink-0 self-start overflow-hidden lg:w-64">
+            <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+              <p className="text-sm font-semibold">Clusters</p>
+              <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-muted-foreground">{clusters.length}</span>
+            </div>
+            <div className="max-h-[460px] overflow-y-auto p-2">
               <button
                 onClick={() => setActiveClusterId(null)}
-                className="ml-auto px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className={cn(
+                  "relative mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors",
+                  !activeClusterId ? "bg-primary/12 text-foreground" : "text-foreground/80 hover:bg-white/[0.04]",
+                )}
               >
-                Clear filter
+                {!activeClusterId && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
+                <span className="font-medium">All keywords</span>
+                <span className="text-xs text-muted-foreground">{keywords.length}</span>
               </button>
-            )}
-          </div>
+              {clusters.map((cluster) => {
+                const isSel = cluster.id === activeClusterId;
+                return (
+                  <button
+                    key={cluster.id}
+                    onClick={() => setActiveClusterId((prev) => (prev === cluster.id ? null : cluster.id))}
+                    className={cn(
+                      "relative mb-1 flex w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left transition-colors",
+                      isSel ? "bg-primary/12" : "hover:bg-white/[0.04]",
+                    )}
+                  >
+                    {isSel && <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
+                    <span className={cn("line-clamp-1 text-sm font-medium", isSel ? "text-foreground" : "text-foreground/85")}>{cluster.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {cluster.keyword_count} kw · {(cluster.total_volume ?? 0).toLocaleString()} vol
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
 
-          {/* Keywords tab */}
-          {activeTab === "keywords" && (
+          {/* Table pane */}
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="flex items-end justify-between">
+              <div>
+                <h2 className="font-display text-lg font-bold tracking-tight">
+                  {activeCluster ? activeCluster.name : "All keywords"}
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {filteredCount.toLocaleString()} keyword{filteredCount !== 1 ? "s" : ""}
+                  {activeCluster?.topic ? ` · ${activeCluster.topic}` : ""}
+                </p>
+              </div>
+              {activeClusterId && (
+                <button
+                  onClick={() => setActiveClusterId(null)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
             <KeywordsTable keywords={keywords} activeClusterId={activeClusterId} />
-          )}
-
-          {/* Clusters tab */}
-          {activeTab === "clusters" && (
-            <ClustersGrid
-              clusters={clusters}
-              activeClusterId={activeClusterId}
-              onClusterClick={handleClusterClick}
-            />
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

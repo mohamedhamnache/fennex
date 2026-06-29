@@ -27,6 +27,7 @@ import {
   type BrandVoiceSource,
   type VoiceTone,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // ─── Spinner ────────────────────────────────────────────────────────────────
 
@@ -70,13 +71,14 @@ const TONE_LABELS: Record<VoiceTone, string> = {
   inspirational: "Inspirational",
 };
 
+// Dark-mode-safe tone tints (500-level hue at low alpha reads on both themes).
 const TONE_COLORS: Record<VoiceTone, string> = {
-  professional: "bg-slate-50 text-slate-600",
-  conversational: "bg-sky-50 text-sky-600",
-  authoritative: "bg-indigo-50 text-indigo-600",
-  friendly: "bg-emerald-50 text-emerald-600",
-  technical: "bg-violet-50 text-violet-600",
-  inspirational: "bg-amber-50 text-amber-600",
+  professional: "bg-muted text-muted-foreground",
+  conversational: "bg-sky-500/12 text-sky-500",
+  authoritative: "bg-indigo-500/12 text-indigo-500",
+  friendly: "bg-emerald-500/12 text-emerald-500",
+  technical: "bg-violet-500/12 text-violet-500",
+  inspirational: "bg-amber-500/12 text-amber-600",
 };
 
 // ─── Tag Chip Input ──────────────────────────────────────────────────────────
@@ -176,7 +178,7 @@ function VoiceCard({
             setTimeout(() => setDeletingConfirm(false), 2000);
           }
         }}
-        className="absolute top-3 right-3 rounded-md p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"
+        className="absolute top-3 right-3 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
         aria-label="Delete voice"
         title={deletingConfirm ? "Click again to confirm" : "Delete"}
       >
@@ -197,7 +199,7 @@ function VoiceCard({
           {TONE_LABELS[voice.tone]}
         </span>
         {voice.is_default && (
-          <span className="badge text-[10px] bg-indigo-50 text-indigo-600 font-semibold">
+          <span className="badge text-[10px] bg-primary/10 text-primary font-semibold">
             Default
           </span>
         )}
@@ -797,22 +799,21 @@ export default function BrandVoicePage() {
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Brand Voice</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Define how your brand communicates
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          <Plus size={14} />
-          New Voice
-        </button>
-      </div>
+      <PageHeader
+        title="Brand Voice"
+        icon={Mic2}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Brand Voice" }]}
+        description="Define how your brand communicates across all generated content."
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+          >
+            <Plus size={13} />
+            New Voice
+          </button>
+        }
+      />
 
       {/* Loading */}
       {isLoading && (
@@ -824,8 +825,8 @@ export default function BrandVoicePage() {
 
       {/* Error */}
       {isError && (
-        <div className="card-base p-5 border-red-200 bg-red-50">
-          <p className="text-sm text-red-600">Failed to load brand voices. Please try again.</p>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5">
+          <p className="text-sm font-medium text-destructive">Failed to load brand voices. Please try again.</p>
         </div>
       )}
 

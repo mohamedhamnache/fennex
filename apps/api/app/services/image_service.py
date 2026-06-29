@@ -1,4 +1,4 @@
-"""Image generation service — DALL-E 3 with placeholder fallback."""
+"""Image generation service — gpt-image-1 with placeholder fallback."""
 import httpx
 import logging
 from typing import Literal
@@ -58,16 +58,17 @@ async def generate_image_dalle(
     # gpt-image-1 uses "medium"/"high" instead of "standard"/"hd"
     gpt_quality = "high" if quality == "hd" else "medium"
 
+    # Approximate gpt-image-1 costs — check OpenAI pricing for exact values
     if usage == "article_cover":
         size = "1536x1024"  # gpt-image-1 landscape; 1792x1024 no longer supported
         width = 1536
         height = 1024
-        cost_usd = 0.12 if quality == "hd" else 0.08
+        cost_usd = 0.25 if quality == "hd" else 0.06  # high/medium at 1536x1024
     else:
         size = "1024x1024"
         width = 1024
         height = 1024
-        cost_usd = 0.08 if quality == "hd" else 0.04
+        cost_usd = 0.17 if quality == "hd" else 0.04  # high/medium at 1024x1024
 
     payload = {
         "model": "gpt-image-1",
@@ -120,7 +121,7 @@ def get_placeholder_url(usage: str) -> dict:
     """
     Returns a placeholder image dict when no API key is available.
 
-    Sizes: article_cover → 1792x1024, social_post → 1024x1024, default → 1200x630
+    Sizes: article_cover → 1536x1024, social_post → 1024x1024, default → 1200x630
     """
     if usage == "article_cover":
         width, height = 1792, 1024

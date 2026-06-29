@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AlertCircle, CheckCircle2, Clock, Play } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Play, SearchCode } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ScoreGauge } from "@/components/ui/ScoreGauge";
 import {
@@ -15,6 +15,10 @@ import {
 } from "@/lib/api";
 import { useProjectStore } from "@/lib/store";
 import { FennecMascot } from "@fennex/ui";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
 type FlowState = "idle" | "crawling" | "auditing" | "done" | "error";
 
@@ -38,16 +42,17 @@ function Spinner({ size = 16 }: { size?: number }) {
   );
 }
 
+const SEVERITY_TONE: Record<AuditIssue["severity"], BadgeTone> = {
+  critical: "danger",
+  warning: "warning",
+  info: "info",
+};
+
 function SeverityBadge({ severity }: { severity: AuditIssue["severity"] }) {
-  const styles: Record<AuditIssue["severity"], string> = {
-    critical: "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400",
-    warning: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
-    info: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
-  };
   return (
-    <span className={`badge ${styles[severity]}`}>
+    <Badge tone={SEVERITY_TONE[severity]}>
       {severity.charAt(0).toUpperCase() + severity.slice(1)}
-    </span>
+    </Badge>
   );
 }
 
@@ -156,32 +161,31 @@ export default function AuditPage({ params }: { params: { projectId: string } })
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">SEO Audit</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Crawl your site and surface technical issues, content gaps, and on-page improvements.
-          </p>
-        </div>
-        <button
-          onClick={runAudit}
-          disabled={isRunning}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          {isRunning ? (
-            <>
-              <Spinner size={14} />
-              Running…
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              Run Audit
-            </>
-          )}
-        </button>
-      </div>
+      <PageHeader
+        title="SEO Audit"
+        icon={SearchCode}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Audit" }]}
+        description="Crawl your site and surface technical issues, content gaps, and on-page improvements."
+        actions={
+          <button
+            onClick={runAudit}
+            disabled={isRunning}
+            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+          >
+            {isRunning ? (
+              <>
+                <Spinner size={13} />
+                Running…
+              </>
+            ) : (
+              <>
+                <Play className="h-3.5 w-3.5" />
+                Run Audit
+              </>
+            )}
+          </button>
+        }
+      />
 
       {/* ── Idle state ── */}
       {phase === "idle" && (
@@ -227,11 +231,11 @@ export default function AuditPage({ params }: { params: { projectId: string } })
 
       {/* ── Error state ── */}
       {phase === "error" && errorMessage && (
-        <div className="card-base p-5 flex items-start gap-3 border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800/30">
-          <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-5">
+          <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-red-600 dark:text-red-400">Audit failed</p>
-            <p className="mt-0.5 text-xs text-red-500/80 dark:text-red-400/70">{errorMessage}</p>
+            <p className="text-sm font-semibold text-destructive">Audit failed</p>
+            <p className="mt-0.5 text-xs text-destructive/80">{errorMessage}</p>
           </div>
         </div>
       )}
@@ -240,15 +244,15 @@ export default function AuditPage({ params }: { params: { projectId: string } })
       {phase === "done" && auditResult && (
         <>
           {/* Success banner */}
-          <div className="card-base p-4 flex items-center gap-3 border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10 dark:border-emerald-800/30">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+            <p className="text-sm font-medium text-success">
               Audit completed successfully
             </p>
           </div>
 
           {/* Score gauges */}
-          <div className="card-base p-6">
+          <Card className="p-6">
             <h2 className="mb-5 text-sm font-semibold text-foreground">Score Overview</h2>
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
               <ScoreGauge score={auditResult.overall_score} label="Overall" />
@@ -256,40 +260,21 @@ export default function AuditPage({ params }: { params: { projectId: string } })
               <ScoreGauge score={auditResult.content_score} label="Content" />
               <ScoreGauge score={auditResult.onpage_score} label="On-Page" />
             </div>
-          </div>
+          </Card>
 
           {/* Summary stats */}
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              {
-                label: "Pages Audited",
-                value: auditResult.summary?.pages_audited ?? 0,
-                icon: Clock,
-                accent: "accent-indigo",
-              },
-              {
-                label: "Critical Issues",
-                value: auditResult.summary?.critical_issues ?? 0,
-                icon: AlertCircle,
-                accent: "accent-amber",
-              },
-              {
-                label: "Warnings",
-                value: auditResult.summary?.warnings ?? 0,
-                icon: AlertCircle,
-                accent: "accent-violet",
-              },
-            ].map((stat) => (
-              <div key={stat.label} className={`card-base card-shadow p-5 ${stat.accent}`}>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className="mt-1 text-2xl font-bold text-foreground">{stat.value}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label="Pages Audited" tone="primary" icon={Clock}
+              value={String(auditResult.summary?.pages_audited ?? 0)} />
+            <StatCard label="Critical Issues" tone="amber" icon={AlertCircle}
+              value={String(auditResult.summary?.critical_issues ?? 0)} />
+            <StatCard label="Warnings" tone="violet" icon={AlertCircle}
+              value={String(auditResult.summary?.warnings ?? 0)} />
           </div>
 
           {/* Issues table */}
           {auditResult.issues && auditResult.issues.length > 0 && (
-            <div className="card-base overflow-hidden">
+            <Card className="overflow-hidden">
               <div className="border-b border-border px-5 py-3">
                 <h2 className="text-sm font-semibold text-foreground">
                   Issues ({auditResult.issues.length})
@@ -341,17 +326,17 @@ export default function AuditPage({ params }: { params: { projectId: string } })
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
 
           {auditResult.issues?.length === 0 && (
-            <div className="card-base p-8 flex flex-col items-center gap-3 text-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+            <Card className="p-8 flex flex-col items-center gap-3 text-center">
+              <CheckCircle2 className="h-8 w-8 text-success" />
               <p className="text-sm font-semibold text-foreground">No issues found</p>
               <p className="text-xs text-muted-foreground">
                 Your site is in great shape — no SEO issues detected.
               </p>
-            </div>
+            </Card>
           )}
         </>
       )}

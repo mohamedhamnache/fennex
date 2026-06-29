@@ -1,18 +1,15 @@
-// apps/web/app/(dashboard)/[projectId]/analytics/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowUp, ArrowDown, BarChart2, MousePointerClick, Eye, TrendingUp, Crosshair } from "lucide-react";
+
+const AnalyticsAreaChart = dynamic(
+  () => import("./AnalyticsChart").then((m) => ({ default: m.AnalyticsAreaChart })),
+  { ssr: false, loading: () => <div className="h-[220px] animate-pulse rounded-xl bg-muted/30" /> },
+);
 import { FennecMascot } from "@fennex/ui";
 import {
   getAnalyticsOverview,
@@ -27,6 +24,12 @@ import {
   type AnalyticsRange,
   type RankingRow,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
+import { useToast } from "@/components/ui/Toast";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,8 +38,10 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function fmtPct(n: number) {
-  return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
+function fmtNum(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
 }
 
 // ─── DifficultyBar ───────────────────────────────────────────────────────────
@@ -56,77 +61,50 @@ function DifficultyBar({ score }: { score: number | null }) {
 
 // ─── IntentBadge ─────────────────────────────────────────────────────────────
 
+const INTENT_TONE: Record<string, BadgeTone> = {
+  informational: "info",
+  navigational: "primary",
+  commercial: "warning",
+  transactional: "success",
+};
+
 function IntentBadge({ intent }: { intent: string | null }) {
   if (!intent) return <span className="text-muted-foreground">—</span>;
-  const styles: Record<string, string> = {
-    informational: "bg-blue-50 text-blue-600",
-    navigational: "bg-violet-50 text-violet-600",
-    commercial: "bg-amber-50 text-amber-600",
-    transactional: "bg-emerald-50 text-emerald-600",
-  };
   return (
-    <span className={`badge ${styles[intent] ?? "bg-muted text-muted-foreground"}`}>
+    <Badge tone={INTENT_TONE[intent] ?? "neutral"}>
       {intent.charAt(0).toUpperCase() + intent.slice(1)}
-    </span>
-  );
-}
-
-// ─── StatCard ────────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  change,
-  invertChange = false,
-  format = "number",
-}: {
-  label: string;
-  value: number;
-  change: number;
-  invertChange?: boolean;
-  format?: "number" | "pct" | "pos";
-}) {
-  const displayValue =
-    format === "pct"
-      ? `${(value * 100).toFixed(2)}%`
-      : format === "pos"
-        ? value.toFixed(1)
-        : value.toLocaleString();
-
-  // For position: lower is better, so a positive change_pct means rank got worse
-  const effectiveChange = invertChange ? -change : change;
-  const isPositive = effectiveChange > 0;
-  const isNeutral = Math.abs(effectiveChange) < 0.1;
-
-  return (
-    <div className="rounded-lg border bg-card p-5 flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-2xl font-semibold tabular-nums">{displayValue}</span>
-      {!isNeutral && (
-        <span
-          className={`flex items-center gap-1 text-xs font-medium ${isPositive ? "text-emerald-600" : "text-red-500"}`}
-        >
-          {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-          {fmtPct(Math.abs(change))} vs prior period
-        </span>
-      )}
-      {isNeutral && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Minus className="h-3.5 w-3.5" /> No change
-        </span>
-      )}
-    </div>
+    </Badge>
   );
 }
 
 // ─── GscBanner ───────────────────────────────────────────────────────────────
 
 function GscBanner({ projectId }: { projectId: string }) {
-  const { data: status } = useQuery({
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const { success: showSuccess, error: showError } = useToast();
+
+  const { data: status, refetch } = useQuery({
     queryKey: ["analytics", "gsc-status", projectId],
     queryFn: () => getGscStatus(projectId),
     staleTime: 30_000,
   });
+
+  // Handle redirect back from Google OAuth
+  useEffect(() => {
+    const connected = searchParams.get("gsc_connected");
+    const gscError = searchParams.get("gsc_error");
+    if (connected === "1") {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["analytics", "gsc-status", projectId] });
+      showSuccess("Search Console connected", { message: "Traffic data will sync shortly." });
+      router.replace(`/${projectId}/analytics`, { scroll: false });
+    } else if (gscError) {
+      showError("Failed to connect Search Console", { message: gscError.replace(/_/g, " ") });
+      router.replace(`/${projectId}/analytics`, { scroll: false });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleConnect() {
     const res = await connectGsc(projectId);
@@ -135,7 +113,7 @@ function GscBanner({ projectId }: { projectId: string }) {
 
   async function handleDisconnect() {
     await disconnectGsc(projectId);
-    window.location.reload();
+    queryClient.invalidateQueries({ queryKey: ["analytics", "gsc-status", projectId] });
   }
 
   if (!status) {
@@ -145,8 +123,9 @@ function GscBanner({ projectId }: { projectId: string }) {
   if (status.is_connected) {
     return (
       <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2.5 text-sm">
-        <span className="text-muted-foreground">
-          Google Search Console connected — <strong>{status.google_email}</strong>
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+          Search Console connected — <strong className="text-foreground">{status.google_email}</strong>
           {status.last_synced_at && (
             <> · Last synced {new Date(status.last_synced_at).toLocaleDateString()}</>
           )}
@@ -178,12 +157,12 @@ function GscBanner({ projectId }: { projectId: string }) {
 function OverviewSkeleton() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="rounded-lg border bg-card p-5 h-24 animate-pulse bg-muted/30" />
+          <div key={i} className="h-28 animate-pulse rounded-xl border bg-muted/30" />
         ))}
       </div>
-      <div className="rounded-lg border bg-card p-5 h-56 animate-pulse bg-muted/30" />
+      <div className="h-56 animate-pulse rounded-xl border bg-muted/30" />
     </div>
   );
 }
@@ -218,85 +197,33 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Clicks" value={overview.clicks} change={overview.clicks_change} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          label="Impressions"
-          value={overview.impressions}
-          change={overview.impressions_change}
+          label="Clicks" tone="primary" icon={MousePointerClick}
+          value={fmtNum(overview.clicks)} change={overview.clicks_change}
+          spark={traffic.map((t) => t.clicks)}
         />
         <StatCard
-          label="Avg CTR"
-          value={overview.ctr}
-          change={overview.ctr_change}
-          format="pct"
+          label="Impressions" tone="violet" icon={Eye}
+          value={fmtNum(overview.impressions)} change={overview.impressions_change}
+          spark={traffic.map((t) => t.impressions)}
         />
         <StatCard
-          label="Avg Position"
-          value={overview.avg_position}
-          change={overview.position_change}
-          format="pos"
-          invertChange
+          label="Avg CTR" tone="emerald" icon={TrendingUp}
+          value={`${(overview.ctr * 100).toFixed(2)}%`} change={overview.ctr_change}
+        />
+        <StatCard
+          label="Avg Position" tone="amber" icon={Crosshair}
+          value={overview.avg_position.toFixed(1)} change={overview.position_change} invertChange
         />
       </div>
 
-      <div className="rounded-lg border bg-card p-5">
+      <Card className="p-5">
         <p className="mb-4 text-sm font-medium text-muted-foreground">
           Clicks &amp; Impressions
         </p>
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-              tickLine={false}
-              axisLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-              tickLine={false}
-              axisLine={false}
-              width={36}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="impressions"
-              stroke="hsl(var(--muted-foreground))"
-              strokeWidth={1.5}
-              fill="url(#colorImpressions)"
-              name="Impressions"
-            />
-            <Area
-              type="monotone"
-              dataKey="clicks"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
-              fill="url(#colorClicks)"
-              name="Clicks"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+        <AnalyticsAreaChart data={chartData} />
+      </Card>
     </div>
   );
 }
@@ -343,7 +270,7 @@ function RankingsTab({ projectId }: { projectId: string }) {
         ))}
       </div>
 
-      <div className="rounded-lg border overflow-hidden">
+      <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
@@ -375,12 +302,12 @@ function RankingsTab({ projectId }: { projectId: string }) {
                   {row.position_change === null ? (
                     <span className="text-muted-foreground">—</span>
                   ) : row.position_change < 0 ? (
-                    <span className="text-emerald-600 flex items-center justify-end gap-0.5">
+                    <span className="text-success flex items-center justify-end gap-0.5">
                       <ArrowUp className="h-3 w-3" />
                       {Math.abs(row.position_change).toFixed(1)}
                     </span>
                   ) : row.position_change > 0 ? (
-                    <span className="text-red-500 flex items-center justify-end gap-0.5">
+                    <span className="text-destructive flex items-center justify-end gap-0.5">
                       <ArrowDown className="h-3 w-3" />
                       {row.position_change.toFixed(1)}
                     </span>
@@ -392,7 +319,7 @@ function RankingsTab({ projectId }: { projectId: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <button
@@ -427,7 +354,7 @@ function MetricsTable<T extends { clicks: number; impressions: number; ctr: numb
   labelHeader: string;
 }) {
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <Card className="overflow-hidden">
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/40">
           <tr>
@@ -452,7 +379,7 @@ function MetricsTable<T extends { clicks: number; impressions: number; ctr: numb
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }
 
@@ -512,7 +439,7 @@ function ContentPerformanceTab({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <Card className="overflow-hidden">
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/40">
           <tr>
@@ -542,7 +469,7 @@ function ContentPerformanceTab({ projectId }: { projectId: string }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }
 
@@ -563,49 +490,68 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 animate-fade-in">
+      <PageHeader
+        title="Analytics"
+        icon={BarChart2}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Analytics" }]}
+        description="Search performance, rankings, and content impact."
+      />
+
       <GscBanner projectId={projectId} />
 
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 rounded-lg border bg-muted/30 p-1">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === t.key
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+      <div className="flex flex-col gap-5 lg:flex-row">
+        {/* Sticky filter rail */}
+        <aside className="glass shrink-0 self-start p-3 lg:sticky lg:top-2 lg:w-52">
+          <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Views</p>
+          <nav className="flex flex-col gap-0.5">
+            {tabs.map((t) => {
+              const active = activeTab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  className={cn(
+                    "relative rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                    active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                  )}
+                >
+                  {active && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
+                  {t.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {activeTab === "overview" && (
+            <div className="mt-4 border-t border-white/[0.06] pt-3">
+              <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Date range</p>
+              <div className="flex gap-1">
+                {(["7d", "28d", "90d"] as AnalyticsRange[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRange(r)}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors",
+                      range === r ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          {activeTab === "overview" && <OverviewTab projectId={projectId} range={range} />}
+          {activeTab === "rankings" && <RankingsTab projectId={projectId} />}
+          {activeTab === "pages" && <PagesQueriesTab projectId={projectId} />}
+          {activeTab === "content" && <ContentPerformanceTab projectId={projectId} />}
         </div>
-
-        {(activeTab === "overview") && (
-          <div className="flex gap-1 rounded-lg border bg-muted/30 p-1">
-            {(["7d", "28d", "90d"] as AnalyticsRange[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  range === r
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
-
-      {activeTab === "overview" && <OverviewTab projectId={projectId} range={range} />}
-      {activeTab === "rankings" && <RankingsTab projectId={projectId} />}
-      {activeTab === "pages" && <PagesQueriesTab projectId={projectId} />}
-      {activeTab === "content" && <ContentPerformanceTab projectId={projectId} />}
     </div>
   );
 }

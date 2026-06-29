@@ -1,4 +1,4 @@
 FROM node:20-alpine
 WORKDIR /app
 RUN corepack enable pnpm
-CMD ["sh", "-c", "pnpm install && cd apps/web && pnpm exec next dev --port 3000 --hostname 0.0.0.0"]
+CMD ["sh", "-c", "pnpm install && cd apps/web && pnpm exec next dev --turbo --port 3000 --hostname 0.0.0.0"]

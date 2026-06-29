@@ -567,9 +567,9 @@ function ArticleEditor({
     queryFn: listApiKeys,
   });
 
-  const connectedProviders = apiKeys
-    .map((k) => k.provider)
-    .filter((p) => p in PROVIDER_MODELS);
+  const connectedProviders = [...new Set(apiKeys.map((k) => k.provider))].filter(
+    (p) => p in PROVIDER_MODELS,
+  );
 
   // Cleanup debounce timeout on unmount
   useEffect(() => {

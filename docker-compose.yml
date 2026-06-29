@@ -1,7 +1,6 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    # port not exposed to host — api/worker use internal docker network
     environment:
       POSTGRES_USER: fennex
       POSTGRES_PASSWORD: fennex
@@ -16,7 +15,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    # port not exposed to host — api/worker use internal docker network
     volumes:
       - redis_data:/data
     healthcheck:

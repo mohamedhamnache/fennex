@@ -15,6 +15,7 @@ import {
   RefreshCw,
   X,
   Send,
+  Share2,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -32,6 +33,8 @@ import {
   type SocialPostStatus,
   type Article,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -63,11 +66,11 @@ const POST_TYPE_LABELS: Record<SocialPostType, string> = {
   announcement: "Announcement",
 };
 
-const STATUS_STYLES: Record<SocialPostStatus, string> = {
-  draft: "bg-gray-50 text-gray-600",
-  scheduled: "bg-blue-50 text-blue-600",
-  published: "bg-emerald-50 text-emerald-600",
-  failed: "bg-red-50 text-red-600",
+const STATUS_TONE: Record<SocialPostStatus, BadgeTone> = {
+  draft: "neutral",
+  scheduled: "info",
+  published: "success",
+  failed: "danger",
 };
 
 const PLATFORMS: SocialPlatform[] = ["linkedin", "twitter", "instagram", "facebook"];
@@ -114,9 +117,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
 // ─── Status Badge ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: SocialPostStatus }) {
-  return (
-    <span className={`badge capitalize ${STATUS_STYLES[status]}`}>{status}</span>
-  );
+  return <Badge tone={STATUS_TONE[status]} className="capitalize">{status}</Badge>;
 }
 
 // ─── Char Count ─────────────────────────────────────────────────────────────
@@ -312,7 +313,7 @@ function SocialPostCard({
                           deleteMutation.mutate();
                         }
                       }}
-                      className="w-full px-4 py-2.5 text-sm text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       Delete
                     </button>
@@ -858,22 +859,21 @@ export default function SocialPage({ params }: { params: { projectId: string } }
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground font-display">Social Studio</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            AI-crafted posts for every platform
-          </p>
-        </div>
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          New Post
-        </button>
-      </div>
+      <PageHeader
+        title="Social Studio"
+        icon={Share2}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Social" }]}
+        description="AI-crafted posts for every platform."
+        actions={
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Post
+          </button>
+        }
+      />
 
       {/* Platform tabs */}
       <PlatformTabs active={platformFilter} onChange={setPlatformFilter} />

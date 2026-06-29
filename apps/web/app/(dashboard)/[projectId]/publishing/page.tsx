@@ -12,6 +12,7 @@ import {
   XCircle,
   ToggleLeft,
   ToggleRight,
+  Send,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -26,6 +27,8 @@ import {
   type PublishJob,
   type PublishingPlatform,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
@@ -42,9 +45,9 @@ function Spinner({ size = 16 }: { size?: number }) {
 
 const PLATFORM_STYLES: Record<PublishingPlatform, string> = {
   wordpress: "bg-[#21759b]/10 text-[#21759b]",
-  ghost: "bg-gray-100 text-gray-600",
-  notion: "bg-gray-100 text-gray-600",
-  custom: "bg-gray-100 text-gray-600",
+  ghost: "bg-muted text-muted-foreground",
+  notion: "bg-muted text-muted-foreground",
+  custom: "bg-muted text-muted-foreground",
 };
 
 function PlatformBadge({ platform }: { platform: PublishingPlatform }) {
@@ -56,17 +59,15 @@ function PlatformBadge({ platform }: { platform: PublishingPlatform }) {
 
 // ─── Job status badge ──────────────────────────────────────────────────────
 
-const JOB_STATUS_STYLES = {
-  done: "bg-emerald-50 text-emerald-600",
-  failed: "bg-red-50 text-red-600",
-  running: "bg-blue-50 text-blue-600",
-  pending: "bg-gray-50 text-gray-600",
+const JOB_STATUS_TONE: Record<string, BadgeTone> = {
+  done: "success",
+  failed: "danger",
+  running: "info",
+  pending: "neutral",
 };
 
-function JobStatusBadge({ status }: { status: keyof typeof JOB_STATUS_STYLES }) {
-  return (
-    <span className={`badge capitalize ${JOB_STATUS_STYLES[status]}`}>{status}</span>
-  );
+function JobStatusBadge({ status }: { status: keyof typeof JOB_STATUS_TONE }) {
+  return <Badge tone={JOB_STATUS_TONE[status] ?? "neutral"} className="capitalize">{status}</Badge>;
 }
 
 // ─── Relative time helper ──────────────────────────────────────────────────
@@ -172,7 +173,7 @@ function ConnectionCard({
             {testResult !== null && (
               <span
                 className={`text-xs font-medium flex items-center gap-1 ${
-                  testResult.ok ? "text-emerald-600" : "text-red-500"
+                  testResult.ok ? "text-success" : "text-destructive"
                 }`}
               >
                 {testResult.ok ? (
@@ -239,7 +240,7 @@ function ConnectionCard({
                 </button>
                 <button
                   onClick={() => { setMenuOpen(false); onDelete(); }}
-                  className="w-full px-4 py-2.5 text-sm text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   Delete
                 </button>
@@ -507,22 +508,21 @@ export default function PublishingPage({ params }: { params: { projectId: string
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground font-display">Publishing</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Connect your CMS and publish articles directly
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Add Connection
-        </button>
-      </div>
+      <PageHeader
+        title="Publishing"
+        icon={Send}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Publishing" }]}
+        description="Connect your CMS and publish articles directly."
+        actions={
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Connection
+          </button>
+        }
+      />
 
       {/* Connections section */}
       <div>

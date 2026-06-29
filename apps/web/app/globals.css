@@ -27,30 +27,32 @@
     --success: 142 71% 35%;
     --warning: 32 95% 44%;
     --destructive: 0 84% 55%;
+    --info: 217 91% 56%;
   }
 
-  /* ─── Dark mode ─── */
+  /* ─── Dark mode — "Aurora" (default) ─── */
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 222 47% 7%;
-    --card-foreground: 213 31% 91%;
-    --border: 216 34% 13%;
-    --input: 216 34% 10%;
-    --primary: 252 95% 68%;
+    --background: 224 64% 3%;
+    --foreground: 213 31% 95%;
+    --card: 224 44% 7%;
+    --card-foreground: 213 31% 95%;
+    --border: 222 32% 15%;
+    --input: 222 32% 11%;
+    --primary: 256 92% 67%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 216 34% 13%;
-    --secondary-foreground: 213 31% 75%;
-    --muted: 216 34% 10%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 216 34% 15%;
-    --accent-foreground: 213 31% 91%;
-    --ring: 252 95% 68%;
-    --sidebar-bg: 222 47% 6%;
-    --sidebar-border: 216 34% 11%;
-    --success: 142 71% 42%;
-    --warning: 32 95% 50%;
-    --destructive: 0 84% 60%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 213 31% 82%;
+    --muted: 222 28% 12%;
+    --muted-foreground: 217 18% 58%;
+    --accent: 222 30% 16%;
+    --accent-foreground: 213 31% 95%;
+    --ring: 256 92% 67%;
+    --sidebar-bg: 224 56% 4%;
+    --sidebar-border: 222 30% 13%;
+    --success: 152 65% 46%;
+    --warning: 35 95% 57%;
+    --destructive: 358 80% 64%;
+    --info: 217 91% 66%;
   }
 }
 
@@ -207,11 +209,16 @@
   font-feature-settings: "ss01", "cv01";
 }
 
-/* ── Cards ── */
+/* ── Cards (Aurora glass in dark, soft surface in light) ── */
 .card-base {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  border-radius: 14px;
+}
+.dark .card-base {
+  background: hsl(var(--card));
+  border-color: hsl(0 0% 100% / 0.07);
+  box-shadow: inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
 }
 
 /* Light card shadow */
@@ -231,9 +238,9 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12) !important;
 }
 
-/* ── Gradient CTA button ── */
+/* ── Gradient CTA button (Aurora: indigo→violet→fuchsia + glow) ── */
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
   color: white;
   font-weight: 600;
   border-radius: 8px;
@@ -292,4 +299,202 @@ input:focus, textarea:focus, select:focus {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 6px;
+}
+
+/* ── Signature header mesh band ── */
+.header-mesh {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.header-mesh::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60% 120% at 0% 0%, hsl(252 95% 63% / 0.10) 0%, transparent 55%),
+    radial-gradient(50% 120% at 100% 0%, hsl(280 90% 60% / 0.08) 0%, transparent 50%);
+}
+.dark .header-mesh::before {
+  background:
+    radial-gradient(60% 120% at 0% 0%, hsl(252 95% 68% / 0.16) 0%, transparent 55%),
+    radial-gradient(50% 120% at 100% 0%, hsl(280 90% 65% / 0.12) 0%, transparent 50%);
+}
+
+/* ── Elevated card (hover lift) ── */
+.card-elevated {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+.card-elevated:hover {
+  border-color: hsl(var(--primary) / 0.28);
+  box-shadow: 0 1px 3px hsl(220 13% 0% / 0.05), 0 8px 28px hsl(252 95% 63% / 0.10);
+  transform: translateY(-1px);
+}
+.dark .card-elevated:hover {
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.3), 0 8px 28px hsl(252 95% 68% / 0.12);
+}
+
+/* ── Command palette overlay ── */
+.cmd-overlay {
+  background: hsl(222 47% 4% / 0.55);
+  backdrop-filter: blur(4px);
+}
+.cmd-panel {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  box-shadow: 0 24px 64px hsl(220 13% 0% / 0.28), 0 8px 24px hsl(220 13% 0% / 0.18);
+}
+.dark .cmd-panel {
+  background: hsl(224 44% 8% / 0.85);
+  border-color: hsl(0 0% 100% / 0.09);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 32px 80px hsl(0 0% 0% / 0.6), 0 0 0 1px hsl(var(--primary) / 0.08), inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
+}
+.dark .cmd-overlay { background: hsl(224 64% 1% / 0.6); }
+
+/* ── Popover (menus, notifications) ── */
+.popover {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 12px 40px hsl(220 13% 0% / 0.16), 0 4px 12px hsl(220 13% 0% / 0.08);
+}
+.dark .popover {
+  background: hsl(224 44% 8% / 0.9);
+  border-color: hsl(0 0% 100% / 0.09);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 48px hsl(0 0% 0% / 0.55), inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
+}
+
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.97) translateY(-4px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+.animate-scale-in { animation: scaleIn 0.14s ease-out both; }
+
+@keyframes toastIn { from { opacity: 0; transform: translateX(12px) } to { opacity: 1; transform: translateX(0) } }
+.animate-toast-in { animation: toastIn 0.2s cubic-bezier(0.21, 1.02, 0.73, 1) both; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AURORA — dark-first glass + glow system
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Aurora background field (fixed, behind everything) ── */
+.aurora-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.dark .aurora-blob { opacity: 0.55; }
+:root .aurora-blob { opacity: 0.22; }
+.aurora-blob-1 {
+  width: 46vw; height: 46vw; top: -12vw; left: -6vw;
+  background: radial-gradient(circle, #6366f1 0%, transparent 68%);
+  animation: auroraDrift1 26s ease-in-out infinite alternate;
+}
+.aurora-blob-2 {
+  width: 40vw; height: 40vw; top: -8vw; right: -8vw;
+  background: radial-gradient(circle, #d946ef 0%, transparent 68%);
+  animation: auroraDrift2 32s ease-in-out infinite alternate;
+}
+.aurora-blob-3 {
+  width: 38vw; height: 38vw; bottom: -16vw; left: 28vw;
+  background: radial-gradient(circle, #8b5cf6 0%, transparent 68%);
+  animation: auroraDrift3 30s ease-in-out infinite alternate;
+}
+@keyframes auroraDrift1 { from { transform: translate(0,0) scale(1) } to { transform: translate(6vw,4vw) scale(1.12) } }
+@keyframes auroraDrift2 { from { transform: translate(0,0) scale(1) } to { transform: translate(-5vw,6vw) scale(1.08) } }
+@keyframes auroraDrift3 { from { transform: translate(0,0) scale(1) } to { transform: translate(4vw,-5vw) scale(1.1) } }
+
+/* ── Glass surfaces ── */
+.glass {
+  position: relative;
+  background: hsl(0 0% 100% / 0.03);
+  border: 1px solid hsl(0 0% 100% / 0.07);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
+}
+/* Light-mode adaptation: glass becomes a soft solid surface */
+:root .glass {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(220 13% 0% / 0.05), 0 6px 20px hsl(220 13% 0% / 0.04);
+}
+
+.glass-hover { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.glass-hover:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow:
+    inset 0 1px 0 0 hsl(0 0% 100% / 0.06),
+    0 12px 40px hsl(256 92% 50% / 0.22),
+    0 0 0 1px hsl(var(--primary) / 0.12);
+}
+:root .glass-hover:hover {
+  box-shadow: 0 1px 3px hsl(220 13% 0% / 0.06), 0 12px 36px hsl(256 92% 50% / 0.14);
+}
+
+/* ── Glow accents ── */
+.glow-primary { box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 28px hsl(256 92% 55% / 0.35); }
+.text-gradient-brand {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 45%, #e879f9 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ── Aurora primary button (gradient + glow) ── */
+.btn-aurora {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
+  color: #fff; font-weight: 600; border-radius: 10px;
+  box-shadow: 0 1px 2px hsl(256 92% 40% / 0.4), 0 6px 20px hsl(256 92% 50% / 0.35);
+  transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
+}
+.btn-aurora:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 2px 6px hsl(256 92% 40% / 0.5), 0 10px 30px hsl(290 85% 55% / 0.4); }
+.btn-aurora:active:not(:disabled) { transform: scale(0.98); }
+.btn-aurora:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Glass header band with aurora glow ── */
+.aurora-header {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid hsl(0 0% 100% / 0.07);
+  background: hsl(0 0% 100% / 0.025);
+  backdrop-filter: blur(12px);
+}
+:root .aurora-header { background: hsl(var(--card)); border-color: hsl(var(--border)); }
+.aurora-header::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 140% at 0% 0%, hsl(256 92% 60% / 0.20) 0%, transparent 55%),
+    radial-gradient(50% 140% at 100% 0%, hsl(292 84% 60% / 0.16) 0%, transparent 55%);
+}
+:root .aurora-header::before {
+  background:
+    radial-gradient(60% 140% at 0% 0%, hsl(256 92% 60% / 0.10) 0%, transparent 55%),
+    radial-gradient(50% 140% at 100% 0%, hsl(292 84% 60% / 0.08) 0%, transparent 55%);
+}
+
+/* ── Dark table rows: subtle hover glow ── */
+.dark table tbody tr { transition: background-color 0.15s ease, box-shadow 0.15s ease; }
+.dark table tbody tr:hover {
+  background-color: hsl(0 0% 100% / 0.035) !important;
+  box-shadow: inset 2px 0 0 0 hsl(var(--primary) / 0.5);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob { animation: none !important; }
+  .animate-fade-in, .animate-slide-up, .animate-scale-in, .animate-toast-in { animation: none !important; }
 }

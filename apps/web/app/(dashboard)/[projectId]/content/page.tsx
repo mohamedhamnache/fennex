@@ -17,6 +17,7 @@ import {
   type ContentItemStatus,
   type ContentItemType,
 } from "@/lib/api";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
@@ -52,16 +53,17 @@ const STATUS_LABELS: Record<ContentItemStatus, string> = {
   published: "Published",
 };
 
+// Dark-mode-safe tints (500-level hue at low alpha reads on both themes).
 const STATUS_COLORS: Record<ContentItemStatus, string> = {
-  idea: "bg-gray-50 text-gray-600",
-  draft: "bg-blue-50 text-blue-600",
-  in_review: "bg-amber-50 text-amber-600",
-  approved: "bg-emerald-50 text-emerald-600",
-  published: "bg-indigo-50 text-indigo-600",
+  idea: "bg-muted text-muted-foreground",
+  draft: "bg-blue-500/12 text-blue-600",
+  in_review: "bg-amber-500/12 text-amber-600",
+  approved: "bg-emerald-500/12 text-emerald-600",
+  published: "bg-indigo-500/12 text-indigo-500",
 };
 
 const STATUS_HEADER_COLORS: Record<ContentItemStatus, string> = {
-  idea: "text-gray-500",
+  idea: "text-muted-foreground",
   draft: "text-blue-500",
   in_review: "text-amber-500",
   approved: "text-emerald-500",
@@ -69,10 +71,10 @@ const STATUS_HEADER_COLORS: Record<ContentItemStatus, string> = {
 };
 
 const TYPE_COLORS: Record<ContentItemType, string> = {
-  article: "bg-indigo-50 text-indigo-600",
-  landing_page: "bg-violet-50 text-violet-600",
-  social_post: "bg-pink-50 text-pink-600",
-  email: "bg-amber-50 text-amber-600",
+  article: "bg-indigo-500/12 text-indigo-500",
+  landing_page: "bg-violet-500/12 text-violet-500",
+  social_post: "bg-pink-500/12 text-pink-500",
+  email: "bg-amber-500/12 text-amber-600",
 };
 
 const TYPE_LABELS: Record<ContentItemType, string> = {
@@ -415,7 +417,7 @@ function DetailDrawer({
           <button
             onClick={() => deleteMutation.mutate()}
             disabled={deleteMutation.isPending}
-            className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+            className="w-full rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/15 transition-colors flex items-center justify-center gap-2"
           >
             {deleteMutation.isPending ? (
               <>
@@ -694,7 +696,7 @@ function ListView({
                         deleteMutation.mutate(item.id);
                       }}
                       disabled={deletingItemId === item.id}
-                      className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50 transition-colors"
+                      className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       {deletingItemId === item.id ? <Spinner size={10} /> : "Delete"}
                     </button>
@@ -784,46 +786,46 @@ export default function ContentPage({ params }: { params: { projectId: string } 
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Content Planner</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Plan and manage your content pipeline</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowNewItemForm(true)}
-            disabled={isLoading || !plan}
-            title={!plan ? "Generate a plan first" : undefined}
-            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            + New Item
-          </button>
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            disabled={isLoading || isGenerating}
-            className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-          >
-            {isGenerating ? (
-              <>
-                <Spinner size={14} />
-                Generating...
-              </>
-            ) : (
-              <><Sparkles size={14} className="inline mr-1" />Generate Plan</>
-
-            )}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Content Planner"
+        icon={FileText}
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Planner" }]}
+        description="Plan and manage your content pipeline."
+        actions={
+          <>
+            <button
+              onClick={() => setShowNewItemForm(true)}
+              disabled={isLoading || !plan}
+              title={!plan ? "Generate a plan first" : undefined}
+              className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              + New Item
+            </button>
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              disabled={isLoading || isGenerating}
+              className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+            >
+              {isGenerating ? (
+                <>
+                  <Spinner size={13} />
+                  Generating...
+                </>
+              ) : (
+                <><Sparkles size={13} className="inline mr-1" />Generate Plan</>
+              )}
+            </button>
+          </>
+        }
+      />
 
       {/* Success / error toast */}
       {successMessage && (
         <div
           className={`rounded-lg border px-4 py-3 text-sm font-medium ${
             successMessage.startsWith("Error:")
-              ? "border-red-200 bg-red-50 text-red-600"
-              : "border-emerald-200 bg-emerald-50 text-emerald-600"
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-success/30 bg-success/10 text-success"
           }`}
         >
           {successMessage}
@@ -840,8 +842,8 @@ export default function ContentPage({ params }: { params: { projectId: string } 
 
       {/* Error */}
       {hasError && (
-        <div className="card-base p-5 border-red-200 bg-red-50">
-          <p className="text-sm text-red-600">Failed to load content plans. Please try again.</p>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5">
+          <p className="text-sm font-medium text-destructive">Failed to load content plans. Please try again.</p>
         </div>
       )}
 
