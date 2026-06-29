@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_STARTER_MONTHLY: str = ""
+    STRIPE_PRICE_STARTER_ANNUAL: str = ""
+    STRIPE_PRICE_PRO_MONTHLY: str = ""
+    STRIPE_PRICE_PRO_ANNUAL: str = ""
+    STRIPE_PRICE_AGENCY_MONTHLY: str = ""
+    STRIPE_PRICE_AGENCY_ANNUAL: str = ""
 
     # Internal service URLs
     CRAWLER_SERVICE_URL: str = "http://crawler:8001"
@@ -48,6 +54,14 @@ class Settings(BaseSettings):
     # DataForSEO credentials
     DATAFORSEO_LOGIN: str = ""
     DATAFORSEO_PASSWORD: str = ""
+
+    # Google OAuth (for Search Console integration)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/analytics/gsc/callback"
+
+    # Frontend base URL (used for OAuth redirects back to the app)
+    FRONTEND_URL: str = "http://localhost:3001"
 
     @property
     def REDIS_SETTINGS(self) -> Any:
