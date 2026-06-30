@@ -73,3 +73,6 @@ Thumbs.db
 
 # Claude Code session files
 .claude/
+
+# Temp build artifacts
+apps/web/tmp/
