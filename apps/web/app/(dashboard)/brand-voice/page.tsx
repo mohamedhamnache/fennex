@@ -718,9 +718,9 @@ function CreateVoiceModal({
               onChange={(e) => setTone(e.target.value as VoiceTone)}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
             >
-              {TONES.map((tone) => (
-                <option key={tone} value={tone}>
-                  {t(`brandVoice.tones.${tone}`)}
+              {TONES.map((toneOption) => (
+                <option key={toneOption} value={toneOption}>
+                  {t(`brandVoice.tones.${toneOption}`)}
                 </option>
               ))}
             </select>
