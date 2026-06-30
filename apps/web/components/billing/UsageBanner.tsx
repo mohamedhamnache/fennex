@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useUsageStore } from "@/lib/billing-store";
 import { cn } from "@/lib/cn";
 
@@ -20,6 +21,7 @@ interface UsageBannerProps {
 }
 
 export function UsageBanner({ onUpgrade }: UsageBannerProps) {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
   const usage = useUsageStore((s) => s.usage);
   const warnResource = useUsageStore((s) => s.warnResource);
@@ -46,11 +48,11 @@ export function UsageBanner({ onUpgrade }: UsageBannerProps) {
         <Zap className="h-3.5 w-3.5 shrink-0" />
         <span>
           {isAtLimit
-            ? `You've reached your ${label} limit (${used}/${limit}).`
-            : `You've used ${used}/${limit} ${label} this month.`}
+            ? t("billing.atLimit", { label, used, limit })
+            : t("billing.nearLimit", { used, limit, label })}
           {" "}
           <button onClick={onUpgrade} className="underline underline-offset-2 font-medium">
-            Upgrade to continue →
+            {t("billing.upgradeToContinue")}
           </button>
         </span>
       </div>

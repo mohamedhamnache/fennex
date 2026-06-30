@@ -1,5 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const enCommon = require("../public/locales/en/common.json");
 
 export const SUPPORTED_LOCALES = ["en", "fr", "es", "de", "pt", "ar"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
@@ -21,7 +23,9 @@ if (!i18n.isInitialized) {
     supportedLngs: SUPPORTED_LOCALES,
     ns: ["common"],
     defaultNS: "common",
-    resources: typeof window === "undefined" ? { en: { common: {} } } : undefined,
+    // Always seed English so SSR and initial client render produce identical text,
+    // preventing React hydration mismatches on translation keys.
+    resources: { en: { common: enCommon } },
     lng: typeof window === "undefined" ? "en" : undefined,
     backend: { loadPath: "/locales/{{lng}}/{{ns}}.json" },
     detection:

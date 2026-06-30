@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -34,6 +35,7 @@ const ARTICLE_TONE: Record<string, BadgeTone> = {
 // ─── No-project onboarding ─────────────────────────────────────────────────────
 
 function NoProjectState() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <header className="aurora-header px-6 py-7">
@@ -42,8 +44,8 @@ function NoProjectState() {
             <Sparkles className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="font-display text-[28px] font-bold tracking-tight">Welcome to Fennex</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Your AI SEO growth platform.</p>
+            <h1 className="font-display text-[28px] font-bold tracking-tight">{t("dashboard.welcomeToFennex")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.tagline")}</p>
           </div>
         </div>
       </header>
@@ -52,7 +54,7 @@ function NoProjectState() {
           <FolderPlus className="h-7 w-7 text-white" strokeWidth={1.9} />
         </div>
         <div>
-          <p className="text-base font-semibold">No projects yet</p>
+          <p className="text-base font-semibold">{t("dashboard.noProjects")}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
             A project connects a website so Fennex can research keywords, write articles, and track rankings.
           </p>
@@ -73,13 +75,14 @@ function HeroTile({
   change: number | null;
   traffic: { date: string; clicks: number; impressions: number }[];
 }) {
-  const data = traffic.map((t) => ({ ...t, label: fmtDate(t.date) }));
+  const { t } = useTranslation();
+  const data = traffic.map((tr) => ({ ...tr, label: fmtDate(tr.date) }));
   const up = (change ?? 0) >= 0;
   return (
     <div className="glass relative flex flex-col overflow-hidden p-5 lg:col-span-2 lg:row-span-2">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Organic clicks · 28d</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("dashboard.organicClicks")}</p>
           <div className="mt-1 flex items-end gap-3">
             <span className="font-display text-4xl font-bold tracking-tight tabular-nums">
               {clicks !== null ? fmtNum(clicks) : "—"}
@@ -126,7 +129,7 @@ function HeroTile({
         ) : (
           <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 text-center">
             <Globe className="h-6 w-6 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">Connect Search Console to see traffic trends.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.connectSearchConsole")}</p>
           </div>
         )}
       </div>
@@ -137,17 +140,18 @@ function HeroTile({
 // ─── Setup progress tile ───────────────────────────────────────────────────────
 
 function SetupTile({ items }: { items: { label: string; done: boolean; href: string }[] }) {
+  const { t } = useTranslation();
   const done = items.filter((i) => i.done).length;
   const pct = Math.round((done / items.length) * 100);
   return (
     <div className="glass flex flex-col items-center gap-4 p-5">
       <div className="flex w-full items-center justify-between">
-        <p className="text-sm font-semibold">Setup</p>
+        <p className="text-sm font-semibold">{t("dashboard.setup")}</p>
         <Badge tone={done === items.length ? "success" : "primary"}>{done}/{items.length}</Badge>
       </div>
       <ProgressRing value={pct} size={128}>
         <span className="font-display text-2xl font-bold tabular-nums">{pct}%</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">complete</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("dashboard.complete")}</span>
       </ProgressRing>
       <div className="w-full space-y-1">
         {items.map((it) => (
@@ -167,14 +171,15 @@ function SetupTile({ items }: { items: { label: string; done: boolean; href: str
 // ─── Quick actions tile ────────────────────────────────────────────────────────
 
 function QuickActionsTile({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const actions = [
-    { label: "Keyword research", href: `/${projectId}/keywords`, icon: Search, tone: "text-violet-400 bg-violet-500/15" },
-    { label: "Generate article", href: `/${projectId}/articles`, icon: Zap, tone: "text-primary bg-primary/15" },
-    { label: "Audit your site", href: `/${projectId}/audit`, icon: Globe, tone: "text-emerald-400 bg-emerald-500/15" },
+    { label: t("dashboard.keywordResearch"), href: `/${projectId}/keywords`, icon: Search, tone: "text-violet-400 bg-violet-500/15" },
+    { label: t("dashboard.generateArticle"), href: `/${projectId}/articles`, icon: Zap, tone: "text-primary bg-primary/15" },
+    { label: t("dashboard.auditSite"), href: `/${projectId}/audit`, icon: Globe, tone: "text-emerald-400 bg-emerald-500/15" },
   ];
   return (
     <div className="glass p-5">
-      <h2 className="mb-3 text-sm font-semibold">Quick actions</h2>
+      <h2 className="mb-3 text-sm font-semibold">{t("dashboard.quickActions")}</h2>
       <div className="space-y-1.5">
         {actions.map((a) => (
           <Link key={a.label} href={a.href}
@@ -194,6 +199,7 @@ function QuickActionsTile({ projectId }: { projectId: string }) {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { currentProjectId } = useProjectStore();
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
@@ -230,10 +236,10 @@ export default function DashboardPage() {
     .slice(0, 5);
 
   const checklist = [
-    { label: "Create a project", done: projects.length > 0, href: "#" },
-    { label: "Connect AI keys", done: apiKeys.length > 0, href: "/settings" },
-    { label: "Connect Search Console", done: !!gsc?.is_connected, href: projectId ? `/${projectId}/analytics` : "#" },
-    { label: "Generate an article", done: articles.length > 0, href: projectId ? `/${projectId}/articles` : "#" },
+    { label: t("dashboard.setupSteps.createProject"), done: projects.length > 0, href: "#" },
+    { label: t("dashboard.setupSteps.connectKeys"), done: apiKeys.length > 0, href: "/settings" },
+    { label: t("dashboard.setupSteps.connectSearchConsole"), done: !!gsc?.is_connected, href: projectId ? `/${projectId}/analytics` : "#" },
+    { label: t("dashboard.setupSteps.generateArticle"), done: articles.length > 0, href: projectId ? `/${projectId}/articles` : "#" },
   ];
 
   return (
@@ -241,14 +247,14 @@ export default function DashboardPage() {
       {/* Greeting header */}
       <header className="aurora-header flex items-center justify-between px-6 py-5">
         <div className="relative z-10">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Command Center</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("dashboard.commandCenter")}</p>
           <h1 className="mt-1 font-display text-[28px] font-bold tracking-tight">
-            Welcome back{project ? <span className="text-gradient-brand">, {project.name}</span> : ""}
+            {t("dashboard.welcomeBack")}{project ? <span className="text-gradient-brand">, {project.name}</span> : ""}
           </h1>
         </div>
         {projectId && (
           <Link href={`/${projectId}/overview`} className="btn-aurora relative z-10 inline-flex items-center gap-1.5 px-4 py-2 text-xs">
-            Project overview <ArrowRight className="h-3.5 w-3.5" />
+            {t("dashboard.projectOverview")} <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         )}
       </header>
@@ -259,23 +265,23 @@ export default function DashboardPage() {
           projectId={projectId}
           clicks={overview?.clicks ?? null}
           change={overview?.clicks_change ?? null}
-          traffic={traffic.map((t) => ({ date: t.date, clicks: t.clicks, impressions: t.impressions }))}
+          traffic={traffic.map((tr) => ({ date: tr.date, clicks: tr.clicks, impressions: tr.impressions }))}
         />
         <SetupTile items={checklist} />
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Impressions" tone="violet" icon={Eye}
+        <StatCard label={t("dashboard.stats.impressions")} tone="violet" icon={Eye}
           value={overview ? fmtNum(overview.impressions) : "—"} change={overview?.impressions_change}
-          spark={traffic.map((t) => t.impressions)} href={projectId ? `/${projectId}/analytics` : undefined} />
-        <StatCard label="Avg CTR" tone="emerald" icon={TrendingUp}
+          spark={traffic.map((tr) => tr.impressions)} href={projectId ? `/${projectId}/analytics` : undefined} />
+        <StatCard label={t("dashboard.stats.avgCtr")} tone="emerald" icon={TrendingUp}
           value={overview ? `${(overview.ctr * 100).toFixed(1)}%` : "—"} change={overview?.ctr_change}
           href={projectId ? `/${projectId}/analytics` : undefined} />
-        <StatCard label="Avg Position" tone="amber" icon={Crosshair}
+        <StatCard label={t("dashboard.stats.avgPosition")} tone="amber" icon={Crosshair}
           value={overview ? overview.avg_position.toFixed(1) : "—"} change={overview?.position_change} invertChange
           href={projectId ? `/${projectId}/analytics` : undefined} />
-        <StatCard label="Published" tone="primary" icon={FileText}
+        <StatCard label={t("dashboard.stats.published")} tone="primary" icon={FileText}
           value={String(publishedCount)} href={projectId ? `/${projectId}/articles` : undefined} />
       </div>
 
@@ -283,17 +289,17 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="glass overflow-hidden lg:col-span-2">
           <div className="flex items-center justify-between px-5 py-4">
-            <h2 className="text-sm font-semibold">Recent articles</h2>
+            <h2 className="text-sm font-semibold">{t("dashboard.recentArticles")}</h2>
             {projectId && (
-              <Link href={`/${projectId}/articles`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">View all →</Link>
+              <Link href={`/${projectId}/articles`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">{t("common.viewAll")}</Link>
             )}
           </div>
           {recentArticles.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
               <div className="rounded-full bg-white/[0.04] p-3"><FileText className="h-4 w-4 text-muted-foreground/50" strokeWidth={1.5} /></div>
               <div>
-                <p className="text-sm font-medium">No articles yet</p>
-                {projectId && <Link href={`/${projectId}/articles`} className="text-xs text-primary hover:underline">Generate your first article →</Link>}
+                <p className="text-sm font-medium">{t("dashboard.noArticlesYet")}</p>
+                {projectId && <Link href={`/${projectId}/articles`} className="text-xs text-primary hover:underline">{t("dashboard.generateFirstArticle")}</Link>}
               </div>
             </div>
           ) : (
@@ -314,7 +320,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {projectId ? <QuickActionsTile projectId={projectId} /> : <div className="glass p-5 text-center text-sm text-muted-foreground">Select a project.</div>}
+        {projectId ? <QuickActionsTile projectId={projectId} /> : <div className="glass p-5 text-center text-sm text-muted-foreground">{t("dashboard.selectProject")}</div>}
       </div>
     </div>
   );

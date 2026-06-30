@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FennecMascot } from "@fennex/ui";
 import {
@@ -94,6 +95,7 @@ function TagChipInput({
   onAdd: (word: string) => void;
   onRemove: (word: string) => void;
 }) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -135,7 +137,7 @@ function TagChipInput({
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Type a word and press Enter"
+        placeholder={t("brandVoice.detailPanel.typeAndEnter")}
         className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
       />
     </div>
@@ -157,6 +159,7 @@ function VoiceCard({
   onDelete: () => void;
   onSetDefault: () => void;
 }) {
+  const { t } = useTranslation();
   const [deletingConfirm, setDeletingConfirm] = useState(false);
 
   return (
@@ -196,11 +199,11 @@ function VoiceCard({
       {/* Badges */}
       <div className="mt-2 flex flex-wrap gap-1.5">
         <span className={`badge text-[10px] ${TONE_COLORS[voice.tone]}`}>
-          {TONE_LABELS[voice.tone]}
+          {t(`brandVoice.tones.${voice.tone}`)}
         </span>
         {voice.is_default && (
           <span className="badge text-[10px] bg-primary/10 text-primary font-semibold">
-            Default
+            {t("brandVoice.default")}
           </span>
         )}
       </div>
@@ -220,7 +223,7 @@ function VoiceCard({
           }}
           className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
         >
-          Edit
+          {t("brandVoice.edit")}
         </button>
         {!voice.is_default && (
           <button
@@ -231,7 +234,7 @@ function VoiceCard({
             }}
             className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
-            Set Default
+            {t("brandVoice.setDefault")}
           </button>
         )}
       </div>
@@ -248,6 +251,7 @@ function VoiceDetailPanel({
   voiceId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data: voice, isLoading } = useQuery({
@@ -368,7 +372,7 @@ function VoiceDetailPanel({
         <div className="flex items-center justify-between border-b border-border px-5 py-4 sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2">
             <Mic2 size={16} className="text-primary" />
-            <h2 className="font-semibold text-foreground">Voice Settings</h2>
+            <h2 className="font-semibold text-foreground">{t("brandVoice.detailPanel.voiceSettings")}</h2>
           </div>
           <button
             onClick={onClose}
@@ -382,7 +386,7 @@ function VoiceDetailPanel({
         {isLoading && (
           <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
             <Spinner size={20} />
-            <span className="text-sm">Loading…</span>
+            <span className="text-sm">{t("brandVoice.detailPanel.loading")}</span>
           </div>
         )}
 
@@ -391,12 +395,12 @@ function VoiceDetailPanel({
             {/* 1. Basic settings */}
             <section>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                Basic Settings
+                {t("brandVoice.detailPanel.basicSettings")}
               </p>
               <div className="flex flex-col gap-4">
                 {/* Name */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Name</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("brandVoice.detailPanel.name")}</label>
                   <input
                     type="text"
                     defaultValue={voice.name}
@@ -411,15 +415,15 @@ function VoiceDetailPanel({
 
                 {/* Tone */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Tone</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("brandVoice.detailPanel.tone")}</label>
                   <select
                     defaultValue={voice.tone}
                     onChange={(e) => updateMutation.mutate({ tone: e.target.value as VoiceTone })}
                     className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
                   >
-                    {TONES.map((t) => (
-                      <option key={t} value={t}>
-                        {TONE_LABELS[t]}
+                    {TONES.map((tone) => (
+                      <option key={tone} value={tone}>
+                        {t(`brandVoice.tones.${tone}`)}
                       </option>
                     ))}
                   </select>
@@ -427,7 +431,7 @@ function VoiceDetailPanel({
 
                 {/* Description */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Description</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("brandVoice.detailPanel.description")}</label>
                   <textarea
                     defaultValue={voice.description ?? ""}
                     onBlur={(e) => {
@@ -438,7 +442,7 @@ function VoiceDetailPanel({
                     }}
                     rows={3}
                     className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground resize-none"
-                    placeholder="Describe this voice..."
+                    placeholder={t("brandVoice.createModal.descPlaceholder")}
                   />
                 </div>
               </div>
@@ -447,17 +451,17 @@ function VoiceDetailPanel({
             {/* 2. Voice characteristics */}
             <section>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                Voice Characteristics
+                {t("brandVoice.detailPanel.voiceCharacteristics")}
               </p>
               <div className="flex flex-col gap-4">
                 <TagChipInput
-                  label="Preferred words"
+                  label={t("brandVoice.detailPanel.preferredWords")}
                   words={vocabulary}
                   onAdd={handleAddVocab}
                   onRemove={handleRemoveVocab}
                 />
                 <TagChipInput
-                  label="Words to avoid"
+                  label={t("brandVoice.detailPanel.wordsToAvoid")}
                   words={avoidWords}
                   onAdd={handleAddAvoid}
                   onRemove={handleRemoveAvoid}
@@ -468,7 +472,7 @@ function VoiceDetailPanel({
             {/* 3. Training sources */}
             <section>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                Training Sources
+                {t("brandVoice.detailPanel.trainingSources")}
               </p>
 
               {/* Existing sources */}
@@ -509,25 +513,25 @@ function VoiceDetailPanel({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-muted-foreground mb-4">No training sources yet.</p>
+                <p className="text-xs text-muted-foreground mb-4">{t("brandVoice.detailPanel.noTrainingSources")}</p>
               )}
 
               {/* Add source form */}
               <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border p-3">
                 {/* Source type radio */}
                 <div className="flex gap-4">
-                  {(["url", "text"] as const).map((t) => (
-                    <label key={t} className="flex items-center gap-1.5 cursor-pointer">
+                  {(["url", "text"] as const).map((srcType) => (
+                    <label key={srcType} className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="radio"
                         name="source-type"
-                        value={t}
-                        checked={sourceType === t}
-                        onChange={() => setSourceType(t)}
+                        value={srcType}
+                        checked={sourceType === srcType}
+                        onChange={() => setSourceType(srcType)}
                         className="accent-primary"
                       />
                       <span className="text-xs font-medium text-foreground capitalize">
-                        {t === "url" ? "URL" : "Text"}
+                        {srcType === "url" ? t("brandVoice.detailPanel.urlType") : t("brandVoice.detailPanel.textType")}
                       </span>
                     </label>
                   ))}
@@ -566,12 +570,12 @@ function VoiceDetailPanel({
                   {addSourceMutation.isPending ? (
                     <>
                       <Spinner size={14} />
-                      Adding…
+                      {t("brandVoice.detailPanel.adding")}
                     </>
                   ) : (
                     <>
                       <Plus size={14} />
-                      Add Source
+                      {t("brandVoice.detailPanel.addSource")}
                     </>
                   )}
                 </button>
@@ -581,7 +585,7 @@ function VoiceDetailPanel({
             {/* 4. Generated voice prompt */}
             <section>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                Generated Voice Prompt
+                {t("brandVoice.detailPanel.generatedPrompt")}
               </p>
 
               {voice.voice_prompt ? (
@@ -601,12 +605,12 @@ function VoiceDetailPanel({
                     {isGeneratingPrompt ? (
                       <>
                         <Spinner size={14} />
-                        Regenerating…
+                        {t("brandVoice.detailPanel.regenerating")}
                       </>
                     ) : (
                       <>
                         <Sparkles size={14} />
-                        Regenerate
+                        {t("brandVoice.detailPanel.regenerate")}
                       </>
                     )}
                   </button>
@@ -614,7 +618,7 @@ function VoiceDetailPanel({
               ) : (
                 <div className="flex flex-col gap-3">
                   <p className="text-xs text-muted-foreground">
-                    No voice prompt generated yet. Train on sources or generate one now.
+                    {t("brandVoice.detailPanel.noPrompt")}
                   </p>
                   <button
                     type="button"
@@ -625,12 +629,12 @@ function VoiceDetailPanel({
                     {isGeneratingPrompt ? (
                       <>
                         <Spinner size={14} />
-                        Generating…
+                        {t("brandVoice.detailPanel.generating")}
                       </>
                     ) : (
                       <>
                         <Sparkles size={14} />
-                        Generate Voice Prompt
+                        {t("brandVoice.detailPanel.generatePrompt")}
                       </>
                     )}
                   </button>
@@ -653,6 +657,7 @@ function CreateVoiceModal({
   onClose: () => void;
   onCreated: (voice: BrandVoice) => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [tone, setTone] = useState<VoiceTone>("professional");
@@ -690,11 +695,11 @@ function CreateVoiceModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative z-10 w-full max-w-sm rounded-2xl bg-card border border-border shadow-xl p-6">
-        <h2 className="font-semibold text-foreground text-lg">New Brand Voice</h2>
+        <h2 className="font-semibold text-foreground text-lg">{t("brandVoice.createModal.title")}</h2>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Name</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("brandVoice.createModal.name")}</label>
             <input
               type="text"
               value={name}
@@ -707,15 +712,15 @@ function CreateVoiceModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Tone</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("brandVoice.createModal.tone")}</label>
             <select
               value={tone}
               onChange={(e) => setTone(e.target.value as VoiceTone)}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
             >
-              {TONES.map((t) => (
-                <option key={t} value={t}>
-                  {TONE_LABELS[t]}
+              {TONES.map((tone) => (
+                <option key={tone} value={tone}>
+                  {t(`brandVoice.tones.${tone}`)}
                 </option>
               ))}
             </select>
@@ -723,14 +728,14 @@ function CreateVoiceModal({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Description <span className="font-normal text-muted-foreground/60">(optional)</span>
+              {t("brandVoice.createModal.description")} <span className="font-normal text-muted-foreground/60">({t("brandVoice.createModal.optional")})</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground resize-none"
-              placeholder="Describe this voice..."
+              placeholder={t("brandVoice.createModal.descPlaceholder")}
             />
           </div>
 
@@ -740,7 +745,7 @@ function CreateVoiceModal({
               onClick={onClose}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors"
             >
-              Cancel
+              {t("brandVoice.createModal.cancel")}
             </button>
             <button
               type="submit"
@@ -750,10 +755,10 @@ function CreateVoiceModal({
               {createMutation.isPending ? (
                 <>
                   <Spinner size={14} />
-                  Creating…
+                  {t("brandVoice.createModal.creating")}
                 </>
               ) : (
-                "Create"
+                t("brandVoice.createModal.create")
               )}
             </button>
           </div>
@@ -766,6 +771,7 @@ function CreateVoiceModal({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function BrandVoicePage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -800,17 +806,17 @@ export default function BrandVoicePage() {
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <PageHeader
-        title="Brand Voice"
+        title={t("brandVoice.title")}
         icon={Mic2}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Brand Voice" }]}
-        description="Define how your brand communicates across all generated content."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("brandVoice.title") }]}
+        description={t("brandVoice.subtitle")}
         actions={
           <button
             onClick={() => setShowCreateModal(true)}
             className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
           >
             <Plus size={13} />
-            New Voice
+            {t("brandVoice.newVoice")}
           </button>
         }
       />
@@ -819,14 +825,14 @@ export default function BrandVoicePage() {
       {isLoading && (
         <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Spinner size={20} />
-          <span className="text-sm">Loading voices…</span>
+          <span className="text-sm">{t("brandVoice.loadingVoices")}</span>
         </div>
       )}
 
       {/* Error */}
       {isError && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5">
-          <p className="text-sm font-medium text-destructive">Failed to load brand voices. Please try again.</p>
+          <p className="text-sm font-medium text-destructive">{t("brandVoice.loadError")}</p>
         </div>
       )}
 
@@ -835,9 +841,9 @@ export default function BrandVoicePage() {
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <FennecMascot />
           <div className="text-center">
-            <p className="text-base font-semibold text-foreground">No brand voices yet</p>
+            <p className="text-base font-semibold text-foreground">{t("brandVoice.noVoices")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create your first brand voice to define how your brand communicates.
+              {t("brandVoice.noVoicesHint")}
             </p>
           </div>
           <button
@@ -845,7 +851,7 @@ export default function BrandVoicePage() {
             className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm mt-2"
           >
             <Plus size={14} />
-            Create your first brand voice
+            {t("brandVoice.createFirst")}
           </button>
         </div>
       )}
@@ -870,7 +876,7 @@ export default function BrandVoicePage() {
             className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border p-5 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-all min-h-[120px]"
           >
             <Plus size={20} />
-            <span className="text-sm font-medium">New Voice</span>
+            <span className="text-sm font-medium">{t("brandVoice.newVoice")}</span>
           </button>
         </div>
       )}

@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SUPPORTED_LOCALES, Locale } from "@/lib/i18n";
@@ -20,7 +21,11 @@ interface LanguagePickerProps {
 export function LanguagePicker({ showLabel = false }: LanguagePickerProps) {
   const { i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const current = (i18n.language?.slice(0, 2) ?? "en") as Locale;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Use "en" until after hydration to prevent SSR/client mismatch (cookie-detected
+  // locale is only available in the browser, so SSR always renders English).
+  const current = ((mounted ? i18n.language : "en")?.slice(0, 2) ?? "en") as Locale;
   const meta = LOCALE_META[current] ?? LOCALE_META.en;
 
   const mutation = useMutation({

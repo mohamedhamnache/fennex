@@ -2,6 +2,7 @@
 
 import { X, Zap } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { createCheckoutSession } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
@@ -30,6 +31,7 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ resource, used, limit, currentTier, onClose }: UpgradeModalProps) {
+  const { t } = useTranslation();
   const next = NEXT_TIER[currentTier];
   const label = RESOURCE_LABELS[resource] ?? resource;
 
@@ -62,12 +64,13 @@ export function UpgradeModal({ resource, used, limit, currentTier, onClose }: Up
           <Zap className="h-5 w-5 text-white" />
         </div>
 
-        <h2 className="font-display text-xl font-bold">Limit reached</h2>
+        <h2 className="font-display text-xl font-bold">{t("billing.limitReached")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          You&apos;ve used <strong>{used}/{limit}</strong> {label} on your current plan.
+          {t("billing.limitUsed", { used, limit, label })}
+          {" "}
           {next
-            ? ` Upgrade to ${next.name} to keep going.`
-            : " Contact us for Enterprise options."}
+            ? t("billing.upgradeTo", { name: next.name })
+            : t("billing.contactEnterprise")}
         </p>
 
         {next && (
@@ -78,14 +81,14 @@ export function UpgradeModal({ resource, used, limit, currentTier, onClose }: Up
               className="btn-aurora w-full py-3 text-sm font-semibold"
             >
               {checkoutMutation.isPending
-                ? "Redirecting…"
-                : `Upgrade to ${next.name} — $${next.price}/mo →`}
+                ? t("billing.redirecting")
+                : t("billing.upgradeCta", { name: next.name, price: next.price })}
             </button>
             <button
               onClick={onClose}
               className="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Maybe later
+              {t("billing.maybeLater")}
             </button>
           </div>
         )}
