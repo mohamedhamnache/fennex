@@ -9,38 +9,11 @@ import {
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { authLogout, listProjects } from "@/lib/api";
 import { useProjectStore } from "@/lib/store";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { cn } from "@/lib/cn";
-
-const navGroups = [
-  {
-    label: "Research",
-    items: [
-      { label: "Overview", href: "overview", icon: LayoutDashboard },
-      { label: "Keywords", href: "keywords", icon: SearchCode },
-    ],
-  },
-  {
-    label: "Create",
-    items: [
-      { label: "Planner", href: "content", icon: FileText },
-      { label: "Articles", href: "articles", icon: Zap },
-      { label: "Social", href: "social", icon: Share2 },
-      { label: "Images", href: "images", icon: ImagePlus },
-    ],
-  },
-  {
-    label: "Grow",
-    items: [
-      { label: "Publishing", href: "publishing", icon: Send },
-      { label: "Backlinks", href: "backlinks", icon: Link2 },
-      { label: "Analytics", href: "analytics", icon: BarChart2 },
-      { label: "Audit", href: "audit", icon: SearchCode },
-    ],
-  },
-];
 
 function projectInitials(name?: string) {
   if (!name) return "—";
@@ -48,9 +21,38 @@ function projectInitials(name?: string) {
 }
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const { currentProjectId, setCurrentProject } = useProjectStore();
+
+  const navGroups = [
+    {
+      label: t("nav.research"),
+      items: [
+        { label: t("nav.overview"), href: "overview", icon: LayoutDashboard },
+        { label: t("nav.keywords"), href: "keywords", icon: SearchCode },
+      ],
+    },
+    {
+      label: t("nav.create"),
+      items: [
+        { label: t("nav.planner"), href: "content", icon: FileText },
+        { label: t("nav.articles"), href: "articles", icon: Zap },
+        { label: t("nav.social"), href: "social", icon: Share2 },
+        { label: t("nav.images"), href: "images", icon: ImagePlus },
+      ],
+    },
+    {
+      label: t("nav.grow"),
+      items: [
+        { label: t("nav.publishing"), href: "publishing", icon: Send },
+        { label: t("nav.backlinks"), href: "backlinks", icon: Link2 },
+        { label: t("nav.analytics"), href: "analytics", icon: BarChart2 },
+        { label: t("nav.audit"), href: "audit", icon: SearchCode },
+      ],
+    },
+  ];
   const [pinned, setPinned] = useState(true);
   const [hovered, setHovered] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -137,7 +139,7 @@ export function Sidebar() {
               )}
             >
               <Plus className="h-4 w-4 shrink-0" />
-              {expanded && <span className="text-xs">Create project</span>}
+              {expanded && <span className="text-xs">{t("nav.createProject")}</span>}
             </button>
           ) : (
             <>
@@ -155,7 +157,7 @@ export function Sidebar() {
                 {expanded && (
                   <>
                     <span className="flex-1 truncate text-left text-[13px] font-medium text-white/85">
-                      {currentProject?.name ?? "Select project"}
+                      {currentProject?.name ?? t("nav.selectProject")}
                     </span>
                     <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-white/30 transition-transform", dropdownOpen && "rotate-180")} />
                   </>
@@ -187,7 +189,7 @@ export function Sidebar() {
                       onClick={() => { setDropdownOpen(false); setModalOpen(true); }}
                       className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-primary transition-colors hover:bg-primary/10"
                     >
-                      <Plus className="h-3.5 w-3.5" /> New project
+                      <Plus className="h-3.5 w-3.5" /> {t("nav.newProject")}
                     </button>
                   </div>
                 </div>
@@ -241,8 +243,8 @@ export function Sidebar() {
         {/* Footer */}
         <div className="space-y-0.5 border-t border-white/[0.06] px-3 py-3">
           {[
-            { href: "/brand-voice", label: "Brand Voice", icon: Mic2 },
-            { href: "/settings", label: "Settings", icon: Settings },
+            { href: "/brand-voice", label: t("nav.brandVoice"), icon: Mic2 },
+            { href: "/settings", label: t("nav.settings"), icon: Settings },
           ].map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -263,14 +265,14 @@ export function Sidebar() {
           })}
           <button
             onClick={handleLogout}
-            title={!expanded ? "Sign out" : undefined}
+            title={!expanded ? t("nav.signOut") : undefined}
             className={cn(
               "flex w-full items-center rounded-xl text-[13px] font-medium text-white/45 transition-all hover:bg-destructive/15 hover:text-destructive",
               expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
             )}
           >
             <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
-            {expanded && <span className="truncate">Sign out</span>}
+            {expanded && <span className="truncate">{t("nav.signOut")}</span>}
           </button>
         </div>
       </aside>

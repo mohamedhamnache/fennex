@@ -17,6 +17,7 @@ import {
   Link2, BarChart2, Settings, Mic2, FolderOpen, Sun, Moon, LogOut,
   Search, CornerDownLeft, ArrowUp, ArrowDown,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { authLogout, listProjects } from "@/lib/api";
 import { useProjectStore } from "@/lib/store";
 import { cn } from "@/lib/cn";
@@ -40,19 +41,20 @@ interface CommandPaletteContextValue {
 const Ctx = createContext<CommandPaletteContextValue | null>(null);
 
 const NAV = [
-  { href: "overview", label: "Overview", icon: LayoutDashboard, kw: "home dashboard" },
-  { href: "keywords", label: "Keywords", icon: SearchCode, kw: "research serp" },
-  { href: "content", label: "Content Planner", icon: FileText, kw: "plan calendar" },
-  { href: "articles", label: "Articles", icon: Zap, kw: "write generate blog" },
-  { href: "social", label: "Social Studio", icon: Share2, kw: "posts twitter linkedin" },
-  { href: "images", label: "Image Studio", icon: ImagePlus, kw: "picture dalle generate" },
-  { href: "publishing", label: "Publishing", icon: Send, kw: "wordpress deploy" },
-  { href: "backlinks", label: "Backlinks", icon: Link2, kw: "links exchange outreach" },
-  { href: "analytics", label: "Analytics", icon: BarChart2, kw: "traffic gsc rankings" },
-  { href: "audit", label: "Site Audit", icon: SearchCode, kw: "technical crawl issues" },
+  { href: "overview", tKey: "nav.overview" as const, icon: LayoutDashboard, kw: "home dashboard" },
+  { href: "keywords", tKey: "nav.keywords" as const, icon: SearchCode, kw: "research serp" },
+  { href: "content", tKey: "nav.planner" as const, icon: FileText, kw: "plan calendar" },
+  { href: "articles", tKey: "nav.articles" as const, icon: Zap, kw: "write generate blog" },
+  { href: "social", tKey: "nav.social" as const, icon: Share2, kw: "posts twitter linkedin" },
+  { href: "images", tKey: "nav.images" as const, icon: ImagePlus, kw: "picture dalle generate" },
+  { href: "publishing", tKey: "nav.publishing" as const, icon: Send, kw: "wordpress deploy" },
+  { href: "backlinks", tKey: "nav.backlinks" as const, icon: Link2, kw: "links exchange outreach" },
+  { href: "analytics", tKey: "nav.analytics" as const, icon: BarChart2, kw: "traffic gsc rankings" },
+  { href: "audit", tKey: "nav.audit" as const, icon: SearchCode, kw: "technical crawl issues" },
 ];
 
 export function CommandPaletteProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { currentProjectId } = useProjectStore();
@@ -103,8 +105,8 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
       for (const n of NAV) {
         cmds.push({
           id: `nav-${n.href}`,
-          label: n.label,
-          group: "Navigate",
+          label: t(n.tKey),
+          group: t("commandPalette.groups.navigate"),
           icon: n.icon,
           keywords: n.kw,
           run: () => router.push(`/${projectId}/${n.href}`),
@@ -113,15 +115,15 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     }
 
     cmds.push(
-      { id: "nav-brand", label: "Brand Voice", group: "Navigate", icon: Mic2, keywords: "tone style", run: () => router.push("/brand-voice") },
-      { id: "nav-settings", label: "Settings", group: "Navigate", icon: Settings, keywords: "account team keys org", run: () => router.push("/settings") },
+      { id: "nav-brand", label: t("nav.brandVoice"), group: t("commandPalette.groups.navigate"), icon: Mic2, keywords: "tone style", run: () => router.push("/brand-voice") },
+      { id: "nav-settings", label: t("nav.settings"), group: t("commandPalette.groups.navigate"), icon: Settings, keywords: "account team keys org", run: () => router.push("/settings") },
     );
 
     for (const p of projects) {
       cmds.push({
         id: `proj-${p.id}`,
         label: p.name,
-        group: "Switch project",
+        group: t("commandPalette.groups.switchProject"),
         icon: FolderOpen,
         keywords: `${p.domain} project`,
         hint: p.domain,
@@ -135,16 +137,16 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     cmds.push(
       {
         id: "act-theme",
-        label: theme === "dark" ? "Switch to light mode" : "Switch to dark mode",
-        group: "Actions",
+        label: theme === "dark" ? t("commandPalette.actions.lightMode") : t("commandPalette.actions.darkMode"),
+        group: t("commandPalette.groups.actions"),
         icon: theme === "dark" ? Sun : Moon,
         keywords: "theme appearance dark light",
         run: () => setTheme(theme === "dark" ? "light" : "dark"),
       },
       {
         id: "act-logout",
-        label: "Sign out",
-        group: "Actions",
+        label: t("commandPalette.actions.signOut"),
+        group: t("commandPalette.groups.actions"),
         icon: LogOut,
         keywords: "logout exit",
         run: () => { authLogout(); router.replace("/login"); },
@@ -152,7 +154,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     );
 
     return cmds;
-  }, [projectId, projects, router, theme, setTheme]);
+  }, [t, projectId, projects, router, theme, setTheme]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -228,7 +230,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Search commands, pages, projects…"
+                placeholder={t("commandPalette.placeholder")}
                 className="w-full bg-transparent py-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
               />
               <kbd className="hidden shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/60 sm:block">
@@ -240,7 +242,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
             <div ref={listRef} className="max-h-[340px] overflow-y-auto p-2">
               {filtered.length === 0 ? (
                 <div className="px-3 py-10 text-center text-sm text-muted-foreground">
-                  No results for “{query}”
+                  {t("commandPalette.noResults", { query })}
                 </div>
               ) : (
                 groups.map(({ group, items }) => (
@@ -283,12 +285,12 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
 
             {/* Footer hint */}
             <div className="flex items-center gap-4 border-t px-4 py-2.5 text-[11px] text-muted-foreground/70">
-              <span className="flex items-center gap-1"><ArrowUp className="h-3 w-3" /><ArrowDown className="h-3 w-3" /> navigate</span>
-              <span className="flex items-center gap-1"><CornerDownLeft className="h-3 w-3" /> select</span>
+              <span className="flex items-center gap-1"><ArrowUp className="h-3 w-3" /><ArrowDown className="h-3 w-3" /> {t("commandPalette.navigateHint")}</span>
+              <span className="flex items-center gap-1"><CornerDownLeft className="h-3 w-3" /> {t("commandPalette.selectHint")}</span>
               <span className="ml-auto flex items-center gap-1">
                 <kbd className="rounded border px-1 py-0.5 text-[9px]">⌘</kbd>
                 <kbd className="rounded border px-1 py-0.5 text-[9px]">K</kbd>
-                to toggle
+                {t("commandPalette.toggleHint")}
               </span>
             </div>
           </div>
