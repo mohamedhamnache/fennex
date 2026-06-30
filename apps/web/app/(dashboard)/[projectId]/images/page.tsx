@@ -561,8 +561,8 @@ function AttachModal({
               onChange={(e) => setAttachTo(e.target.value as "article" | "social_post")}
               className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value="article">Article</option>
-              <option value="social_post">Social Post</option>
+              <option value="article">{t("content.types.article")}</option>
+              <option value="social_post">{t("content.types.socialPost")}</option>
             </select>
           </div>
 

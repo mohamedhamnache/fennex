@@ -169,7 +169,7 @@ function ConnectionCard({
               <span className="text-xs text-muted-foreground">
                 {statusLabel}
                 {connection.last_tested_at && (
-                  <> · {t("publishing.connectionCard.lastTested", { time: relativeTime(connection.last_tested_at) })}</>
+                  <> · {t("publishing.connectionCard.lastTested")} {relativeTime(connection.last_tested_at)}</>
                 )}
               </span>
             </div>
@@ -386,7 +386,7 @@ function ConnectionModal({
               {t("publishing.connectionModal.username")}{!isEdit && <span className="text-red-500"> *</span>}
               {isEdit && (
                 <span className="ml-1 text-xs text-muted-foreground font-normal">
-                  (leave blank to keep unchanged)
+                  {t("publishing.connectionModal.passwordHint")}
                 </span>
               )}
             </label>
@@ -404,7 +404,7 @@ function ConnectionModal({
               {t("publishing.connectionModal.password")}{!isEdit && <span className="text-red-500"> *</span>}
               {isEdit && (
                 <span className="ml-1 text-xs text-muted-foreground font-normal">
-                  (leave blank to keep unchanged)
+                  {t("publishing.connectionModal.passwordHint")}
                 </span>
               )}
             </label>
@@ -417,7 +417,7 @@ function ConnectionModal({
               className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              {t("publishing.connectionModal.passwordHint")}
+              Generate in WordPress &rarr; Users &rarr; Your Profile &rarr; Application Passwords
             </p>
           </div>
 
