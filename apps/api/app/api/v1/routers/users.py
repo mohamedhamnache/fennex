@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -8,6 +8,8 @@ from app.core.dependencies import CurrentUser, DB
 from app.models.organization import Organization
 
 router = APIRouter()
+
+SUPPORTED_LOCALES = {"en", "fr", "es", "de", "pt", "ar"}
 
 
 class UserProfile(BaseModel):
@@ -20,6 +22,11 @@ class UserProfile(BaseModel):
     org_slug: str
     plan_tier: str
     created_at: str | None
+    language: str
+
+
+class UpdateLanguageRequest(BaseModel):
+    language: str
 
 
 @router.get("/me", response_model=UserProfile)
@@ -38,12 +45,25 @@ async def get_current_user_profile(current_user: CurrentUser, db: DB):
         org_slug=org.slug if org else "",
         plan_tier=org.plan_tier.value if org else "free",
         created_at=current_user.created_at.isoformat() if hasattr(current_user, "created_at") and current_user.created_at else None,
+        language=current_user.language,
     )
 
 
 @router.patch("/me")
 async def update_current_user_profile():
     return {"message": "Not implemented yet"}
+
+
+@router.patch("/me/language")
+async def update_language(body: UpdateLanguageRequest, current_user: CurrentUser, db: DB):
+    if body.language not in SUPPORTED_LOCALES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Language '{body.language}' is not supported. Supported: {sorted(SUPPORTED_LOCALES)}",
+        )
+    current_user.language = body.language
+    await db.commit()
+    return {"language": body.language}
 
 
 @router.get("/{user_id}")

@@ -37,5 +37,6 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     locked: Mapped[bool] = mapped_column(Boolean, default=False)
     locked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    language: Mapped[str] = mapped_column(String(5), nullable=False, server_default="en")
 
     organization: Mapped["Organization"] = relationship("Organization", back_populates="users")
