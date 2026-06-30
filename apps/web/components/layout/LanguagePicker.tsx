@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SUPPORTED_LOCALES, Locale } from "@/lib/i18n";
@@ -22,9 +22,21 @@ export function LanguagePicker({ showLabel = false }: LanguagePickerProps) {
   const { i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => setMounted(true), []);
-  // Use "en" until after hydration to prevent SSR/client mismatch (cookie-detected
-  // locale is only available in the browser, so SSR always renders English).
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Use "en" until after hydration to prevent SSR/client mismatch.
   const current = ((mounted ? i18n.language : "en")?.slice(0, 2) ?? "en") as Locale;
   const meta = LOCALE_META[current] ?? LOCALE_META.en;
 
@@ -40,31 +52,45 @@ export function LanguagePicker({ showLabel = false }: LanguagePickerProps) {
   });
 
   return (
-    <div className="relative group">
+    <div className="relative" ref={ref}>
       <button
+        onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         aria-label="Language"
+        aria-expanded={open}
+        aria-haspopup="listbox"
       >
         <span className="text-base leading-none">{meta.flag}</span>
         {showLabel && <span className="font-medium">{meta.label}</span>}
       </button>
-      <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-40 rounded-xl border border-border bg-popover shadow-lg py-1">
-        {SUPPORTED_LOCALES.map((lang) => {
-          const m = LOCALE_META[lang];
-          return (
-            <button
-              key={lang}
-              onClick={() => mutation.mutate(lang)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-accent transition-colors ${
-                lang === current ? "text-foreground font-medium" : "text-muted-foreground"
-              }`}
-            >
-              <span className="text-base">{m.flag}</span>
-              <span>{m.label}</span>
-            </button>
-          );
-        })}
-      </div>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute right-0 top-full mt-1 z-50 w-40 rounded-xl border border-border bg-popover shadow-lg py-1 animate-scale-in"
+        >
+          {SUPPORTED_LOCALES.map((lang) => {
+            const m = LOCALE_META[lang];
+            return (
+              <button
+                key={lang}
+                role="option"
+                aria-selected={lang === current}
+                onClick={() => {
+                  mutation.mutate(lang);
+                  setOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-accent transition-colors ${
+                  lang === current ? "text-foreground font-medium" : "text-muted-foreground"
+                }`}
+              >
+                <span className="text-base">{m.flag}</span>
+                <span>{m.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
