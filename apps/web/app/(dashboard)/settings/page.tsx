@@ -431,7 +431,7 @@ function AIKeysSection() {
             <PrimaryBtn onClick={() => addMutation.mutate()} disabled={!value.trim() || addMutation.isPending}>
               {addMutation.isPending ? t("settings.aiKeys.saving") : t("settings.aiKeys.saveKey")}
             </PrimaryBtn>
-            <GhostBtn onClick={() => { setShowForm(false); setValue(""); }}>{t("settings.socialAccounts.cancel")}</GhostBtn>
+            <GhostBtn onClick={() => { setShowForm(false); setValue(""); }}>{t("common.cancel")}</GhostBtn>
           </div>
         </Card>
       ) : (
@@ -557,7 +557,7 @@ function SocialSection() {
                           onClick={() => connectMutation.mutate()}
                           disabled={!form.token.trim() || connectMutation.isPending}
                         >
-                          {connectMutation.isPending ? t("settings.socialAccounts.connect") : t("settings.socialAccounts.connectAccount")}
+                          {connectMutation.isPending ? t("settings.socialAccounts.connecting") : t("settings.socialAccounts.connectAccount")}
                         </PrimaryBtn>
                       </div>
                     </div>
