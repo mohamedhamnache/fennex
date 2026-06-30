@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FennecMascot } from "@fennex/ui";
 import { Sparkles, Key, Calendar, FileText, CheckCircle } from "lucide-react";
@@ -45,12 +46,21 @@ function Spinner({ size = 16 }: { size?: number }) {
 
 const STATUSES: ContentItemStatus[] = ["idea", "draft", "in_review", "approved", "published"];
 
-const STATUS_LABELS: Record<ContentItemStatus, string> = {
-  idea: "Idea",
-  draft: "Draft",
-  in_review: "In Review",
-  approved: "Approved",
-  published: "Published",
+// Maps snake_case status values to i18n keys (camelCase in JSON)
+const STATUS_I18N: Record<ContentItemStatus, string> = {
+  idea: "content.statuses.idea",
+  draft: "content.statuses.draft",
+  in_review: "content.statuses.inReview",
+  approved: "content.statuses.approved",
+  published: "content.statuses.published",
+};
+
+// Maps snake_case type values to i18n keys (camelCase in JSON)
+const TYPE_I18N: Record<ContentItemType, string> = {
+  article: "content.types.article",
+  landing_page: "content.types.landingPage",
+  social_post: "content.types.socialPost",
+  email: "content.types.email",
 };
 
 // Dark-mode-safe tints (500-level hue at low alpha reads on both themes).
@@ -77,13 +87,6 @@ const TYPE_COLORS: Record<ContentItemType, string> = {
   email: "bg-amber-500/12 text-amber-600",
 };
 
-const TYPE_LABELS: Record<ContentItemType, string> = {
-  article: "Article",
-  landing_page: "Landing Page",
-  social_post: "Social Post",
-  email: "Email",
-};
-
 function formatDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr + "T00:00:00");
@@ -107,6 +110,7 @@ function ContentItemCard({
   planId: string;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [hovered, setHovered] = useState(false);
 
@@ -129,7 +133,7 @@ function ContentItemCard({
 
       <div className="mt-2 flex flex-wrap gap-1">
         <span className={`badge text-[10px] ${TYPE_COLORS[item.content_type]}`}>
-          <FileText size={10} className="inline mr-0.5" />{TYPE_LABELS[item.content_type]}
+          <FileText size={10} className="inline mr-0.5" />{t(TYPE_I18N[item.content_type])}
         </span>
       </div>
 
@@ -154,7 +158,7 @@ function ContentItemCard({
             moveMutation.mutate(next);
           }}
           disabled={moveMutation.isPending}
-          title={`Move to ${STATUS_LABELS[next]}`}
+          title={`Move to ${t(STATUS_I18N[next])}`}
         >
           {moveMutation.isPending ? <Spinner size={10} /> : "→"}
         </button>
@@ -176,6 +180,7 @@ function KanbanColumn({
   planId: string;
   onCardClick: (item: ContentItem) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-2 min-w-[220px] w-[220px]">
       {/* Column header */}
@@ -183,7 +188,7 @@ function KanbanColumn({
         <span
           className={`text-xs font-semibold uppercase tracking-wide ${STATUS_HEADER_COLORS[status]}`}
         >
-          {STATUS_LABELS[status]}
+          {t(STATUS_I18N[status])}
         </span>
         <span className="badge text-[10px] bg-muted text-muted-foreground">{items.length}</span>
       </div>
@@ -192,7 +197,7 @@ function KanbanColumn({
       <div className="flex flex-col gap-2">
         {items.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-4 text-center">
-            <p className="text-xs text-muted-foreground">No items</p>
+            <p className="text-xs text-muted-foreground">{t("content.noItems")}</p>
           </div>
         ) : (
           items.map((item) => (
@@ -220,6 +225,7 @@ function DetailDrawer({
   planId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -286,7 +292,7 @@ function DetailDrawer({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-semibold text-foreground">Content Item</h2>
+          <h2 className="font-semibold text-foreground">{t("content.contentItem")}</h2>
           <button
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
@@ -312,7 +318,7 @@ function DetailDrawer({
         <div className="flex flex-col gap-5 p-5 flex-1">
           {/* Title */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Title</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.titleLabel")}</label>
             <input
               type="text"
               defaultValue={item.title}
@@ -323,7 +329,7 @@ function DetailDrawer({
 
           {/* Status */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.status")}</label>
             <select
               value={localStatus}
               onChange={(e) => {
@@ -335,7 +341,7 @@ function DetailDrawer({
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
+                  {t(STATUS_I18N[s])}
                 </option>
               ))}
             </select>
@@ -343,7 +349,7 @@ function DetailDrawer({
 
           {/* Type */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Type</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.type")}</label>
             <select
               value={localType}
               onChange={(e) => {
@@ -353,9 +359,9 @@ function DetailDrawer({
               }}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
             >
-              {(["article", "landing_page", "social_post", "email"] as ContentItemType[]).map((t) => (
-                <option key={t} value={t}>
-                  {TYPE_LABELS[t]}
+              {(["article", "landing_page", "social_post", "email"] as ContentItemType[]).map((typeOpt) => (
+                <option key={typeOpt} value={typeOpt}>
+                  {t(TYPE_I18N[typeOpt])}
                 </option>
               ))}
             </select>
@@ -363,7 +369,7 @@ function DetailDrawer({
 
           {/* Target keyword */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Target Keyword</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.keyword")}</label>
             <input
               type="text"
               defaultValue={item.target_keyword ?? ""}
@@ -375,7 +381,7 @@ function DetailDrawer({
 
           {/* Scheduled date */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Scheduled Date</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.scheduledDate")}</label>
             <input
               type="date"
               defaultValue={item.scheduled_date ?? ""}
@@ -386,7 +392,7 @@ function DetailDrawer({
 
           {/* Word count target */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Word Count Target</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.wordCount")}</label>
             <input
               type="number"
               defaultValue={item.word_count_target ?? ""}
@@ -401,13 +407,13 @@ function DetailDrawer({
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Notes</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.notes")}</label>
             <textarea
               defaultValue={item.notes ?? ""}
               onBlur={(e) => saveOnBlur("notes", e.target.value || null)}
               rows={4}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground resize-none"
-              placeholder="Add notes..."
+              placeholder={t("content.detailDrawer.notesPlaceholder")}
             />
           </div>
         </div>
@@ -422,10 +428,10 @@ function DetailDrawer({
             {deleteMutation.isPending ? (
               <>
                 <Spinner size={14} />
-                Deleting...
+                {t("content.detailDrawer.deleting")}
               </>
             ) : (
-              "Delete Item"
+              t("content.detailDrawer.deleteItem")
             )}
           </button>
         </div>
@@ -445,6 +451,7 @@ function GenerateModal({
   onGenerate: (seedKeyword: string) => void;
   isGenerating: boolean;
 }) {
+  const { t } = useTranslation();
   const [seed, setSeed] = useState("");
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -463,11 +470,11 @@ function GenerateModal({
         ref={modalRef}
         className="relative z-10 w-full max-w-sm rounded-2xl bg-card border border-border shadow-xl p-6"
       >
-        <h2 className="font-semibold text-foreground text-lg">Generate Content Plan</h2>
+        <h2 className="font-semibold text-foreground text-lg">{t("content.generateModal.title")}</h2>
 
         <div className="mt-4 flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Seed keyword (optional)
+            {t("content.generateModal.seedKeyword")}
           </label>
           <input
             type="text"
@@ -480,7 +487,7 @@ function GenerateModal({
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Uses your keyword research if available, otherwise uses seed.
+          {t("content.generateModal.seedHint")}
         </p>
 
         <div className="mt-5 flex gap-3 justify-end">
@@ -488,7 +495,7 @@ function GenerateModal({
             onClick={onClose}
             className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors"
           >
-            Cancel
+            {t("content.generateModal.cancel")}
           </button>
           <button
             onClick={() => onGenerate(seed.trim())}
@@ -498,11 +505,10 @@ function GenerateModal({
             {isGenerating ? (
               <>
                 <Spinner size={14} />
-                Generating...
+                {t("content.generateModal.generating")}
               </>
             ) : (
-              <><Sparkles size={14} className="inline mr-1" />Generate</>
-
+              <><Sparkles size={14} className="inline mr-1" />{t("content.generateModal.generate")}</>
             )}
           </button>
         </div>
@@ -520,6 +526,7 @@ function NewItemForm({
   planId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [contentType, setContentType] = useState<ContentItemType>("article");
@@ -543,16 +550,16 @@ function NewItemForm({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="relative z-10 w-full max-w-sm rounded-2xl bg-card border border-border shadow-xl p-6">
-        <h2 className="font-semibold text-foreground text-lg">New Content Item</h2>
+        <h2 className="font-semibold text-foreground text-lg">{t("content.newItemForm.title")}</h2>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Title</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.titleLabel")}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter title..."
+              placeholder={t("content.newItemForm.placeholder")}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
               autoFocus
               required
@@ -560,15 +567,15 @@ function NewItemForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Type</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("content.detailDrawer.type")}</label>
             <select
               value={contentType}
               onChange={(e) => setContentType(e.target.value as ContentItemType)}
               className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
             >
-              {(["article", "landing_page", "social_post", "email"] as ContentItemType[]).map((t) => (
-                <option key={t} value={t}>
-                  {TYPE_LABELS[t]}
+              {(["article", "landing_page", "social_post", "email"] as ContentItemType[]).map((typeOpt) => (
+                <option key={typeOpt} value={typeOpt}>
+                  {t(TYPE_I18N[typeOpt])}
                 </option>
               ))}
             </select>
@@ -580,7 +587,7 @@ function NewItemForm({
               onClick={onClose}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors"
             >
-              Cancel
+              {t("content.newItemForm.cancel")}
             </button>
             <button
               type="submit"
@@ -590,10 +597,10 @@ function NewItemForm({
               {addMutation.isPending ? (
                 <>
                   <Spinner size={14} />
-                  Adding...
+                  {t("content.newItemForm.adding")}
                 </>
               ) : (
-                "Add Item"
+                t("content.newItemForm.add")
               )}
             </button>
           </div>
@@ -614,6 +621,7 @@ function ListView({
   planId: string;
   onRowClick: (item: ContentItem) => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
 
@@ -635,19 +643,19 @@ function ListView({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Keyword</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{t("content.tableHeaders.title")}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{t("content.tableHeaders.type")}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{t("content.tableHeaders.status")}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{t("content.tableHeaders.keyword")}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{t("content.tableHeaders.date")}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{t("content.tableHeaders.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                  No items yet. Add your first item!
+                  {t("content.noItemsYet")}
                 </td>
               </tr>
             ) : (
@@ -662,7 +670,7 @@ function ListView({
                   </td>
                   <td className="px-4 py-3">
                     <span className={`badge text-[10px] ${TYPE_COLORS[item.content_type]}`}>
-                      {TYPE_LABELS[item.content_type]}
+                      {t(TYPE_I18N[item.content_type])}
                     </span>
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -678,7 +686,7 @@ function ListView({
                     >
                       {STATUSES.map((s) => (
                         <option key={s} value={s}>
-                          {STATUS_LABELS[s]}
+                          {t(STATUS_I18N[s])}
                         </option>
                       ))}
                     </select>
@@ -698,7 +706,7 @@ function ListView({
                       disabled={deletingItemId === item.id}
                       className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors"
                     >
-                      {deletingItemId === item.id ? <Spinner size={10} /> : "Delete"}
+                      {deletingItemId === item.id ? <Spinner size={10} /> : t("common.delete")}
                     </button>
                   </td>
                 </tr>
@@ -715,6 +723,7 @@ function ListView({
 
 export default function ContentPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const { setCurrentProject } = useProjectStore();
   const queryClient = useQueryClient();
 
@@ -787,10 +796,10 @@ export default function ContentPage({ params }: { params: { projectId: string } 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <PageHeader
-        title="Content Planner"
+        title={t("content.title")}
         icon={FileText}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Planner" }]}
-        description="Plan and manage your content pipeline."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("content.title") }]}
+        description={t("content.subtitle")}
         actions={
           <>
             <button
@@ -799,7 +808,7 @@ export default function ContentPage({ params }: { params: { projectId: string } 
               title={!plan ? "Generate a plan first" : undefined}
               className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              + New Item
+              {t("content.newItem")}
             </button>
             <button
               onClick={() => setShowGenerateModal(true)}
@@ -809,10 +818,10 @@ export default function ContentPage({ params }: { params: { projectId: string } 
               {isGenerating ? (
                 <>
                   <Spinner size={13} />
-                  Generating...
+                  {t("content.generating")}
                 </>
               ) : (
-                <><Sparkles size={13} className="inline mr-1" />Generate Plan</>
+                <><Sparkles size={13} className="inline mr-1" />{t("content.generatePlan")}</>
               )}
             </button>
           </>
@@ -836,14 +845,14 @@ export default function ContentPage({ params }: { params: { projectId: string } 
       {isLoading && (
         <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Spinner size={20} />
-          <span className="text-sm">Loading plans…</span>
+          <span className="text-sm">{t("content.loadingPlans")}</span>
         </div>
       )}
 
       {/* Error */}
       {hasError && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5">
-          <p className="text-sm font-medium text-destructive">Failed to load content plans. Please try again.</p>
+          <p className="text-sm font-medium text-destructive">{t("content.loadError")}</p>
         </div>
       )}
 
@@ -852,16 +861,16 @@ export default function ContentPage({ params }: { params: { projectId: string } 
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <FennecMascot />
           <div className="text-center">
-            <p className="text-base font-semibold text-foreground">No content plan yet</p>
+            <p className="text-base font-semibold text-foreground">{t("content.noContent")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Generate your first plan to start building your content pipeline.
+              {t("content.noContentHint")}
             </p>
           </div>
           <button
             onClick={() => setShowGenerateModal(true)}
             className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm mt-2"
           >
-            <Sparkles size={14} className="inline mr-1" />Generate your first plan
+            <Sparkles size={14} className="inline mr-1" />{t("content.generateFirst")}
           </button>
         </div>
       )}
@@ -881,7 +890,7 @@ export default function ContentPage({ params }: { params: { projectId: string } 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {v === "kanban" ? "Kanban" : "List"}
+                {v === "kanban" ? t("content.views.kanban") : t("content.views.list")}
               </button>
             ))}
           </div>

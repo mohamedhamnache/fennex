@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -32,13 +33,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
-const USAGE_LABELS: Record<ImageUsage, string> = {
-  article_cover: "Article Cover",
-  social_post: "Social Post",
-  brand_asset: "Brand Asset",
-  custom: "Custom",
-};
-
 const STYLE_LABELS: Record<ImageStyle, string> = {
   photorealistic: "Photorealistic",
   illustration: "Illustration",
@@ -49,6 +43,14 @@ const STYLE_LABELS: Record<ImageStyle, string> = {
 
 const USAGES: ImageUsage[] = ["article_cover", "social_post", "brand_asset", "custom"];
 const STYLES: ImageStyle[] = ["professional", "photorealistic", "illustration", "minimalist", "abstract"];
+
+// Maps snake_case usage keys to i18n camelCase keys
+const USAGE_I18N: Record<ImageUsage, string> = {
+  article_cover: "images.usageTabs.articleCover",
+  social_post: "images.usageTabs.socialPost",
+  brand_asset: "images.usageTabs.brandAsset",
+  custom: "images.usageTabs.custom",
+};
 
 // ─── Spinner ──────────────────────────────────────────────────────────────
 
@@ -64,11 +66,12 @@ function Spinner({ size = 16 }: { size?: number }) {
 // ─── Cost Chip ─────────────────────────────────────────────────────────────
 
 function CostChip({ cost }: { cost: number | null }) {
+  const { t } = useTranslation();
   if (cost === null) return null;
   if (cost === 0) {
     return (
       <span className="bg-muted text-muted-foreground text-xs px-1.5 py-0.5 rounded">
-        free
+        {t("images.card.free")}
       </span>
     );
   }
@@ -102,6 +105,7 @@ function ImageCard({
   articles: Article[];
   onAttach: (image: GeneratedImage) => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -192,7 +196,7 @@ function ImageCard({
             className="flex-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
           >
             <LinkIcon className="h-3 w-3" />
-            Attach
+            {t("images.card.attach")}
           </button>
 
           {/* Kebab menu */}
@@ -214,7 +218,7 @@ function ImageCard({
                     className="w-full px-4 py-2.5 text-sm text-left text-foreground hover:bg-accent transition-colors flex items-center gap-2"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    Copy URL
+                    {t("images.card.copyUrl")}
                   </button>
                 )}
                 <button
@@ -227,7 +231,7 @@ function ImageCard({
                   className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Delete
+                  {t("images.card.delete")}
                 </button>
               </div>
             )}
@@ -249,6 +253,7 @@ function GenerateModal({
   onClose: () => void;
   onGenerated: () => void;
 }) {
+  const { t } = useTranslation();
   const [usage, setUsage] = useState<ImageUsage>("article_cover");
   const [style, setStyle] = useState<ImageStyle>("professional");
   const [quality, setQuality] = useState<"standard" | "hd">("standard");
@@ -299,9 +304,9 @@ function GenerateModal({
       <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         <div className="p-6 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Generate Image</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("images.generateModal.title")}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              AI-generated visuals for your content
+              {t("images.generateModal.subtitle")}
             </p>
           </div>
           <button
@@ -317,9 +322,9 @@ function GenerateModal({
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
               <Spinner size={28} />
             </div>
-            <p className="text-sm font-medium text-foreground">Generating image…</p>
+            <p className="text-sm font-medium text-foreground">{t("images.generateModal.generating")}</p>
             <p className="text-xs text-muted-foreground text-center">
-              This may take a few seconds.
+              {t("images.generateModal.generatingHint")}
             </p>
           </div>
         ) : (
@@ -332,7 +337,7 @@ function GenerateModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Usage
+                {t("images.generateModal.usage")}
               </label>
               <select
                 value={usage}
@@ -341,7 +346,7 @@ function GenerateModal({
               >
                 {USAGES.map((u) => (
                   <option key={u} value={u}>
-                    {USAGE_LABELS[u]}
+                    {t(USAGE_I18N[u])}
                   </option>
                 ))}
               </select>
@@ -349,7 +354,7 @@ function GenerateModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Style
+                {t("images.generateModal.style")}
               </label>
               <select
                 value={style}
@@ -366,7 +371,7 @@ function GenerateModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Quality
+                {t("images.generateModal.quality")}
               </label>
               <div className="flex gap-2">
                 {(["standard", "hd"] as const).map((q) => (
@@ -381,9 +386,9 @@ function GenerateModal({
                         : "border-border text-muted-foreground hover:bg-accent",
                     )}
                   >
-                    <span>{q === "hd" ? "HD" : "Standard"}</span>
+                    <span>{q === "hd" ? t("images.generateModal.hd") : t("images.generateModal.standard")}</span>
                     <span className="block text-[10px] font-normal mt-0.5 opacity-70">
-                      {q === "standard" ? "from $0.04" : "from $0.17"}
+                      {q === "standard" ? t("images.generateModal.priceStandard") : t("images.generateModal.priceHD")}
                     </span>
                   </button>
                 ))}
@@ -392,42 +397,42 @@ function GenerateModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Prompt{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
+                {t("images.generateModal.prompt")}{" "}
+                <span className="font-normal text-muted-foreground">({t("images.generateModal.optional")})</span>
               </label>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={3}
-                placeholder="Auto-generate from title+keyword"
+                placeholder={t("images.generateModal.autoGenerate")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Title{" "}
+                {t("images.generateModal.imageTitle")}{" "}
                 <span className="font-normal text-muted-foreground">(used if prompt empty)</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Article or post title"
+                placeholder={t("images.generateModal.titlePlaceholder")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Keyword{" "}
+                {t("images.generateModal.keyword")}{" "}
                 <span className="font-normal text-muted-foreground">(used if prompt empty)</span>
               </label>
               <input
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="Target keyword"
+                placeholder={t("images.generateModal.keywordPlaceholder")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
@@ -435,15 +440,15 @@ function GenerateModal({
             {readyArticles.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Link to article{" "}
-                  <span className="font-normal text-muted-foreground">(optional)</span>
+                  {t("images.generateModal.linkToArticle")}{" "}
+                  <span className="font-normal text-muted-foreground">({t("images.generateModal.optional")})</span>
                 </label>
                 <select
                   value={articleId}
                   onChange={(e) => setArticleId(e.target.value)}
                   className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
-                  <option value="">None</option>
+                  <option value="">{t("images.generateModal.none")}</option>
                   {readyArticles.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.title}
@@ -459,14 +464,14 @@ function GenerateModal({
                 onClick={onClose}
                 className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
               >
-                Cancel
+                {t("images.generateModal.cancel")}
               </button>
               <button
                 onClick={handleGenerate}
                 className="flex-1 btn-primary px-4 py-2 text-sm flex items-center justify-center gap-1.5"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Generate
+                {t("images.generateModal.generate")}
               </button>
             </div>
           </div>
@@ -493,6 +498,7 @@ function AttachModal({
   onClose: () => void;
   onAttached: () => void;
 }) {
+  const { t } = useTranslation();
   const [attachTo, setAttachTo] = useState<"article" | "social_post">("article");
   const [selectedArticleId, setSelectedArticleId] = useState("");
   const [selectedPostId, setSelectedPostId] = useState("");
@@ -526,9 +532,9 @@ function AttachModal({
       <div className="w-full max-w-sm mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         <div className="p-6 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Attach Image</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("images.attachModal.title")}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Link this image to an article or post
+              {t("images.attachModal.subtitle")}
             </p>
           </div>
           <button
@@ -548,7 +554,7 @@ function AttachModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Attach to
+              {t("images.attachModal.attachTo")}
             </label>
             <select
               value={attachTo}
@@ -563,14 +569,14 @@ function AttachModal({
           {attachTo === "article" ? (
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Select article
+                {t("images.attachModal.selectArticle")}
               </label>
               <select
                 value={selectedArticleId}
                 onChange={(e) => setSelectedArticleId(e.target.value)}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                <option value="">— choose —</option>
+                <option value="">{t("images.attachModal.choose")}</option>
                 {readyArticles.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.title}
@@ -581,14 +587,14 @@ function AttachModal({
           ) : (
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Select social post
+                {t("images.attachModal.selectSocialPost")}
               </label>
               <select
                 value={selectedPostId}
                 onChange={(e) => setSelectedPostId(e.target.value)}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                <option value="">— choose —</option>
+                <option value="">{t("images.attachModal.choose")}</option>
                 {socialPosts.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.platform} — {p.content.slice(0, 40)}
@@ -605,7 +611,7 @@ function AttachModal({
               onClick={onClose}
               className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
             >
-              Cancel
+              {t("images.generateModal.cancel")}
             </button>
             <button
               onClick={() => attachMutation.mutate()}
@@ -613,9 +619,9 @@ function AttachModal({
               className="flex-1 btn-primary px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
             >
               {attachMutation.isPending ? (
-                <><Spinner size={14} /> Attaching…</>
+                <><Spinner size={14} /> {t("images.attachModal.attaching")}</>
               ) : (
-                "Attach"
+                t("images.attachModal.attach")
               )}
             </button>
           </div>
@@ -636,12 +642,13 @@ function UsageTabs({
   active: UsageFilter;
   onChange: (u: UsageFilter) => void;
 }) {
+  const { t } = useTranslation();
   const tabs: { value: UsageFilter; label: string }[] = [
-    { value: "all", label: "All" },
-    { value: "article_cover", label: "Article Cover" },
-    { value: "social_post", label: "Social Post" },
-    { value: "brand_asset", label: "Brand Asset" },
-    { value: "custom", label: "Custom" },
+    { value: "all", label: t("images.usageTabs.all") },
+    { value: "article_cover", label: t("images.usageTabs.articleCover") },
+    { value: "social_post", label: t("images.usageTabs.socialPost") },
+    { value: "brand_asset", label: t("images.usageTabs.brandAsset") },
+    { value: "custom", label: t("images.usageTabs.custom") },
   ];
 
   return (
@@ -667,6 +674,7 @@ function UsageTabs({
 
 export default function ImagesPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const { setCurrentProject } = useProjectStore();
   const queryClient = useQueryClient();
 
@@ -713,10 +721,10 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <PageHeader
-        title="Image Studio"
+        title={t("images.title")}
         icon={ImageIcon}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Images" }]}
-        description="AI-generated visuals for articles and social posts."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("images.title") }]}
+        description={t("images.subtitle")}
         actions={
           <>
             {/* Style filter */}
@@ -725,7 +733,7 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
               onChange={(e) => setStyleFilter(e.target.value as ImageStyle | "all")}
               className="rounded-lg border border-border bg-input px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value="all">All Styles</option>
+              <option value="all">{t("images.allStyles")}</option>
               {STYLES.map((s) => (
                 <option key={s} value={s}>
                   {STYLE_LABELS[s]}
@@ -738,7 +746,7 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
               className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              Generate Image
+              {t("images.generate")}
             </button>
           </>
         }
@@ -758,9 +766,9 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
             <ImageIcon className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-foreground">No images generated yet</p>
+            <p className="text-sm font-semibold text-foreground">{t("images.noImages")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Generate your first image to get started.
+              {t("images.noImagesHint")}
             </p>
           </div>
           <button
@@ -768,7 +776,7 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
             className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="h-4 w-4" />
-            Generate Image
+            {t("images.generate")}
           </button>
         </div>
       ) : (

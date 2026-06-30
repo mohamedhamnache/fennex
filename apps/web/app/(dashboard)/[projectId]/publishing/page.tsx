@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -95,6 +96,7 @@ function ConnectionCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; user?: string; error?: string } | null>(null);
@@ -140,10 +142,16 @@ function ConnectionCard({
     },
   });
 
-  // Status dot
   let dotClass = "bg-gray-400";
   if (connection.last_test_ok === true) dotClass = "bg-emerald-500";
   else if (connection.last_test_ok === false) dotClass = "bg-red-500";
+
+  const statusLabel =
+    connection.last_test_ok === true
+      ? t("publishing.connectionCard.connected")
+      : connection.last_test_ok === false
+      ? t("publishing.connectionCard.failed")
+      : t("publishing.connectionCard.notTested");
 
   return (
     <div className="card-base p-5 hover:border-primary/30 transition-colors">
@@ -159,13 +167,9 @@ function ConnectionCard({
             <div className="flex items-center gap-1.5">
               <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
               <span className="text-xs text-muted-foreground">
-                {connection.last_test_ok === true
-                  ? "Connected"
-                  : connection.last_test_ok === false
-                  ? "Failed"
-                  : "Not tested"}
+                {statusLabel}
                 {connection.last_tested_at && (
-                  <> · Last tested: {relativeTime(connection.last_tested_at)}</>
+                  <> · {t("publishing.connectionCard.lastTested", { time: relativeTime(connection.last_tested_at) })}</>
                 )}
               </span>
             </div>
@@ -179,12 +183,12 @@ function ConnectionCard({
                 {testResult.ok ? (
                   <>
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    {testResult.user ? `Connected as ${testResult.user}` : "Connection successful"}
+                    {testResult.user ? `Connected as ${testResult.user}` : t("publishing.connectionCard.connectionSuccessful")}
                   </>
                 ) : (
                   <>
                     <XCircle className="h-3.5 w-3.5" />
-                    {testResult.error ?? "Connection failed"}
+                    {testResult.error ?? t("publishing.connectionCard.connectionFailed")}
                   </>
                 )}
               </span>
@@ -193,12 +197,11 @@ function ConnectionCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Active toggle */}
           <button
             onClick={() => toggleMutation.mutate()}
             disabled={toggleMutation.isPending}
             className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            title={connection.is_active ? "Deactivate" : "Activate"}
+            title={connection.is_active ? t("publishing.connectionCard.deactivate") : t("publishing.connectionCard.activate")}
           >
             {connection.is_active ? (
               <ToggleRight className="h-5 w-5 text-emerald-500" />
@@ -207,7 +210,6 @@ function ConnectionCard({
             )}
           </button>
 
-          {/* Test button */}
           <button
             onClick={() => testMutation.mutate()}
             disabled={testMutation.isPending}
@@ -215,14 +217,13 @@ function ConnectionCard({
           >
             {testMutation.isPending ? (
               <>
-                <Spinner size={12} /> Testing…
+                <Spinner size={12} /> {t("publishing.connectionCard.testing")}
               </>
             ) : (
-              "Test"
+              t("publishing.connectionCard.test")
             )}
           </button>
 
-          {/* Kebab menu */}
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
@@ -236,13 +237,13 @@ function ConnectionCard({
                   onClick={() => { setMenuOpen(false); onEdit(); }}
                   className="w-full px-4 py-2.5 text-sm text-left text-foreground hover:bg-accent transition-colors"
                 >
-                  Edit
+                  {t("publishing.connectionCard.edit")}
                 </button>
                 <button
                   onClick={() => { setMenuOpen(false); onDelete(); }}
                   className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors"
                 >
-                  Delete
+                  {t("publishing.connectionCard.delete")}
                 </button>
               </div>
             )}
@@ -273,6 +274,7 @@ function ConnectionModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!connection;
   const [name, setName] = useState(connection?.name ?? "");
   const [platform, setPlatform] = useState<PublishingPlatform>(connection?.platform ?? "wordpress");
@@ -305,7 +307,6 @@ function ConnectionModal({
           site_url: siteUrl.trim(),
           credentials: { username: username.trim(), app_password: appPassword.trim() },
         });
-        // Immediately test the new connection (fire-and-forget — card will show result)
         testPublishingConnection(created.id).catch(() => {});
         onSaved();
       }
@@ -320,12 +321,10 @@ function ConnectionModal({
       <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         <div className="p-6 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">
-            {isEdit ? "Edit Connection" : "Add Connection"}
+            {isEdit ? t("publishing.connectionModal.editTitle") : t("publishing.connectionModal.addTitle")}
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {isEdit
-              ? "Update your CMS connection details."
-              : "Connect your CMS to publish articles directly."}
+            {isEdit ? t("publishing.connectionModal.editSubtitle") : t("publishing.connectionModal.addSubtitle")}
           </p>
         </div>
 
@@ -338,7 +337,7 @@ function ConnectionModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Name <span className="text-red-500">*</span>
+              {t("publishing.connectionModal.name")} <span className="text-red-500">*</span>
             </label>
             <input
               required
@@ -352,7 +351,7 @@ function ConnectionModal({
           {!isEdit && (
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Platform <span className="text-red-500">*</span>
+                {t("publishing.connectionModal.platform")} <span className="text-red-500">*</span>
               </label>
               <select
                 value={platform}
@@ -370,7 +369,7 @@ function ConnectionModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Site URL <span className="text-red-500">*</span>
+              {t("publishing.connectionModal.siteUrl")} <span className="text-red-500">*</span>
             </label>
             <input
               required
@@ -384,7 +383,7 @@ function ConnectionModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              WordPress username{!isEdit && <span className="text-red-500"> *</span>}
+              {t("publishing.connectionModal.username")}{!isEdit && <span className="text-red-500"> *</span>}
               {isEdit && (
                 <span className="ml-1 text-xs text-muted-foreground font-normal">
                   (leave blank to keep unchanged)
@@ -395,14 +394,14 @@ function ConnectionModal({
               required={!isEdit}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="admin"
+              placeholder={t("publishing.connectionModal.usernamePlaceholder")}
               className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Application password{!isEdit && <span className="text-red-500"> *</span>}
+              {t("publishing.connectionModal.password")}{!isEdit && <span className="text-red-500"> *</span>}
               {isEdit && (
                 <span className="ml-1 text-xs text-muted-foreground font-normal">
                   (leave blank to keep unchanged)
@@ -418,7 +417,7 @@ function ConnectionModal({
               className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Generate in WordPress &rarr; Users &rarr; Your Profile &rarr; Application Passwords
+              {t("publishing.connectionModal.passwordHint")}
             </p>
           </div>
 
@@ -428,7 +427,7 @@ function ConnectionModal({
               onClick={onClose}
               className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
             >
-              Cancel
+              {t("publishing.connectionModal.cancel")}
             </button>
             <button
               type="submit"
@@ -438,12 +437,12 @@ function ConnectionModal({
               {submitting ? (
                 <>
                   <Spinner size={14} />
-                  {isEdit ? "Saving…" : "Adding…"}
+                  {isEdit ? t("publishing.connectionModal.saving") : t("publishing.connectionModal.adding")}
                 </>
               ) : isEdit ? (
-                "Save Changes"
+                t("publishing.connectionModal.saveChanges")
               ) : (
-                "Add Connection"
+                t("publishing.connectionModal.addConnection")
               )}
             </button>
           </div>
@@ -457,6 +456,7 @@ function ConnectionModal({
 
 export default function PublishingPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const { setCurrentProject } = useProjectStore();
   const queryClient = useQueryClient();
 
@@ -502,24 +502,23 @@ export default function PublishingPage({ params }: { params: { projectId: string
     }
   }
 
-  // Build article lookup map
   const articleMap = Object.fromEntries(articles.map((a) => [a.id, a]));
   const connectionMap = Object.fromEntries(connections.map((c) => [c.id, c]));
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in">
       <PageHeader
-        title="Publishing"
+        title={t("publishing.title")}
         icon={Send}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Publishing" }]}
-        description="Connect your CMS and publish articles directly."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("publishing.title") }]}
+        description={t("publishing.subtitle")}
         actions={
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add Connection
+            {t("publishing.addConnection")}
           </button>
         }
       />
@@ -527,7 +526,7 @@ export default function PublishingPage({ params }: { params: { projectId: string
       {/* Connections section */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Connections
+          {t("publishing.connections")}
         </p>
 
         {connectionsLoading ? (
@@ -540,9 +539,9 @@ export default function PublishingPage({ params }: { params: { projectId: string
               <LinkIcon className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-foreground">No publishing connections yet</p>
+              <p className="text-sm font-semibold text-foreground">{t("publishing.noConnections")}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Add a connection to start publishing articles to your CMS.
+                {t("publishing.noConnectionsHint")}
               </p>
             </div>
             <button
@@ -550,7 +549,7 @@ export default function PublishingPage({ params }: { params: { projectId: string
               className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
             >
               <Plus className="h-4 w-4" />
-              Add Connection
+              {t("publishing.addConnection")}
             </button>
           </div>
         ) : (
@@ -570,7 +569,7 @@ export default function PublishingPage({ params }: { params: { projectId: string
       {/* Publish history section */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Publish History
+          {t("publishing.publishHistory")}
         </p>
 
         {jobsLoading ? (
@@ -579,7 +578,7 @@ export default function PublishingPage({ params }: { params: { projectId: string
           </div>
         ) : jobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 rounded-xl border border-dashed border-border">
-            <p className="text-sm text-muted-foreground">No publish jobs yet.</p>
+            <p className="text-sm text-muted-foreground">{t("publishing.noJobs")}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -593,10 +592,10 @@ export default function PublishingPage({ params }: { params: { projectId: string
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">
-                      {article?.title ?? "Unknown article"}
+                      {article?.title ?? t("publishing.job.unknownArticle")}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {conn?.name ?? "Unknown connection"}
+                      {conn?.name ?? t("publishing.job.unknownConnection")}
                       {job.created_at && <> &middot; {relativeTime(job.created_at)}</>}
                     </p>
                     {job.error && (
@@ -612,7 +611,7 @@ export default function PublishingPage({ params }: { params: { projectId: string
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-primary hover:underline"
                       >
-                        View post
+                        {t("publishing.job.viewPost")}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
@@ -624,7 +623,6 @@ export default function PublishingPage({ params }: { params: { projectId: string
         )}
       </div>
 
-      {/* Modals */}
       {showAddModal && (
         <ConnectionModal
           projectId={projectId}

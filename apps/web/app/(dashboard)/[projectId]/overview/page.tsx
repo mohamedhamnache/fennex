@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { FileText, BarChart2, Search, ExternalLink, Globe, MousePointerClick, Eye, TrendingUp, Crosshair } from "lucide-react";
 import Link from "next/link";
 import {
@@ -49,6 +50,7 @@ function QuickAction({ icon: Icon, label, href }: { icon: React.ElementType; lab
 
 export default function ProjectOverviewPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -79,13 +81,13 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
-  const clicksSpark = traffic.map((t) => t.clicks);
-  const imprSpark = traffic.map((t) => t.impressions);
+  const clicksSpark = traffic.map((tr) => tr.clicks);
+  const imprSpark = traffic.map((tr) => tr.impressions);
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <PageHeader
-        title={project?.name ?? "Project Overview"}
+        title={project?.name ?? t("overview.title")}
         icon={Globe}
         breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: project?.name ?? "Project" }]}
         description={
@@ -100,19 +102,19 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
               <ExternalLink className="h-3 w-3" />
             </a>
           ) : (
-            "Your organic growth at a glance."
+            t("overview.subtitle")
           )
         }
         actions={
           <Link href={`/${projectId}/articles`} className="btn-primary inline-flex items-center gap-1.5 px-3.5 py-2 text-xs">
-            <FileText className="h-3.5 w-3.5" /> New article
+            <FileText className="h-3.5 w-3.5" /> {t("overview.newArticle")}
           </Link>
         }
       />
 
       {/* Analytics stats — last 28 days */}
       <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Last 28 days</h2>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">{t("overview.last28Days")}</h2>
         {overviewLoading ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[...Array(4)].map((_, i) => (
@@ -122,28 +124,28 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
         ) : overview ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
-              label="Clicks" tone="primary" icon={MousePointerClick}
+              label={t("overview.stats.clicks")} tone="primary" icon={MousePointerClick}
               value={fmtNum(overview.clicks)} change={overview.clicks_change}
               spark={clicksSpark} href={`/${projectId}/analytics`}
             />
             <StatCard
-              label="Impressions" tone="violet" icon={Eye}
+              label={t("overview.stats.impressions")} tone="violet" icon={Eye}
               value={fmtNum(overview.impressions)} change={overview.impressions_change}
               spark={imprSpark} href={`/${projectId}/analytics`}
             />
             <StatCard
-              label="Avg CTR" tone="emerald" icon={TrendingUp}
+              label={t("overview.stats.avgCtr")} tone="emerald" icon={TrendingUp}
               value={`${(overview.ctr * 100).toFixed(2)}%`} change={overview.ctr_change}
               href={`/${projectId}/analytics`}
             />
             <StatCard
-              label="Avg Position" tone="amber" icon={Crosshair}
+              label={t("overview.stats.avgPosition")} tone="amber" icon={Crosshair}
               value={overview.avg_position.toFixed(1)} change={overview.position_change}
               href={`/${projectId}/analytics`} invertChange
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No analytics data yet.</p>
+          <p className="text-sm text-muted-foreground">{t("overview.noAnalytics")}</p>
         )}
       </div>
 
@@ -151,9 +153,9 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
         {/* Recent articles */}
         <div className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium">Recent Articles</h2>
+            <h2 className="text-sm font-medium">{t("overview.recentArticles")}</h2>
             <Link href={`/${projectId}/articles`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              View all →
+              {t("overview.viewAll")}
             </Link>
           </div>
           <Card className="overflow-hidden">
@@ -165,9 +167,9 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
               </div>
             ) : recentArticles.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No articles yet.{" "}
+                {t("overview.noArticles")}{" "}
                 <Link href={`/${projectId}/articles`} className="text-primary hover:underline">
-                  Create one
+                  {t("overview.createOne")}
                 </Link>
               </div>
             ) : (
@@ -201,11 +203,11 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
 
         {/* Quick actions */}
         <div>
-          <h2 className="mb-3 text-sm font-medium">Quick Actions</h2>
+          <h2 className="mb-3 text-sm font-medium">{t("overview.quickActions")}</h2>
           <div className="flex flex-col gap-2">
-            <QuickAction icon={Search} label="Run keyword research" href={`/${projectId}/keywords`} />
-            <QuickAction icon={FileText} label="Create article" href={`/${projectId}/articles`} />
-            <QuickAction icon={BarChart2} label="View analytics" href={`/${projectId}/analytics`} />
+            <QuickAction icon={Search} label={t("overview.runKeywordResearch")} href={`/${projectId}/keywords`} />
+            <QuickAction icon={FileText} label={t("overview.createArticle")} href={`/${projectId}/articles`} />
+            <QuickAction icon={BarChart2} label={t("overview.viewAnalytics")} href={`/${projectId}/analytics`} />
           </div>
         </div>
       </div>

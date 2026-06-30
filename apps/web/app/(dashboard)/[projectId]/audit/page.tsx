@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, CheckCircle2, Clock, Play, SearchCode } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ScoreGauge } from "@/components/ui/ScoreGauge";
@@ -58,6 +59,7 @@ function SeverityBadge({ severity }: { severity: AuditIssue["severity"] }) {
 
 export default function AuditPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const { setCurrentProject } = useProjectStore();
 
   const [phase, setPhase] = useState<FlowState>("idle");
@@ -162,10 +164,10 @@ export default function AuditPage({ params }: { params: { projectId: string } })
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <PageHeader
-        title="SEO Audit"
+        title={t("audit.title")}
         icon={SearchCode}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Audit" }]}
-        description="Crawl your site and surface technical issues, content gaps, and on-page improvements."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("audit.audit") }]}
+        description={t("audit.subtitle")}
         actions={
           <button
             onClick={runAudit}
@@ -175,12 +177,12 @@ export default function AuditPage({ params }: { params: { projectId: string } })
             {isRunning ? (
               <>
                 <Spinner size={13} />
-                Running…
+                {t("audit.running")}
               </>
             ) : (
               <>
                 <Play className="h-3.5 w-3.5" />
-                Run Audit
+                {t("audit.runAudit")}
               </>
             )}
           </button>
@@ -192,9 +194,9 @@ export default function AuditPage({ params }: { params: { projectId: string } })
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <FennecMascot />
           <div className="text-center">
-            <p className="text-base font-semibold text-foreground">No audit yet</p>
+            <p className="text-base font-semibold text-foreground">{t("audit.noAudit")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Click <strong>Run Audit</strong> to crawl your site and get a full SEO report.
+              {t("audit.noAuditHint")}
             </p>
           </div>
         </div>
@@ -208,7 +210,7 @@ export default function AuditPage({ params }: { params: { projectId: string } })
           </div>
           <div className="text-center">
             <p className="text-sm font-semibold text-foreground">
-              {phase === "crawling" ? "Crawling pages…" : "Analysing SEO signals…"}
+              {phase === "crawling" ? t("audit.crawlingPages") : t("audit.analysingSignals")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{statusMessage}</p>
           </div>
@@ -217,13 +219,13 @@ export default function AuditPage({ params }: { params: { projectId: string } })
               <span
                 className={`h-1.5 w-1.5 rounded-full ${phase === "crawling" ? "bg-primary animate-pulse-dot" : "bg-emerald-500"}`}
               />
-              Crawl
+              {t("audit.crawl")}
             </span>
             <span className="flex items-center gap-1.5">
               <span
                 className={`h-1.5 w-1.5 rounded-full ${phase === "auditing" ? "bg-primary animate-pulse-dot" : "bg-border"}`}
               />
-              Audit
+              {t("audit.audit")}
             </span>
           </div>
         </div>
@@ -234,7 +236,7 @@ export default function AuditPage({ params }: { params: { projectId: string } })
         <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-5">
           <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-destructive">Audit failed</p>
+            <p className="text-sm font-semibold text-destructive">{t("audit.auditFailed")}</p>
             <p className="mt-0.5 text-xs text-destructive/80">{errorMessage}</p>
           </div>
         </div>
@@ -247,28 +249,28 @@ export default function AuditPage({ params }: { params: { projectId: string } })
           <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
             <p className="text-sm font-medium text-success">
-              Audit completed successfully
+              {t("audit.auditSuccess")}
             </p>
           </div>
 
           {/* Score gauges */}
           <Card className="p-6">
-            <h2 className="mb-5 text-sm font-semibold text-foreground">Score Overview</h2>
+            <h2 className="mb-5 text-sm font-semibold text-foreground">{t("audit.scoreOverview")}</h2>
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-              <ScoreGauge score={auditResult.overall_score} label="Overall" />
-              <ScoreGauge score={auditResult.technical_score} label="Technical" />
-              <ScoreGauge score={auditResult.content_score} label="Content" />
-              <ScoreGauge score={auditResult.onpage_score} label="On-Page" />
+              <ScoreGauge score={auditResult.overall_score} label={t("audit.scores.overall")} />
+              <ScoreGauge score={auditResult.technical_score} label={t("audit.scores.technical")} />
+              <ScoreGauge score={auditResult.content_score} label={t("audit.scores.content")} />
+              <ScoreGauge score={auditResult.onpage_score} label={t("audit.scores.onPage")} />
             </div>
           </Card>
 
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Pages Audited" tone="primary" icon={Clock}
+            <StatCard label={t("audit.stats.pagesAudited")} tone="primary" icon={Clock}
               value={String(auditResult.summary?.pages_audited ?? 0)} />
-            <StatCard label="Critical Issues" tone="amber" icon={AlertCircle}
+            <StatCard label={t("audit.stats.criticalIssues")} tone="amber" icon={AlertCircle}
               value={String(auditResult.summary?.critical_issues ?? 0)} />
-            <StatCard label="Warnings" tone="violet" icon={AlertCircle}
+            <StatCard label={t("audit.stats.warnings")} tone="violet" icon={AlertCircle}
               value={String(auditResult.summary?.warnings ?? 0)} />
           </div>
 
@@ -277,7 +279,7 @@ export default function AuditPage({ params }: { params: { projectId: string } })
             <Card className="overflow-hidden">
               <div className="border-b border-border px-5 py-3">
                 <h2 className="text-sm font-semibold text-foreground">
-                  Issues ({auditResult.issues.length})
+                  {t("audit.issuesCount", { n: auditResult.issues.length })}
                 </h2>
               </div>
               <div className="overflow-x-auto">
@@ -285,16 +287,16 @@ export default function AuditPage({ params }: { params: { projectId: string } })
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
                       <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">
-                        Severity
+                        {t("audit.tableHeaders.severity")}
                       </th>
                       <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">
-                        Issue Type
+                        {t("audit.tableHeaders.issueType")}
                       </th>
                       <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">
-                        URL
+                        {t("audit.tableHeaders.url")}
                       </th>
                       <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">
-                        Details
+                        {t("audit.tableHeaders.details")}
                       </th>
                     </tr>
                   </thead>
@@ -332,9 +334,9 @@ export default function AuditPage({ params }: { params: { projectId: string } })
           {auditResult.issues?.length === 0 && (
             <Card className="p-8 flex flex-col items-center gap-3 text-center">
               <CheckCircle2 className="h-8 w-8 text-success" />
-              <p className="text-sm font-semibold text-foreground">No issues found</p>
+              <p className="text-sm font-semibold text-foreground">{t("audit.noIssues")}</p>
               <p className="text-xs text-muted-foreground">
-                Your site is in great shape — no SEO issues detected.
+                {t("audit.noIssuesHint")}
               </p>
             </Card>
           )}

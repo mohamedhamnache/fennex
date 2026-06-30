@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Search, SearchCode, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
@@ -99,6 +100,7 @@ function KeywordsTable({
   keywords: Keyword[];
   activeClusterId: string | null;
 }) {
+  const { t } = useTranslation();
   const [sortCol, setSortCol] = useState<SortCol>("volume");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -144,14 +146,14 @@ function KeywordsTable({
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">
-                Keyword
+                {t("keywords.tableHeaders.keyword")}
               </th>
               <th
                 className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground cursor-pointer select-none"
                 onClick={() => handleSort("volume")}
               >
                 <span className="flex items-center gap-1">
-                  Volume
+                  {t("keywords.tableHeaders.volume")}
                   <SortIcon col="volume" active={sortCol} dir={sortDir} />
                 </span>
               </th>
@@ -160,7 +162,7 @@ function KeywordsTable({
                 onClick={() => handleSort("difficulty")}
               >
                 <span className="flex items-center gap-1">
-                  Difficulty
+                  {t("keywords.tableHeaders.difficulty")}
                   <SortIcon col="difficulty" active={sortCol} dir={sortDir} />
                 </span>
               </th>
@@ -169,12 +171,12 @@ function KeywordsTable({
                 onClick={() => handleSort("cpc")}
               >
                 <span className="flex items-center gap-1">
-                  CPC
+                  {t("keywords.tableHeaders.cpc")}
                   <SortIcon col="cpc" active={sortCol} dir={sortDir} />
                 </span>
               </th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">
-                Intent
+                {t("keywords.tableHeaders.intent")}
               </th>
             </tr>
           </thead>
@@ -257,6 +259,7 @@ function ClustersGrid({
 
 export default function KeywordsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const { setCurrentProject } = useProjectStore();
 
   const [seedInput, setSeedInput] = useState("");
@@ -332,10 +335,10 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <PageHeader
-        title="Keywords"
+        title={t("keywords.title")}
         icon={SearchCode}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Keywords" }]}
-        description="Discover high-ROI keyword opportunities and group them into clusters."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("keywords.title") }]}
+        description={t("keywords.subtitle")}
       />
 
       {/* Seed input */}
@@ -359,10 +362,10 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
           {isSubmitting || isRunning ? (
             <>
               <Spinner size={14} />
-              {isSubmitting ? "Starting…" : "Analyzing…"}
+              {isSubmitting ? t("keywords.starting") : t("keywords.analyzing")}
             </>
           ) : (
-            "Analyze"
+            t("keywords.analyze")
           )}
         </button>
       </form>
@@ -379,9 +382,9 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <FennecMascot />
           <div className="text-center">
-            <p className="text-base font-semibold text-foreground">Enter a keyword to start</p>
+            <p className="text-base font-semibold text-foreground">{t("keywords.enterKeyword")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              We&apos;ll research related keywords and group them into clusters.
+              {t("keywords.enterKeywordHint")}
             </p>
           </div>
         </div>
@@ -398,7 +401,7 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
               Analyzing &ldquo;{seedKeyword}&rdquo;&hellip;
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Discovering keywords and building clusters
+              {t("keywords.discovering")}
             </p>
           </div>
         </div>
@@ -408,9 +411,9 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
       {isFailed && (
         <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-5">
           <div>
-            <p className="text-sm font-semibold text-destructive">Research failed</p>
+            <p className="text-sm font-semibold text-destructive">{t("keywords.researchFailed")}</p>
             <p className="mt-0.5 text-xs text-destructive/80">
-              {jobQuery.data?.error ?? "An unexpected error occurred. Please try again."}
+              {jobQuery.data?.error ?? t("keywords.unexpectedError")}
             </p>
           </div>
         </div>
@@ -422,7 +425,7 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
           {/* Clusters rail */}
           <aside className="glass shrink-0 self-start overflow-hidden lg:w-64">
             <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-              <p className="text-sm font-semibold">Clusters</p>
+              <p className="text-sm font-semibold">{t("keywords.clusters")}</p>
               <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-muted-foreground">{clusters.length}</span>
             </div>
             <div className="max-h-[460px] overflow-y-auto p-2">
@@ -434,7 +437,7 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
                 )}
               >
                 {!activeClusterId && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
-                <span className="font-medium">All keywords</span>
+                <span className="font-medium">{t("keywords.allKeywords")}</span>
                 <span className="text-xs text-muted-foreground">{keywords.length}</span>
               </button>
               {clusters.map((cluster) => {
@@ -464,7 +467,7 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
             <div className="flex items-end justify-between">
               <div>
                 <h2 className="font-display text-lg font-bold tracking-tight">
-                  {activeCluster ? activeCluster.name : "All keywords"}
+                  {activeCluster ? activeCluster.name : t("keywords.allKeywords")}
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {filteredCount.toLocaleString()} keyword{filteredCount !== 1 ? "s" : ""}
@@ -476,7 +479,7 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
                   onClick={() => setActiveClusterId(null)}
                   className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  Clear filter
+                  {t("keywords.clearFilter")}
                 </button>
               )}
             </div>

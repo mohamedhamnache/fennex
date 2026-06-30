@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -80,6 +81,7 @@ function IntentBadge({ intent }: { intent: string | null }) {
 // ─── GscBanner ───────────────────────────────────────────────────────────────
 
 function GscBanner({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -125,13 +127,13 @@ function GscBanner({ projectId }: { projectId: string }) {
       <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2.5 text-sm">
         <span className="flex items-center gap-2 text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          Search Console connected — <strong className="text-foreground">{status.google_email}</strong>
+          {t("analytics.searchConsoleConnected")} — <strong className="text-foreground">{status.google_email}</strong>
           {status.last_synced_at && (
-            <> · Last synced {new Date(status.last_synced_at).toLocaleDateString()}</>
+            <> · {t("analytics.lastSynced")} {new Date(status.last_synced_at).toLocaleDateString()}</>
           )}
         </span>
         <button onClick={handleDisconnect} className="text-destructive hover:underline text-xs">
-          Disconnect
+          {t("analytics.disconnect")}
         </button>
       </div>
     );
@@ -140,13 +142,13 @@ function GscBanner({ projectId }: { projectId: string }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-dashed bg-muted/20 px-4 py-2.5 text-sm">
       <span className="text-muted-foreground">
-        Connect Google Search Console to sync real traffic data.
+        {t("analytics.connectSearchConsole")}
       </span>
       <button
         onClick={handleConnect}
         className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
       >
-        Connect
+        {t("analytics.connect")}
       </button>
     </div>
   );
@@ -168,6 +170,7 @@ function OverviewSkeleton() {
 }
 
 function OverviewTab({ projectId, range }: { projectId: string; range: AnalyticsRange }) {
+  const { t } = useTranslation();
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ["analytics", "overview", projectId, range],
     queryFn: () => getAnalyticsOverview(projectId, range),
@@ -190,7 +193,7 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
         <FennecMascot />
-        <p>No analytics data yet. Run keyword research to populate rankings.</p>
+        <p>{t("analytics.noData")}</p>
       </div>
     );
   }
@@ -199,28 +202,28 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          label="Clicks" tone="primary" icon={MousePointerClick}
+          label={t("analytics.stats.clicks")} tone="primary" icon={MousePointerClick}
           value={fmtNum(overview.clicks)} change={overview.clicks_change}
-          spark={traffic.map((t) => t.clicks)}
+          spark={traffic.map((tr) => tr.clicks)}
         />
         <StatCard
-          label="Impressions" tone="violet" icon={Eye}
+          label={t("analytics.stats.impressions")} tone="violet" icon={Eye}
           value={fmtNum(overview.impressions)} change={overview.impressions_change}
-          spark={traffic.map((t) => t.impressions)}
+          spark={traffic.map((tr) => tr.impressions)}
         />
         <StatCard
-          label="Avg CTR" tone="emerald" icon={TrendingUp}
+          label={t("analytics.stats.avgCtr")} tone="emerald" icon={TrendingUp}
           value={`${(overview.ctr * 100).toFixed(2)}%`} change={overview.ctr_change}
         />
         <StatCard
-          label="Avg Position" tone="amber" icon={Crosshair}
+          label={t("analytics.stats.avgPosition")} tone="amber" icon={Crosshair}
           value={overview.avg_position.toFixed(1)} change={overview.position_change} invertChange
         />
       </div>
 
       <Card className="p-5">
         <p className="mb-4 text-sm font-medium text-muted-foreground">
-          Clicks &amp; Impressions
+          {t("analytics.stats.clicksImpressions")}
         </p>
         <AnalyticsAreaChart data={chartData} />
       </Card>
@@ -231,6 +234,7 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
 // ─── RankingsTab ─────────────────────────────────────────────────────────────
 
 function RankingsTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const [sortBy, setSortBy] = useState<"position" | "volume" | "change">("position");
   const [page, setPage] = useState(1);
 
@@ -241,14 +245,14 @@ function RankingsTab({ projectId }: { projectId: string }) {
   });
 
   if (isLoading) {
-    return <div className="py-12 text-center text-muted-foreground text-sm">Loading rankings…</div>;
+    return <div className="py-12 text-center text-muted-foreground text-sm">{t("analytics.loadingRankings")}</div>;
   }
 
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
         <FennecMascot />
-        <p>No keyword rankings yet. Run keyword research first.</p>
+        <p>{t("analytics.noRankings")}</p>
       </div>
     );
   }
@@ -256,7 +260,7 @@ function RankingsTab({ projectId }: { projectId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Sort by:</span>
+        <span className="text-sm text-muted-foreground">{t("analytics.sortBy")}</span>
         {(["position", "volume", "change"] as const).map((s) => (
           <button
             key={s}
@@ -274,12 +278,12 @@ function RankingsTab({ projectId }: { projectId: string }) {
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
-              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Keyword</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Volume</th>
-              <th className="px-4 py-2.5 font-medium text-muted-foreground">Intent</th>
-              <th className="px-4 py-2.5 font-medium text-muted-foreground">Difficulty</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Position</th>
-              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Change</th>
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.keyword")}</th>
+              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.volume")}</th>
+              <th className="px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.intent")}</th>
+              <th className="px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.difficulty")}</th>
+              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.position")}</th>
+              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.change")}</th>
             </tr>
           </thead>
           <tbody>
@@ -327,15 +331,15 @@ function RankingsTab({ projectId }: { projectId: string }) {
           onClick={() => setPage((p) => p - 1)}
           className="disabled:opacity-40 hover:text-foreground"
         >
-          ← Previous
+          {t("common.previousPage")}
         </button>
-        <span>Page {page}</span>
+        <span>{t("common.page", { n: page })}</span>
         <button
           disabled={rows.length < 25}
           onClick={() => setPage((p) => p + 1)}
           className="disabled:opacity-40 hover:text-foreground"
         >
-          Next →
+          {t("common.nextPage")}
         </button>
       </div>
     </div>
@@ -353,16 +357,17 @@ function MetricsTable<T extends { clicks: number; impressions: number; ctr: numb
   labelKey: keyof T;
   labelHeader: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/40">
           <tr>
             <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{labelHeader}</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Clicks</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Impressions</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">CTR</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Avg Pos</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.clicks")}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.impressions")}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.ctr")}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.avgPos")}</th>
           </tr>
         </thead>
         <tbody>
@@ -386,6 +391,7 @@ function MetricsTable<T extends { clicks: number; impressions: number; ctr: numb
 // ─── PagesQueriesTab ─────────────────────────────────────────────────────────
 
 function PagesQueriesTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const { data: pages = [] } = useQuery({
     queryKey: ["analytics", "top-pages", projectId],
     queryFn: () => getTopPages(projectId),
@@ -401,19 +407,19 @@ function PagesQueriesTab({ projectId }: { projectId: string }) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div>
-        <h3 className="mb-3 text-sm font-medium">Top Pages</h3>
+        <h3 className="mb-3 text-sm font-medium">{t("analytics.topPages")}</h3>
         {pages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No page data yet.</p>
+          <p className="text-sm text-muted-foreground">{t("analytics.noPageData")}</p>
         ) : (
-          <MetricsTable rows={pages} labelKey="url" labelHeader="Page" />
+          <MetricsTable rows={pages} labelKey="url" labelHeader={t("analytics.tableHeaders.page")} />
         )}
       </div>
       <div>
-        <h3 className="mb-3 text-sm font-medium">Top Queries</h3>
+        <h3 className="mb-3 text-sm font-medium">{t("analytics.topQueries")}</h3>
         {queries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No query data yet.</p>
+          <p className="text-sm text-muted-foreground">{t("analytics.noQueryData")}</p>
         ) : (
-          <MetricsTable rows={queries} labelKey="query" labelHeader="Query" />
+          <MetricsTable rows={queries} labelKey="query" labelHeader={t("analytics.tableHeaders.query")} />
         )}
       </div>
     </div>
@@ -423,6 +429,7 @@ function PagesQueriesTab({ projectId }: { projectId: string }) {
 // ─── ContentPerformanceTab ────────────────────────────────────────────────────
 
 function ContentPerformanceTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const { data: rows = [] } = useQuery({
     queryKey: ["analytics", "content-performance", projectId],
     queryFn: () => getContentPerformance(projectId),
@@ -433,7 +440,7 @@ function ContentPerformanceTab({ projectId }: { projectId: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
         <FennecMascot />
-        <p>Publish articles to see their performance here.</p>
+        <p>{t("analytics.publishArticles")}</p>
       </div>
     );
   }
@@ -443,10 +450,10 @@ function ContentPerformanceTab({ projectId }: { projectId: string }) {
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/40">
           <tr>
-            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Article</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Clicks</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Impressions</th>
-            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">CTR</th>
+            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.article")}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.clicks")}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.impressions")}</th>
+            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("analytics.tableHeaders.ctr")}</th>
           </tr>
         </thead>
         <tbody>
@@ -479,23 +486,24 @@ type Tab = "overview" | "rankings" | "pages" | "content";
 
 export default function AnalyticsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [range, setRange] = useState<AnalyticsRange>("28d");
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "rankings", label: "Rankings" },
-    { key: "pages", label: "Pages & Queries" },
-    { key: "content", label: "Content" },
+    { key: "overview", label: t("analytics.tabs.overview") },
+    { key: "rankings", label: t("analytics.tabs.rankings") },
+    { key: "pages", label: t("analytics.tabs.pagesQueries") },
+    { key: "content", label: t("analytics.tabs.content") },
   ];
 
   return (
     <div className="flex flex-col gap-5 animate-fade-in">
       <PageHeader
-        title="Analytics"
+        title={t("analytics.title")}
         icon={BarChart2}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Analytics" }]}
-        description="Search performance, rankings, and content impact."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("analytics.title") }]}
+        description={t("analytics.subtitle")}
       />
 
       <GscBanner projectId={projectId} />
@@ -503,21 +511,21 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* Sticky filter rail */}
         <aside className="glass shrink-0 self-start p-3 lg:sticky lg:top-2 lg:w-52">
-          <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Views</p>
+          <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{t("analytics.views")}</p>
           <nav className="flex flex-col gap-0.5">
-            {tabs.map((t) => {
-              const active = activeTab === t.key;
+            {tabs.map((tab) => {
+              const active = activeTab === tab.key;
               return (
                 <button
-                  key={t.key}
-                  onClick={() => setActiveTab(t.key)}
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
                   className={cn(
                     "relative rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
                     active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
                   )}
                 >
                   {active && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
-                  {t.label}
+                  {tab.label}
                 </button>
               );
             })}
@@ -525,7 +533,7 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
 
           {activeTab === "overview" && (
             <div className="mt-4 border-t border-white/[0.06] pt-3">
-              <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Date range</p>
+              <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{t("analytics.dateRange")}</p>
               <div className="flex gap-1">
                 {(["7d", "28d", "90d"] as AnalyticsRange[]).map((r) => (
                   <button

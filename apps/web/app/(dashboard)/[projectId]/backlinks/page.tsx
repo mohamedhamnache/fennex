@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle, RefreshCw, ExternalLink, ChevronDown, ChevronUp, Send, Link2 } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
@@ -42,6 +43,7 @@ function StatusBadge({ status }: { status: string }) {
 // ─── ProfileTab ───────────────────────────────────────────────────────────────
 
 function ProfileTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: profile, isLoading } = useQuery<BacklinkProfile>({
     queryKey: ["backlinks", "profile", projectId],
@@ -69,31 +71,33 @@ function ProfileTab({ projectId }: { projectId: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16">
         <FennecMascot />
-        <p className="text-sm text-muted-foreground">Run your first backlink analysis to get started.</p>
+        <p className="text-sm text-muted-foreground">{t("backlinks.noData")}</p>
         <button
           onClick={() => analyze.mutate()}
           disabled={analyze.isPending}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {analyze.isPending ? "Analyzing…" : "Analyze Backlinks"}
+          {analyze.isPending ? t("backlinks.syncing") : t("backlinks.analyze")}
         </button>
       </div>
     );
   }
 
   const stats = [
-    { label: "Total Backlinks", value: profile.total_backlinks.toLocaleString() },
-    { label: "Referring Domains", value: profile.referring_domains.toLocaleString() },
-    { label: "Domain Authority", value: profile.domain_authority?.toFixed(1) ?? "—" },
-    { label: "Trust Score", value: profile.trust_score?.toFixed(1) ?? "—" },
-    { label: "Spam Score", value: profile.spam_score?.toFixed(1) ?? "—" },
+    { label: t("backlinks.stats.totalBacklinks"), value: profile.total_backlinks.toLocaleString() },
+    { label: t("backlinks.stats.referringDomains"), value: profile.referring_domains.toLocaleString() },
+    { label: t("backlinks.stats.domainAuthority"), value: profile.domain_authority?.toFixed(1) ?? "—" },
+    { label: t("backlinks.stats.trustScore"), value: profile.trust_score?.toFixed(1) ?? "—" },
+    { label: t("backlinks.stats.spamScore"), value: profile.spam_score?.toFixed(1) ?? "—" },
   ];
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {profile.last_synced_at ? `Last synced ${new Date(profile.last_synced_at).toLocaleDateString()}` : "Never synced"}
+          {profile.last_synced_at
+            ? t("backlinks.lastSynced", { date: new Date(profile.last_synced_at).toLocaleDateString() })
+            : t("backlinks.neverSynced")}
         </p>
         <button
           onClick={() => analyze.mutate()}
@@ -101,7 +105,7 @@ function ProfileTab({ projectId }: { projectId: string }) {
           className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/20 disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${analyze.isPending ? "animate-spin" : ""}`} />
-          {analyze.isPending ? "Syncing…" : "Re-analyze"}
+          {analyze.isPending ? t("backlinks.syncing") : t("backlinks.reanalyze")}
         </button>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
@@ -119,6 +123,7 @@ function ProfileTab({ projectId }: { projectId: string }) {
 // ─── BacklinksTab ─────────────────────────────────────────────────────────────
 
 function BacklinksTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [hideSpam, setHideSpam] = useState(true);
 
@@ -128,30 +133,30 @@ function BacklinksTab({ projectId }: { projectId: string }) {
     staleTime: 5 * 60_000,
   });
 
-  if (isLoading) return <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>;
+  if (isLoading) return <div className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</div>;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={hideSpam} onChange={(e) => { setHideSpam(e.target.checked); setPage(1); }} className="rounded" />
-          Hide spam
+          {t("backlinks.hideSpam")}
         </label>
       </div>
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">
           <FennecMascot />
-          <p className="text-sm text-muted-foreground">No backlinks found yet. Run analysis first.</p>
+          <p className="text-sm text-muted-foreground">{t("backlinks.noBacklinks")}</p>
         </div>
       ) : (
         <div className="glass overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Source Domain</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Anchor</th>
-                <th className="px-4 py-2.5 font-medium text-muted-foreground">DA</th>
-                <th className="px-4 py-2.5 font-medium text-muted-foreground">Type</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.sourceDomain")}</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.anchor")}</th>
+                <th className="px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.da")}</th>
+                <th className="px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.type")}</th>
                 <th className="px-4 py-2.5 font-medium text-muted-foreground"></th>
               </tr>
             </thead>
@@ -179,9 +184,9 @@ function BacklinksTab({ projectId }: { projectId: string }) {
         </div>
       )}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="disabled:opacity-40 hover:text-foreground">← Prev</button>
-        <span>Page {page}</span>
-        <button disabled={rows.length < 25} onClick={() => setPage(p => p + 1)} className="disabled:opacity-40 hover:text-foreground">Next →</button>
+        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="disabled:opacity-40 hover:text-foreground">{t("common.previousPage")}</button>
+        <span>{t("common.page", { n: page })}</span>
+        <button disabled={rows.length < 25} onClick={() => setPage(p => p + 1)} className="disabled:opacity-40 hover:text-foreground">{t("common.nextPage")}</button>
       </div>
     </div>
   );
@@ -200,6 +205,7 @@ const OPP_STATUS_CLASS: Record<string, string> = {
 };
 
 function OpportunitiesTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: rows = [], isLoading } = useQuery<BacklinkOpportunity[]>({
     queryKey: ["backlinks", "opportunities", projectId, null],
@@ -212,7 +218,7 @@ function OpportunitiesTab({ projectId }: { projectId: string }) {
     qc.invalidateQueries({ queryKey: ["backlinks", "opportunities", projectId] });
   }
 
-  if (isLoading) return <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>;
+  if (isLoading) return <div className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</div>;
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 py-16">
@@ -227,10 +233,10 @@ function OpportunitiesTab({ projectId }: { projectId: string }) {
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/40">
           <tr>
-            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Domain</th>
-            <th className="px-4 py-2.5 font-medium text-muted-foreground">DA</th>
-            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Links To</th>
-            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.domain")}</th>
+            <th className="px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.da")}</th>
+            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.linksTo")}</th>
+            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("backlinks.tableHeaders.status")}</th>
           </tr>
         </thead>
         <tbody>
@@ -317,6 +323,7 @@ function MessageThread({ requestId, myOrgId }: { requestId: string; myOrgId: str
 // ─── RequestCard ──────────────────────────────────────────────────────────────
 
 function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgId: string; projectId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const isSender = req.requester_project_id === projectId;
@@ -337,7 +344,7 @@ function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgI
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Project {counterpart.slice(0, 8)}…</p>
-          <p className="text-xs text-muted-foreground">{isSender ? "Sent" : "Received"}</p>
+          <p className="text-xs text-muted-foreground">{isSender ? t("backlinks.requests.sent") : t("backlinks.requests.received")}</p>
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={req.status} />
@@ -351,16 +358,16 @@ function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgI
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className={`flex items-center gap-1 ${req.requester_link_verified ? "text-success" : ""}`}>
           {req.requester_link_verified ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-          Requester link
+          {t("backlinks.requests.requesterLink")}
           {!req.requester_link_verified && isSender && (
-            <button onClick={() => handleVerify("requester")} className="ml-1 underline hover:text-foreground">Verify</button>
+            <button onClick={() => handleVerify("requester")} className="ml-1 underline hover:text-foreground">{t("backlinks.requests.verify")}</button>
           )}
         </span>
         <span className={`flex items-center gap-1 ${req.target_link_verified ? "text-success" : ""}`}>
           {req.target_link_verified ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-          Target link
+          {t("backlinks.requests.targetLink")}
           {!req.target_link_verified && !isSender && (
-            <button onClick={() => handleVerify("target")} className="ml-1 underline hover:text-foreground">Verify</button>
+            <button onClick={() => handleVerify("target")} className="ml-1 underline hover:text-foreground">{t("backlinks.requests.verify")}</button>
           )}
         </span>
       </div>
@@ -368,12 +375,12 @@ function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgI
       {/* Actions for received requests in pending */}
       {!isSender && req.status === "pending" && (
         <div className="flex gap-2">
-          <button onClick={() => handleStatus("accepted")} className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90">Accept</button>
-          <button onClick={() => handleStatus("rejected")} className="rounded-md border px-3 py-1 text-xs font-medium hover:bg-muted/20">Reject</button>
+          <button onClick={() => handleStatus("accepted")} className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90">{t("backlinks.requests.accept")}</button>
+          <button onClick={() => handleStatus("rejected")} className="rounded-md border px-3 py-1 text-xs font-medium hover:bg-muted/20">{t("backlinks.requests.reject")}</button>
         </div>
       )}
       {isSender && req.status === "pending" && (
-        <button onClick={() => handleStatus("cancelled")} className="w-fit rounded-md border px-3 py-1 text-xs font-medium hover:bg-muted/20">Cancel</button>
+        <button onClick={() => handleStatus("cancelled")} className="w-fit rounded-md border px-3 py-1 text-xs font-medium hover:bg-muted/20">{t("backlinks.requests.cancel")}</button>
       )}
 
       {open && <MessageThread requestId={req.id} myOrgId={myOrgId} />}
@@ -384,6 +391,7 @@ function RequestCard({ req, myOrgId, projectId }: { req: ExchangeRequest; myOrgI
 // ─── ExchangeTab ──────────────────────────────────────────────────────────────
 
 function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [view, setView] = useState<"board" | "requests">("board");
   const [reqRole, setReqRole] = useState<"sent" | "received">("sent");
@@ -455,28 +463,28 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
     <div className="flex flex-col gap-6">
       {/* Listing panel */}
       <div className="glass p-5">
-        <h3 className="text-sm font-medium mb-4">{listing ? "Your Listing" : "List Your Site"}</h3>
+        <h3 className="text-sm font-medium mb-4">{listing ? t("backlinks.exchange.yourListing") : t("backlinks.exchange.listYourSite")}</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input
-            placeholder="Site URL"
+            placeholder={t("backlinks.exchange.siteUrl")}
             value={listingForm.site_url}
             onChange={(e) => setListingForm(f => ({ ...f, site_url: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <input
-            placeholder="Niche (e.g. tech, finance)"
+            placeholder={t("backlinks.exchange.niche")}
             value={listingForm.niche}
             onChange={(e) => setListingForm(f => ({ ...f, niche: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <input
-            placeholder="Language (e.g. en)"
+            placeholder={t("backlinks.exchange.language")}
             value={listingForm.language}
             onChange={(e) => setListingForm(f => ({ ...f, language: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <input
-            placeholder="Description"
+            placeholder={t("backlinks.exchange.description")}
             value={listingForm.description}
             onChange={(e) => setListingForm(f => ({ ...f, description: e.target.value }))}
             className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -484,14 +492,14 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
         </div>
         <div className="mt-3 flex gap-2">
           <button onClick={saveListing} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            {listing ? "Save" : "List My Site"}
+            {listing ? t("backlinks.exchange.save") : t("backlinks.exchange.listMySite")}
           </button>
           {listing && (
             <button
               onClick={async () => { await deleteExchangeListing(projectId); qc.invalidateQueries({ queryKey: ["backlinks", "exchange", "listing", projectId] }); }}
               className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/20"
             >
-              Deactivate
+              {t("backlinks.exchange.deactivate")}
             </button>
           )}
         </div>
@@ -505,7 +513,7 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
             onClick={() => setView(v)}
             className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${view === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            {v === "board" ? "Board" : "My Requests"}
+            {v === "board" ? t("backlinks.exchange.board") : t("backlinks.exchange.myRequests")}
           </button>
         ))}
       </div>
@@ -514,7 +522,7 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
       {view === "board" && (
         <div className="flex flex-col gap-3">
           {board.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No listings available yet.</p>
+            <p className="text-sm text-muted-foreground">{t("backlinks.exchange.noListings")}</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {board.map((item) => (
@@ -530,12 +538,12 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
                   </div>
                   {requestForm.open && requestForm.targetProjectId === item.project_id ? (
                     <div className="flex flex-col gap-2">
-                      <input placeholder="Your link URL" value={requestForm.requesterUrl} onChange={(e) => setRequestForm(f => ({ ...f, requesterUrl: e.target.value }))} className="rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
-                      <input placeholder="Their link URL" value={requestForm.targetUrl} onChange={(e) => setRequestForm(f => ({ ...f, targetUrl: e.target.value }))} className="rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
-                      <input placeholder="Message (optional)" value={requestForm.message} onChange={(e) => setRequestForm(f => ({ ...f, message: e.target.value }))} className="rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                      <input placeholder={t("backlinks.exchange.yourLinkUrl")} value={requestForm.requesterUrl} onChange={(e) => setRequestForm(f => ({ ...f, requesterUrl: e.target.value }))} className="rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                      <input placeholder={t("backlinks.exchange.theirLinkUrl")} value={requestForm.targetUrl} onChange={(e) => setRequestForm(f => ({ ...f, targetUrl: e.target.value }))} className="rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                      <input placeholder={t("backlinks.exchange.message")} value={requestForm.message} onChange={(e) => setRequestForm(f => ({ ...f, message: e.target.value }))} className="rounded-lg border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
                       <div className="flex gap-2">
-                        <button onClick={sendRequest} className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90">Send</button>
-                        <button onClick={() => setRequestForm(f => ({ ...f, open: false }))} className="rounded-md border px-3 py-1 text-xs font-medium hover:bg-muted/20">Cancel</button>
+                        <button onClick={sendRequest} className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90">{t("backlinks.exchange.send")}</button>
+                        <button onClick={() => setRequestForm(f => ({ ...f, open: false }))} className="rounded-md border px-3 py-1 text-xs font-medium hover:bg-muted/20">{t("backlinks.exchange.cancel")}</button>
                       </div>
                     </div>
                   ) : (
@@ -543,7 +551,7 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
                       onClick={() => setRequestForm({ targetProjectId: item.project_id, requesterUrl: "", targetUrl: "", message: "", open: true })}
                       className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/20"
                     >
-                      Request Exchange
+                      {t("backlinks.exchange.requestExchange")}
                     </button>
                   )}
                 </div>
@@ -559,12 +567,12 @@ function ExchangeTab({ projectId, orgId }: { projectId: string; orgId: string })
           <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
             {(["sent", "received"] as const).map((r) => (
               <button key={r} onClick={() => setReqRole(r)} className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${reqRole === r ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-                {r.charAt(0).toUpperCase() + r.slice(1)}
+                {r === "sent" ? t("backlinks.requests.sent") : t("backlinks.requests.received")}
               </button>
             ))}
           </div>
           {requests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No {reqRole} requests.</p>
+            <p className="text-sm text-muted-foreground">{t("backlinks.requests.noRequests", { role: reqRole })}</p>
           ) : (
             requests.map((req) => <RequestCard key={req.id} req={req} myOrgId={orgId} projectId={projectId} />)
           )}
@@ -580,6 +588,7 @@ type Tab = "profile" | "backlinks" | "opportunities" | "exchange";
 
 export default function BacklinksPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
 
   // Fetch the current user's org_id for message thread alignment
@@ -589,28 +598,28 @@ export default function BacklinksPage({ params }: { params: { projectId: string 
   });
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "profile", label: "Profile" },
-    { key: "backlinks", label: "Backlinks" },
-    { key: "opportunities", label: "Opportunities" },
-    { key: "exchange", label: "Exchange" },
+    { key: "profile", label: t("backlinks.tabs.profile") },
+    { key: "backlinks", label: t("backlinks.tabs.backlinks") },
+    { key: "opportunities", label: t("backlinks.tabs.opportunities") },
+    { key: "exchange", label: t("backlinks.tabs.exchange") },
   ];
 
   return (
     <div className="flex flex-col gap-5 animate-fade-in">
       <PageHeader
-        title="Backlinks"
+        title={t("backlinks.title")}
         icon={Link2}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Backlinks" }]}
-        description="Monitor your link profile, find opportunities, and exchange links."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("backlinks.title") }]}
+        description={t("backlinks.subtitle")}
       />
       <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === t.key ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === tab.key ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
