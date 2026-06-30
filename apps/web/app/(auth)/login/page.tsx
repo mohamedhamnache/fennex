@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ApiError, authLogin } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -30,8 +32,8 @@ export default function LoginPage() {
     <div className="space-y-7">
       {/* Heading */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in to your Fennex workspace</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("auth.welcomeBack")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("auth.signInSubtitle")}</p>
       </div>
 
       {/* Error */}
@@ -46,18 +48,18 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground" htmlFor="email">Email</label>
+          <label className="block text-sm font-medium text-foreground" htmlFor="email">{t("auth.email")}</label>
           <input
             id="email" type="email" autoComplete="email" required
             value={email} onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-lg border border-border bg-input px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all"
-            placeholder="you@company.com"
+            placeholder={t("auth.emailPlaceholder")}
           />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-foreground" htmlFor="password">Password</label>
+            <label className="block text-sm font-medium text-foreground" htmlFor="password">{t("auth.password")}</label>
           </div>
           <input
             id="password" type="password" autoComplete="current-password" required
@@ -74,20 +76,20 @@ export default function LoginPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
-              Signing in…
+              {t("auth.signingIn")}
             </span>
-          ) : "Sign in →"}
+          ) : t("auth.signIn")}
         </button>
       </form>
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-        <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground">New to Fennex?</span></div>
+        <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground">{t("auth.newToFennex")}</span></div>
       </div>
 
       <p className="text-center text-sm">
         <Link href="/register" className="font-semibold text-primary hover:underline underline-offset-4">
-          Create a free account →
+          {t("auth.createFreeAccount")}
         </Link>
       </p>
     </div>

@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ApiError, authRegister } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [form, setForm] = useState({ email: "", password: "", fullName: "", orgName: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,8 +35,8 @@ export default function RegisterPage() {
   return (
     <div className="space-y-7">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Free to start · No credit card required</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("auth.createAccount")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("auth.registerSubtitle")}</p>
       </div>
 
       {error && (
@@ -49,23 +51,23 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground" htmlFor="fullName">Full name</label>
+            <label className="block text-sm font-medium text-foreground" htmlFor="fullName">{t("auth.fullName")}</label>
             <input id="fullName" type="text" required value={form.fullName} onChange={set("fullName")} className={field} placeholder="Jane Smith" />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground" htmlFor="orgName">Company</label>
+            <label className="block text-sm font-medium text-foreground" htmlFor="orgName">{t("auth.company")}</label>
             <input id="orgName" type="text" required value={form.orgName} onChange={set("orgName")} className={field} placeholder="Acme Inc." />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground" htmlFor="email">Work email</label>
+          <label className="block text-sm font-medium text-foreground" htmlFor="email">{t("auth.workEmail")}</label>
           <input id="email" type="email" autoComplete="email" required value={form.email} onChange={set("email")} className={field} placeholder="you@company.com" />
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground" htmlFor="password">Password</label>
-          <input id="password" type="password" autoComplete="new-password" required minLength={6} value={form.password} onChange={set("password")} className={field} placeholder="Min. 6 characters" />
+          <label className="block text-sm font-medium text-foreground" htmlFor="password">{t("auth.password")}</label>
+          <input id="password" type="password" autoComplete="new-password" required minLength={6} value={form.password} onChange={set("password")} className={field} placeholder={t("auth.passwordHint")} />
         </div>
 
         <button type="submit" disabled={loading} className="btn-primary w-full px-4 py-2.5 text-sm">
@@ -75,25 +77,24 @@ export default function RegisterPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
-              Creating account…
+              {t("auth.creatingAccount")}
             </span>
-          ) : "Get started for free →"}
+          ) : t("auth.getStarted")}
         </button>
 
         <p className="text-center text-xs text-muted-foreground">
-          By creating an account you agree to our{" "}
-          <span className="underline underline-offset-2 cursor-pointer">Terms of Service</span>
+          {t("auth.termsText")}
         </p>
       </form>
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-        <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground">Have an account?</span></div>
+        <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground">{t("auth.haveAccount")}</span></div>
       </div>
 
       <p className="text-center text-sm">
         <Link href="/login" className="font-semibold text-primary hover:underline underline-offset-4">
-          Sign in instead →
+          {t("auth.signInInstead")}
         </Link>
       </p>
     </div>
