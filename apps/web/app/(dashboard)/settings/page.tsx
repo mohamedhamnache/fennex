@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Building2, KeyRound, Share2, Users,
@@ -202,6 +204,7 @@ function initials(name: string): string {
 // ─── Account ─────────────────────────────────────────────────────────────────
 
 function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnType<typeof getMe>>>>["data"] }) {
+  const { t } = useTranslation();
   if (!me) return null;
 
   const planLabel = me.plan_tier.charAt(0).toUpperCase() + me.plan_tier.slice(1);
@@ -209,7 +212,7 @@ function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnT
 
   return (
     <div>
-      <SectionHeader title="Account" description="Your personal profile and membership details." />
+      <SectionHeader title={t("settings.account.title")} description={t("settings.account.subtitle")} />
 
       {/* Avatar block */}
       <div className="mb-6 flex items-center gap-4">
@@ -232,16 +235,23 @@ function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnT
 
       <Card>
         <div className="px-5">
-          <InfoRow icon={User} label="Full name" value={me.full_name} />
-          <InfoRow icon={AtSign} label="Email" value={me.email} />
-          <InfoRow icon={Shield} label="Role" value={ROLE_LABELS[me.role] ?? me.role} />
+          <InfoRow icon={User} label={t("settings.account.fullName")} value={me.full_name} />
+          <InfoRow icon={AtSign} label={t("settings.account.email")} value={me.email} />
+          <InfoRow icon={Shield} label={t("settings.account.role")} value={ROLE_LABELS[me.role] ?? me.role} />
           {me.created_at && (
             <InfoRow
               icon={Calendar}
-              label="Member since"
+              label={t("settings.account.memberSince")}
               value={new Date(me.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             />
           )}
+          <div className="flex items-center justify-between py-3 border-t border-border">
+            <div>
+              <p className="text-sm font-medium">{t("settings.language")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.languageDescription")}</p>
+            </div>
+            <LanguagePicker showLabel />
+          </div>
         </div>
       </Card>
     </div>
@@ -251,6 +261,7 @@ function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnT
 // ─── Organization ─────────────────────────────────────────────────────────────
 
 function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnType<typeof getMe>>>>["data"] }) {
+  const { t } = useTranslation();
   if (!me) return null;
 
   const planLabel = me.plan_tier.charAt(0).toUpperCase() + me.plan_tier.slice(1);
@@ -258,25 +269,25 @@ function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<Re
 
   return (
     <div>
-      <SectionHeader title="Organization" description="Details about your organization and current plan." />
+      <SectionHeader title={t("settings.organization.title")} description={t("settings.organization.subtitle")} />
 
       <Card>
         <div className="px-5">
-          <InfoRow icon={Building2} label="Organization name" value={me.org_name} />
-          <InfoRow icon={AtSign} label="Slug" value={me.org_slug} mono />
+          <InfoRow icon={Building2} label={t("settings.organization.name")} value={me.org_name} />
+          <InfoRow icon={AtSign} label={t("settings.organization.slug")} value={me.org_slug} mono />
           <div className="flex items-start gap-4 py-3.5">
             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Plan</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">{t("settings.organization.plan")}</p>
               <div className="flex items-center gap-2">
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${planColor}`}>
                   {planLabel}
                 </span>
                 {me.plan_tier === "free" && (
                   <span className="text-xs text-primary font-medium cursor-pointer hover:underline">
-                    Upgrade →
+                    {t("settings.organization.upgrade")}
                   </span>
                 )}
               </div>
@@ -291,6 +302,7 @@ function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<Re
 // ─── AI Keys ─────────────────────────────────────────────────────────────────
 
 function AIKeysSection() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { success, error } = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -323,8 +335,8 @@ function AIKeysSection() {
   return (
     <div>
       <SectionHeader
-        title="AI Keys"
-        description="Add your own API keys. Fennex uses whichever providers you've connected."
+        title={t("settings.aiKeys.title")}
+        description={t("settings.aiKeys.subtitle")}
       />
 
       {/* Provider status grid */}
@@ -345,7 +357,7 @@ function AIKeysSection() {
                   )}
                 </div>
                 <p className={`text-xs ${connected ? "text-primary/70" : "text-muted-foreground/60"}`}>
-                  {connected ? "Connected" : "Not connected"}
+                  {connected ? t("settings.aiKeys.connected") : t("settings.aiKeys.notConnected")}
                 </p>
               </div>
             );
@@ -382,7 +394,7 @@ function AIKeysSection() {
       {/* Add key form */}
       {showForm ? (
         <Card className="p-5">
-          <p className="text-sm font-semibold mb-4">Add API key</p>
+          <p className="text-sm font-semibold mb-4">{t("settings.aiKeys.addKey")}</p>
           <div className="flex gap-2 mb-4">
             {PROVIDERS.map((p) => (
               <button
@@ -414,17 +426,17 @@ function AIKeysSection() {
               {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {addMutation.isError && <ErrorMsg>Failed to save key. Check the value and try again.</ErrorMsg>}
+          {addMutation.isError && <ErrorMsg>{t("settings.aiKeys.saveError")}</ErrorMsg>}
           <div className="flex gap-2 mt-4">
             <PrimaryBtn onClick={() => addMutation.mutate()} disabled={!value.trim() || addMutation.isPending}>
-              {addMutation.isPending ? "Saving…" : "Save key"}
+              {addMutation.isPending ? t("settings.aiKeys.saving") : t("settings.aiKeys.saveKey")}
             </PrimaryBtn>
-            <GhostBtn onClick={() => { setShowForm(false); setValue(""); }}>Cancel</GhostBtn>
+            <GhostBtn onClick={() => { setShowForm(false); setValue(""); }}>{t("settings.socialAccounts.cancel")}</GhostBtn>
           </div>
         </Card>
       ) : (
         <PrimaryBtn onClick={() => setShowForm(true)}>
-          <Plus className="h-3.5 w-3.5" /> Add key
+          <Plus className="h-3.5 w-3.5" /> {t("settings.aiKeys.addKeyAction")}
         </PrimaryBtn>
       )}
     </div>
@@ -434,6 +446,7 @@ function AIKeysSection() {
 // ─── Social Accounts ──────────────────────────────────────────────────────────
 
 function SocialSection() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { success, error } = useToast();
   const [connecting, setConnecting] = useState<PlatformId | null>(null);
@@ -469,8 +482,8 @@ function SocialSection() {
   return (
     <div>
       <SectionHeader
-        title="Social Accounts"
-        description="Connect your social accounts to enable direct publishing from the Social Studio."
+        title={t("settings.socialAccounts.title")}
+        description={t("settings.socialAccounts.subtitle")}
       />
 
       <div className="flex flex-col gap-3">
@@ -495,17 +508,17 @@ function SocialSection() {
                       {conn?.handle ? (
                         <p className="text-xs text-muted-foreground">{conn.handle}</p>
                       ) : (
-                        <p className="text-xs text-muted-foreground/60">Not connected</p>
+                        <p className="text-xs text-muted-foreground/60">{t("settings.socialAccounts.notConnected")}</p>
                       )}
                     </div>
                     {conn ? (
                       <div className="flex items-center gap-2">
-                        <Badge tone="success" dot>Connected</Badge>
+                        <Badge tone="success" dot>{t("settings.aiKeys.connected")}</Badge>
                         <button
                           onClick={() => disconnectMutation.mutate(p.id)}
                           disabled={disconnectMutation.isPending}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          title="Disconnect"
+                          title={t("settings.socialAccounts.disconnect")}
                         >
                           <Link2Off className="h-4 w-4" />
                         </button>
@@ -516,7 +529,7 @@ function SocialSection() {
                         className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
                       >
                         <Link2 className="h-3.5 w-3.5" />
-                        {isConnecting ? "Cancel" : "Connect"}
+                        {isConnecting ? t("settings.socialAccounts.cancel") : t("settings.socialAccounts.connect")}
                       </button>
                     )}
                   </div>
@@ -537,14 +550,14 @@ function SocialSection() {
                           onChange={(v) => setForm((f) => ({ ...f, token: v }))}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Paste your access token from the {activePlatform.label} developer portal.
+                          {t("settings.socialAccounts.tokenHint", { platform: activePlatform.label })}
                         </p>
-                        {connectMutation.isError && <ErrorMsg>Failed to connect. Check your token and try again.</ErrorMsg>}
+                        {connectMutation.isError && <ErrorMsg>{t("settings.socialAccounts.connectError")}</ErrorMsg>}
                         <PrimaryBtn
                           onClick={() => connectMutation.mutate()}
                           disabled={!form.token.trim() || connectMutation.isPending}
                         >
-                          {connectMutation.isPending ? "Connecting…" : "Connect account"}
+                          {connectMutation.isPending ? t("settings.socialAccounts.connect") : t("settings.socialAccounts.connectAccount")}
                         </PrimaryBtn>
                       </div>
                     </div>
@@ -588,6 +601,7 @@ function avatarColor(name: string) {
 }
 
 function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myRole: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { success, error } = useToast();
   const [showInvite, setShowInvite] = useState(false);
@@ -634,14 +648,14 @@ function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myR
     <div>
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Team</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("settings.team.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {members.length} member{members.length !== 1 ? "s" : ""} in your organization.
+            {t("settings.team.memberCount", { n: members.length })}
           </p>
         </div>
         {canManage && (
           <PrimaryBtn onClick={() => { setShowInvite((v) => !v); setInviteLink(null); }}>
-            <UserPlus className="h-3.5 w-3.5" /> Invite member
+            <UserPlus className="h-3.5 w-3.5" /> {t("settings.team.invite")}
           </PrimaryBtn>
         )}
       </div>
@@ -655,22 +669,22 @@ function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myR
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/15">
                   <Check className="h-4 w-4 text-success" />
                 </div>
-                <p className="text-sm font-semibold text-success">Invite link ready</p>
+                <p className="text-sm font-semibold text-success">{t("settings.team.linkReady")}</p>
               </div>
-              <p className="text-xs text-muted-foreground">Share this link with your team member. It expires in 7 days.</p>
+              <p className="text-xs text-muted-foreground">{t("settings.team.linkHint")}</p>
               <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3.5 py-2.5">
                 <p className="flex-1 truncate font-mono text-xs text-muted-foreground">{inviteLink}</p>
                 <button onClick={copyLink} className="shrink-0 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium hover:bg-muted transition-colors">
-                  {copied ? <><Check className="h-3.5 w-3.5 text-success" /><span className="text-success">Copied</span></> : <><Copy className="h-3.5 w-3.5" />Copy</>}
+                  {copied ? <><Check className="h-3.5 w-3.5 text-success" /><span className="text-success">{t("settings.team.copied")}</span></> : <><Copy className="h-3.5 w-3.5" />{t("settings.team.copy")}</>}
                 </button>
               </div>
               <GhostBtn onClick={() => { setShowInvite(false); setInviteLink(null); }} className="self-start">
-                Done
+                {t("settings.team.done")}
               </GhostBtn>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-sm font-semibold">Invite team member</p>
+              <p className="text-sm font-semibold">{t("settings.team.inviteTitle")}</p>
               <Input type="email" placeholder="colleague@company.com" value={inviteForm.email} onChange={(v) => setInviteForm((f) => ({ ...f, email: v }))} />
               <select
                 value={inviteForm.role}
@@ -683,9 +697,9 @@ function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myR
               </select>
               <div className="flex gap-2">
                 <PrimaryBtn onClick={() => inviteMutation.mutate()} disabled={!inviteForm.email.trim() || inviteMutation.isPending}>
-                  {inviteMutation.isPending ? "Generating…" : "Generate invite link"}
+                  {inviteMutation.isPending ? t("settings.team.generating") : t("settings.team.generateLink")}
                 </PrimaryBtn>
-                <GhostBtn onClick={() => setShowInvite(false)}>Cancel</GhostBtn>
+                <GhostBtn onClick={() => setShowInvite(false)}>{t("settings.team.cancel")}</GhostBtn>
               </div>
             </div>
           )}
@@ -714,10 +728,10 @@ function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myR
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold truncate">{m.full_name}</p>
                     {m.id === myId && (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">You</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t("settings.team.you")}</span>
                     )}
                     {!m.is_active && (
-                      <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">Inactive</span>
+                      <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">{t("settings.team.inactive")}</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{m.email}</p>
@@ -744,7 +758,7 @@ function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myR
                       onClick={() => deactivateMutation.mutate(m.id)}
                       disabled={deactivateMutation.isPending}
                       className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      title="Deactivate"
+                      title={t("settings.team.deactivate")}
                     >
                       <UserX className="h-3.5 w-3.5" />
                     </button>
@@ -762,6 +776,7 @@ function TeamSection({ orgId, myId, myRole }: { orgId: string; myId: string; myR
 // ─── Billing ──────────────────────────────────────────────────────────────────
 
 function BillingSection() {
+  const { t } = useTranslation();
   const [annual, setAnnual] = useState(false);
   const setUsage = useUsageStore((s) => s.setUsage);
 
@@ -808,11 +823,11 @@ function BillingSection() {
       <div className="glass rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Current plan</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("settings.billing.currentPlan")}</p>
             <p className="mt-1 text-2xl font-bold capitalize">{currentTier}</p>
             {trialDaysLeft !== null && trialDaysLeft > 0 && (
               <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
-                Trial ends in {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""}
+                {t("settings.billing.trialEnds", { n: trialDaysLeft })}
               </span>
             )}
           </div>
@@ -822,7 +837,7 @@ function BillingSection() {
               disabled={portalMutation.isPending}
               className="btn-aurora px-4 py-2 text-sm"
             >
-              {portalMutation.isPending ? "Opening…" : "Manage plan →"}
+              {portalMutation.isPending ? t("settings.billing.opening") : t("settings.billing.managePlan")}
             </button>
           )}
         </div>
@@ -831,12 +846,12 @@ function BillingSection() {
       {/* Usage meters */}
       {billing && Object.keys(billing.usage).length > 0 && (
         <div className="glass rounded-xl p-6">
-          <p className="mb-4 text-sm font-semibold">Usage this month</p>
+          <p className="mb-4 text-sm font-semibold">{t("settings.billing.usageThisMonth")}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Object.entries(billing.usage).map(([resource, { used, limit, pct }]) => (
               <div key={resource}>
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-muted-foreground">{RESOURCE_LABELS[resource] ?? resource}</span>
+                  <span className="text-muted-foreground">{t(`settings.billing.resources.${resource}`) || RESOURCE_LABELS[resource] || resource}</span>
                   <span className={pct >= 1 ? "text-destructive" : pct >= 0.8 ? "text-warning" : "text-foreground"}>
                     {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
                   </span>
@@ -858,19 +873,19 @@ function BillingSection() {
       {/* Pricing table */}
       <div>
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm font-semibold">Plans</p>
+          <p className="text-sm font-semibold">{t("settings.billing.plans")}</p>
           <div className="flex items-center gap-2 rounded-lg border border-border p-1">
             <button
               onClick={() => setAnnual(false)}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${!annual ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Monthly
+              {t("settings.billing.monthly")}
             </button>
             <button
               onClick={() => setAnnual(true)}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${annual ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Annual <span className="text-success">−20%</span>
+              {t("settings.billing.annual")} <span className="text-success">{t("settings.billing.annualDiscount")}</span>
             </button>
           </div>
         </div>
@@ -903,7 +918,7 @@ function BillingSection() {
                 </ul>
                 {isCurrent ? (
                   <button disabled className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground cursor-default">
-                    Current plan
+                    {t("settings.billing.currentPlan")}
                   </button>
                 ) : isUpgrade ? (
                   <button
@@ -911,7 +926,7 @@ function BillingSection() {
                     disabled={checkoutMutation.isPending}
                     className="btn-aurora w-full py-2 text-xs"
                   >
-                    Upgrade →
+                    {t("settings.billing.upgrade")}
                   </button>
                 ) : (
                   <button
@@ -919,7 +934,7 @@ function BillingSection() {
                     disabled={portalMutation.isPending}
                     className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Downgrade
+                    {t("settings.billing.downgrade")}
                   </button>
                 )}
               </div>

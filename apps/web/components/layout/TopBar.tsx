@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Sun, Moon, Bell, Search, Settings, Mic2, LogOut, Check, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getMe, authLogout } from "@/lib/api";
 import { useCommandPalette } from "@/components/layout/CommandPalette";
+import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { cn } from "@/lib/cn";
 
 function initials(name?: string | null): string {
@@ -31,6 +33,7 @@ export function TopBar() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { open: openPalette } = useCommandPalette();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,7 +60,7 @@ export function TopBar() {
         className="group flex w-72 items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted"
       >
         <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
-        <span className="text-sm">Search or jump to…</span>
+        <span className="text-sm">{t("topbar.searchPlaceholder")}</span>
         <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/60 group-hover:text-muted-foreground">
           ⌘K
         </kbd>
@@ -65,6 +68,9 @@ export function TopBar() {
 
       {/* Actions */}
       <div className="flex items-center gap-1">
+        {/* Language picker */}
+        <LanguagePicker />
+
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button
@@ -73,16 +79,16 @@ export function TopBar() {
               "relative rounded-lg p-2 transition-colors hover:bg-accent hover:text-foreground",
               notifOpen ? "bg-accent text-foreground" : "text-muted-foreground",
             )}
-            aria-label="Notifications"
+            aria-label={t("topbar.notifications")}
           >
             <Bell className="h-4 w-4" strokeWidth={1.8} />
           </button>
           {notifOpen && (
             <div className="popover animate-scale-in absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-3">
-                <p className="text-sm font-semibold">Notifications</p>
+                <p className="text-sm font-semibold">{t("topbar.notifications")}</p>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  All caught up
+                  {t("topbar.allCaughtUp")}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
@@ -90,9 +96,9 @@ export function TopBar() {
                   <Check className="h-5 w-5 text-success" strokeWidth={2} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">You're all caught up</p>
+                  <p className="text-sm font-medium text-foreground">{t("topbar.allCaughtUpDesc")}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Job completions and alerts will show up here.
+                    {t("topbar.notificationsHint")}
                   </p>
                 </div>
               </div>
@@ -130,7 +136,7 @@ export function TopBar() {
             </span>
             <span className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
               <span className="max-w-[120px] truncate text-xs font-semibold text-foreground">
-                {me?.full_name ?? "Loading…"}
+                {me?.full_name ?? t("topbar.loading")}
               </span>
               <span className="max-w-[120px] truncate text-[10px] text-muted-foreground">
                 {me?.org_name ?? ""}
@@ -155,14 +161,14 @@ export function TopBar() {
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  <Settings className="h-4 w-4" strokeWidth={1.8} /> Settings
+                  <Settings className="h-4 w-4" strokeWidth={1.8} /> {t("nav.settings")}
                 </Link>
                 <Link
                   href="/brand-voice"
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  <Mic2 className="h-4 w-4" strokeWidth={1.8} /> Brand Voice
+                  <Mic2 className="h-4 w-4" strokeWidth={1.8} /> {t("nav.brandVoice")}
                 </Link>
               </div>
               <div className="border-t p-1.5">
@@ -170,7 +176,7 @@ export function TopBar() {
                   onClick={handleLogout}
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <LogOut className="h-4 w-4" strokeWidth={1.8} /> Sign out
+                  <LogOut className="h-4 w-4" strokeWidth={1.8} /> {t("nav.signOut")}
                 </button>
               </div>
             </div>
