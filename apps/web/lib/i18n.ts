@@ -26,6 +26,9 @@ if (!i18n.isInitialized) {
     // Always seed English so SSR and initial client render produce identical text,
     // preventing React hydration mismatches on translation keys.
     resources: { en: { common: enCommon } },
+    // Allow the HTTP backend to load non-English locales even though English is
+    // bundled statically in resources above.
+    partialBundledLanguages: true,
     lng: typeof window === "undefined" ? "en" : undefined,
     backend: { loadPath: "/locales/{{lng}}/{{ns}}.json" },
     detection:

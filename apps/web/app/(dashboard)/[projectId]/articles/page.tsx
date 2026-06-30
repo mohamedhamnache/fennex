@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -67,6 +68,17 @@ const PROVIDER_MODELS: Record<string, { label: string; models: { id: string; lab
   },
 };
 
+const TONES = [
+  "professional",
+  "conversational",
+  "authoritative",
+  "friendly",
+  "technical",
+  "inspirational",
+] as const;
+
+const WORD_COUNTS = [800, 1200, 1500, 2000, 2500] as const;
+
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
 function Spinner({ size = 16 }: { size?: number }) {
@@ -125,6 +137,7 @@ function ArticleCard({
   onRegenerate: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -146,7 +159,7 @@ function ArticleCard({
           {[
             article.target_keyword,
             article.tone,
-            article.word_count > 0 ? `${article.word_count.toLocaleString()} words` : null,
+            article.word_count > 0 ? `${article.word_count.toLocaleString()} ${t("articles.editor.words")}` : null,
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -165,7 +178,7 @@ function ArticleCard({
           onClick={onEdit}
           className="btn-primary px-3 py-1.5 text-xs"
         >
-          Edit
+          {t("articles.card.edit")}
         </button>
         <div ref={menuRef} className="relative">
           <button
@@ -181,14 +194,14 @@ function ArticleCard({
                 className="w-full px-4 py-2.5 text-sm text-left text-foreground hover:bg-accent transition-colors flex items-center gap-2"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                Regenerate
+                {t("articles.card.regenerate")}
               </button>
               <button
                 onClick={() => { setMenuOpen(false); onDelete(); }}
                 className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
               >
                 <XCircle className="h-3.5 w-3.5" />
-                Delete
+                {t("articles.card.delete")}
               </button>
             </div>
           )}
@@ -200,17 +213,6 @@ function ArticleCard({
 
 // ─── New Article Modal ─────────────────────────────────────────────────────
 
-const TONES = [
-  "professional",
-  "conversational",
-  "authoritative",
-  "friendly",
-  "technical",
-  "inspirational",
-] as const;
-
-const WORD_COUNTS = [800, 1200, 1500, 2000, 2500] as const;
-
 function NewArticleModal({
   projectId,
   onClose,
@@ -220,6 +222,7 @@ function NewArticleModal({
   onClose: () => void;
   onCreated: (article: Article) => void;
 }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState<string>("professional");
@@ -253,9 +256,9 @@ function NewArticleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">New Article</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("articles.newArticleModal.title")}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            AI will generate a full draft after creation.
+            {t("articles.newArticleModal.hint")}
           </p>
         </div>
 
@@ -264,9 +267,9 @@ function NewArticleModal({
             <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
               <Spinner size={28} />
             </div>
-            <p className="text-sm font-medium text-foreground">Generating your article…</p>
+            <p className="text-sm font-medium text-foreground">{t("articles.newArticleModal.generating")}</p>
             <p className="text-xs text-muted-foreground text-center">
-              This may take up to a minute. Hang tight.
+              {t("articles.newArticleModal.generatingHint")}
             </p>
           </div>
         ) : (
@@ -279,7 +282,7 @@ function NewArticleModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Title <span className="text-red-500">*</span>
+                {t("articles.newArticleModal.titleLabel")} <span className="text-red-500">*</span>
               </label>
               <input
                 required
@@ -292,7 +295,7 @@ function NewArticleModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Target keyword
+                {t("articles.newArticleModal.keyword")}
               </label>
               <input
                 value={keyword}
@@ -303,15 +306,15 @@ function NewArticleModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Tone</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">{t("articles.newArticleModal.tone")}</label>
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                {TONES.map((t) => (
-                  <option key={t} value={t}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                {TONES.map((toneOpt) => (
+                  <option key={toneOpt} value={toneOpt}>
+                    {toneOpt.charAt(0).toUpperCase() + toneOpt.slice(1)}
                   </option>
                 ))}
               </select>
@@ -319,7 +322,7 @@ function NewArticleModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Word count target
+                {t("articles.newArticleModal.wordCount")}
               </label>
               <select
                 value={wordCount}
@@ -328,7 +331,7 @@ function NewArticleModal({
               >
                 {WORD_COUNTS.map((n) => (
                   <option key={n} value={n}>
-                    {n.toLocaleString()} words
+                    {n.toLocaleString()} {t("articles.editor.words")}
                   </option>
                 ))}
               </select>
@@ -340,14 +343,14 @@ function NewArticleModal({
                 onClick={onClose}
                 className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
               >
-                Cancel
+                {t("articles.newArticleModal.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={!title.trim()}
                 className="flex-1 btn-primary px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create &amp; Generate
+                {t("articles.newArticleModal.create")}
               </button>
             </div>
           </form>
@@ -368,6 +371,7 @@ function PublishModal({
   projectId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [connectionId, setConnectionId] = useState("");
   const [publishStatus, setPublishStatus] = useState<"draft" | "publish">("publish");
@@ -379,7 +383,6 @@ function PublishModal({
     queryFn: () => listPublishingConnections(projectId),
   });
 
-  // Default to first connection once loaded
   useEffect(() => {
     if (connections.length > 0 && !connectionId) {
       setConnectionId(connections[0].id);
@@ -393,11 +396,7 @@ function PublishModal({
       queryClient.invalidateQueries({ queryKey: ["article", articleId] });
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
       queryClient.invalidateQueries({ queryKey: ["publish-jobs", projectId] });
-      if (job.published_url) {
-        setResult({ url: job.published_url });
-      } else {
-        setResult({ url: "" });
-      }
+      setResult({ url: job.published_url ?? "" });
     },
     onError: (err) => {
       setErrorMsg(err instanceof Error ? err.message : "Publishing failed");
@@ -408,7 +407,7 @@ function PublishModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Publish Article</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("articles.publishModal.title")}</h2>
         </div>
 
         <div className="p-6 flex flex-col gap-4">
@@ -424,7 +423,7 @@ function PublishModal({
                 <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-foreground">Published successfully</p>
+                <p className="text-sm font-semibold text-foreground">{t("articles.publishModal.publishedSuccess")}</p>
                 {result.url && (
                   <a
                     href={result.url}
@@ -432,29 +431,26 @@ function PublishModal({
                     rel="noopener noreferrer"
                     className="mt-2 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
                   >
-                    View published post
+                    {t("articles.publishModal.viewPost")}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="btn-primary px-6 py-2 text-sm"
-              >
-                Done
+              <button onClick={onClose} className="btn-primary px-6 py-2 text-sm">
+                {t("articles.publishModal.done")}
               </button>
             </div>
           ) : (
             <>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Choose connection
+                  {t("articles.publishModal.chooseConnection")}
                 </label>
                 {connectionsLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading connections…</p>
+                  <p className="text-sm text-muted-foreground">{t("articles.publishModal.loadingConnections")}</p>
                 ) : connections.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No connections available. Add one in the Publishing page.
+                    {t("articles.publishModal.noConnections")}
                   </p>
                 ) : (
                   <select
@@ -473,7 +469,7 @@ function PublishModal({
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Publish as
+                  {t("articles.publishModal.publishAs")}
                 </label>
                 <div className="flex gap-4">
                   {(["draft", "publish"] as const).map((opt) => (
@@ -498,7 +494,7 @@ function PublishModal({
                   onClick={onClose}
                   className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={() => publishMutation.mutate()}
@@ -507,10 +503,10 @@ function PublishModal({
                 >
                   {publishMutation.isPending ? (
                     <>
-                      <Spinner size={14} /> Publishing…
+                      <Spinner size={14} /> {t("common.publishing")}
                     </>
                   ) : (
-                    "Publish Now"
+                    t("articles.publishModal.publishNow")
                   )}
                 </button>
               </div>
@@ -533,6 +529,7 @@ function ArticleEditor({
   projectId: string;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { success, error } = useToast();
 
@@ -571,17 +568,14 @@ function ArticleEditor({
     (p) => p in PROVIDER_MODELS,
   );
 
-  // Cleanup debounce timeout on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
   }, []);
 
-  // Populate local state once article loads (guard against re-seeding on background refetch)
   useEffect(() => {
     if (!article) return;
-    // Re-seed editor when article leaves the generating state
     if (prevStatusRef.current === "generating" && article.status !== "generating") {
       initialized.current = false;
     }
@@ -698,19 +692,19 @@ function ArticleEditor({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
           className="flex-1 bg-transparent text-base font-semibold text-foreground focus:outline-none min-w-0"
-          placeholder="Article title"
+          placeholder={t("articles.editor.articleTitle")}
         />
         <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-          {wordCount.toLocaleString()} words
+          {wordCount.toLocaleString()} {t("articles.editor.words")}
         </span>
         {saveState === "saving" && (
           <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-            <Spinner size={12} /> Saving…
+            <Spinner size={12} /> {t("articles.editor.saving")}
           </span>
         )}
         {saveState === "saved" && (
           <span className="text-xs text-emerald-500 flex items-center gap-1 shrink-0">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Saved
+            <CheckCircle2 className="h-3.5 w-3.5" /> {t("articles.editor.saved")}
           </span>
         )}
         <button
@@ -718,7 +712,7 @@ function ArticleEditor({
           disabled={updateMutation.isPending}
           className="btn-primary px-3 py-1.5 text-xs shrink-0 disabled:opacity-60"
         >
-          Save
+          {t("articles.editor.save")}
         </button>
         {(article.status === "ready" || article.status === "published") && (
           <button
@@ -726,7 +720,7 @@ function ArticleEditor({
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors shrink-0"
           >
             <Send className="h-3.5 w-3.5" />
-            Publish
+            {t("articles.editor.publish")}
           </button>
         )}
       </div>
@@ -737,17 +731,17 @@ function ArticleEditor({
         <div className="flex-1 flex flex-col min-w-0 pr-6">
           {/* Tab bar */}
           <div className="flex gap-0 border-b border-border mb-4">
-            {(["edit", "preview"] as const).map((t) => (
+            {(["edit", "preview"] as const).map((tabKey) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
+                key={tabKey}
+                onClick={() => setTab(tabKey)}
                 className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                  tab === t
+                  tab === tabKey
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "edit" ? "Edit" : "Preview"}
+                {tabKey === "edit" ? t("articles.editor.edit") : t("articles.editor.preview")}
               </button>
             ))}
           </div>
@@ -774,7 +768,7 @@ function ArticleEditor({
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                SEO Score
+                {t("articles.editor.seoScore")}
               </p>
               <button
                 onClick={() => refetchSeo()}
@@ -793,7 +787,7 @@ function ArticleEditor({
           {Object.keys(breakdown).length > 0 && (
             <div className="mb-5">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Breakdown
+                {t("articles.editor.breakdown")}
               </p>
               <div className="flex flex-col gap-1.5">
                 {Object.entries(breakdown).map(([key, val]) => (
@@ -819,7 +813,7 @@ function ArticleEditor({
             {/* Meta title */}
             <div className="mb-3">
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Meta title
+                {t("articles.editor.metaTitle")}
               </label>
               <input
                 value={metaTitle}
@@ -833,7 +827,7 @@ function ArticleEditor({
             {/* Meta description */}
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Meta description
+                {t("articles.editor.metaDescription")}
                 <span
                   className={`ml-2 font-normal tabular-nums ${
                     metaDesc.length >= 150 && metaDesc.length <= 160
@@ -909,11 +903,11 @@ function ArticleEditor({
             >
               {generateMutation.isPending ? (
                 <>
-                  <Spinner size={12} /> Regenerating…
+                  <Spinner size={12} /> {t("articles.editor.regenerating")}
                 </>
               ) : (
                 <>
-                  <RefreshCw className="h-3.5 w-3.5" /> Regenerate
+                  <RefreshCw className="h-3.5 w-3.5" /> {t("articles.editor.regenerate")}
                 </>
               )}
             </button>
@@ -926,11 +920,11 @@ function ArticleEditor({
             >
               {revisionMutation.isPending ? (
                 <>
-                  <Spinner size={12} /> Saving…
+                  <Spinner size={12} /> {t("articles.editor.saving")}
                 </>
               ) : (
                 <>
-                  <BookOpen className="h-3.5 w-3.5" /> Save Revision
+                  <BookOpen className="h-3.5 w-3.5" /> {t("articles.editor.saveRevision")}
                 </>
               )}
             </button>
@@ -957,6 +951,7 @@ function ArticleEditor({
 
 export default function ArticlesPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const { setCurrentProject } = useProjectStore();
   const queryClient = useQueryClient();
   const { success, error } = useToast();
@@ -1007,17 +1002,17 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     <div className="flex h-[calc(100vh-108px)] flex-col gap-4 animate-fade-in">
       <PageHeader
         className="mb-0"
-        title="Articles"
+        title={t("articles.title")}
         icon={Zap}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Articles" }]}
-        description="AI-generated, SEO-optimized content."
+        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("articles.title") }]}
+        description={t("articles.subtitle")}
         actions={
           <button
             onClick={() => setShowModal(true)}
             className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
           >
             <Plus className="h-3.5 w-3.5" />
-            New Article
+            {t("articles.newArticle")}
           </button>
         }
       />
@@ -1029,7 +1024,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
           selectedId && "hidden lg:flex",
         )}>
           <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-            <p className="text-sm font-semibold">All articles</p>
+            <p className="text-sm font-semibold">{t("articles.allArticles")}</p>
             <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-muted-foreground">{articles.length}</span>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -1040,9 +1035,9 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             ) : articles.length === 0 ? (
               <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
                 <FennecMascot />
-                <p className="text-sm font-medium">No articles yet</p>
+                <p className="text-sm font-medium">{t("articles.noArticles")}</p>
                 <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
-                  <Plus className="h-3.5 w-3.5" /> New Article
+                  <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
                 </button>
               </div>
             ) : (
@@ -1093,20 +1088,19 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
                 <Zap className="h-6 w-6 text-white" strokeWidth={1.9} />
               </div>
               <div>
-                <p className="text-base font-semibold">Select an article to edit</p>
+                <p className="text-base font-semibold">{t("articles.selectArticle")}</p>
                 <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
-                  Pick one from the list, or generate a new AI-written draft.
+                  {t("articles.selectArticleHint")}
                 </p>
               </div>
               <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
-                <Plus className="h-3.5 w-3.5" /> New Article
+                <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
               </button>
             </div>
           )}
         </section>
       </div>
 
-      {/* New article modal */}
       {showModal && (
         <NewArticleModal
           projectId={projectId}
