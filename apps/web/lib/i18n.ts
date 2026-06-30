@@ -1,28 +1,40 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
-import Backend from "i18next-http-backend";
 
 export const SUPPORTED_LOCALES = ["en", "fr", "es", "de", "pt", "ar"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-i18n
-  .use(Backend)
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
+if (!i18n.isInitialized) {
+  const chain = i18n.use(initReactI18next);
+
+  if (typeof window !== "undefined") {
+    // Browser-only plugins — safe to omit during SSR
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Backend = require("i18next-http-backend").default;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const LanguageDetector = require("i18next-browser-languagedetector").default;
+    chain.use(Backend).use(LanguageDetector);
+  }
+
+  chain.init({
     fallbackLng: "en",
     supportedLngs: SUPPORTED_LOCALES,
     ns: ["common"],
     defaultNS: "common",
+    resources: typeof window === "undefined" ? { en: { common: {} } } : undefined,
+    lng: typeof window === "undefined" ? "en" : undefined,
     backend: { loadPath: "/locales/{{lng}}/{{ns}}.json" },
-    detection: {
-      order: ["cookie", "navigator"],
-      lookupCookie: "fennex_lang",
-      caches: ["cookie"],
-      cookieOptions: { maxAge: 365 * 24 * 3600, path: "/", sameSite: "lax" },
-    },
+    detection:
+      typeof window !== "undefined"
+        ? {
+            order: ["cookie", "navigator"],
+            lookupCookie: "fennex_lang",
+            caches: ["cookie"],
+            cookieOptions: { maxAge: 365 * 24 * 3600, path: "/", sameSite: "lax" },
+          }
+        : undefined,
     interpolation: { escapeValue: false },
   });
+}
 
 export default i18n;
