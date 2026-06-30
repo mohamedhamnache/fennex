@@ -148,10 +148,15 @@ export interface UserProfile {
   org_slug: string;
   plan_tier: string;
   created_at: string | null;
+  language: string;
 }
 
 export async function getMe(): Promise<UserProfile> {
   return apiClient.get<UserProfile>("/users/me");
+}
+
+export async function updateMyLanguage(language: string): Promise<{ language: string }> {
+  return apiClient.patch<{ language: string }>("/users/me/language", { language });
 }
 
 // ─── Project types & helpers ───────────────────────────────────────────────

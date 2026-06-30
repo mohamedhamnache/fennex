@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { I18nProvider } from "@/components/providers/I18nProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
@@ -22,7 +23,9 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <QueryProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <I18nProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </I18nProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

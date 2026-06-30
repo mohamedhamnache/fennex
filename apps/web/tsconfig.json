@@ -8,6 +8,18 @@
       ],
       "recharts": [
         "../../node_modules/.pnpm/recharts@2.15.4_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/recharts"
+      ],
+      "i18next": [
+        "../../node_modules/.pnpm/i18next@26.3.4_typescript@5.9.3/node_modules/i18next"
+      ],
+      "react-i18next": [
+        "../../node_modules/.pnpm/react-i18next@17.0.8_i18next@26.3.4_typescript@5.9.3__react-dom@18.3.1_react@18.3.1__react@18.3.1_typescript@5.9.3/node_modules/react-i18next"
+      ],
+      "i18next-browser-languagedetector": [
+        "../../node_modules/.pnpm/i18next-browser-languagedetector@8.2.1/node_modules/i18next-browser-languagedetector"
+      ],
+      "i18next-http-backend": [
+        "../../node_modules/.pnpm/i18next-http-backend@4.0.0/node_modules/i18next-http-backend"
       ]
     },
     "allowJs": true,
