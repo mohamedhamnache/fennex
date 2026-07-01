@@ -20,6 +20,7 @@ import {
 import { useUsageStore } from "@/lib/billing-store";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+import { ProviderLogo } from "@/components/ui/ProviderLogo";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -346,16 +347,17 @@ function AIKeysSection() {
             const connected = keys.some((k: ApiKey) => k.provider === p);
             return (
               <div key={p} className={`relative rounded-xl border-2 p-4 transition-all ${connected ? "border-primary/30 bg-primary/5" : "border-dashed border-border bg-card"}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs font-semibold ${connected ? "text-primary" : "text-muted-foreground"}`}>
-                    {PROVIDER_LABELS[p]}
-                  </span>
+                <div className="flex items-start justify-between mb-3">
+                  <ProviderLogo provider={p} size={28} />
                   {connected && (
                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary">
                       <Check className="h-2.5 w-2.5 text-primary-foreground" />
                     </span>
                   )}
                 </div>
+                <p className={`text-xs font-semibold mb-0.5 ${connected ? "text-primary" : "text-muted-foreground"}`}>
+                  {PROVIDER_LABELS[p]}
+                </p>
                 <p className={`text-xs ${connected ? "text-primary/70" : "text-muted-foreground/60"}`}>
                   {connected ? t("settings.aiKeys.connected") : t("settings.aiKeys.notConnected")}
                 </p>
@@ -372,7 +374,8 @@ function AIKeysSection() {
             {keys.map((k: ApiKey) => (
               <div key={k.id} className="flex items-center justify-between px-5 py-3.5">
                 <div className="flex items-center gap-3">
-                  <span className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${PROVIDER_COLORS[k.provider] ?? "bg-muted text-muted-foreground border-border"}`}>
+                  <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold ${PROVIDER_COLORS[k.provider] ?? "bg-muted text-muted-foreground border-border"}`}>
+                    <ProviderLogo provider={k.provider as "openai" | "anthropic" | "google"} size={14} />
                     {PROVIDER_LABELS[k.provider] ?? k.provider}
                   </span>
                   <span className="font-mono text-sm text-muted-foreground">{k.masked_value}</span>
@@ -400,12 +403,13 @@ function AIKeysSection() {
               <button
                 key={p}
                 onClick={() => setProvider(p)}
-                className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-all ${
+                className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                   provider === p
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-border text-muted-foreground hover:border-foreground/30"
                 }`}
               >
+                <ProviderLogo provider={p} size={14} />
                 {PROVIDER_LABELS[p]}
               </button>
             ))}
