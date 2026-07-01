@@ -13,7 +13,7 @@ from app.models.image import GeneratedImage, ImageStyle, ImageStatus, ImageUsage
 from app.models.api_key import APIKey
 from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.project import Project
-from app.services.image_service import build_image_prompt, generate_image_dalle, get_placeholder_url
+from app.services.image_service import build_image_prompt, build_social_prompt, generate_image_dalle, get_placeholder_url, SOCIAL_PRESETS
 from app.services.llm_service import get_org_llm_keys, call_llm
 
 router = APIRouter()
@@ -43,6 +43,7 @@ class ImageOut(BaseModel):
     alt_text: Optional[str] = None
     caption: Optional[str] = None
     seo_filename: Optional[str] = None
+    social_platform: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -57,6 +58,7 @@ class GenerateImageRequest(BaseModel):
     social_post_id: Optional[uuid.UUID] = None
     quality: Optional[Literal["standard", "hd"]] = "standard"
     use_brand_kit: bool = False
+    social_platform: Optional[str] = None
 
 
 class AttachImageRequest(BaseModel):
@@ -164,8 +166,13 @@ async def generate_image(
         )
         brand_kit = bk_result.scalar_one_or_none()
 
+    social_platform = body.social_platform if body.social_platform in SOCIAL_PRESETS else None
+
     if body.prompt:
         prompt = body.prompt
+    elif social_platform:
+        subject = body.title or body.keyword or "content"
+        prompt = build_social_prompt(social_platform, subject, brand_kit)
     else:
         title = body.title or ""
         prompt = build_image_prompt(
@@ -200,6 +207,8 @@ async def generate_image(
     )
     api_key_row = key_result.scalar_one_or_none()
 
+    dalle_size = SOCIAL_PRESETS[social_platform]["dalle_size"] if social_platform else None
+
     if api_key_row is not None:
         openai_key = decrypt_api_key(api_key_row.encrypted_value)
         result = await generate_image_dalle(
@@ -207,7 +216,8 @@ async def generate_image(
             style=style,
             usage=usage,
             openai_api_key=openai_key,
-            quality=body.quality or "standard",   # NEW
+            quality=body.quality or "standard",
+            size_override=dalle_size,
         )
     else:
         result = get_placeholder_url(usage)
@@ -217,9 +227,15 @@ async def generate_image(
         image.image_url = result["image_url"]
         image.thumbnail_url = result["image_url"]
         image.revised_prompt = result.get("revised_prompt")
-        image.width = result["width"]
-        image.height = result["height"]
         image.cost_usd = result.get("cost_usd")
+        if social_platform:
+            preset = SOCIAL_PRESETS[social_platform]
+            image.width = preset["width"]
+            image.height = preset["height"]
+            image.social_platform = social_platform
+        else:
+            image.width = result["width"]
+            image.height = result["height"]
         image.generation_meta = {
             "provider": "openai" if api_key_row else "placeholder",
             "model": "gpt-image-1" if api_key_row else None,

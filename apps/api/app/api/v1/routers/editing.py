@@ -115,6 +115,7 @@ async def edit_image(
         alt_text=image.alt_text,
         caption=image.caption,
         seo_filename=image.seo_filename,
+        social_platform=image.social_platform,
     )
     db.add(edited)
     await db.commit()
