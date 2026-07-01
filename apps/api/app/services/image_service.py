@@ -50,12 +50,51 @@ def build_image_prompt(
     return base
 
 
+SOCIAL_PRESETS: dict[str, dict] = {
+    "instagram_post":    {"width": 1080, "height": 1080, "label": "Instagram Post",    "aspect": "1:1",     "dalle_size": "1024x1024"},
+    "instagram_story":   {"width": 1080, "height": 1920, "label": "Instagram Story",   "aspect": "9:16",    "dalle_size": "1024x1536"},
+    "instagram_reel":    {"width": 1080, "height": 1920, "label": "Instagram Reel",    "aspect": "9:16",    "dalle_size": "1024x1536"},
+    "youtube_thumbnail": {"width": 1280, "height": 720,  "label": "YouTube Thumbnail", "aspect": "16:9",   "dalle_size": "1536x1024"},
+    "linkedin_banner":   {"width": 1584, "height": 396,  "label": "LinkedIn Banner",   "aspect": "4:1",    "dalle_size": "1536x1024"},
+    "linkedin_post":     {"width": 1200, "height": 627,  "label": "LinkedIn Post",     "aspect": "1.91:1", "dalle_size": "1536x1024"},
+    "facebook_ad":       {"width": 1200, "height": 628,  "label": "Facebook Ad",       "aspect": "1.91:1", "dalle_size": "1536x1024"},
+    "tiktok_cover":      {"width": 1080, "height": 1920, "label": "TikTok Cover",      "aspect": "9:16",   "dalle_size": "1024x1536"},
+    "pinterest_pin":     {"width": 1000, "height": 1500, "label": "Pinterest Pin",     "aspect": "2:3",    "dalle_size": "1024x1536"},
+}
+
+
+def build_social_prompt(
+    platform: str,
+    subject: str,
+    brand_kit=None,
+) -> str:
+    meta = SOCIAL_PRESETS.get(platform, {})
+    label = meta.get("label", platform.replace("_", " ").title())
+    aspect = meta.get("aspect", "")
+    base = (
+        f"Professional {label} image ({aspect} aspect ratio). "
+        f"Subject: {subject}. "
+        f"Bold, eye-catching composition optimised for social media engagement. "
+        f"No text overlays. High quality, vibrant."
+    )
+    if brand_kit:
+        parts = []
+        if brand_kit.colors:
+            parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
+        if brand_kit.tone:
+            parts.append(f"Tone: {brand_kit.tone}")
+        if parts:
+            base = f"{base} {'. '.join(parts)}."
+    return base
+
+
 async def generate_image_dalle(
     prompt: str,
     style: str,
     usage: str,
     openai_api_key: str,
     quality: Literal["standard", "hd"] = "standard",
+    size_override: Optional[str] = None,
 ) -> dict:
     """
     Generate image via gpt-image-1 API (replaces deprecated dall-e-3).
@@ -72,7 +111,12 @@ async def generate_image_dalle(
     gpt_quality = "high" if quality == "hd" else "medium"
 
     # Approximate gpt-image-1 costs — check OpenAI pricing for exact values
-    if usage == "article_cover":
+    if size_override:
+        size = size_override
+        w_str, h_str = size_override.split("x")
+        width, height = int(w_str), int(h_str)
+        cost_usd = 0.25 if quality == "hd" else 0.06
+    elif usage == "article_cover":
         size = "1536x1024"  # gpt-image-1 landscape; 1792x1024 no longer supported
         width = 1536
         height = 1024
