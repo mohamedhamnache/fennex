@@ -16,6 +16,7 @@ interface StudioRightPanelProps {
   currentImages: (GeneratedImage | null)[];
   batchCount: 1 | 2 | 4;
   pastRuns: PastRun[];
+  projectId: string;
   onUse: (image: GeneratedImage) => void;
   onRegenerate: (index: number) => void;
   onPastRegenerate: (runIndex: number, imageIndex: number) => void;
@@ -26,6 +27,7 @@ export function StudioRightPanel({
   currentImages,
   batchCount,
   pastRuns,
+  projectId,
   onUse,
   onRegenerate,
   onPastRegenerate,
@@ -69,6 +71,7 @@ export function StudioRightPanel({
             <ResultCard
               key={img?.id ?? `skeleton-${i}`}
               image={img}
+              projectId={projectId}
               onUse={onUse}
               onRegenerate={() => onRegenerate(i)}
             />
@@ -92,6 +95,7 @@ export function StudioRightPanel({
               prompt={run.prompt}
               images={run.images}
               batchCount={run.batchCount}
+              projectId={projectId}
               onUse={onUse}
               onRegenerate={(ii) => onPastRegenerate(ri, ii)}
             />

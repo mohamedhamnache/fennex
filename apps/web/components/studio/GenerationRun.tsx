@@ -10,11 +10,12 @@ interface GenerationRunProps {
   prompt: string;
   images: GeneratedImage[];
   batchCount: number;
+  projectId: string;
   onUse: (image: GeneratedImage) => void;
   onRegenerate: (index: number) => void;
 }
 
-export function GenerationRun({ prompt, images, batchCount, onUse, onRegenerate }: GenerationRunProps) {
+export function GenerationRun({ prompt, images, batchCount, projectId, onUse, onRegenerate }: GenerationRunProps) {
   const [expanded, setExpanded] = useState(false);
 
   const gridCols =
@@ -59,6 +60,7 @@ export function GenerationRun({ prompt, images, batchCount, onUse, onRegenerate 
             <ResultCard
               key={img.id}
               image={img}
+              projectId={projectId}
               onUse={onUse}
               onRegenerate={() => onRegenerate(i)}
             />

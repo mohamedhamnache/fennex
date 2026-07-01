@@ -1,15 +1,17 @@
 "use client";
 
-import { Download, Link as LinkIcon, RotateCcw, AlertCircle, Loader2, Image as ImageIcon } from "lucide-react";
+import Link from "next/link";
+import { Download, Link as LinkIcon, RotateCcw, AlertCircle, Loader2, Image as ImageIcon, PencilLine } from "lucide-react";
 import type { GeneratedImage } from "@/lib/api";
 
 interface ResultCardProps {
   image: GeneratedImage | null;
+  projectId: string;
   onUse: (image: GeneratedImage) => void;
   onRegenerate: () => void;
 }
 
-export function ResultCard({ image, onUse, onRegenerate }: ResultCardProps) {
+export function ResultCard({ image, projectId, onUse, onRegenerate }: ResultCardProps) {
   if (image === null) {
     return (
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -92,6 +94,14 @@ export function ResultCard({ image, onUse, onRegenerate }: ResultCardProps) {
         >
           <LinkIcon className="h-3 w-3" /> Use
         </button>
+        {isReady && (
+          <Link
+            href={`/${projectId}/images/edit/${img.id}`}
+            className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <PencilLine className="h-3 w-3" /> Edit
+          </Link>
+        )}
         <button
           onClick={onRegenerate}
           className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

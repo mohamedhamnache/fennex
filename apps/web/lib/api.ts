@@ -1174,3 +1174,19 @@ export async function uploadBrandLogo(file: File): Promise<BrandKit> {
   if (!res.ok) throw new ApiError(res.status, await res.text());
   return res.json();
 }
+
+// ── Image Editing ──────────────────────────────────────────────────────────────
+
+export interface EditImageResult {
+  ok: boolean;
+  image_url: string | null;
+  error: string | null;
+}
+
+export async function editImage(
+  imageId: string,
+  operation: string,
+  params?: Record<string, unknown>,
+): Promise<EditImageResult> {
+  return apiClient.post<EditImageResult>(`/images/${imageId}/edit`, { operation, params });
+}

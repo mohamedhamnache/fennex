@@ -229,6 +229,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
             currentImages={currentImages}
             batchCount={batchCount}
             pastRuns={pastRuns}
+            projectId={projectId}
             onUse={setAttachingImage}
             onRegenerate={handleRegenerate}
             onPastRegenerate={handlePastRegenerate}
