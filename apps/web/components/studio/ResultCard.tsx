@@ -72,6 +72,11 @@ export function ResultCard({ image, projectId, onUse, onRegenerate }: ResultCard
             ALT
           </span>
         )}
+        {isReady && img.social_platform && (
+          <span className="absolute top-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold text-white uppercase tracking-wide leading-none pointer-events-none">
+            {img.social_platform.replace(/_/g, " ")}
+          </span>
+        )}
         {!isLoading && !isFailed && !isReady && (
           <div className="absolute inset-0 flex items-center justify-center">
             <ImageIcon className="h-8 w-8 text-muted-foreground/40" />

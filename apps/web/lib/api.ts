@@ -724,6 +724,7 @@ export interface GeneratedImage {
   alt_text?: string | null;
   caption?: string | null;
   seo_filename?: string | null;
+  social_platform?: string | null;
 }
 
 export async function listImages(projectId: string, usage?: ImageUsage): Promise<GeneratedImage[]> {
@@ -748,6 +749,7 @@ export async function generateImage(data: {
   quality?: "standard" | "hd";
   reference_image?: string;
   use_brand_kit?: boolean;
+  social_platform?: string;
 }): Promise<GeneratedImage> {
   return apiClient.post<GeneratedImage>("/images/generate", data);
 }

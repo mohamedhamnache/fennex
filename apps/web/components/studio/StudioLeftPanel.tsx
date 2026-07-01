@@ -8,6 +8,7 @@ import type { ImageStyle, ImageUsage } from "@/lib/api";
 import { getBrandKit } from "@/lib/api";
 import { StyleGrid } from "./StyleGrid";
 import { PromptToolbar } from "./PromptToolbar";
+import { SocialTab } from "./SocialTab";
 import { addToHistory, getHistory, getSaved, savePrompt, removeSaved } from "./prompt-storage";
 
 const USAGES: { value: ImageUsage; label: string }[] = [
@@ -103,6 +104,7 @@ export function StudioLeftPanel({
     ((brandKit.colors?.length ?? 0) > 0 || brandKit.style_rules || brandKit.tone)
   );
 
+  const [activeTab, setActiveTab] = useState<"generate" | "social">("generate");
   const [negExpanded, setNegExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState<"recent" | "saved">("recent");
   const [history, setHistory] = useState<string[]>([]);
@@ -158,7 +160,40 @@ export function StudioLeftPanel({
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-4 overflow-y-auto h-full">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Tab switcher */}
+      <div className="flex shrink-0 border-b border-border px-4 pt-3">
+        {(["generate", "social"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "pb-2 px-1 mr-4 text-xs font-semibold border-b-2 transition-colors capitalize",
+              activeTab === tab
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {tab === "social" ? "Social Media" : "Generate"}
+          </button>
+        ))}
+      </div>
+
+      {/* Social tab */}
+      {activeTab === "social" && (
+        <div className="flex-1 overflow-y-auto">
+          <SocialTab
+            projectId={projectId}
+            subject={prompt}
+            useBrandKit={useBrandKit}
+          />
+        </div>
+      )}
+
+      {/* Generate tab */}
+      {activeTab === "generate" && (
+      <div className="flex flex-col gap-5 p-4 overflow-y-auto flex-1">
 
       {/* Prompt */}
       <div>
@@ -391,6 +426,8 @@ export function StudioLeftPanel({
           "Generate"
         )}
       </button>
+      </div>
+      )}
     </div>
   );
 }
