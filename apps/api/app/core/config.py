@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: str = ""
     S3_SECRET_KEY: str = ""
     S3_ENDPOINT_URL: str = ""
+    REMOVE_BG_API_KEY: str = ""
+    REPLICATE_API_KEY: str = ""
 
     # Email
     SENDGRID_API_KEY: str = ""
