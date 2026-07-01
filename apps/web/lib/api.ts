@@ -1201,8 +1201,15 @@ export async function editImage(
   return apiClient.post<EditImageResult>(`/images/${imageId}/edit`, { operation, params });
 }
 
-export async function generateImageSeo(imageId: string): Promise<GeneratedImage> {
-  return apiClient.post<GeneratedImage>(`/images/${imageId}/seo`, {});
+export interface SeoResult {
+  id: string;
+  alt_text: string | null;
+  caption: string | null;
+  seo_filename: string | null;
+}
+
+export async function generateImageSeo(imageId: string): Promise<SeoResult> {
+  return apiClient.post<SeoResult>(`/images/${imageId}/seo`, {});
 }
 
 export interface ExportResult {
