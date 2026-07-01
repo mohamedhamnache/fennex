@@ -60,9 +60,17 @@ export function ResultCard({ image, projectId, onUse, onRegenerate }: ResultCard
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={img.image_url!}
-            alt={img.prompt}
+            alt={img.alt_text ?? img.prompt}
             className="absolute inset-0 w-full h-full object-cover"
           />
+        )}
+        {isReady && img.alt_text && (
+          <span
+            title={img.alt_text}
+            className="absolute top-1 left-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white leading-none pointer-events-none"
+          >
+            ALT
+          </span>
         )}
         {!isLoading && !isFailed && !isReady && (
           <div className="absolute inset-0 flex items-center justify-center">
