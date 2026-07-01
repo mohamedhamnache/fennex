@@ -12,6 +12,7 @@ import {
   Link as LinkIcon,
   Trash2,
   Copy,
+  PencilLine,
   Image as ImageIcon,
   X,
 } from "lucide-react";
@@ -192,6 +193,16 @@ function ImageCard({
             <LinkIcon className="h-3 w-3" />
             {t("images.card.attach")}
           </button>
+
+          {image.status === "ready" && (
+            <Link
+              href={`/${projectId}/images/edit/${image.id}`}
+              className="rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
+            >
+              <PencilLine className="h-3 w-3" />
+              Edit
+            </Link>
+          )}
 
           {/* Kebab menu */}
           <div ref={menuRef} className="relative">

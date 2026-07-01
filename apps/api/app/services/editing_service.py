@@ -10,6 +10,10 @@ from app.core.storage import upload_bytes
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 async def _download(url: str) -> bytes:
+    if url.startswith("data:"):
+        # data URI — decode inline (used when S3 is not configured, or gpt-image-1 b64 output)
+        _, encoded = url.split(",", 1)
+        return base64.b64decode(encoded)
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(url)
         resp.raise_for_status()

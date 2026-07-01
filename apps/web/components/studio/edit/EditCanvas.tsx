@@ -37,23 +37,32 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
     const imageRef = useRef<HTMLImageElement>(null);
     const maskRef = useRef<HTMLCanvasElement>(null);
     const [painting, setPainting] = useState(false);
+    const [canvasRect, setCanvasRect] = useState({ top: 0, left: 0, width: 0, height: 0 });
     const needsMask = MASK_TOOLS.has(tool);
 
-    // Resize mask canvas to match displayed image size
-    function resizeMask() {
+    // Sync canvas size + position to the rendered image bounds
+    function syncCanvas() {
       const img = imageRef.current;
+      const container = containerRef.current;
       const canvas = maskRef.current;
-      if (!img || !canvas) return;
-      const { width, height } = img.getBoundingClientRect();
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
+      if (!img || !container || !canvas) return;
+
+      const imgRect = img.getBoundingClientRect();
+      const conRect = container.getBoundingClientRect();
+
+      const top = imgRect.top - conRect.top;
+      const left = imgRect.left - conRect.left;
+      const { width, height } = imgRect;
+
+      setCanvasRect({ top, left, width, height });
+      canvas.width = width;
+      canvas.height = height;
     }
 
     useEffect(() => {
-      const observer = new ResizeObserver(resizeMask);
+      const observer = new ResizeObserver(syncCanvas);
       if (imageRef.current) observer.observe(imageRef.current);
+      if (containerRef.current) observer.observe(containerRef.current);
       return () => observer.disconnect();
     }, []);
 
@@ -74,10 +83,11 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
     const onMouseDown = useCallback(
       (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!needsMask) return;
-        resizeMask();
+        syncCanvas();
         setPainting(true);
         drawCircle(...getPos(e));
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       [needsMask],
     );
 
@@ -135,16 +145,19 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
           alt="Edit preview"
           className="max-w-full max-h-full object-contain select-none"
           draggable={false}
-          onLoad={resizeMask}
+          onLoad={syncCanvas}
         />
         {/* Mask overlay — only shown for mask-capable tools */}
         <canvas
           ref={maskRef}
           className="absolute"
           style={{
+            top: canvasRect.top,
+            left: canvasRect.left,
+            width: canvasRect.width,
+            height: canvasRect.height,
             cursor: needsMask ? "crosshair" : "default",
             pointerEvents: needsMask ? "auto" : "none",
-            opacity: 1,
           }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
