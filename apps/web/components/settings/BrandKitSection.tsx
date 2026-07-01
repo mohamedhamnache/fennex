@@ -16,6 +16,7 @@ export function BrandKitSection() {
   const [secondaryFont, setSecondaryFont] = useState("");
   const [styleRules, setStyleRules] = useState("");
   const [tone, setTone] = useState("");
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   const { data: kit, isLoading } = useQuery<BrandKit>({
     queryKey: ["brand-kit"],
@@ -43,7 +44,6 @@ export function BrandKitSection() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["brand-kit"] }),
   });
 
-  const [logoError, setLogoError] = useState<string | null>(null);
   const logoMutation = useMutation({
     mutationFn: (file: File) => uploadBrandLogo(file),
     onSuccess: () => {
