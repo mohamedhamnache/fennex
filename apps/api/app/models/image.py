@@ -56,3 +56,6 @@ class GeneratedImage(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("generated_images.id", ondelete="SET NULL"), nullable=True
     )
     edit_operation: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    alt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    caption: Mapped[str | None] = mapped_column(Text, nullable=True)
+    seo_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
