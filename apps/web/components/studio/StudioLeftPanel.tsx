@@ -187,6 +187,9 @@ export function StudioLeftPanel({
             projectId={projectId}
             subject={prompt}
             useBrandKit={useBrandKit}
+            style={style}
+            quality={quality}
+            onSwitchToGenerate={() => setActiveTab("generate")}
           />
         </div>
       )}
