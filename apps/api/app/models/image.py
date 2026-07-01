@@ -52,3 +52,7 @@ class GeneratedImage(Base, TimestampMixin):
     generation_meta: Mapped[dict | None] = mapped_column(JSON)     # provider response metadata
     error: Mapped[str | None] = mapped_column(Text)
     cost_usd: Mapped[float | None] = mapped_column(Float)          # generation cost in USD
+    source_image_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("generated_images.id", ondelete="SET NULL"), nullable=True
+    )
+    edit_operation: Mapped[str | None] = mapped_column(String(100), nullable=True)
