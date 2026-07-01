@@ -10,6 +10,7 @@ import { EditToolsSidebar } from "@/components/studio/edit/EditToolsSidebar";
 import { EditCanvas, type EditCanvasRef } from "@/components/studio/edit/EditCanvas";
 import { EditControlsPanel } from "@/components/studio/edit/EditControlsPanel";
 import { VersionStrip } from "@/components/studio/edit/VersionStrip";
+import { SeoPanel } from "@/components/studio/edit/SeoPanel";
 
 export default function EditPage({
   params,
@@ -191,6 +192,9 @@ export default function EditPage({
               historyIdx={historyIdx}
               onSelect={setHistoryIdx}
             />
+          </div>
+          <div className="shrink-0">
+            <SeoPanel imageId={editTargetId} image={displayImage} />
           </div>
         </div>
 
