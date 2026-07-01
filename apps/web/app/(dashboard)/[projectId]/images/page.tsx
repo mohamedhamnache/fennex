@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,11 +15,9 @@ import {
   Image as ImageIcon,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/cn";
 import { useProjectStore } from "@/lib/store";
 import {
   listImages,
-  generateImage,
   deleteImage,
   attachImage,
   listArticles,
@@ -45,16 +44,7 @@ const STYLE_LABELS: Record<ImageStyle, string> = {
   luxury_product: "Luxury Product",
 };
 
-const USAGES: ImageUsage[] = ["article_cover", "social_post", "brand_asset", "custom"];
 const STYLES: ImageStyle[] = ["professional", "photorealistic", "illustration", "minimalist", "abstract", "3d_render", "anime", "cinematic", "luxury_product"];
-
-// Maps snake_case usage keys to i18n camelCase keys
-const USAGE_I18N: Record<ImageUsage, string> = {
-  article_cover: "images.usageTabs.articleCover",
-  social_post: "images.usageTabs.socialPost",
-  brand_asset: "images.usageTabs.brandAsset",
-  custom: "images.usageTabs.custom",
-};
 
 // ─── Spinner ──────────────────────────────────────────────────────────────
 
@@ -241,245 +231,6 @@ function ImageCard({
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Generate Modal ──────────────────────────────────────────────────────────
-
-function GenerateModal({
-  projectId,
-  onClose,
-  onGenerated,
-}: {
-  projectId: string;
-  onClose: () => void;
-  onGenerated: () => void;
-}) {
-  const { t } = useTranslation();
-  const [usage, setUsage] = useState<ImageUsage>("article_cover");
-  const [style, setStyle] = useState<ImageStyle>("professional");
-  const [quality, setQuality] = useState<"standard" | "hd">("standard");
-  const [prompt, setPrompt] = useState("");
-  const [title, setTitle] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [articleId, setArticleId] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const { data: articles = [] } = useQuery<Article[]>({
-    queryKey: ["articles", projectId],
-    queryFn: () => listArticles(projectId),
-  });
-
-  const readyArticles = articles.filter(
-    (a) => a.status === "ready" || a.status === "published",
-  );
-
-  async function handleGenerate() {
-    setError(null);
-    setIsGenerating(true);
-    try {
-      const image = await generateImage({
-        project_id: projectId,
-        usage,
-        style,
-        quality,
-        ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
-        ...(title.trim() ? { title: title.trim() } : {}),
-        ...(keyword.trim() ? { keyword: keyword.trim() } : {}),
-        ...(articleId ? { article_id: articleId } : {}),
-      });
-      if (image.status === "failed") {
-        setError(image.error ?? "Image generation failed");
-        setIsGenerating(false);
-        return;
-      }
-      onGenerated();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-      setIsGenerating(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="p-6 border-b border-border flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("images.generateModal.title")}</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {t("images.generateModal.subtitle")}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {isGenerating ? (
-          <div className="p-10 flex flex-col items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-              <Spinner size={28} />
-            </div>
-            <p className="text-sm font-medium text-foreground">{t("images.generateModal.generating")}</p>
-            <p className="text-xs text-muted-foreground text-center">
-              {t("images.generateModal.generatingHint")}
-            </p>
-          </div>
-        ) : (
-          <div className="p-6 flex flex-col gap-4">
-            {error && (
-              <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {t("images.generateModal.usage")}
-              </label>
-              <select
-                value={usage}
-                onChange={(e) => setUsage(e.target.value as ImageUsage)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                {USAGES.map((u) => (
-                  <option key={u} value={u}>
-                    {t(USAGE_I18N[u])}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {t("images.generateModal.style")}
-              </label>
-              <select
-                value={style}
-                onChange={(e) => setStyle(e.target.value as ImageStyle)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                {STYLES.map((s) => (
-                  <option key={s} value={s}>
-                    {STYLE_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {t("images.generateModal.quality")}
-              </label>
-              <div className="flex gap-2">
-                {(["standard", "hd"] as const).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setQuality(q)}
-                    className={cn(
-                      "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
-                      quality === q
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-accent",
-                    )}
-                  >
-                    <span>{q === "hd" ? t("images.generateModal.hd") : t("images.generateModal.standard")}</span>
-                    <span className="block text-[10px] font-normal mt-0.5 opacity-70">
-                      {q === "standard" ? t("images.generateModal.priceStandard") : t("images.generateModal.priceHD")}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {t("images.generateModal.prompt")}{" "}
-                <span className="font-normal text-muted-foreground">({t("images.generateModal.optional")})</span>
-              </label>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={3}
-                placeholder={t("images.generateModal.autoGenerate")}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {t("images.generateModal.imageTitle")}{" "}
-                <span className="font-normal text-muted-foreground">(used if prompt empty)</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={t("images.generateModal.titlePlaceholder")}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {t("images.generateModal.keyword")}{" "}
-                <span className="font-normal text-muted-foreground">(used if prompt empty)</span>
-              </label>
-              <input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder={t("images.generateModal.keywordPlaceholder")}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-
-            {readyArticles.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  {t("images.generateModal.linkToArticle")}{" "}
-                  <span className="font-normal text-muted-foreground">({t("images.generateModal.optional")})</span>
-                </label>
-                <select
-                  value={articleId}
-                  onChange={(e) => setArticleId(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="">{t("images.generateModal.none")}</option>
-                  {readyArticles.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-              >
-                {t("images.generateModal.cancel")}
-              </button>
-              <button
-                onClick={handleGenerate}
-                className="flex-1 btn-primary px-4 py-2 text-sm flex items-center justify-center gap-1.5"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("images.generateModal.generate")}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -684,7 +435,6 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
 
   const [usageFilter, setUsageFilter] = useState<UsageFilter>("all");
   const [styleFilter, setStyleFilter] = useState<ImageStyle | "all">("all");
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [attachingImage, setAttachingImage] = useState<GeneratedImage | null>(null);
 
   useEffect(() => {
@@ -711,11 +461,6 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
     styleFilter === "all"
       ? images
       : images.filter((img) => img.style === styleFilter);
-
-  function handleGenerated() {
-    setShowGenerateModal(false);
-    queryClient.invalidateQueries({ queryKey: ["images", projectId] });
-  }
 
   function handleAttached() {
     setAttachingImage(null);
@@ -745,13 +490,13 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
               ))}
             </select>
 
-            <button
-              onClick={() => setShowGenerateModal(true)}
+            <Link
+              href={`/${projectId}/images/studio`}
               className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
             >
               <Plus className="h-3.5 w-3.5" />
               {t("images.generate")}
-            </button>
+            </Link>
           </>
         }
       />
@@ -775,13 +520,13 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
               {t("images.noImagesHint")}
             </p>
           </div>
-          <button
-            onClick={() => setShowGenerateModal(true)}
+          <Link
+            href={`/${projectId}/images/studio`}
             className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
           >
             <Plus className="h-4 w-4" />
             {t("images.generate")}
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -795,15 +540,6 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
             />
           ))}
         </div>
-      )}
-
-      {/* Generate modal */}
-      {showGenerateModal && (
-        <GenerateModal
-          projectId={projectId}
-          onClose={() => setShowGenerateModal(false)}
-          onGenerated={handleGenerated}
-        />
       )}
 
       {/* Attach modal */}
