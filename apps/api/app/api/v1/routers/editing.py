@@ -45,6 +45,7 @@ class EditRequest(BaseModel):
 class EditOut(BaseModel):
     ok: bool
     image_url: Optional[str] = None
+    image_id: Optional[uuid.UUID] = None
     error: Optional[str] = None
 
 
@@ -116,4 +117,4 @@ async def edit_image(
     await db.commit()
     await db.refresh(edited)
 
-    return EditOut(ok=True, image_url=edit_result["image_url"])
+    return EditOut(ok=True, image_url=edit_result["image_url"], image_id=edited.id)

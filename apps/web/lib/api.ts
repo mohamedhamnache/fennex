@@ -719,12 +719,18 @@ export interface GeneratedImage {
   cost_usd: number | null;
   error: string | null;
   created_at: string;
+  source_image_id: string | null;
+  edit_operation: string | null;
 }
 
 export async function listImages(projectId: string, usage?: ImageUsage): Promise<GeneratedImage[]> {
   const params = new URLSearchParams({ project_id: projectId });
   if (usage) params.set("usage", usage);
   return apiClient.get<GeneratedImage[]>(`/images?${params.toString()}`);
+}
+
+export async function getImage(imageId: string): Promise<GeneratedImage> {
+  return apiClient.get<GeneratedImage>(`/images/${imageId}`);
 }
 
 export async function generateImage(data: {
@@ -1180,6 +1186,7 @@ export async function uploadBrandLogo(file: File): Promise<BrandKit> {
 export interface EditImageResult {
   ok: boolean;
   image_url: string | null;
+  image_id: string | null;
   error: string | null;
 }
 

@@ -37,6 +37,8 @@ class ImageOut(BaseModel):
     cost_usd: Optional[float]
     error: Optional[str]
     created_at: datetime
+    source_image_id: Optional[uuid.UUID]
+    edit_operation: Optional[str]
     model_config = ConfigDict(from_attributes=True)
 
 
