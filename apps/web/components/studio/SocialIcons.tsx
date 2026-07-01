@@ -1,3 +1,5 @@
+"use client";
+
 // Official brand SVG icons for social platforms (paths from Simple Icons)
 
 interface IconProps {
