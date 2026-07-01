@@ -1,5 +1,9 @@
-"""Async S3-compatible upload utility (Supabase Storage / AWS S3)."""
+"""Async S3-compatible upload utility (Supabase Storage / AWS S3).
+
+Falls back to base64 data URLs when S3 is not configured (local dev).
+"""
 import asyncio
+import base64
 import uuid
 import boto3
 from app.core.config import settings
@@ -31,8 +35,19 @@ def _public_url(key: str) -> str:
     return f"https://{settings.S3_BUCKET}.s3.{settings.S3_REGION}.amazonaws.com/{key}"
 
 
+def _s3_configured() -> bool:
+    return bool(settings.S3_BUCKET and settings.S3_ACCESS_KEY and settings.S3_SECRET_KEY)
+
+
 async def upload_bytes(content: bytes, key: str, content_type: str = "image/png") -> str:
-    """Upload raw bytes to S3. Returns public URL."""
+    """Upload raw bytes to S3. Returns public URL.
+
+    Falls back to a base64 data URL if S3 is not configured (local dev / no credentials).
+    """
+    if not _s3_configured():
+        encoded = base64.b64encode(content).decode("ascii")
+        return f"data:{content_type};base64,{encoded}"
+
     client = _s3_client()
 
     def _do():

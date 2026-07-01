@@ -43,9 +43,14 @@ export function BrandKitSection() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["brand-kit"] }),
   });
 
+  const [logoError, setLogoError] = useState<string | null>(null);
   const logoMutation = useMutation({
     mutationFn: (file: File) => uploadBrandLogo(file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["brand-kit"] }),
+    onSuccess: () => {
+      setLogoError(null);
+      qc.invalidateQueries({ queryKey: ["brand-kit"] });
+    },
+    onError: (e: Error) => setLogoError(e.message),
   });
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -71,6 +76,9 @@ export function BrandKitSection() {
       <div>
         <p className="text-xs font-semibold text-foreground mb-2">Logo</p>
         <input ref={fileRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={handleLogoChange} />
+        {logoError && (
+          <p className="mb-2 text-xs text-destructive">{logoError}</p>
+        )}
         {kit?.logo_url ? (
           <div className="relative inline-block">
             {/* eslint-disable-next-line @next/next/no-img-element */}
