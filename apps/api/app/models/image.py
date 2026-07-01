@@ -33,6 +33,18 @@ class ImageUsage(str, PyEnum):
     custom = "custom"
 
 
+class SocialPreset(str, PyEnum):
+    instagram_post    = "instagram_post"
+    instagram_story   = "instagram_story"
+    instagram_reel    = "instagram_reel"
+    youtube_thumbnail = "youtube_thumbnail"
+    linkedin_banner   = "linkedin_banner"
+    linkedin_post     = "linkedin_post"
+    facebook_ad       = "facebook_ad"
+    tiktok_cover      = "tiktok_cover"
+    pinterest_pin     = "pinterest_pin"
+
+
 class GeneratedImage(Base, TimestampMixin):
     __tablename__ = "generated_images"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -59,3 +71,4 @@ class GeneratedImage(Base, TimestampMixin):
     alt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
     seo_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    social_platform: Mapped[str | None] = mapped_column(String(60), nullable=True)
