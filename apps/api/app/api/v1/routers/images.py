@@ -14,6 +14,7 @@ from app.models.api_key import APIKey
 from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.project import Project
 from app.services.image_service import build_image_prompt, generate_image_dalle, get_placeholder_url
+from app.services.llm_service import get_org_llm_keys, call_llm
 
 router = APIRouter()
 
@@ -60,6 +61,16 @@ class AttachImageRequest(BaseModel):
     social_post_id: Optional[uuid.UUID] = None
 
 
+class ImprovePromptRequest(BaseModel):
+    prompt: str
+    usage: Optional[str] = None
+    style: Optional[str] = None
+
+
+class ImprovePromptResponse(BaseModel):
+    improved_prompt: str
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 async def _get_image_or_404(image_id: uuid.UUID, org_id: uuid.UUID, db) -> GeneratedImage:
@@ -76,6 +87,50 @@ async def _get_image_or_404(image_id: uuid.UUID, org_id: uuid.UUID, db) -> Gener
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+_IMPROVE_SYSTEM = (
+    "You are an expert AI image prompt engineer. "
+    "Given a short or vague image description, rewrite it as a single, highly detailed, "
+    "evocative image generation prompt (no markdown, no lists, no explanations — just the prompt). "
+    "Preserve the user's intent. Add lighting, composition, mood, technical details. "
+    "Keep it under 200 words."
+)
+
+_IMPROVE_PROVIDERS = [
+    ("anthropic", "claude-haiku-4-5-20251001"),
+    ("openai", "gpt-4o-mini"),
+]
+
+
+@router.post("/improve-prompt", response_model=ImprovePromptResponse)
+async def improve_prompt(body: ImprovePromptRequest, current_user: CurrentUser, db: DB):
+    if not body.prompt.strip():
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Prompt cannot be empty")
+
+    keys = await get_org_llm_keys(current_user.org_id, db)
+
+    context_parts = []
+    if body.usage:
+        context_parts.append(f"Usage: {body.usage.replace('_', ' ')}")
+    if body.style:
+        context_parts.append(f"Style: {body.style.replace('_', ' ')}")
+    context = f" [{', '.join(context_parts)}]" if context_parts else ""
+
+    user_prompt = f"Improve this image prompt{context}:\n\n{body.prompt.strip()}"
+
+    for provider, model in _IMPROVE_PROVIDERS:
+        if provider in keys:
+            try:
+                improved = await call_llm(provider, model, keys[provider], _IMPROVE_SYSTEM, user_prompt)
+                return ImprovePromptResponse(improved_prompt=improved.strip())
+            except Exception:
+                continue
+
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="No AI API key configured. Add an Anthropic or OpenAI key in Settings → API Keys.",
+    )
+
 
 @router.post("/generate", status_code=200, response_model=ImageOut)
 async def generate_image(
