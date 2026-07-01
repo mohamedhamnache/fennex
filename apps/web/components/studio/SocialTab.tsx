@@ -4,16 +4,26 @@ import { useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { generateImage, type GeneratedImage } from "@/lib/api";
+import {
+  InstagramIcon,
+  YoutubeIcon,
+  LinkedInIcon,
+  FacebookIcon,
+  TikTokIcon,
+  PinterestIcon,
+} from "./SocialIcons";
 
-const PLATFORMS = [
-  { id: "instagram_post",    label: "Instagram Post",    size: "1080×1080", emoji: "📷" },
-  { id: "instagram_story",   label: "Instagram Story",   size: "1080×1920", emoji: "📱" },
-  { id: "youtube_thumbnail", label: "YouTube Thumbnail", size: "1280×720",  emoji: "▶️" },
-  { id: "linkedin_banner",   label: "LinkedIn Banner",   size: "1584×396",  emoji: "💼" },
-  { id: "linkedin_post",     label: "LinkedIn Post",     size: "1200×627",  emoji: "🔗" },
-  { id: "facebook_ad",       label: "Facebook Ad",       size: "1200×628",  emoji: "📘" },
-  { id: "tiktok_cover",      label: "TikTok Cover",      size: "1080×1920", emoji: "🎵" },
-  { id: "pinterest_pin",     label: "Pinterest Pin",     size: "1000×1500", emoji: "📌" },
+type IconComponent = React.ComponentType<{ className?: string }>;
+
+const PLATFORMS: { id: string; label: string; size: string; Icon: IconComponent }[] = [
+  { id: "instagram_post",    label: "Instagram Post",    size: "1080×1080", Icon: InstagramIcon },
+  { id: "instagram_story",   label: "Instagram Story",   size: "1080×1920", Icon: InstagramIcon },
+  { id: "youtube_thumbnail", label: "YouTube Thumbnail", size: "1280×720",  Icon: YoutubeIcon },
+  { id: "linkedin_banner",   label: "LinkedIn Banner",   size: "1584×396",  Icon: LinkedInIcon },
+  { id: "linkedin_post",     label: "LinkedIn Post",     size: "1200×627",  Icon: LinkedInIcon },
+  { id: "facebook_ad",       label: "Facebook Ad",       size: "1200×628",  Icon: FacebookIcon },
+  { id: "tiktok_cover",      label: "TikTok Cover",      size: "1080×1920", Icon: TikTokIcon },
+  { id: "pinterest_pin",     label: "Pinterest Pin",     size: "1000×1500", Icon: PinterestIcon },
 ];
 
 interface SocialTabProps {
@@ -101,7 +111,7 @@ export function SocialTab({ projectId, subject, useBrandKit }: SocialTabProps) {
               onClick={() => togglePlatform(p.id)}
               disabled={isRunning}
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors",
+                "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors",
                 selected.includes(p.id) && !isDone && !isFailed
                   ? "border-primary bg-primary/10 text-primary"
                   : isDone
@@ -112,7 +122,7 @@ export function SocialTab({ projectId, subject, useBrandKit }: SocialTabProps) {
                 isRunning && "cursor-not-allowed opacity-80",
               )}
             >
-              <span className="text-sm leading-none shrink-0">{p.emoji}</span>
+              <p.Icon className="h-5 w-5 shrink-0" />
               <span className="flex-1 text-xs font-medium">{p.label}</span>
               <span className="text-[10px] tabular-nums shrink-0 text-muted-foreground">{p.size}</span>
               {isPending && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
