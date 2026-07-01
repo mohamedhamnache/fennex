@@ -1,7 +1,10 @@
 """Image generation service — gpt-image-1 with placeholder fallback."""
 import httpx
 import logging
-from typing import Literal
+from typing import Literal, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.brand_kit import BrandKit
 
 logger = logging.getLogger(__name__)
 
@@ -13,28 +16,38 @@ def build_image_prompt(
     keyword: str | None,
     style: str,
     usage: str,
+    brand_kit: Optional["BrandKit"] = None,
 ) -> str:
-    """
-    Build a DALL-E prompt from article/post metadata.
-    """
     if usage == "article_cover":
         kw_part = f" Topic: {keyword}." if keyword else ""
-        return (
+        base = (
             f"Professional blog cover image for an article titled '{title}'."
             f"{kw_part} Style: {style}. Wide format, no text overlays, "
             f"suitable for a tech/marketing blog."
         )
     elif usage == "social_post":
         subject = keyword or title
-        return (
+        base = (
             f"Social media visual for content about '{subject}'."
             f" Style: {style}. Square format, bold and eye-catching."
         )
     elif usage == "brand_asset":
-        return f"Brand visual asset. Style: {style}. Clean, professional."
+        base = f"Brand visual asset. Style: {style}. Clean, professional."
     else:
-        # custom
-        return f"'{title}'. Style: {style}."
+        base = f"'{title}'. Style: {style}."
+
+    if brand_kit:
+        parts = []
+        if brand_kit.colors:
+            parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
+        if brand_kit.style_rules:
+            parts.append(f"Style: {brand_kit.style_rules}")
+        if brand_kit.tone:
+            parts.append(f"Tone: {brand_kit.tone}")
+        if parts:
+            base = f"{base} {'. '.join(parts)}."
+
+    return base
 
 
 async def generate_image_dalle(

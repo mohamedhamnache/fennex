@@ -11,6 +11,7 @@ from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.image import GeneratedImage, ImageStyle, ImageStatus, ImageUsage
 from app.models.api_key import APIKey
+from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.project import Project
 from app.services.image_service import build_image_prompt, generate_image_dalle, get_placeholder_url
 
@@ -49,6 +50,7 @@ class GenerateImageRequest(BaseModel):
     article_id: Optional[uuid.UUID] = None
     social_post_id: Optional[uuid.UUID] = None
     quality: Optional[Literal["standard", "hd"]] = "standard"
+    use_brand_kit: bool = False
 
 
 class AttachImageRequest(BaseModel):
@@ -95,6 +97,13 @@ async def generate_image(
     style = body.style or ImageStyle.professional
     usage = body.usage or ImageUsage.article_cover
 
+    brand_kit = None
+    if body.use_brand_kit:
+        bk_result = await db.execute(
+            select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id)
+        )
+        brand_kit = bk_result.scalar_one_or_none()
+
     if body.prompt:
         prompt = body.prompt
     else:
@@ -104,6 +113,7 @@ async def generate_image(
             keyword=body.keyword,
             style=style,
             usage=usage,
+            brand_kit=brand_kit,
         )
 
     # Create record with status=generating
