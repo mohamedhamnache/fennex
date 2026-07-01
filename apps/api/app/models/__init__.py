@@ -12,6 +12,7 @@ from app.models.publishing import PublishingConnection, PublishJob  # noqa: F401
 from app.models.social import SocialPost, SocialConnection  # noqa: F401
 from app.models.api_key import APIKey  # noqa: F401
 from app.models.image import GeneratedImage  # noqa: F401
+from app.models.brand_kit import BrandKit  # noqa: F401
 from app.models.analytics import AnalyticsSnapshot, KeywordRanking, GscConnection  # noqa: F401
 from app.models.backlinks import BacklinkProfile, Backlink, BacklinkOpportunity, ExchangeListing, ExchangeRequest, ExchangeMessage  # noqa: F401
 from app.models.invite import OrgInvite  # noqa: F401

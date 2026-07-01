@@ -28,3 +28,10 @@ def remove_jsonb_tables():
 async def client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture
+def auth_headers():
+    """Provide Authorization headers for authenticated requests."""
+    return {"Authorization": "Bearer fake-token"}
+
