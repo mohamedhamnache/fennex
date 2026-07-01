@@ -738,6 +738,7 @@ export async function generateImage(data: {
   social_post_id?: string;
   quality?: "standard" | "hd";
   reference_image?: string;
+  use_brand_kit?: boolean;
 }): Promise<GeneratedImage> {
   return apiClient.post<GeneratedImage>("/images/generate", data);
 }
@@ -1136,4 +1137,40 @@ export async function createPortalSession(
 
 export async function getBillingUsage(): Promise<BillingUsage> {
   return apiClient.get<BillingUsage>("/billing/usage");
+}
+
+// ── Brand Kit ─────────────────────────────────────────────────────────────────
+
+export interface BrandKit {
+  logo_url: string | null;
+  colors: string[];
+  primary_font: string | null;
+  secondary_font: string | null;
+  style_rules: string | null;
+  tone: string | null;
+}
+
+export async function getBrandKit(): Promise<BrandKit> {
+  return apiClient.get<BrandKit>("/brand-kit");
+}
+
+export async function updateBrandKit(
+  data: Partial<Omit<BrandKit, "logo_url">>,
+): Promise<BrandKit> {
+  return apiClient.put<BrandKit>("/brand-kit", data);
+}
+
+export async function uploadBrandLogo(file: File): Promise<BrandKit> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/api/v1/brand-kit/logo`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+  return res.json();
 }
