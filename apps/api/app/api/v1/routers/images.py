@@ -40,6 +40,9 @@ class ImageOut(BaseModel):
     created_at: datetime
     source_image_id: Optional[uuid.UUID]
     edit_operation: Optional[str]
+    alt_text: Optional[str] = None
+    caption: Optional[str] = None
+    seo_filename: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
