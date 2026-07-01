@@ -1,9 +1,12 @@
 """Image editing operations — Pillow (basic), Remove.bg, Replicate (AI/Advanced)."""
 import asyncio
+import base64
 import io
+import time
 import uuid
 import httpx
 from PIL import Image as PILImage, ImageEnhance, ImageFilter, ImageOps
+from app.core.config import settings
 from app.core.storage import upload_bytes
 
 
@@ -67,12 +70,12 @@ async def resize_image(image_url: str, width: int, height: int, keep_aspect: boo
         return {"ok": False, "error": str(e)}
 
 
-async def rotate_image(image_url: str, angle: float, fill_color: str = "#000000") -> dict:
+async def rotate_image(image_url: str, angle: float, fill_color: str | None = None) -> dict:
     try:
         data = await _download(image_url)
         img = _open(data)
-        fill_rgb = _hex_to_rgb(fill_color)
-        rotated = img.rotate(-angle, expand=True, fillcolor=fill_rgb + (255,))
+        fill_rgba = _hex_to_rgb(fill_color) + (255,) if fill_color else (0, 0, 0, 0)
+        rotated = img.rotate(-angle, expand=True, fillcolor=fill_rgba)
         url = await _upload_result(rotated)
         return {"ok": True, "image_url": url}
     except Exception as e:
@@ -161,8 +164,6 @@ async def sharpen_image(image_url: str, strength: float = 0.5) -> dict:
 
 # ── Remove.bg ─────────────────────────────────────────────────────────────────
 
-from app.core.config import settings  # noqa: E402
-
 
 async def remove_background(image_url: str) -> dict:
     """Background removal via Remove.bg API."""
@@ -185,9 +186,6 @@ async def remove_background(image_url: str) -> dict:
 
 
 # ── Replicate ─────────────────────────────────────────────────────────────────
-
-import base64  # noqa: E402
-import time  # noqa: E402
 
 _REPLICATE_API = "https://api.replicate.com/v1"
 _POLL_INTERVAL = 3

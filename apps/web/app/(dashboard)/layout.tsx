@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
@@ -14,6 +14,8 @@ import { useUsageStore } from "@/lib/billing-store";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isFullScreen = /\/images\/edit\//.test(pathname ?? "");
   const setUsage = useUsageStore((s) => s.setUsage);
   const usage = useUsageStore((s) => s.usage);
   const [upgradeResource, setUpgradeResource] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Sidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
             <TopBar />
-            <main className="flex-1 overflow-y-auto p-6">{children}</main>
+            <main className={isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-6"}>{children}</main>
           </div>
         </div>
       </div>

@@ -243,6 +243,7 @@ async def list_images(
     query = select(GeneratedImage).where(
         GeneratedImage.project_id == project_id,
         GeneratedImage.org_id == current_user.org_id,
+        GeneratedImage.source_image_id.is_(None),  # exclude edited versions
     )
     if usage is not None:
         query = query.where(GeneratedImage.usage == usage)

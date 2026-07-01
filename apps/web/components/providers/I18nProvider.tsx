@@ -9,7 +9,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const { data: me } = useQuery({
     queryKey: ["me"],
     queryFn: getMe,
-    enabled: isAuthenticated(),
+    enabled: typeof window !== "undefined" && isAuthenticated(),
     staleTime: 5 * 60_000,
   });
 
