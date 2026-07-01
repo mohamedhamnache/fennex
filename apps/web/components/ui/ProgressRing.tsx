@@ -1,3 +1,7 @@
+"use client";
+
+import { useId } from "react";
+
 /**
  * Radial progress ring with a brand-gradient stroke and glow. Children render
  * centered (e.g. the percentage + label).
@@ -17,7 +21,9 @@ export function ProgressRing({
   const circ = 2 * Math.PI * r;
   const pct = Math.max(0, Math.min(100, value));
   const offset = circ - (pct / 100) * circ;
-  const gradId = `ring-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = useId();
+  const gradId = `ring-${uid.replace(/:/g, "")}`;
+
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
