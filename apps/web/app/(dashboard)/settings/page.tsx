@@ -8,7 +8,7 @@ import {
   User, Building2, KeyRound, Share2, Users,
   Trash2, Plus, Eye, EyeOff, Link2, Link2Off,
   UserX, UserPlus, Copy, Check, ChevronRight,
-  Shield, AtSign, Calendar, CreditCard,
+  Shield, AtSign, Calendar, CreditCard, Palette,
 } from "lucide-react";
 import {
   getMe,
@@ -17,6 +17,7 @@ import {
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
   createCheckoutSession, createPortalSession, getBillingUsage,
 } from "@/lib/api";
+import { BrandKitSection } from "@/components/settings/BrandKitSection";
 import { useUsageStore } from "@/lib/billing-store";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
@@ -78,6 +79,7 @@ const NAV_ITEMS = [
   { id: "organization", label: "Organization", icon: Building2 },
   { id: "team", label: "Team", icon: Users },
   { id: "ai-keys", label: "AI Keys", icon: KeyRound },
+  { id: "brand-kit", label: "Brand Kit", icon: Palette },
   { id: "social", label: "Social Accounts", icon: Share2 },
   { id: "billing", label: "Billing", icon: CreditCard },
 ] as const;
@@ -975,6 +977,7 @@ export default function SettingsPage() {
       case "organization": return <OrganizationSection me={me} />;
       case "team": return <TeamSection orgId={me.org_id} myId={me.id} myRole={me.role} />;
       case "ai-keys": return <AIKeysSection />;
+      case "brand-kit": return <BrandKitSection />;
       case "social": return <SocialSection />;
       case "billing": return <BillingSection />;
     }

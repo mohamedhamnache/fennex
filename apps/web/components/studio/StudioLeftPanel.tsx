@@ -1,10 +1,11 @@
-// apps/web/components/studio/StudioLeftPanel.tsx
 "use client";
 
 import { useRef, useState, useEffect } from "react";
 import { ChevronDown, Upload, X, RotateCcw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
 import type { ImageStyle, ImageUsage } from "@/lib/api";
+import { getBrandKit } from "@/lib/api";
 import { StyleGrid } from "./StyleGrid";
 import { PromptToolbar } from "./PromptToolbar";
 import { addToHistory, getHistory, getSaved, savePrompt, removeSaved } from "./prompt-storage";
@@ -32,6 +33,8 @@ interface StudioLeftPanelProps {
   onUsageChange: (u: ImageUsage) => void;
   referenceImage: string | null;
   onReferenceImageChange: (dataUri: string | null) => void;
+  useBrandKit: boolean;
+  onUseBrandKitChange: (v: boolean) => void;
   onGenerate: () => void;
   generating: boolean;
 }
@@ -86,9 +89,20 @@ export function StudioLeftPanel({
   onUsageChange,
   referenceImage,
   onReferenceImageChange,
+  useBrandKit,
+  onUseBrandKitChange,
   onGenerate,
   generating,
 }: StudioLeftPanelProps) {
+  const { data: brandKit } = useQuery({
+    queryKey: ["brand-kit"],
+    queryFn: getBrandKit,
+  });
+  const hasBrandKit = !!(
+    brandKit &&
+    ((brandKit.colors?.length ?? 0) > 0 || brandKit.style_rules || brandKit.tone)
+  );
+
   const [negExpanded, setNegExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState<"recent" | "saved">("recent");
   const [history, setHistory] = useState<string[]>([]);
@@ -174,6 +188,32 @@ export function StudioLeftPanel({
           onTemplateSelect={(p) => { onPromptChange(p); setUndoOriginal(null); }}
           onSave={handleSave}
         />
+      </div>
+
+      {/* Brand kit toggle */}
+      <div className="flex items-center justify-between py-1">
+        <span className={cn("text-xs font-medium", hasBrandKit ? "text-foreground" : "text-muted-foreground/60")}>
+          Use brand kit
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={useBrandKit}
+          disabled={!hasBrandKit}
+          onClick={() => onUseBrandKitChange(!useBrandKit)}
+          className={cn(
+            "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none",
+            useBrandKit && hasBrandKit ? "bg-primary" : "bg-border",
+            !hasBrandKit && "opacity-40 cursor-not-allowed",
+          )}
+        >
+          <span
+            className={cn(
+              "inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform",
+              useBrandKit && hasBrandKit ? "translate-x-4" : "translate-x-0.5",
+            )}
+          />
+        </button>
       </div>
 
       {/* Negative prompt (collapsible) */}

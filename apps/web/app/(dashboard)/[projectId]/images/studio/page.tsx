@@ -39,6 +39,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
   const [batchCount, setBatchCount] = useState<1 | 2 | 4>(1);
   const [usage, setUsage] = useState<ImageUsage>("article_cover");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [useBrandKit, setUseBrandKit] = useState(false);
 
   // Results state
   const [generating, setGenerating] = useState(false);
@@ -88,6 +89,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
           usage,
           quality,
           reference_image: referenceImage ?? undefined,
+          use_brand_kit: useBrandKit,
         }),
       );
 
@@ -113,7 +115,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
       await Promise.allSettled(requests);
       setGenerating(false);
     },
-    [prompt, batchCount, projectId, style, usage, quality, referenceImage],
+    [prompt, batchCount, projectId, style, usage, quality, referenceImage, useBrandKit],
   );
 
   function handleRegenerate(index: number) {
@@ -214,6 +216,8 @@ export default function StudioPage({ params }: { params: { projectId: string } }
             onUsageChange={setUsage}
             referenceImage={referenceImage}
             onReferenceImageChange={setReferenceImage}
+            useBrandKit={useBrandKit}
+            onUseBrandKitChange={setUseBrandKit}
             onGenerate={() => runGeneration()}
             generating={generating}
           />
