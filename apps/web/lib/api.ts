@@ -721,6 +721,9 @@ export interface GeneratedImage {
   created_at: string;
   source_image_id: string | null;
   edit_operation: string | null;
+  alt_text?: string | null;
+  caption?: string | null;
+  seo_filename?: string | null;
 }
 
 export async function listImages(projectId: string, usage?: ImageUsage): Promise<GeneratedImage[]> {
@@ -1196,4 +1199,22 @@ export async function editImage(
   params?: Record<string, unknown>,
 ): Promise<EditImageResult> {
   return apiClient.post<EditImageResult>(`/images/${imageId}/edit`, { operation, params });
+}
+
+export async function generateImageSeo(imageId: string): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>(`/images/${imageId}/seo`, {});
+}
+
+export interface ExportResult {
+  download_url: string;
+  format: string;
+  size_bytes: number;
+}
+
+export async function exportImage(
+  imageId: string,
+  format: "png" | "jpg" | "webp" = "webp",
+  quality = 85,
+): Promise<ExportResult> {
+  return apiClient.post<ExportResult>(`/images/${imageId}/export`, { format, quality });
 }
