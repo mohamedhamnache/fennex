@@ -40,9 +40,9 @@ class GeneratedImage(Base, TimestampMixin):
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     revised_prompt: Mapped[str | None] = mapped_column(Text)       # DALL-E's rewritten prompt
-    style: Mapped[ImageStyle] = mapped_column(SAEnum(ImageStyle, name="image_style_enum"), default=ImageStyle.professional)
-    usage: Mapped[ImageUsage] = mapped_column(SAEnum(ImageUsage, name="image_usage_enum"), default=ImageUsage.article_cover)
-    status: Mapped[ImageStatus] = mapped_column(SAEnum(ImageStatus, name="image_status_enum"), default=ImageStatus.pending)
+    style: Mapped[ImageStyle] = mapped_column(SAEnum(ImageStyle, name="image_style_enum", values_callable=lambda x: [e.value for e in x]), default=ImageStyle.professional)
+    usage: Mapped[ImageUsage] = mapped_column(SAEnum(ImageUsage, name="image_usage_enum", values_callable=lambda x: [e.value for e in x]), default=ImageUsage.article_cover)
+    status: Mapped[ImageStatus] = mapped_column(SAEnum(ImageStatus, name="image_status_enum", values_callable=lambda x: [e.value for e in x]), default=ImageStatus.pending)
     image_url: Mapped[str | None] = mapped_column(Text)            # URL from DALL-E or placeholder
     thumbnail_url: Mapped[str | None] = mapped_column(Text)        # same as image_url for now
     width: Mapped[int] = mapped_column(Integer, default=1792)
