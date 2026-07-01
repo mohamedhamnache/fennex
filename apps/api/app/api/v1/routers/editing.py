@@ -112,6 +112,9 @@ async def edit_image(
         height=image.height,
         source_image_id=image.id,
         edit_operation=body.operation,
+        alt_text=image.alt_text,
+        caption=image.caption,
+        seo_filename=image.seo_filename,
     )
     db.add(edited)
     await db.commit()
