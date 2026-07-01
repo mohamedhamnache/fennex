@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
 
@@ -932,6 +933,10 @@ function ArticleEditor({
             {revisionMsg && (
               <p className="text-xs text-emerald-500 text-center">{revisionMsg}</p>
             )}
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
           </div>
         </div>
       </div>

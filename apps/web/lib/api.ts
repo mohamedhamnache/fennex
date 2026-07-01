@@ -1227,3 +1227,14 @@ export async function exportImage(
 ): Promise<ExportResult> {
   return apiClient.post<ExportResult>(`/images/${imageId}/export`, { format, quality });
 }
+
+export interface ImageSuggestion {
+  placement: string;
+  section_hint: string;
+  image_concept: string;
+  suggested_prompt: string;
+}
+
+export async function suggestImagesForArticle(articleId: string): Promise<ImageSuggestion[]> {
+  return apiClient.post<ImageSuggestion[]>(`/articles/${articleId}/suggest-images`, {});
+}
