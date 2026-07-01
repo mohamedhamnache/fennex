@@ -14,6 +14,7 @@ from app.api.v1.routers import (
     content_items,
     articles,
     brand_voice,
+    brand_kit,
     social,
     images,
     publishing,
@@ -38,6 +39,7 @@ api_router.include_router(content_plans.router, prefix="/content-plans", tags=["
 api_router.include_router(content_items.router, prefix="/content-items", tags=["content-items"])
 api_router.include_router(articles.router, prefix="/articles", tags=["articles"])
 api_router.include_router(brand_voice.router, prefix="/brand-voice", tags=["brand-voice"])
+api_router.include_router(brand_kit.router, prefix="/brand-kit", tags=["brand-kit"])
 api_router.include_router(social.router, prefix="/social", tags=["social"])
 api_router.include_router(images.router, prefix="/images", tags=["images"])
 api_router.include_router(publishing.router, prefix="/publishing", tags=["publishing"])
