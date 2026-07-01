@@ -36,7 +36,7 @@ export function StudioRightPanel({
   const gridCols =
     batchCount === 1 ? "grid-cols-1 max-w-sm mx-auto" :
     batchCount === 2 ? "grid-cols-2" :
-    "grid-cols-2";
+    "grid-cols-4";
 
   return (
     <div className="flex flex-col gap-6 p-6 overflow-y-auto h-full">
