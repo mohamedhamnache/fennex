@@ -69,7 +69,8 @@ export default function StudioPage({ params }: { params: { projectId: string } }
       setCurrentImages((prev) => {
         const readyImages = prev.filter((img): img is GeneratedImage => img !== null && img.status === "ready");
         if (readyImages.length > 0) {
-          setPastRuns((runs) => [{ prompt: activePrompt, images: readyImages, batchCount: activeBatch }, ...runs]);
+          const archivedPrompt = readyImages[0]?.prompt ?? activePrompt;
+          setPastRuns((runs) => [{ prompt: archivedPrompt, images: readyImages, batchCount: activeBatch }, ...runs]);
         }
         return [];
       });

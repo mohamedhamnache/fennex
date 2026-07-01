@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Sparkles, LayoutTemplate, Bookmark, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { improvePrompt } from "@/lib/api";
@@ -29,6 +29,7 @@ export function PromptToolbar({
   const [improving, setImproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const templatesButtonRef = useRef<HTMLButtonElement>(null);
 
   async function handleImprove() {
     if (!prompt.trim()) return;
@@ -64,6 +65,7 @@ export function PromptToolbar({
 
         <div className="relative">
           <button
+            ref={templatesButtonRef}
             type="button"
             onClick={() => setShowTemplates((v) => !v)}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -73,6 +75,7 @@ export function PromptToolbar({
           </button>
           {showTemplates && (
             <TemplatesPopover
+              triggerRef={templatesButtonRef}
               onSelect={onTemplateSelect}
               onClose={() => setShowTemplates(false)}
             />

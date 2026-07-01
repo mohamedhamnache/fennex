@@ -1,33 +1,55 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { TEMPLATE_CATEGORIES } from "./templates";
 
 interface TemplatesPopoverProps {
+  triggerRef: React.RefObject<HTMLButtonElement>;
   onSelect: (prompt: string) => void;
   onClose: () => void;
 }
 
-export function TemplatesPopover({ onSelect, onClose }: TemplatesPopoverProps) {
+export function TemplatesPopover({ triggerRef, onSelect, onClose }: TemplatesPopoverProps) {
   const [activeCategory, setActiveCategory] = useState(TEMPLATE_CATEGORIES[0].id);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useLayoutEffect(() => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 8, left: r.left });
+    }
+  }, [triggerRef]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      const target = e.target as Node;
+      if (
+        ref.current && !ref.current.contains(target) &&
+        triggerRef.current && !triggerRef.current.contains(target)
+      ) {
+        onClose();
+      }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [onClose, triggerRef]);
 
   const category = TEMPLATE_CATEGORIES.find((c) => c.id === activeCategory)!;
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       ref={ref}
-      className="absolute left-0 bottom-full mb-2 z-50 w-80 rounded-xl border border-border bg-popover shadow-lg animate-scale-in"
+      style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+      className="w-80 popover animate-scale-in"
     >
       <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
         <p className="text-xs font-semibold text-foreground">Industry Templates</p>
@@ -69,6 +91,7 @@ export function TemplatesPopover({ onSelect, onClose }: TemplatesPopoverProps) {
           </button>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
