@@ -689,7 +689,16 @@ export async function publishSocialPost(id: string): Promise<SocialPost> {
 
 // ─── Image Studio types & helpers ─────────────────────────────────────────────
 
-export type ImageStyle = "photorealistic" | "illustration" | "minimalist" | "abstract" | "professional";
+export type ImageStyle =
+  | "photorealistic"
+  | "illustration"
+  | "minimalist"
+  | "abstract"
+  | "professional"
+  | "3d_render"
+  | "anime"
+  | "cinematic"
+  | "luxury_product";
 export type ImageStatus = "pending" | "generating" | "ready" | "failed";
 export type ImageUsage = "article_cover" | "social_post" | "brand_asset" | "custom";
 
@@ -728,6 +737,7 @@ export async function generateImage(data: {
   article_id?: string;
   social_post_id?: string;
   quality?: "standard" | "hd";
+  reference_image?: string;
 }): Promise<GeneratedImage> {
   return apiClient.post<GeneratedImage>("/images/generate", data);
 }
@@ -738,6 +748,14 @@ export async function deleteImage(id: string): Promise<void> {
 
 export async function attachImage(id: string, data: { article_id?: string; social_post_id?: string }): Promise<GeneratedImage> {
   return apiClient.post<GeneratedImage>(`/images/${id}/attach`, data);
+}
+
+export async function improvePrompt(data: {
+  prompt: string;
+  usage?: ImageUsage;
+  style?: ImageStyle;
+}): Promise<{ improved_prompt: string }> {
+  return apiClient.post<{ improved_prompt: string }>("/images/improve-prompt", data);
 }
 
 // ─── Analytics types & helpers ─────────────────────────────────────────────

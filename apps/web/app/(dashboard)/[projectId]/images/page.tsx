@@ -39,10 +39,14 @@ const STYLE_LABELS: Record<ImageStyle, string> = {
   minimalist: "Minimalist",
   abstract: "Abstract",
   professional: "Professional",
+  "3d_render": "3D Render",
+  anime: "Anime",
+  cinematic: "Cinematic",
+  luxury_product: "Luxury Product",
 };
 
 const USAGES: ImageUsage[] = ["article_cover", "social_post", "brand_asset", "custom"];
-const STYLES: ImageStyle[] = ["professional", "photorealistic", "illustration", "minimalist", "abstract"];
+const STYLES: ImageStyle[] = ["professional", "photorealistic", "illustration", "minimalist", "abstract", "3d_render", "anime", "cinematic", "luxury_product"];
 
 // Maps snake_case usage keys to i18n camelCase keys
 const USAGE_I18N: Record<ImageUsage, string> = {
