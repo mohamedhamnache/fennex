@@ -13,6 +13,10 @@ class ImageStyle(str, PyEnum):
     minimalist = "minimalist"
     abstract = "abstract"
     professional = "professional"
+    three_d_render = "3d_render"
+    anime = "anime"
+    cinematic = "cinematic"
+    luxury_product = "luxury_product"
 
 
 class ImageStatus(str, PyEnum):

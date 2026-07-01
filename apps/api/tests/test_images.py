@@ -468,3 +468,14 @@ async def test_generate_image_dalle_invalid_quality():
     )
     assert result["ok"] is False
     assert "ultra" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_generate_image_with_anime_style(client, org_and_project):
+    """POST /images/generate with anime style → should return 200 with style=anime."""
+    response = await client.post(
+        "/api/v1/images/generate",
+        json={"project_id": str(FAKE_PROJECT_ID), "prompt": "test", "style": "anime"},
+    )
+    assert response.status_code == 200
+    assert response.json()["style"] == "anime"
