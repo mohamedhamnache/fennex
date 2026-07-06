@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy import String, Boolean, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,5 +22,9 @@ class Project(Base, TimestampMixin):
     industry: Mapped[str | None] = mapped_column(String(100))
     locked: Mapped[bool] = mapped_column(Boolean, default=False)
     locked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Onboarding persona: "creator" | "ecommerce" | "freelancer"
+    persona: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Persona-specific onboarding answers (niche, platforms, store type, services…)
+    persona_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     organization: Mapped["Organization"] = relationship("Organization", back_populates="projects")

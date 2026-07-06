@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Wand2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Wand2, Sparkles, Pencil, type LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   generateImage,
+  uploadImage,
   listArticles,
   listSocialPosts,
   type GeneratedImage,
@@ -15,10 +16,18 @@ import {
   type SocialPost,
 } from "@/lib/api";
 import { useProjectStore } from "@/lib/store";
+import { cn } from "@/lib/cn";
 import { addToHistory } from "@/components/studio/prompt-storage";
 import { StudioLeftPanel } from "@/components/studio/StudioLeftPanel";
 import { StudioRightPanel } from "@/components/studio/StudioRightPanel";
 import { AttachModal } from "@/components/studio/AttachModal";
+import { CreateLauncher, type CreateIntent } from "@/components/studio/CreateLauncher";
+import { EditLauncher } from "@/components/studio/EditLauncher";
+import { AiStudioChat } from "@/components/studio/AiStudioChat";
+import { ProductStudio } from "@/components/studio/ProductStudio";
+import { SocialStudio } from "@/components/studio/SocialStudio";
+
+type StudioMode = "create" | "edit" | "ai";
 
 interface PastRun {
   prompt: string;
@@ -29,7 +38,21 @@ interface PastRun {
 export default function StudioPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setCurrentProject } = useProjectStore();
+
+  // Studio shell: which front door is active, and (for Create) the chosen intent.
+  // Initial values can be deep-linked from the dashboard via ?mode= and ?intent=.
+  const VALID_MODES: StudioMode[] = ["create", "edit", "ai"];
+  const VALID_INTENTS: CreateIntent[] = ["social", "product", "blog", "banner", "freeform"];
+  const paramMode = searchParams.get("mode") as StudioMode | null;
+  const paramIntent = searchParams.get("intent") as CreateIntent | null;
+  const [mode, setMode] = useState<StudioMode>(
+    paramMode && VALID_MODES.includes(paramMode) ? paramMode : "create",
+  );
+  const [createIntent, setCreateIntent] = useState<CreateIntent | null>(
+    paramIntent && VALID_INTENTS.includes(paramIntent) ? paramIntent : null,
+  );
 
   // Controls state
   const [prompt, setPrompt] = useState("");
@@ -172,13 +195,42 @@ export default function StudioPage({ params }: { params: { projectId: string } }
     });
   }
 
+  async function handleUpload(file: File) {
+    const skeleton = {
+      id: `upload-${Date.now()}`,
+      status: "generating",
+      prompt: "Uploading...",
+    } as GeneratedImage;
+    setCurrentImages((prev) => [skeleton, ...prev]);
+    try {
+      const img = await uploadImage(projectId, file);
+      setCurrentImages((prev) => prev.map((i) => i?.id === skeleton.id ? img : i));
+    } catch {
+      setCurrentImages((prev) => prev.filter((i) => i?.id !== skeleton.id));
+    }
+  }
+
   // "Try a template" from empty state opens templates popover in left panel
   // We use a ref-based trigger; simplest approach: lift a flag
   const [triggerTemplates, setTriggerTemplates] = useState(false);
 
+  function handlePickIntent(i: CreateIntent) {
+    // Seed sensible defaults per intent
+    if (i === "blog") setUsage("article_cover");
+    else if (i === "freeform") setUsage("custom");
+    else if (i === "social") setUsage("social_post");
+    setCreateIntent(i);
+  }
+
+  const MODES: { id: StudioMode; label: string; Icon: LucideIcon }[] = [
+    { id: "create", label: "Create", Icon: Sparkles },
+    { id: "edit",   label: "Edit",   Icon: Pencil },
+    { id: "ai",     label: "AI Studio", Icon: Wand2 },
+  ];
+
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 60px)" }}>
-      {/* Studio header */}
+      {/* Studio header with mode switcher */}
       <div className="flex items-center justify-between border-b border-border px-5 py-3 shrink-0">
         <div className="flex items-center gap-3">
           <button
@@ -186,56 +238,106 @@ export default function StudioPage({ params }: { params: { projectId: string } }
             onClick={() => router.push(`/${projectId}/images`)}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" /> Images
+            <ArrowLeft className="h-4 w-4" /> Library
           </button>
           <span className="text-muted-foreground/40">/</span>
-          <div className="flex items-center gap-2">
-            <Wand2 className="h-4 w-4 text-primary" strokeWidth={1.8} />
-            <span className="text-sm font-semibold text-foreground">Image Studio</span>
-          </div>
+          <span className="text-sm font-semibold text-foreground">Studio</span>
         </div>
+
+        {/* Segmented mode switcher */}
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+          {MODES.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setMode(id)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                mode === id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Spacer to balance the flex layout so the switcher stays centered-ish */}
+        <div className="w-[120px]" />
       </div>
 
-      {/* Two-column layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left panel */}
-        <div className="w-[380px] shrink-0 border-r border-border overflow-hidden">
-          <StudioLeftPanel
-            projectId={projectId}
-            prompt={prompt}
-            onPromptChange={setPrompt}
-            negativePrompt={negativePrompt}
-            onNegativePromptChange={setNegativePrompt}
-            style={style}
-            onStyleChange={setStyle}
-            quality={quality}
-            onQualityChange={setQuality}
-            batchCount={batchCount}
-            onBatchCountChange={setBatchCount}
-            usage={usage}
-            onUsageChange={setUsage}
-            referenceImage={referenceImage}
-            onReferenceImageChange={setReferenceImage}
-            useBrandKit={useBrandKit}
-            onUseBrandKitChange={setUseBrandKit}
-            onGenerate={() => runGeneration()}
-            generating={generating}
-          />
-        </div>
+      {/* Body — one of three front doors */}
+      <div className="flex-1 overflow-hidden">
+        {mode === "create" && createIntent === null && (
+          <CreateLauncher onPick={handlePickIntent} />
+        )}
 
-        {/* Right panel */}
-        <div className="flex-1 overflow-hidden">
-          <StudioRightPanel
-            currentImages={currentImages}
-            batchCount={batchCount}
-            pastRuns={pastRuns}
+        {/* Product gets a dedicated full-width studio (upload → scenes → set) */}
+        {mode === "create" && createIntent === "product" && (
+          <ProductStudio
             projectId={projectId}
-            onUse={setAttachingImage}
-            onRegenerate={handleRegenerate}
-            onPastRegenerate={handlePastRegenerate}
-            onOpenTemplates={() => setTriggerTemplates((v) => !v)}
+            useBrandKit={useBrandKit}
+            onBack={() => setCreateIntent(null)}
           />
-        </div>
+        )}
+
+        {/* Social gets a dedicated full-width studio (topic → platforms → set + captions) */}
+        {mode === "create" && createIntent === "social" && (
+          <SocialStudio
+            projectId={projectId}
+            useBrandKit={useBrandKit}
+            onBack={() => setCreateIntent(null)}
+          />
+        )}
+
+        {mode === "create" && createIntent !== null && createIntent !== "product" && createIntent !== "social" && (
+          <div className="flex h-full overflow-hidden">
+            <div className="w-[380px] shrink-0 border-r border-border overflow-hidden">
+              <StudioLeftPanel
+                projectId={projectId}
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                negativePrompt={negativePrompt}
+                onNegativePromptChange={setNegativePrompt}
+                style={style}
+                onStyleChange={setStyle}
+                quality={quality}
+                onQualityChange={setQuality}
+                batchCount={batchCount}
+                onBatchCountChange={setBatchCount}
+                usage={usage}
+                onUsageChange={setUsage}
+                referenceImage={referenceImage}
+                onReferenceImageChange={setReferenceImage}
+                useBrandKit={useBrandKit}
+                onUseBrandKitChange={setUseBrandKit}
+                onGenerate={() => runGeneration()}
+                generating={generating}
+                intent={createIntent}
+                onBack={() => setCreateIntent(null)}
+              />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <StudioRightPanel
+                currentImages={currentImages}
+                batchCount={batchCount}
+                pastRuns={pastRuns}
+                projectId={projectId}
+                onUse={setAttachingImage}
+                onRegenerate={handleRegenerate}
+                onPastRegenerate={handlePastRegenerate}
+                onOpenTemplates={() => setTriggerTemplates((v) => !v)}
+                onUpload={handleUpload}
+              />
+            </div>
+          </div>
+        )}
+
+        {mode === "edit" && <EditLauncher projectId={projectId} />}
+
+        {mode === "ai" && <AiStudioChat projectId={projectId} useBrandKit={useBrandKit} />}
       </div>
 
       {/* Attach modal */}

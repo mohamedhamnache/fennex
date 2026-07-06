@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Sparkles,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -31,6 +31,7 @@ export function Sidebar() {
       label: t("nav.research"),
       items: [
         { label: t("nav.overview"), href: "overview", icon: LayoutDashboard },
+        { label: "Agents", href: "agents", icon: Sparkles },
         { label: t("nav.keywords"), href: "keywords", icon: SearchCode },
       ],
     },

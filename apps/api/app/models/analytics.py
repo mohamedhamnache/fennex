@@ -46,6 +46,43 @@ class KeywordRanking(Base, TimestampMixin):
     url: Mapped[str | None] = mapped_column(String(2048))
 
 
+class GscQueryStat(Base, TimestampMixin):
+    """Latest GSC Search Analytics stats grouped by query (replaced each sync)."""
+    __tablename__ = "gsc_query_stats"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    query: Mapped[str] = mapped_column(String(500), nullable=False)
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    impressions: Mapped[int] = mapped_column(Integer, default=0)
+    ctr: Mapped[float] = mapped_column(Float, default=0.0)
+    position: Mapped[float] = mapped_column(Float, default=0.0)
+    top_url: Mapped[str | None] = mapped_column(String(2048))
+
+
+class GscPageStat(Base, TimestampMixin):
+    """Latest GSC Search Analytics stats grouped by page (replaced each sync)."""
+    __tablename__ = "gsc_page_stats"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    impressions: Mapped[int] = mapped_column(Integer, default=0)
+    ctr: Mapped[float] = mapped_column(Float, default=0.0)
+    position: Mapped[float] = mapped_column(Float, default=0.0)
+
+
 class GscConnection(Base, TimestampMixin):
     __tablename__ = "gsc_connections"
 

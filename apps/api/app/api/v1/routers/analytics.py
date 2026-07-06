@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, select
 
@@ -12,18 +12,32 @@ from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.analytics import GscConnection
 from app.schemas.analytics import (
+    AiAgentRequest,
+    AiAgentResponse,
     AnalyticsOverview,
+    CompetitorAnalysis,
+    CompetitorRequest,
     ContentPerformanceRow,
     GscConnectResponse,
     GscConnectionStatus,
+    GscSelectSiteRequest,
+    GscSite,
+    GscSyncResult,
+    HealthScore,
+    MarketInsights,
+    OpportunitiesResponse,
     RankingRow,
     TopPageRow,
     TopQueryRow,
     TrafficDataPoint,
 )
+from app.services import gsc_service
 from app.services.analytics_service import (
     get_content_performance,
     get_gsc_status,
+    get_health_score,
+    get_market_insights,
+    get_opportunities,
     get_overview,
     get_rankings,
     get_top_pages,
@@ -34,7 +48,7 @@ from app.services.analytics_service import (
 router = APIRouter()
 
 RangeParam = Query(default="28d", pattern="^(7d|28d|90d)$")
-SortParam = Query(default="position", pattern="^(position|volume|change)$")
+SortParam = Query(default="clicks", pattern="^(position|clicks|volume|change)$")
 
 
 @router.get("/overview", response_model=AnalyticsOverview)
@@ -53,8 +67,9 @@ async def analytics_traffic(
     current_user: CurrentUser,
     db: DB,
     range: str = RangeParam,
+    offset: int = Query(default=0, ge=0, le=12),
 ):
-    return await get_traffic(project_id, current_user.org_id, range, db)
+    return await get_traffic(project_id, current_user.org_id, range, db, offset)
 
 
 @router.get("/rankings", response_model=list[RankingRow])
@@ -93,6 +108,85 @@ async def analytics_content_performance(
     db: DB,
 ):
     return await get_content_performance(project_id, current_user.org_id, db)
+
+
+@router.post("/ai-agent", response_model=AiAgentResponse)
+async def analytics_ai_agent(
+    project_id: uuid.UUID,
+    body: AiAgentRequest,
+    current_user: CurrentUser,
+    db: DB,
+):
+    from app.services import ai_analytics_service
+    result = await ai_analytics_service.answer(
+        project_id, current_user.org_id, body.question, db, body.history, body.persona
+    )
+    return AiAgentResponse(**result)
+
+
+@router.get("/health-score", response_model=HealthScore)
+async def analytics_health_score(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    return await get_health_score(project_id, current_user.org_id, db)
+
+
+@router.post("/digest/send-now")
+async def analytics_digest_send_now(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Compose and send this project's weekly digest email immediately."""
+    from app.models.project import Project as ProjectModel
+    proj = await db.get(ProjectModel, project_id)
+    if proj is None or proj.org_id != current_user.org_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    from app.services.digest_service import send_project_digest
+    return await send_project_digest(project_id, db)
+
+
+@router.post("/competitor", response_model=CompetitorAnalysis)
+async def analytics_competitor(
+    project_id: uuid.UUID,
+    body: CompetitorRequest,
+    current_user: CurrentUser,
+    db: DB,
+):
+    from app.services import competitor_service
+    result = await competitor_service.analyze(project_id, current_user.org_id, body.url, db)
+    return CompetitorAnalysis(**result)
+
+
+@router.get("/market-insights", response_model=MarketInsights)
+async def analytics_market_insights(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    return await get_market_insights(project_id, current_user.org_id, db)
+
+
+@router.post("/market-report")
+async def analytics_market_report(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Oasis: generate a client-ready market report from this project's GSC data."""
+    from app.services.oasis_service import generate_market_report
+    return await generate_market_report(project_id, current_user.org_id, db)
+
+
+@router.get("/opportunities", response_model=OpportunitiesResponse)
+async def analytics_opportunities(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    return await get_opportunities(project_id, current_user.org_id, db)
 
 
 @router.get("/gsc/status", response_model=GscConnectionStatus)
@@ -209,6 +303,45 @@ async def gsc_callback(
     await db.commit()
 
     return RedirectResponse(f"{settings.FRONTEND_URL}/{project_id}/analytics?gsc_connected=1")
+
+
+@router.get("/gsc/sites", response_model=list[GscSite])
+async def gsc_sites(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """List the Search Console properties the connected account can access."""
+    try:
+        return await gsc_service.list_sites(project_id, current_user.org_id, db)
+    except gsc_service.GscError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+
+
+@router.post("/gsc/select-site", response_model=GscConnectionStatus)
+async def gsc_select_site(
+    project_id: uuid.UUID,
+    body: GscSelectSiteRequest,
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Pick which GSC property this project tracks."""
+    try:
+        await gsc_service.select_site(project_id, current_user.org_id, body.site_url, db)
+    except gsc_service.GscError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    return await get_gsc_status(project_id, current_user.org_id, db)
+
+
+@router.post("/gsc/sync", response_model=GscSyncResult)
+async def gsc_sync(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+    days: int = Query(default=90, ge=7, le=480),
+):
+    """Pull real Search Analytics data from GSC into the analytics tables."""
+    try:
+        result = await gsc_service.sync(project_id, current_user.org_id, db, days=days)
+        return GscSyncResult(**result)
+    except gsc_service.GscError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 
 @router.delete("/gsc/disconnect", status_code=204)
