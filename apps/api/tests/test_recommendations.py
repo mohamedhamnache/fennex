@@ -347,3 +347,19 @@ async def test_summary_endpoint(client, org_and_project):
     r = await client.get(f"/api/v1/recommendations/summary?project_id={FAKE_PROJECT_ID}")
     assert r.status_code == 200
     assert r.json()["acted"] == 0
+
+
+# ── Digest standup line ───────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_digest_includes_standup_when_acted(db_session, org_and_project):
+    from app.services.digest_service import compose_digest
+    db_session.add(Recommendation(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="w", status="done", outcome="won",
+        baseline={"clicks": 40, "impressions": 1, "ctr": 0.0, "position": 8.0},
+        latest={"clicks": 182, "impressions": 1, "ctr": 0.0, "position": 4.0}))
+    await db_session.commit()
+    project = await db_session.get(Project, FAKE_PROJECT_ID)
+    subject, html = await compose_digest(project, db_session)
+    assert "Zerda" in html
+    assert "acted on" in html
