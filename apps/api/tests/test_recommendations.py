@@ -186,3 +186,131 @@ async def test_list_filters_by_status(db_session, org_and_project):
     await transition(a.id, FAKE_ORG_ID, "done", db_session)
     tracking = await list_recommendations(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session, status="tracking")
     assert len(tracking) == 1 and tracking[0].title == "b"
+
+
+# ── Service: measure ──────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_measure_scores_done_items_past_window(db_session, org_and_project):
+    from datetime import date, timedelta
+    from app.services.recommendation_service import measure
+    db_session.add(GscQueryStat(project_id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, query="olive oil",
+                                clicks=182, impressions=2200, ctr=0.083, position=4.0))
+    done = (date.today() - timedelta(days=30)).isoformat()
+    db_session.add(Recommendation(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="t", anchor_query="olive oil", status="done", outcome="pending", done_at=done,
+        baseline={"clicks": 40, "impressions": 1000, "ctr": 0.04, "position": 8.0, "captured_at": done},
+    ))
+    await db_session.commit()
+    n = await measure(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session)
+    assert n == 1
+    rec = (await db_session.execute(select(Recommendation))).scalars().first()
+    assert rec.outcome == "won"
+    assert rec.latest["clicks"] == 182
+    assert rec.impact_score > 10
+    assert rec.measured_at is not None
+
+
+@pytest.mark.asyncio
+async def test_measure_skips_items_inside_window(db_session, org_and_project):
+    from datetime import date, timedelta
+    from app.services.recommendation_service import measure
+    db_session.add(GscQueryStat(project_id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, query="olive oil",
+                                clicks=100, impressions=2000, ctr=0.05, position=5.0))
+    done = (date.today() - timedelta(days=3)).isoformat()
+    db_session.add(Recommendation(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="t", anchor_query="olive oil", status="done", outcome="pending", done_at=done,
+        baseline={"clicks": 40, "impressions": 1000, "ctr": 0.04, "position": 8.0},
+    ))
+    await db_session.commit()
+    n = await measure(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session)
+    assert n == 0
+    rec = (await db_session.execute(select(Recommendation))).scalars().first()
+    assert rec.outcome == "pending"
+
+
+# ── Service: matching ─────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_matching_detects_published_article(db_session, org_and_project):
+    from app.models.article import ArticleStatus
+    from app.services.recommendation_service import run_matching
+    db_session.add(Article(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID,
+        title="10 Olive Oil Benefits You Should Know",
+        target_keyword="olive oil benefits", status=ArticleStatus.published,
+    ))
+    db_session.add(Recommendation(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="Target olive oil benefits", anchor_query="olive oil benefits", status="tracking",
+    ))
+    await db_session.commit()
+    n = await run_matching(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session)
+    assert n == 1
+    rec = (await db_session.execute(select(Recommendation))).scalars().first()
+    assert rec.detected_content and rec.detected_content[0]["type"] == "article"
+
+
+@pytest.mark.asyncio
+async def test_matching_ignores_unrelated_content(db_session, org_and_project):
+    from app.models.article import ArticleStatus
+    from app.services.recommendation_service import run_matching
+    db_session.add(Article(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID,
+        title="Sourdough bread guide", target_keyword="sourdough", status=ArticleStatus.published,
+    ))
+    db_session.add(Recommendation(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="Target olive oil", anchor_query="olive oil", status="tracking",
+    ))
+    await db_session.commit()
+    n = await run_matching(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session)
+    assert n == 0
+
+
+# ── Service: summarize ────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_summarize_counts_and_won_clicks(db_session, org_and_project):
+    from app.services.recommendation_service import summarize
+    db_session.add(Recommendation(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity", title="w",
+        status="done", outcome="won",
+        baseline={"clicks": 40, "impressions": 1, "ctr": 0.0, "position": 8.0},
+        latest={"clicks": 182, "impressions": 1, "ctr": 0.0, "position": 4.0},
+    ))
+    db_session.add(Recommendation(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity", title="m",
+        status="done", outcome="pending",
+    ))
+    await db_session.commit()
+    s = await summarize(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session)
+    assert s["acted"] == 2
+    assert s["won"] == 1
+    assert s["measuring"] == 1
+    assert s["won_clicks"] == 142
+
+
+# ── Combined pass (cron behavior) ─────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_measure_then_match_pass(db_session, org_and_project):
+    from datetime import date, timedelta
+    from app.models.article import ArticleStatus
+    from app.services.recommendation_service import measure, run_matching
+    db_session.add(GscQueryStat(project_id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, query="olive oil",
+                                clicks=182, impressions=2200, ctr=0.083, position=4.0))
+    db_session.add(Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID,
+                           title="Olive oil guide", target_keyword="olive oil",
+                           status=ArticleStatus.published))
+    done = (date.today() - timedelta(days=30)).isoformat()
+    db_session.add(Recommendation(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="a", anchor_query="olive oil", status="done", outcome="pending", done_at=done,
+        baseline={"clicks": 40, "impressions": 1000, "ctr": 0.04, "position": 8.0}))
+    db_session.add(Recommendation(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, source="opportunity",
+        title="b", anchor_query="olive oil", status="tracking"))
+    await db_session.commit()
+    assert await measure(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session) == 1
+    assert await run_matching(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session) == 1
