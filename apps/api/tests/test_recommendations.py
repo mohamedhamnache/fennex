@@ -314,3 +314,36 @@ async def test_measure_then_match_pass(db_session, org_and_project):
     await db_session.commit()
     assert await measure(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session) == 1
     assert await run_matching(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session) == 1
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_post_and_list_endpoint(client, org_and_project):
+    r = await client.post(
+        f"/api/v1/recommendations?project_id={FAKE_PROJECT_ID}",
+        json={"source": "agent", "source_agent": "zerda", "title": "Publish weekly"},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["status"] == "tracking"
+    lst = await client.get(f"/api/v1/recommendations?project_id={FAKE_PROJECT_ID}")
+    assert lst.status_code == 200
+    assert len(lst.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_patch_marks_done(client, org_and_project):
+    created = (await client.post(
+        f"/api/v1/recommendations?project_id={FAKE_PROJECT_ID}",
+        json={"source": "opportunity", "title": "t"},
+    )).json()
+    r = await client.patch(f"/api/v1/recommendations/{created['id']}", json={"status": "done"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_summary_endpoint(client, org_and_project):
+    r = await client.get(f"/api/v1/recommendations/summary?project_id={FAKE_PROJECT_ID}")
+    assert r.status_code == 200
+    assert r.json()["acted"] == 0
