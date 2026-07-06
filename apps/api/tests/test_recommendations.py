@@ -129,3 +129,60 @@ async def test_recommendation_row_persists(db_session, org_and_project):
     assert rec.id is not None
     assert rec.status == "tracking"
     assert rec.baseline is None
+
+
+# ── Service: create / list / transition ───────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_snapshots_baseline_from_gsc(db_session, org_and_project):
+    from app.services.recommendation_service import create_recommendation
+    db_session.add(GscQueryStat(
+        project_id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, query="olive oil",
+        clicks=40, impressions=1000, ctr=0.04, position=8.0, top_url="https://x/olive",
+    ))
+    await db_session.commit()
+    rec = await create_recommendation(
+        FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"source": "opportunity", "kind": "striking_distance", "title": "Target olive oil",
+         "anchor_query": "olive oil"}, db_session,
+    )
+    assert rec.status == "tracking"
+    assert rec.baseline["clicks"] == 40
+    assert rec.baseline["position"] == 8.0
+    assert "captured_at" in rec.baseline
+
+
+@pytest.mark.asyncio
+async def test_create_without_anchor_has_null_baseline(db_session, org_and_project):
+    from app.services.recommendation_service import create_recommendation
+    rec = await create_recommendation(
+        FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"source": "agent", "source_agent": "zerda", "title": "Publish more how-to content"},
+        db_session,
+    )
+    assert rec.baseline is None
+    assert rec.anchor_query is None
+
+
+@pytest.mark.asyncio
+async def test_transition_to_done_sets_pending_outcome(db_session, org_and_project):
+    from app.services.recommendation_service import create_recommendation, transition
+    db_session.add(GscQueryStat(project_id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, query="olive oil",
+                                clicks=40, impressions=1000, ctr=0.04, position=8.0))
+    await db_session.commit()
+    rec = await create_recommendation(FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"source": "opportunity", "title": "t", "anchor_query": "olive oil"}, db_session)
+    updated = await transition(rec.id, FAKE_ORG_ID, "done", db_session)
+    assert updated.status == "done"
+    assert updated.outcome == "pending"
+    assert updated.done_at is not None
+
+
+@pytest.mark.asyncio
+async def test_list_filters_by_status(db_session, org_and_project):
+    from app.services.recommendation_service import create_recommendation, transition, list_recommendations
+    a = await create_recommendation(FAKE_PROJECT_ID, FAKE_ORG_ID, {"source": "agent", "title": "a"}, db_session)
+    await create_recommendation(FAKE_PROJECT_ID, FAKE_ORG_ID, {"source": "agent", "title": "b"}, db_session)
+    await transition(a.id, FAKE_ORG_ID, "done", db_session)
+    tracking = await list_recommendations(FAKE_PROJECT_ID, FAKE_ORG_ID, db_session, status="tracking")
+    assert len(tracking) == 1 and tracking[0].title == "b"
