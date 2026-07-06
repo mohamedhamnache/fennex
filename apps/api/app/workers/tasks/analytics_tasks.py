@@ -146,6 +146,14 @@ async def _sync_one_project(project_id: str):
 
         await session.commit()
 
+        # Closed-loop recommendation tracking: re-measure + detect after fresh data.
+        from app.services.recommendation_service import measure, run_matching
+        try:
+            await measure(pid, org_id, session)
+            await run_matching(pid, org_id, session)
+        except Exception:
+            pass  # never let tracking break the nightly analytics sync
+
 
 async def sync_analytics_data(ctx, project_id: str | None = None):
     """Daily sync: write today's analytics row and keyword ranking rows.
