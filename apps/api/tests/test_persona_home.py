@@ -168,3 +168,21 @@ async def test_unknown_persona_defaults_creator(db_session, org_and_project):
     home = await get_persona_home(FAKE_PROJECT_ID, FAKE_ORG_ID, "banana", db_session)
     assert home.persona == "creator"
     assert home.north_star.key == "clicks"
+
+
+# ── Endpoint: GET /analytics/persona-home ─────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_persona_home_endpoint(client, org_and_project):
+    r = await client.get(f"/api/v1/analytics/persona-home?project_id={FAKE_PROJECT_ID}&persona=ecommerce")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["persona"] == "ecommerce"
+    assert body["north_star"]["key"] == "buyer_intent_clicks"
+
+
+@pytest.mark.asyncio
+async def test_persona_home_endpoint_defaults_creator(client, org_and_project):
+    r = await client.get(f"/api/v1/analytics/persona-home?project_id={FAKE_PROJECT_ID}")
+    assert r.status_code == 200
+    assert r.json()["persona"] == "creator"
