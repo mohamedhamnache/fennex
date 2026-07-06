@@ -1056,6 +1056,46 @@ export async function getHealthScore(projectId: string): Promise<HealthScore> {
   return apiClient.get<HealthScore>(`/analytics/health-score?project_id=${projectId}`);
 }
 
+export interface NorthStar {
+  key: string;
+  label: string;
+  value: number;
+  unit: string;
+  change: number | null;
+  context: string | null;
+  trend: number[];
+}
+
+export interface SecondaryMetric {
+  key: string;
+  label: string;
+  value: number;
+  unit: string;
+  change: number | null;
+  invert_change: boolean;
+}
+
+export interface FocusItem {
+  label: string;
+  detail: string;
+}
+
+export interface FocusList {
+  title: string;
+  items: FocusItem[];
+}
+
+export interface PersonaHome {
+  persona: string;
+  north_star: NorthStar;
+  secondary: SecondaryMetric[];
+  focus: FocusList;
+}
+
+export async function getPersonaHome(projectId: string, persona: string): Promise<PersonaHome> {
+  return apiClient.get<PersonaHome>(`/analytics/persona-home?project_id=${projectId}&persona=${persona}`);
+}
+
 export interface DigestResult {
   ok: boolean;
   sent: number;
