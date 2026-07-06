@@ -1270,7 +1270,16 @@ function CopilotPanel({ projectId, persona, onClose }: { projectId: string; pers
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [trackedMsg, setTrackedMsg] = useState<Record<number, boolean>>({});
+  const { success: showSuccess } = useToast();
   const endRef = useRef<HTMLDivElement>(null);
+
+  async function trackMessage(idx: number, content: string) {
+    const title = content.length > 90 ? content.slice(0, 87) + "..." : content;
+    await trackRecommendation(projectId, { source: "agent", source_agent: "zerda", title, detail: content });
+    setTrackedMsg((t) => ({ ...t, [idx]: true }));
+    showSuccess("Tracking", { message: "Added to Zerda's tracked recommendations." });
+  }
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
   async function ask(question: string) {
@@ -1368,6 +1377,16 @@ function CopilotPanel({ projectId, persona, onClose }: { projectId: string; pers
                     </button>
                   ))}
                 </div>
+              )}
+              {m.role === "assistant" && (
+                <button
+                  type="button"
+                  onClick={() => trackMessage(i, m.content)}
+                  disabled={trackedMsg[i]}
+                  className="self-start rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  {trackedMsg[i] ? "Tracking this" : "Track this recommendation"}
+                </button>
               )}
             </div>
           </div>
