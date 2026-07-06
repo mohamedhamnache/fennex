@@ -24,6 +24,11 @@ from app.schemas.analytics import (
     TopPageRow,
     TopQueryRow,
     TrafficDataPoint,
+    NorthStar,
+    SecondaryMetric,
+    FocusItem,
+    FocusList,
+    PersonaHome,
 )
 
 
@@ -574,4 +579,84 @@ async def get_gsc_status(
         google_email=conn.google_email,
         site_url=conn.site_url,
         last_synced_at=conn.last_synced_at,
+    )
+
+
+_BUYER_INTENT = {"commercial", "comparison"}
+
+
+async def get_persona_home(project_id, org_id, persona: str, db) -> PersonaHome:
+    if persona not in ("creator", "ecommerce", "freelancer"):
+        persona = "creator"
+
+    ov = await get_overview(project_id, org_id, "28d", db)
+
+    if persona == "creator":
+        traffic = await get_traffic(project_id, org_id, "28d", db)
+        market = await get_market_insights(project_id, org_id, db)
+        ideas = [i for i in market.ideas if i.idea_type in ("question", "how-to", "list")][:5]
+        return PersonaHome(
+            persona=persona,
+            north_star=NorthStar(
+                key="clicks", label="Audience reached (clicks)", value=float(ov.clicks),
+                change=ov.clicks_change, trend=[t.clicks for t in traffic],
+            ),
+            secondary=[
+                SecondaryMetric(key="impressions", label="Impressions", value=float(ov.impressions), change=ov.impressions_change),
+                SecondaryMetric(key="ctr", label="Avg CTR", value=round(ov.ctr * 100, 2), unit="%", change=ov.ctr_change),
+                SecondaryMetric(key="position", label="Avg position", value=round(ov.avg_position, 1), change=ov.position_change, invert_change=True),
+            ],
+            focus=FocusList(
+                title="Content ideas with demand",
+                items=[FocusItem(label=i.query, detail=f"{i.impressions:,} impressions · {i.idea_type}") for i in ideas],
+            ),
+        )
+
+    if persona == "ecommerce":
+        rows = (await db.execute(
+            select(GscQueryStat).where(GscQueryStat.project_id == project_id, GscQueryStat.org_id == org_id)
+        )).scalars().all()
+        bi = [r for r in rows if _classify_query(r.query) in _BUYER_INTENT]
+        bi_clicks = sum(r.clicks for r in bi)
+        bi_impr = sum(r.impressions for r in bi)
+        pct = round(bi_clicks / max(1, ov.clicks) * 100)
+        opps = await get_opportunities(project_id, org_id, db)
+        commercial_opps = [o for o in (opps.striking_distance + opps.ctr_wins) if _classify_query(o.query) in _BUYER_INTENT]
+        chosen = (commercial_opps or opps.striking_distance)[:5]
+        return PersonaHome(
+            persona=persona,
+            north_star=NorthStar(
+                key="buyer_intent_clicks", label="Buyer-intent clicks", value=float(bi_clicks),
+                context=f"{pct}% of your clicks",
+            ),
+            secondary=[
+                SecondaryMetric(key="clicks", label="Total clicks", value=float(ov.clicks), change=ov.clicks_change),
+                SecondaryMetric(key="bi_impressions", label="Buyer-intent impressions", value=float(bi_impr)),
+                SecondaryMetric(key="striking", label="Striking-distance", value=float(len(opps.striking_distance))),
+            ],
+            focus=FocusList(
+                title="Commercial opportunities",
+                items=[FocusItem(label=o.query, detail=f"pos {o.position:.1f} · +{o.potential_clicks} potential") for o in chosen],
+            ),
+        )
+
+    # freelancer
+    market = await get_market_insights(project_id, org_id, db)
+    opps = await get_opportunities(project_id, org_id, db)
+    clusters = sorted(market.clusters, key=lambda c: c.clicks, reverse=True)[:5]
+    return PersonaHome(
+        persona=persona,
+        north_star=NorthStar(
+            key="niche_visibility", label="Niche visibility (impressions)", value=float(market.total_impressions),
+            context=f"across {len(market.clusters)} topics",
+        ),
+        secondary=[
+            SecondaryMetric(key="topics", label="Topics mapped", value=float(len(market.clusters))),
+            SecondaryMetric(key="striking", label="Striking-distance", value=float(len(opps.striking_distance))),
+            SecondaryMetric(key="clicks", label="Total clicks", value=float(ov.clicks), change=ov.clicks_change),
+        ],
+        focus=FocusList(
+            title="Topics to target",
+            items=[FocusItem(label=c.topic, detail=f"{c.query_count} queries · avg pos {c.avg_position}") for c in clusters],
+        ),
     )
