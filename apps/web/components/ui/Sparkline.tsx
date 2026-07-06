@@ -1,3 +1,7 @@
+"use client";
+
+import { useId } from "react";
+
 /**
  * Minimal dependency-free sparkline. Renders a smoothed area + line from a
  * series of numbers, auto-scaled to its own min/max. `tone` drives the stroke
@@ -39,7 +43,9 @@ export function Sparkline({
     `${linePath} L${points[points.length - 1][0].toFixed(1)},${height} ` +
     `L${points[0][0].toFixed(1)},${height} Z`;
 
-  const gradId = `spark-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = useId();
+  const gradId = `spark-${uid.replace(/:/g, "")}`;
+
 
   return (
     <svg

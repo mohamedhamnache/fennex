@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { MissionControl } from "@/components/projects/MissionControl";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,9 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
           </Link>
         }
       />
+
+      {/* Persona setup missions */}
+      <MissionControl projectId={projectId} persona={project?.persona ?? "creator"} />
 
       {/* Analytics stats — last 28 days */}
       <div>

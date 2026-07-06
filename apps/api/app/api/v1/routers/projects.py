@@ -21,6 +21,8 @@ class ProjectCreate(BaseModel):
     locale: str = "en"
     target_country: Optional[str] = None
     industry: Optional[str] = None
+    persona: Optional[str] = None          # creator | ecommerce | freelancer
+    persona_data: Optional[dict] = None
 
 
 class ProjectUpdate(BaseModel):
@@ -29,6 +31,8 @@ class ProjectUpdate(BaseModel):
     locale: Optional[str] = None
     target_country: Optional[str] = None
     industry: Optional[str] = None
+    persona: Optional[str] = None
+    persona_data: Optional[dict] = None
 
 
 class ProjectResponse(BaseModel):
@@ -39,6 +43,8 @@ class ProjectResponse(BaseModel):
     locale: str
     target_country: Optional[str]
     industry: Optional[str]
+    persona: Optional[str] = None
+    persona_data: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -60,6 +66,8 @@ async def create_project(
         locale=body.locale,
         target_country=body.target_country,
         industry=body.industry,
+        persona=body.persona,
+        persona_data=body.persona_data,
     )
     db.add(project)
     await db.flush()

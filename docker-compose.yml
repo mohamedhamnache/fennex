@@ -39,6 +39,8 @@ services:
       CRAWLER_SERVICE_URL: http://crawler:8001
     volumes:
       - ./apps/api:/app
+      - rembg_models:/root/.u2net
+      - lama_models:/root/.lama
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
@@ -82,3 +84,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  rembg_models:
+  lama_models:

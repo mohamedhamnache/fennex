@@ -13,14 +13,28 @@ from app.api.v1.routers import (
     content_plans,
     content_items,
     articles,
+    articles_images,
     brand_voice,
     brand_kit,
     social,
     images,
     editing,
+    seo,
+    product,
+    banners,
+    image_folders,
+    collections,
+    image_publish,
+    ai_command,
+    templates,
+    scoring,
+    ab_test,
+    competitor,
+    trends,
     publishing,
     backlinks,
     analytics,
+    recommendations,
     webhooks,
     billing,
 )
@@ -39,13 +53,29 @@ api_router.include_router(keywords.router, prefix="/keywords", tags=["keywords"]
 api_router.include_router(content_plans.router, prefix="/content-plans", tags=["content-plans"])
 api_router.include_router(content_items.router, prefix="/content-items", tags=["content-items"])
 api_router.include_router(articles.router, prefix="/articles", tags=["articles"])
+api_router.include_router(articles_images.router, prefix="/articles", tags=["articles-images"])
 api_router.include_router(brand_voice.router, prefix="/brand-voice", tags=["brand-voice"])
 api_router.include_router(brand_kit.router, prefix="/brand-kit", tags=["brand-kit"])
 api_router.include_router(social.router, prefix="/social", tags=["social"])
 api_router.include_router(images.router, prefix="/images", tags=["images"])
 api_router.include_router(editing.router, prefix="/images", tags=["editing"])
+api_router.include_router(seo.router, prefix="/images", tags=["seo"])
+api_router.include_router(product.router, prefix="/images", tags=["product"])
+api_router.include_router(banners.router, prefix="/images", tags=["banners"])
+api_router.include_router(image_folders.router, prefix="/image-folders", tags=["dam"])
+api_router.include_router(collections.router, prefix="/collections", tags=["collections"])
+api_router.include_router(image_publish.router, prefix="/images", tags=["publishing"])
+api_router.include_router(ai_command.router, prefix="/images", tags=["ai-assistant"])
+api_router.include_router(templates.router, prefix="/templates", tags=["templates"])
+api_router.include_router(templates.image_router, prefix="/images", tags=["templates"])
+api_router.include_router(scoring.router, prefix="/images", tags=["analytics"])
+api_router.include_router(ab_test.router, prefix="/images", tags=["premium"])
+api_router.include_router(competitor.router, prefix="/images", tags=["premium"])
+api_router.include_router(trends.router, prefix="/trends", tags=["premium"])
+api_router.include_router(trends.image_router, prefix="/images", tags=["premium"])
 api_router.include_router(publishing.router, prefix="/publishing", tags=["publishing"])
 api_router.include_router(backlinks.router, prefix="/backlinks", tags=["backlinks"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(recommendations.router, prefix="/recommendations", tags=["recommendations"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])

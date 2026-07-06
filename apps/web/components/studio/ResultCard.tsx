@@ -40,9 +40,9 @@ export function ResultCard({ image, projectId, onUse, onRegenerate }: ResultCard
   const isReady = img.status === "ready" && !!img.image_url;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+    <div className="group rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md hover:border-primary/25 transition-all duration-200">
       {/* Image area */}
-      <div className="relative aspect-square bg-muted">
+      <div className="relative aspect-square bg-muted overflow-hidden">
         {isLoading && (
           <div className="absolute inset-0 skeleton flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -60,55 +60,78 @@ export function ResultCard({ image, projectId, onUse, onRegenerate }: ResultCard
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={img.image_url!}
-            alt={img.prompt}
-            className="absolute inset-0 w-full h-full object-cover"
+            alt={img.alt_text ?? img.prompt}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
+        )}
+
+        {/* Badge overlays */}
+        {isReady && img.alt_text && (
+          <span className="absolute top-1.5 left-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold text-white leading-none pointer-events-none backdrop-blur-sm">
+            ALT
+          </span>
+        )}
+        {isReady && img.social_platform && (
+          <span className="absolute top-1.5 right-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold text-white uppercase tracking-wide leading-none pointer-events-none backdrop-blur-sm">
+            {img.social_platform.replace(/_/g, " ")}
+          </span>
         )}
         {!isLoading && !isFailed && !isReady && (
           <div className="absolute inset-0 flex items-center justify-center">
             <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
           </div>
         )}
+
+        {/* Hover action overlay */}
+        {isReady && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-2.5 gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-1 rounded-lg bg-white/15 backdrop-blur-sm border border-white/20 px-2 py-1.5 text-xs font-medium text-white hover:bg-white/25 transition-colors"
+              >
+                <Download className="h-3 w-3" /> Save
+              </button>
+              <button
+                onClick={() => onUse(img)}
+                className="flex items-center gap-1 rounded-lg bg-white/15 backdrop-blur-sm border border-white/20 px-2 py-1.5 text-xs font-medium text-white hover:bg-white/25 transition-colors"
+              >
+                <LinkIcon className="h-3 w-3" /> Use
+              </button>
+              <Link
+                href={`/${projectId}/images/edit/${img.id}`}
+                className="flex items-center gap-1 rounded-lg bg-primary/80 backdrop-blur-sm px-2 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
+              >
+                <PencilLine className="h-3 w-3" /> Edit
+              </Link>
+              <button
+                onClick={onRegenerate}
+                className="ml-auto flex items-center justify-center rounded-lg bg-white/15 backdrop-blur-sm border border-white/20 h-7 w-7 text-white hover:bg-white/25 transition-colors"
+                title="Regenerate"
+              >
+                <RotateCcw className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fallback actions for non-ready states */}
+        {!isReady && !isLoading && (
+          <button
+            onClick={onRegenerate}
+            className="absolute bottom-2 right-2 flex items-center justify-center rounded-lg bg-background/80 border border-border h-7 w-7 text-muted-foreground hover:text-foreground transition-colors"
+            title="Regenerate"
+          >
+            <RotateCcw className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       {/* Prompt preview */}
-      <div className="px-3 pt-2.5 pb-1">
+      <div className="px-3 py-2">
         <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
           {img.prompt || "—"}
         </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1.5 px-3 pb-3 pt-1.5">
-        <button
-          onClick={handleDownload}
-          disabled={!isReady}
-          className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Download className="h-3 w-3" /> Download
-        </button>
-        <button
-          onClick={() => onUse(img)}
-          disabled={!isReady}
-          className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <LinkIcon className="h-3 w-3" /> Use
-        </button>
-        {isReady && (
-          <Link
-            href={`/${projectId}/images/edit/${img.id}`}
-            className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <PencilLine className="h-3 w-3" /> Edit
-          </Link>
-        )}
-        <button
-          onClick={onRegenerate}
-          className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          title="Regenerate"
-        >
-          <RotateCcw className="h-3 w-3" />
-        </button>
       </div>
     </div>
   );

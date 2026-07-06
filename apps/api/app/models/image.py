@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum as PyEnum
-from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, JSON, Float
+from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, JSON, Float, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
@@ -30,7 +30,21 @@ class ImageUsage(str, PyEnum):
     article_cover = "article_cover"
     social_post = "social_post"
     brand_asset = "brand_asset"
+    product_shot = "product_shot"
+    marketing_banner = "marketing_banner"
     custom = "custom"
+
+
+class SocialPreset(str, PyEnum):
+    instagram_post    = "instagram_post"
+    instagram_story   = "instagram_story"
+    instagram_reel    = "instagram_reel"
+    youtube_thumbnail = "youtube_thumbnail"
+    linkedin_banner   = "linkedin_banner"
+    linkedin_post     = "linkedin_post"
+    facebook_ad       = "facebook_ad"
+    tiktok_cover      = "tiktok_cover"
+    pinterest_pin     = "pinterest_pin"
 
 
 class GeneratedImage(Base, TimestampMixin):
@@ -56,3 +70,16 @@ class GeneratedImage(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("generated_images.id", ondelete="SET NULL"), nullable=True
     )
     edit_operation: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    alt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    caption: Mapped[str | None] = mapped_column(Text, nullable=True)
+    seo_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    social_platform: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    banner_format: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("image_folders.id", ondelete="SET NULL"), nullable=True
+    )
+    collection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("image_collections.id", ondelete="SET NULL"), nullable=True
+    )
+    tags: Mapped[list] = mapped_column(JSON, default=list, nullable=False, server_default="[]")
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")

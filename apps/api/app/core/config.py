@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/analytics/gsc/callback"
 
+    # LinkedIn OAuth (creator publishing / freelancer outreach)
+    LINKEDIN_CLIENT_ID: str = ""
+    LINKEDIN_CLIENT_SECRET: str = ""
+    LINKEDIN_REDIRECT_URI: str = "http://localhost:8000/api/v1/social/linkedin/callback"
+
     # Frontend base URL (used for OAuth redirects back to the app)
     FRONTEND_URL: str = "http://localhost:3001"
 

@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
 
@@ -267,7 +268,7 @@ function NewArticleModal({
             <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
               <Spinner size={28} />
             </div>
-            <p className="text-sm font-medium text-foreground">{t("articles.newArticleModal.generating")}</p>
+            <p className="text-sm font-medium text-foreground">Dune is writing your article…</p>
             <p className="text-xs text-muted-foreground text-center">
               {t("articles.newArticleModal.generatingHint")}
             </p>
@@ -932,6 +933,10 @@ function ArticleEditor({
             {revisionMsg && (
               <p className="text-xs text-emerald-500 text-center">{revisionMsg}</p>
             )}
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
           </div>
         </div>
       </div>

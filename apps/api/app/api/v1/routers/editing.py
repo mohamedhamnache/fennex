@@ -1,4 +1,5 @@
 """POST /images/{image_id}/edit — dispatch to editing_service operations."""
+import base64
 import uuid
 from typing import Any, Optional
 
@@ -7,34 +8,54 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.dependencies import CurrentUser, DB
+from app.core.security import decrypt_api_key
+from app.core.storage import upload_bytes
+from app.models.api_key import APIKey
 from app.models.image import GeneratedImage, ImageStatus
 from app.services import editing_service
 
 router = APIRouter()
 
+# Operations that accept a painted canvas mask (mask_base64 → uploaded mask_url)
+_MASK_OPS = {"replace_background", "remove_object", "insert_object", "generative_fill", "smart_erase"}
+
 # Maps operation name → (service function, required param keys, optional param keys)
+# mask_url for Replicate ops is injected at runtime from mask_base64; not listed here.
 _DISPATCH: dict[str, tuple[Any, list[str], list[str]]] = {
     # Basic (Pillow)
     "crop":               (editing_service.crop_image,        ["x", "y", "w", "h"],    []),
     "resize":             (editing_service.resize_image,      ["width", "height"],      ["keep_aspect"]),
     "rotate":             (editing_service.rotate_image,      ["angle"],                ["fill_color"]),
-    "adjust":             (editing_service.adjust_image,      [],                       ["brightness", "contrast"]),
+    "flip":               (editing_service.flip_image,        ["direction"],            []),
+    "adjust":             (editing_service.adjust_image,      [],                       ["brightness", "contrast", "saturation"]),
     "filter":             (editing_service.apply_filter,      ["filter_name"],          []),
     "denoise":            (editing_service.denoise_image,     [],                       ["strength"]),
     "sharpen":            (editing_service.sharpen_image,     [],                       ["strength"]),
-    # Remove.bg
+    # Remove.bg — no mask required, auto-detects background
     "remove_background":  (editing_service.remove_background, [],                       []),
-    # Replicate AI
-    "replace_background": (editing_service.replace_background, ["mask_url", "prompt"],  []),
-    "remove_object":      (editing_service.remove_object,     ["mask_url"],             []),
-    "insert_object":      (editing_service.insert_object,     ["mask_url", "prompt"],   []),
-    "generative_fill":    (editing_service.generative_fill,   ["mask_url", "prompt"],   []),
-    "smart_erase":        (editing_service.smart_erase,       ["mask_url"],             []),
+    # Replicate AI — mask_url injected from mask_base64 by the router
+    "replace_background": (editing_service.replace_background, ["prompt"],              []),
+    "remove_object":      (editing_service.remove_object,     [],                       []),
+    "insert_object":      (editing_service.insert_object,     ["prompt"],               []),
+    "generative_fill":    (editing_service.generative_fill,   ["prompt"],               []),
+    "smart_erase":        (editing_service.smart_erase,       [],                       []),
     "generate_shadow":    (editing_service.generate_shadow,   [],                       ["direction"]),
     "relight":            (editing_service.relight_image,     [],                       ["direction", "intensity"]),
     "restore_face":       (editing_service.restore_face,      [],                       ["fidelity"]),
     "upscale":            (editing_service.upscale_image,     [],                       ["scale"]),
 }
+
+
+async def _resolve_mask_url(params: dict) -> Optional[str]:
+    """Convert mask_base64 (canvas data URL) to a storage URL for Replicate."""
+    b64 = params.get("mask_base64")
+    if not b64:
+        return None
+    if "," in b64:
+        b64 = b64.split(",", 1)[1]
+    data = base64.b64decode(b64)
+    key = f"masks/{uuid.uuid4().hex}.png"
+    return await upload_bytes(data, key, "image/png")
 
 
 class EditRequest(BaseModel):
@@ -92,6 +113,23 @@ async def edit_image(
         if k in params:
             kwargs[k] = params[k]
 
+    # For Replicate masked operations: upload the canvas mask and inject mask_url
+    if body.operation in _MASK_OPS:
+        mask_url = await _resolve_mask_url(params)
+        if mask_url:
+            kwargs["mask_url"] = mask_url
+        elif body.operation in {"replace_background", "remove_object", "insert_object", "generative_fill", "smart_erase"}:
+            return EditOut(ok=False, error="Please paint the area on the image first, then apply.")
+
+    # For removal ops: inject OpenAI key so the service can do vision-based background analysis
+    if body.operation in {"smart_erase", "remove_object"}:
+        key_row = await db.execute(
+            select(APIKey).where(APIKey.org_id == current_user.org_id, APIKey.provider == "openai")
+        )
+        api_key_row = key_row.scalar_one_or_none()
+        if api_key_row:
+            kwargs["openai_key"] = decrypt_api_key(api_key_row.encrypted_value)
+
     # Call service
     edit_result = await fn(image.image_url, **kwargs)
 
@@ -112,6 +150,10 @@ async def edit_image(
         height=image.height,
         source_image_id=image.id,
         edit_operation=body.operation,
+        alt_text=image.alt_text,
+        caption=image.caption,
+        seo_filename=image.seo_filename,
+        social_platform=image.social_platform,
     )
     db.add(edited)
     await db.commit()

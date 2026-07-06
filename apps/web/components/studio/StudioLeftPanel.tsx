@@ -1,14 +1,37 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { ChevronDown, Upload, X, RotateCcw } from "lucide-react";
+import { ChevronDown, Upload, X, RotateCcw, ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
 import type { ImageStyle, ImageUsage } from "@/lib/api";
 import { getBrandKit } from "@/lib/api";
 import { StyleGrid } from "./StyleGrid";
 import { PromptToolbar } from "./PromptToolbar";
+import { SocialTab } from "./SocialTab";
+import { ProductTab } from "./ProductTab";
+import { MarketingTab } from "./MarketingTab";
+import { TemplatesTab } from "./TemplatesTab";
+import { PremiumTab } from "./PremiumTab";
+import type { CreateIntent } from "./CreateLauncher";
 import { addToHistory, getHistory, getSaved, savePrompt, removeSaved } from "./prompt-storage";
+
+// Maps an intent from the Create launcher to the internal panel content.
+const INTENT_TO_TAB: Record<CreateIntent, "generate" | "social" | "product" | "marketing"> = {
+  freeform: "generate",
+  blog: "generate",
+  social: "social",
+  product: "product",
+  banner: "marketing",
+};
+
+const INTENT_LABEL: Record<CreateIntent, string> = {
+  freeform: "Free-form",
+  blog: "Blog image",
+  social: "Social post",
+  product: "Product shot",
+  banner: "Banner / Ad",
+};
 
 const USAGES: { value: ImageUsage; label: string }[] = [
   { value: "article_cover", label: "Article Cover" },
@@ -37,6 +60,9 @@ interface StudioLeftPanelProps {
   onUseBrandKitChange: (v: boolean) => void;
   onGenerate: () => void;
   generating: boolean;
+  /** When set, the panel shows a single intent's controls with a back button instead of the tab grid. */
+  intent?: CreateIntent | null;
+  onBack?: () => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -93,6 +119,8 @@ export function StudioLeftPanel({
   onUseBrandKitChange,
   onGenerate,
   generating,
+  intent = null,
+  onBack,
 }: StudioLeftPanelProps) {
   const { data: brandKit } = useQuery({
     queryKey: ["brand-kit"],
@@ -103,6 +131,9 @@ export function StudioLeftPanel({
     ((brandKit.colors?.length ?? 0) > 0 || brandKit.style_rules || brandKit.tone)
   );
 
+  const [activeTab, setActiveTab] = useState<"generate" | "social" | "product" | "marketing" | "templates" | "premium">("generate");
+  // When launched with an intent, force the matching content and hide the tab grid.
+  const currentTab = intent ? INTENT_TO_TAB[intent] : activeTab;
   const [negExpanded, setNegExpanded] = useState(false);
   const [historyTab, setHistoryTab] = useState<"recent" | "saved">("recent");
   const [history, setHistory] = useState<string[]>([]);
@@ -158,7 +189,101 @@ export function StudioLeftPanel({
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-4 overflow-y-auto h-full">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header: intent back-bar when launched from the Create launcher, else the tab grid */}
+      {intent ? (
+        <div className="shrink-0 border-b border-border px-3 py-2.5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </button>
+          <span className="text-sm font-semibold text-foreground">{INTENT_LABEL[intent]}</span>
+        </div>
+      ) : (
+        <div className="shrink-0 border-b border-border px-3 pt-2 pb-0 grid grid-cols-3 gap-x-1">
+          {(
+            [
+              { id: "generate",  label: "Generate"  },
+              { id: "social",    label: "Social"    },
+              { id: "product",   label: "Product"   },
+              { id: "marketing", label: "Marketing" },
+              { id: "templates", label: "Templates" },
+              { id: "premium",   label: "Premium"   },
+            ] as const
+          ).map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                "pb-2 text-[11px] font-semibold border-b-2 transition-colors text-center",
+                activeTab === id
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Social tab */}
+      {currentTab === "social" && (
+        <div className="flex-1 overflow-y-auto">
+          <SocialTab
+            projectId={projectId}
+            subject={prompt}
+            useBrandKit={useBrandKit}
+            style={style}
+            quality={quality}
+            onSwitchToGenerate={() => setActiveTab("generate")}
+          />
+        </div>
+      )}
+
+      {/* Product tab */}
+      {currentTab === "product" && (
+        <div className="flex-1 overflow-y-auto">
+          <ProductTab projectId={projectId} useBrandKit={useBrandKit} />
+        </div>
+      )}
+
+      {/* Marketing tab */}
+      {currentTab === "marketing" && (
+        <div className="flex-1 overflow-y-auto">
+          <MarketingTab projectId={projectId} useBrandKit={useBrandKit} />
+        </div>
+      )}
+
+      {/* Templates tab */}
+      {currentTab === "templates" && (
+        <div className="flex-1 overflow-y-auto">
+          <TemplatesTab
+            projectId={projectId}
+            useBrandKit={useBrandKit}
+            onGenerated={() => setActiveTab("generate")}
+          />
+        </div>
+      )}
+
+      {/* Premium tab */}
+      {currentTab === "premium" && (
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <PremiumTab
+            projectId={projectId}
+            useBrandKit={useBrandKit}
+            onGenerated={() => setActiveTab("generate")}
+          />
+        </div>
+      )}
+
+      {/* Generate tab */}
+      {currentTab === "generate" && (
+      <div className="flex flex-col gap-5 p-4 overflow-y-auto flex-1">
 
       {/* Prompt */}
       <div>
@@ -391,6 +516,8 @@ export function StudioLeftPanel({
           "Generate"
         )}
       </button>
+      </div>
+      )}
     </div>
   );
 }

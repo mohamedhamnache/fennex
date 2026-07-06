@@ -39,11 +39,18 @@ def _parse_llm_response(raw: str, article_title: str) -> dict:
     }
 
 
-def _build_system_prompt(brand_voice: BrandVoice | None) -> str:
+def _build_system_prompt(brand_voice: BrandVoice | None, profile: str = "") -> str:
+    from app.agents.registry import agent_persona
     lines = [
-        "You are an expert SEO content writer. Write comprehensive, well-structured, "
+        agent_persona("dune")
+        + "Write comprehensive, well-structured, "
         "engaging articles that rank well in search engines and genuinely help readers."
     ]
+    if profile:
+        lines.append(
+            f"About the site and author: {profile}. Write specifically for this audience "
+            "and context — reference their niche, products or services naturally where relevant."
+        )
     if brand_voice:
         if brand_voice.voice_prompt:
             lines.append(f"Brand voice instructions: {brand_voice.voice_prompt}.")
@@ -121,7 +128,14 @@ async def generate_article_task(
 
         api_key = org_keys[provider_val]
 
-        system_prompt = _build_system_prompt(brand_voice)
+        # Ground the article in the project's onboarding profile (persona, niche…)
+        try:
+            from app.services.ai_analytics_service import project_profile
+            profile = await project_profile(article.project_id, db)
+        except Exception:
+            profile = ""
+
+        system_prompt = _build_system_prompt(brand_voice, profile)
         user_prompt = _build_user_prompt(article)
         article_title = article.title
 

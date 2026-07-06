@@ -1,6 +1,7 @@
 "use client";
 
-import { ImageIcon } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { ImageIcon, Upload } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { GeneratedImage } from "@/lib/api";
 import { ResultCard } from "./ResultCard";
@@ -21,6 +22,7 @@ interface StudioRightPanelProps {
   onRegenerate: (index: number) => void;
   onPastRegenerate: (runIndex: number, imageIndex: number) => void;
   onOpenTemplates: () => void;
+  onUpload?: (file: File) => void;
 }
 
 export function StudioRightPanel({
@@ -32,8 +34,30 @@ export function StudioRightPanel({
   onRegenerate,
   onPastRegenerate,
   onOpenTemplates,
+  onUpload,
 }: StudioRightPanelProps) {
   const hasCurrentImages = currentImages.length > 0;
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const file = e.dataTransfer.files[0];
+      if (file && (file.type.startsWith("image/") ) && onUpload) onUpload(file);
+    },
+    [onUpload],
+  );
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && onUpload) onUpload(file);
+      if (e.target) e.target.value = "";
+    },
+    [onUpload],
+  );
 
   const gridCols =
     batchCount === 1 ? "grid-cols-1 max-w-sm mx-auto" :
@@ -41,26 +65,74 @@ export function StudioRightPanel({
     "grid-cols-4";
 
   return (
-    <div className="flex flex-col gap-6 p-6 overflow-y-auto h-full">
-      {/* Empty state */}
-      {!hasCurrentImages && pastRuns.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 h-full min-h-[400px] text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-            <ImageIcon className="h-7 w-7 text-muted-foreground/60" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Image Studio</p>
-            <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-              Configure your prompt on the left and click Generate to create images.
-            </p>
-          </div>
+    <div
+      className={cn(
+        "flex flex-col gap-6 p-6 overflow-y-auto h-full transition-colors",
+        isDragOver && "bg-primary/5 ring-2 ring-inset ring-primary/30",
+      )}
+      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {/* Upload bar — shown when there are images */}
+      {(hasCurrentImages || pastRuns.length > 0) && onUpload && (
+        <div className="flex justify-end">
           <button
             type="button"
-            onClick={onOpenTemplates}
-            className="text-xs text-primary hover:underline font-medium"
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
-            ✨ Try a template →
+            <Upload className="h-3.5 w-3.5" />
+            Upload image
           </button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!hasCurrentImages && pastRuns.length === 0 && (
+        <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[400px] text-center">
+          {/* Drop zone */}
+          <div
+            className={cn(
+              "w-full max-w-sm rounded-2xl border-2 border-dashed px-8 py-12 flex flex-col items-center gap-4 transition-colors cursor-pointer",
+              isDragOver
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:bg-muted/30",
+            )}
+            onClick={() => fileRef.current?.click()}
+          >
+            <div className={cn(
+              "flex h-14 w-14 items-center justify-center rounded-2xl transition-colors",
+              isDragOver ? "bg-primary/15" : "bg-muted",
+            )}>
+              {isDragOver
+                ? <Upload className="h-7 w-7 text-primary" />
+                : <ImageIcon className="h-7 w-7 text-muted-foreground/60" />
+              }
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {isDragOver ? "Drop to upload" : "Image Studio"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground max-w-[220px]">
+                {isDragOver
+                  ? "Release to upload your image"
+                  : "Generate images on the left, or drop an image here to edit it"}
+              </p>
+            </div>
+            {!isDragOver && (
+              <div className="flex flex-col items-center gap-2 w-full">
+                <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">or</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOpenTemplates(); }}
+                  className="text-xs text-primary hover:underline font-medium"
+                >
+                  Browse templates
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -102,6 +174,14 @@ export function StudioRightPanel({
           ))}
         </div>
       )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="hidden"
+        onChange={handleFileChange}
+      />
     </div>
   );
 }
