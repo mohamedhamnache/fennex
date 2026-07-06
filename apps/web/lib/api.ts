@@ -161,6 +161,8 @@ export async function updateMyLanguage(language: string): Promise<{ language: st
 
 // ─── Project types & helpers ───────────────────────────────────────────────
 
+export type ProjectPersona = "creator" | "ecommerce" | "freelancer";
+
 export interface Project {
   id: string;
   org_id: string;
@@ -169,6 +171,8 @@ export interface Project {
   locale: string;
   target_country: string | null;
   industry: string | null;
+  persona?: ProjectPersona | null;
+  persona_data?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -206,12 +210,21 @@ export async function createProject(data: {
   domain: string;
   locale?: string;
   target_country?: string;
+  persona?: ProjectPersona;
+  persona_data?: Record<string, unknown>;
 }): Promise<Project> {
   return apiClient.post<Project>("/projects", data);
 }
 
 export async function listProjects(): Promise<Project[]> {
   return apiClient.get<Project[]>("/projects");
+}
+
+export async function updateProject(
+  projectId: string,
+  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "target_country" | "industry" | "persona" | "persona_data">>,
+): Promise<Project> {
+  return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }
 
 export async function triggerCrawl(
@@ -700,7 +713,7 @@ export type ImageStyle =
   | "cinematic"
   | "luxury_product";
 export type ImageStatus = "pending" | "generating" | "ready" | "failed";
-export type ImageUsage = "article_cover" | "social_post" | "brand_asset" | "custom";
+export type ImageUsage = "article_cover" | "social_post" | "brand_asset" | "product_shot" | "custom";
 
 export interface GeneratedImage {
   id: string;
@@ -725,16 +738,43 @@ export interface GeneratedImage {
   caption?: string | null;
   seo_filename?: string | null;
   social_platform?: string | null;
+  folder_id?: string | null;
+  tags?: string[];
+  is_deleted?: boolean;
 }
 
-export async function listImages(projectId: string, usage?: ImageUsage): Promise<GeneratedImage[]> {
+export async function listImages(projectId: string, usage?: ImageUsage, folderId?: string | null): Promise<GeneratedImage[]> {
   const params = new URLSearchParams({ project_id: projectId });
   if (usage) params.set("usage", usage);
+  if (folderId) params.set("folder_id", folderId);
   return apiClient.get<GeneratedImage[]>(`/images?${params.toString()}`);
 }
 
 export async function getImage(imageId: string): Promise<GeneratedImage> {
   return apiClient.get<GeneratedImage>(`/images/${imageId}`);
+}
+
+export interface CampaignAsset {
+  title: string;
+  prompt: string;
+  style: ImageStyle;
+  usage: ImageUsage;
+  platform: string | null;
+  caption: string;
+}
+
+export interface CampaignPlan {
+  title: string;
+  summary: string;
+  assets: CampaignAsset[];
+}
+
+export async function planCampaign(goal: string, useBrandKit = false, projectId?: string): Promise<CampaignPlan> {
+  return apiClient.post<CampaignPlan>("/images/plan-campaign", {
+    goal,
+    use_brand_kit: useBrandKit,
+    project_id: projectId ?? null,
+  });
 }
 
 export async function generateImage(data: {
@@ -792,13 +832,16 @@ export interface TrafficDataPoint {
 }
 
 export interface RankingRow {
-  keyword_id: string;
+  keyword_id: string | null;
   keyword: string;
   search_volume: number | null;
   intent: string | null;
   difficulty: number | null;
   current_position: number | null;
   position_change: number | null;
+  clicks: number;
+  impressions: number;
+  tracked: boolean;
 }
 
 export interface ContentPerformanceRow {
@@ -848,15 +891,16 @@ export async function getAnalyticsOverview(
 export async function getAnalyticsTraffic(
   projectId: string,
   range: AnalyticsRange = "28d",
+  offset = 0,
 ): Promise<TrafficDataPoint[]> {
   return apiClient.get<TrafficDataPoint[]>(
-    `/analytics/traffic?project_id=${projectId}&range=${range}`,
+    `/analytics/traffic?project_id=${projectId}&range=${range}&offset=${offset}`,
   );
 }
 
 export async function getAnalyticsRankings(
   projectId: string,
-  sortBy: "position" | "volume" | "change" = "position",
+  sortBy: "position" | "clicks" | "volume" | "change" = "clicks",
   page: number = 1,
 ): Promise<RankingRow[]> {
   return apiClient.get<RankingRow[]>(
@@ -880,6 +924,262 @@ export async function getContentPerformance(
   );
 }
 
+export interface OpportunityRow {
+  query: string;
+  url: string | null;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  potential_clicks: number;
+  kind: "striking_distance" | "ctr_win";
+}
+
+export interface OpportunitiesResponse {
+  striking_distance: OpportunityRow[];
+  ctr_wins: OpportunityRow[];
+  total_potential_clicks: number;
+}
+
+export async function getOpportunities(projectId: string): Promise<OpportunitiesResponse> {
+  return apiClient.get<OpportunitiesResponse>(`/analytics/opportunities?project_id=${projectId}`);
+}
+
+export interface TopicCluster {
+  topic: string;
+  query_count: number;
+  clicks: number;
+  impressions: number;
+  avg_position: number;
+  top_query: string;
+}
+
+export type IdeaType = "question" | "how-to" | "comparison" | "commercial" | "list" | "informational";
+
+export interface ContentIdea {
+  query: string;
+  impressions: number;
+  clicks: number;
+  position: number;
+  idea_type: IdeaType;
+}
+
+export interface MarketInsights {
+  clusters: TopicCluster[];
+  ideas: ContentIdea[];
+  total_clicks: number;
+  total_impressions: number;
+}
+
+export async function getMarketInsights(projectId: string): Promise<MarketInsights> {
+  return apiClient.get<MarketInsights>(`/analytics/market-insights?project_id=${projectId}`);
+}
+
+export interface CompetitorScorecard {
+  score: number;
+  title: string;
+  title_length: number;
+  meta_description: string;
+  meta_length: number;
+  word_count: number;
+  h1_count: number;
+  h2_count: number;
+  schema_types: string[];
+  images_without_alt: number;
+  internal_links: number;
+  canonical: string | null;
+  checks: Record<string, boolean>;
+}
+
+export interface CompetitorAnalysis {
+  ok: boolean;
+  error?: string | null;
+  url?: string | null;
+  scorecard?: CompetitorScorecard | null;
+  outline: string[];
+  insights: string;
+}
+
+export async function analyzeCompetitorPage(projectId: string, url: string): Promise<CompetitorAnalysis> {
+  return apiClient.post<CompetitorAnalysis>(`/analytics/competitor?project_id=${projectId}`, { url });
+}
+
+export interface AnalyticsChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AgentChartSpec {
+  type: "bar" | "line";
+  title?: string;
+  x_key: string;
+  series: { key: string; name: string }[];
+  data: Record<string, unknown>[];
+}
+
+export interface AiAgentResponse {
+  answer: string;
+  chart?: AgentChartSpec | null;
+  followups?: string[];
+}
+
+export type AnalyticsPersona = "creator" | "ecommerce" | "freelancer";
+
+export async function askAnalyticsAgent(
+  projectId: string,
+  question: string,
+  history: AnalyticsChatTurn[] = [],
+  persona: AnalyticsPersona = "creator",
+): Promise<AiAgentResponse> {
+  return apiClient.post<AiAgentResponse>(`/analytics/ai-agent?project_id=${projectId}`, {
+    question,
+    history,
+    persona,
+  });
+}
+
+export interface HealthComponent {
+  key: string;
+  label: string;
+  score: number;
+  detail: string;
+}
+
+export interface HealthScore {
+  score: number;
+  grade: string;
+  components: HealthComponent[];
+  has_data: boolean;
+}
+
+export async function getHealthScore(projectId: string): Promise<HealthScore> {
+  return apiClient.get<HealthScore>(`/analytics/health-score?project_id=${projectId}`);
+}
+
+export interface DigestResult {
+  ok: boolean;
+  sent: number;
+  recipients?: string[];
+  subject?: string;
+  error?: string | null;
+}
+
+export async function sendDigestNow(projectId: string): Promise<DigestResult> {
+  return apiClient.post<DigestResult>(`/analytics/digest/send-now?project_id=${projectId}`, {});
+}
+
+export interface MarketReport {
+  ok: boolean;
+  title?: string;
+  markdown?: string;
+  generated_at?: string;
+  error?: string;
+}
+
+export async function generateMarketReport(projectId: string): Promise<MarketReport> {
+  return apiClient.post<MarketReport>(`/analytics/market-report?project_id=${projectId}`, {});
+}
+
+export interface OutreachPost {
+  day: string;
+  type: string;
+  content: string;
+  hashtags: string[];
+}
+
+export interface OutreachMessage {
+  scenario: string;
+  content: string;
+}
+
+export interface OutreachPlan {
+  ok: boolean;
+  posts?: OutreachPost[];
+  messages?: OutreachMessage[];
+  tips?: string[];
+  drafts_saved?: number;
+  error?: string;
+}
+
+export async function planOutreach(projectId: string, goal: string): Promise<OutreachPlan> {
+  return apiClient.post<OutreachPlan>(`/social/outreach-plan?project_id=${projectId}`, { goal });
+}
+
+export interface RecommendationMetrics {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  captured_at?: string;
+}
+
+export interface DetectedContent {
+  type: "article" | "social";
+  id: string;
+  title: string;
+  matched_on: string;
+}
+
+export interface Recommendation {
+  id: string;
+  source: "opportunity" | "agent";
+  source_agent: string | null;
+  kind: string | null;
+  title: string;
+  detail: string | null;
+  anchor_query: string | null;
+  anchor_url: string | null;
+  status: "tracking" | "done" | "dismissed";
+  outcome: "pending" | "won" | "flat" | "declined" | null;
+  impact_score: number | null;
+  baseline: RecommendationMetrics | null;
+  latest: RecommendationMetrics | null;
+  detected_content: DetectedContent[] | null;
+  done_at: string | null;
+  measured_at: string | null;
+}
+
+export interface RecommendationSummary {
+  acted: number;
+  won: number;
+  measuring: number;
+  won_clicks: number;
+}
+
+export interface TrackRecommendationInput {
+  source: "opportunity" | "agent";
+  source_agent?: string;
+  kind?: string;
+  title: string;
+  detail?: string;
+  anchor_query?: string;
+  anchor_url?: string;
+}
+
+export async function trackRecommendation(projectId: string, input: TrackRecommendationInput): Promise<Recommendation> {
+  return apiClient.post<Recommendation>(`/recommendations?project_id=${projectId}`, input);
+}
+
+export async function listRecommendations(projectId: string, status?: string): Promise<Recommendation[]> {
+  const q = status ? `&status=${status}` : "";
+  return apiClient.get<Recommendation[]>(`/recommendations?project_id=${projectId}${q}`);
+}
+
+export async function updateRecommendation(id: string, status: "done" | "dismissed"): Promise<Recommendation> {
+  return apiClient.patch<Recommendation>(`/recommendations/${id}`, { status });
+}
+
+export async function getRecommendationSummary(projectId: string): Promise<RecommendationSummary> {
+  return apiClient.get<RecommendationSummary>(`/recommendations/summary?project_id=${projectId}`);
+}
+
+export async function connectLinkedIn(returnTo = "/"): Promise<{ redirect_url: string }> {
+  return apiClient.post<{ redirect_url: string }>(
+    `/social/linkedin/connect?return_to=${encodeURIComponent(returnTo)}`,
+    {},
+  );
+}
+
 export async function getGscStatus(projectId: string): Promise<GscStatus> {
   return apiClient.get<GscStatus>(`/analytics/gsc/status?project_id=${projectId}`);
 }
@@ -889,6 +1189,36 @@ export async function connectGsc(projectId: string): Promise<{ redirect_url: str
     `/analytics/gsc/connect?project_id=${projectId}`,
     {},
   );
+}
+
+export interface GscSite {
+  site_url: string;
+  permission_level: string;
+}
+
+export interface GscSyncResult {
+  ok: boolean;
+  days: number;
+  date_points: number;
+  queries: number;
+  pages: number;
+  keywords_matched: number;
+  last_synced_at: string | null;
+  error?: string | null;
+}
+
+export async function getGscSites(projectId: string): Promise<GscSite[]> {
+  return apiClient.get<GscSite[]>(`/analytics/gsc/sites?project_id=${projectId}`);
+}
+
+export async function selectGscSite(projectId: string, siteUrl: string): Promise<GscStatus> {
+  return apiClient.post<GscStatus>(`/analytics/gsc/select-site?project_id=${projectId}`, {
+    site_url: siteUrl,
+  });
+}
+
+export async function syncGsc(projectId: string, days = 90): Promise<GscSyncResult> {
+  return apiClient.post<GscSyncResult>(`/analytics/gsc/sync?project_id=${projectId}&days=${days}`, {});
 }
 
 export async function disconnectGsc(projectId: string): Promise<void> {
@@ -1214,18 +1544,71 @@ export async function generateImageSeo(imageId: string): Promise<SeoResult> {
   return apiClient.post<SeoResult>(`/images/${imageId}/seo`, {});
 }
 
+export async function resizeToPlatforms(imageId: string, platforms: string[]): Promise<GeneratedImage[]> {
+  return apiClient.post<GeneratedImage[]>(`/images/${imageId}/resize-set`, { platforms });
+}
+
+// ── Campaign collections ─────────────────────────────────────────────────────
+
+export interface ImageCollection {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  image_count: number;
+  cover_url: string | null;
+}
+
+export interface ImageCollectionDetail extends ImageCollection {
+  images: GeneratedImage[];
+}
+
+export async function listCollections(projectId: string): Promise<ImageCollection[]> {
+  return apiClient.get<ImageCollection[]>(`/collections?project_id=${projectId}`);
+}
+
+export async function getCollection(collectionId: string): Promise<ImageCollectionDetail> {
+  return apiClient.get<ImageCollectionDetail>(`/collections/${collectionId}`);
+}
+
+export async function createCollection(data: {
+  project_id: string;
+  name: string;
+  description?: string;
+  image_ids?: string[];
+}): Promise<ImageCollectionDetail> {
+  return apiClient.post<ImageCollectionDetail>("/collections", data);
+}
+
+export async function deleteCollection(collectionId: string): Promise<void> {
+  return apiClient.delete<void>(`/collections/${collectionId}`);
+}
+
+export async function addImagesToCollection(collectionId: string, imageIds: string[]): Promise<ImageCollectionDetail> {
+  return apiClient.post<ImageCollectionDetail>(`/collections/${collectionId}/images`, { image_ids: imageIds });
+}
+
 export interface ExportResult {
   download_url: string;
   format: string;
   size_bytes: number;
+  width: number;
+  height: number;
 }
+
+export type ExportFormat = "png" | "jpg" | "webp";
 
 export async function exportImage(
   imageId: string,
-  format: "png" | "jpg" | "webp" = "webp",
+  format: ExportFormat = "webp",
   quality = 85,
+  width?: number,
 ): Promise<ExportResult> {
-  return apiClient.post<ExportResult>(`/images/${imageId}/export`, { format, quality });
+  return apiClient.post<ExportResult>(`/images/${imageId}/export`, {
+    format,
+    quality,
+    width: width ?? null,
+  });
 }
 
 export interface ImageSuggestion {
@@ -1237,4 +1620,289 @@ export interface ImageSuggestion {
 
 export async function suggestImagesForArticle(articleId: string): Promise<ImageSuggestion[]> {
   return apiClient.post<ImageSuggestion[]>(`/articles/${articleId}/suggest-images`, {});
+}
+
+export interface ProductSceneRequest {
+  project_id: string;
+  product_image_url: string;
+  product_description: string;
+  scene_id: string;
+  use_brand_kit: boolean;
+}
+
+export async function generateProductScene(body: ProductSceneRequest): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>("/images/product-scene", body);
+}
+
+export interface MarketingBannerRequest {
+  project_id: string;
+  product: string;
+  offer: string;
+  cta: string;
+  style?: string;
+  format_ids?: string[];
+  use_brand_kit?: boolean;
+}
+
+export async function generateMarketingBanners(body: MarketingBannerRequest): Promise<GeneratedImage[]> {
+  return apiClient.post<GeneratedImage[]>("/images/marketing-banners", body);
+}
+
+// ── Image Publishing ──────────────────────────────────────────────────────────
+
+export interface PublishRecord {
+  id: string;
+  image_id: string;
+  platform: string;
+  external_id: string | null;
+  external_url: string | null;
+  published_at: string;
+  error: string | null;
+}
+
+export async function publishImage(
+  imageId: string,
+  platform: string,
+  config?: Record<string, string>,
+): Promise<PublishRecord> {
+  return apiClient.post<PublishRecord>(`/images/${imageId}/publish`, { platform, config: config ?? {} });
+}
+
+// ── DAM — Folders, Tags, Search ───────────────────────────────────────────────
+
+export interface ImageFolder {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  color: string | null;
+}
+
+export async function listImageFolders(): Promise<ImageFolder[]> {
+  return apiClient.get<ImageFolder[]>("/image-folders");
+}
+
+export async function createImageFolder(name: string, color?: string): Promise<ImageFolder> {
+  return apiClient.post<ImageFolder>("/image-folders", { name, color });
+}
+
+export async function deleteImageFolder(folderId: string): Promise<void> {
+  return apiClient.delete<void>(`/image-folders/${folderId}`);
+}
+
+export async function moveImageToFolder(imageId: string, folderId: string | null): Promise<GeneratedImage> {
+  return apiClient.patch<GeneratedImage>(`/images/${imageId}/folder`, { folder_id: folderId });
+}
+
+export async function tagImage(imageId: string, tags: string[]): Promise<GeneratedImage> {
+  return apiClient.patch<GeneratedImage>(`/images/${imageId}/tags`, { tags });
+}
+
+export async function searchImages(projectId: string, q: string, folderId?: string): Promise<GeneratedImage[]> {
+  const params = new URLSearchParams({ project_id: projectId, q });
+  if (folderId) params.set("folder_id", folderId);
+  return apiClient.get<GeneratedImage[]>(`/images/search?${params}`);
+}
+
+export async function uploadImage(projectId: string, file: File | Blob): Promise<GeneratedImage> {
+  const formData = new FormData();
+  formData.append("project_id", projectId);
+  const f = file instanceof File ? file : new File([file], "canvas-export.png", { type: "image/png" });
+  formData.append("file", f);
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/api/v1/images/upload`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => `HTTP ${res.status}`);
+    throw new ApiError(res.status, text);
+  }
+  return res.json();
+}
+
+// ── AI Design Assistant ───────────────────────────────────────────────────────
+
+export interface AiCommandMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export async function sendAiCommand(
+  imageId: string,
+  command: string,
+  history: AiCommandMessage[],
+  maskBase64?: string,
+): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>(`/images/${imageId}/ai-command`, {
+    command,
+    history,
+    mask_base64: maskBase64 ?? null,
+  });
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+
+export interface StudioTemplate {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  slots: Record<string, string>;
+  width: number;
+  height: number;
+}
+
+export async function listTemplates(): Promise<StudioTemplate[]> {
+  return apiClient.get<StudioTemplate[]>("/templates");
+}
+
+export async function generateFromTemplate(
+  projectId: string,
+  templateId: string,
+  slots: Record<string, string>,
+  useBrandKit = false,
+): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>("/images/from-template", {
+    project_id: projectId,
+    template_id: templateId,
+    slots,
+    use_brand_kit: useBrandKit,
+  });
+}
+
+// ── Analytics / Scoring ───────────────────────────────────────────────────────
+
+export interface ImageScore {
+  image_id: string;
+  visual_quality: number | null;
+  brand_consistency: number | null;
+  seo_score: number | null;
+  ad_performance: number | null;
+  overall: number | null;
+  feedback: string | null;
+  scored_at: string | null;
+}
+
+export async function scoreImage(imageId: string): Promise<ImageScore> {
+  return apiClient.post<ImageScore>(`/images/${imageId}/score`, {});
+}
+
+export async function getImageScore(imageId: string): Promise<ImageScore> {
+  return apiClient.get<ImageScore>(`/images/${imageId}/score`);
+}
+
+// ── Premium AI ────────────────────────────────────────────────────────────────
+
+export interface ABTestResult {
+  test_id: string;
+  variants: GeneratedImage[];
+}
+
+export async function createABTest(
+  projectId: string,
+  concept: string,
+  variantCount: number,
+  useBrandKit = false,
+): Promise<ABTestResult> {
+  return apiClient.post<ABTestResult>("/images/ab-test", {
+    project_id: projectId,
+    concept,
+    variant_count: variantCount,
+    use_brand_kit: useBrandKit,
+  });
+}
+
+export interface Trend {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+}
+
+export async function listTrends(): Promise<Trend[]> {
+  return apiClient.get<Trend[]>("/trends");
+}
+
+export async function generateFromTrend(
+  projectId: string,
+  trendId: string,
+  subject: string,
+  useBrandKit = false,
+): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>("/images/from-trend", {
+    project_id: projectId,
+    trend_id: trendId,
+    subject,
+    use_brand_kit: useBrandKit,
+  });
+}
+
+export interface CompetitorResult {
+  analysis: string;
+  improved_image: GeneratedImage;
+}
+
+export async function analyzeCompetitor(
+  projectId: string,
+  competitorUrl: string,
+  focus: string,
+  useBrandKit = false,
+): Promise<CompetitorResult> {
+  return apiClient.post<CompetitorResult>("/images/competitor-analysis", {
+    project_id: projectId,
+    competitor_image_url: competitorUrl,
+    improvement_focus: focus,
+    use_brand_kit: useBrandKit,
+  });
+}
+
+// ── Canvas decomposition ─────────────────────────────────────────────────────
+
+export interface CanvasTextElement {
+  text: string;
+  x_pct: number;
+  y_pct: number;
+  width_pct: number;
+  height_pct: number;
+  font_size: number;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+}
+
+export interface CanvasObjectElement {
+  description: string;
+  x_pct: number;
+  y_pct: number;
+  width_pct: number;
+  height_pct: number;
+  image_data: string;
+}
+
+export interface CanvasBackground {
+  description: string;
+  dominant_color: string;
+  image_data: string;
+  image_width: number;
+  image_height: number;
+}
+
+export interface DecomposeResult {
+  text_elements: CanvasTextElement[];
+  objects: CanvasObjectElement[];
+  background: CanvasBackground;
+}
+
+export type InpaintMethod = "diffusion" | "lama";
+
+export async function decomposeImage(
+  imageId: string,
+  inpaintMethod: InpaintMethod = "diffusion",
+): Promise<DecomposeResult> {
+  return apiClient.post<DecomposeResult>(`/images/${imageId}/decompose`, {
+    inpaint_method: inpaintMethod,
+  });
 }
