@@ -179,3 +179,58 @@ async def test_list_entries_in_range(db_session, org_and_project):
     inside = await list_entries(FAKE_PROJECT_ID, FAKE_ORG_ID, "2026-08-01T00:00:00+00:00", "2026-08-31T23:59:59+00:00", db_session)
     outside = await list_entries(FAKE_PROJECT_ID, FAKE_ORG_ID, "2026-09-01T00:00:00+00:00", "2026-09-30T23:59:59+00:00", db_session)
     assert len(inside) == 1 and len(outside) == 0
+
+
+# ── calendar_publish ──────────────────────────────────────────────────────────
+
+from unittest.mock import AsyncMock, patch
+from app.models.social import SocialPost, SocialPlatform, SocialPostStatus
+from app.models.calendar_entry import CalendarEntry
+
+
+@pytest.mark.asyncio
+async def test_publish_entry_social_success(db_session, org_and_project):
+    from app.services.calendar_publish import publish_entry
+    post = SocialPost(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, platform=SocialPlatform.linkedin,
+                      content="hello world", status=SocialPostStatus.draft, char_count=11)
+    db_session.add(post)
+    await db_session.commit()
+    entry = CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
+                          content_id=post.id, title="hello", scheduled_at="2026-01-01T00:00:00+00:00",
+                          target_kind="linkedin", state="scheduled")
+    db_session.add(entry)
+    await db_session.commit()
+    with patch("app.services.calendar_publish._publish_social", new=AsyncMock(return_value={"ok": True, "url": None})):
+        out = await publish_entry(entry, db_session)
+    assert out.state == "published"
+    assert out.published_at is not None
+
+
+@pytest.mark.asyncio
+async def test_publish_entry_failure_sets_failed(db_session, org_and_project):
+    from app.services.calendar_publish import publish_entry
+    post = SocialPost(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, platform=SocialPlatform.linkedin,
+                      content="x", status=SocialPostStatus.draft, char_count=1)
+    db_session.add(post)
+    await db_session.commit()
+    entry = CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
+                          content_id=post.id, title="x", scheduled_at="2026-01-01T00:00:00+00:00",
+                          target_kind="linkedin", state="scheduled")
+    db_session.add(entry)
+    await db_session.commit()
+    with patch("app.services.calendar_publish._publish_social", new=AsyncMock(side_effect=RuntimeError("boom"))):
+        out = await publish_entry(entry, db_session)
+    assert out.state == "failed"
+    assert "boom" in (out.error or "")
+
+
+@pytest.mark.asyncio
+async def test_publish_entry_skips_non_armed(db_session, org_and_project):
+    from app.services.calendar_publish import publish_entry
+    entry = CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
+                          content_id=uuid.uuid4(), title="x", scheduled_at="2026-01-01T00:00:00+00:00",
+                          target_kind="linkedin", state="published")
+    db_session.add(entry)
+    await db_session.commit()
+    out = await publish_entry(entry, db_session)
+    assert out.state == "published"  # unchanged; not re-dispatched
