@@ -20,40 +20,45 @@ function projectInitials(name?: string) {
   return name.split(" ").map((w) => w[0]).filter(Boolean).join("").slice(0, 2).toUpperCase();
 }
 
+type NavItem = { key: string; href: string; icon: typeof LayoutDashboard };
+
+// All destinations, defined once. `key` is the i18n suffix (nav.<key>); it
+// matches the href slug except for `content`, whose translation key is `planner`.
+const NAV_ITEMS: Record<string, NavItem> = {
+  overview:   { key: "overview",   href: "overview",   icon: LayoutDashboard },
+  agents:     { key: "agents",     href: "agents",     icon: Sparkles },
+  keywords:   { key: "keywords",   href: "keywords",   icon: SearchCode },
+  content:    { key: "planner",    href: "content",    icon: FileText },
+  articles:   { key: "articles",   href: "articles",   icon: Zap },
+  social:     { key: "social",     href: "social",     icon: Share2 },
+  images:     { key: "images",     href: "images",     icon: ImagePlus },
+  publishing: { key: "publishing", href: "publishing", icon: Send },
+  backlinks:  { key: "backlinks",  href: "backlinks",  icon: Link2 },
+  analytics:  { key: "analytics",  href: "analytics",  icon: BarChart2 },
+  audit:      { key: "audit",      href: "audit",      icon: SearchCode },
+};
+
+// Persona -> primary tool order (the highlighted "For you" group).
+const PERSONA_PRIMARY: Record<string, string[]> = {
+  creator:    ["overview", "articles", "social", "images", "agents", "analytics"],
+  ecommerce:  ["overview", "images", "analytics", "agents", "keywords"],
+  freelancer: ["overview", "agents", "analytics", "social", "backlinks"],
+};
+
+function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {
+  const order = PERSONA_PRIMARY[persona] ?? PERSONA_PRIMARY.creator;
+  const primaryKeys = new Set(order);
+  const primary = order.map((k) => NAV_ITEMS[k]);
+  const more = Object.keys(NAV_ITEMS).filter((k) => !primaryKeys.has(k)).map((k) => NAV_ITEMS[k]);
+  return { primary, more };
+}
+
 export function Sidebar() {
   const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const { currentProjectId, setCurrentProject } = useProjectStore();
 
-  const navGroups = [
-    {
-      label: t("nav.research"),
-      items: [
-        { label: t("nav.overview"), href: "overview", icon: LayoutDashboard },
-        { label: "Agents", href: "agents", icon: Sparkles },
-        { label: t("nav.keywords"), href: "keywords", icon: SearchCode },
-      ],
-    },
-    {
-      label: t("nav.create"),
-      items: [
-        { label: t("nav.planner"), href: "content", icon: FileText },
-        { label: t("nav.articles"), href: "articles", icon: Zap },
-        { label: t("nav.social"), href: "social", icon: Share2 },
-        { label: t("nav.images"), href: "images", icon: ImagePlus },
-      ],
-    },
-    {
-      label: t("nav.grow"),
-      items: [
-        { label: t("nav.publishing"), href: "publishing", icon: Send },
-        { label: t("nav.backlinks"), href: "backlinks", icon: Link2 },
-        { label: t("nav.analytics"), href: "analytics", icon: BarChart2 },
-        { label: t("nav.audit"), href: "audit", icon: SearchCode },
-      ],
-    },
-  ];
   const [pinned, setPinned] = useState(true);
   const [hovered, setHovered] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -83,6 +88,44 @@ export function Sidebar() {
   });
 
   const currentProject = projects.find((p) => p.id === currentProjectId) ?? projects[0] ?? null;
+
+  const persona = currentProject?.persona ?? "creator";
+  const { primary, more } = personaNav(persona);
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    const saved = localStorage.getItem("fennex-nav-more");
+    if (saved !== null) setMoreOpen(saved === "1");
+  }, []);
+  function toggleMore() {
+    setMoreOpen((o) => { localStorage.setItem("fennex-nav-more", o ? "0" : "1"); return !o; });
+  }
+
+  function renderNavItem(item: NavItem) {
+    const href = currentProject ? `/${currentProject.id}/${item.href}` : "#";
+    const active = !!currentProject &&
+      (pathname === href || pathname.startsWith(`/${currentProject.id}/${item.href}`));
+    const label = t(`nav.${item.key}`);
+    return (
+      <li key={item.href}>
+        <Link
+          href={href}
+          title={!expanded ? label : undefined}
+          className={cn(
+            "group relative flex items-center rounded-xl text-[13px] font-medium transition-all",
+            expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
+            active ? "bg-primary/15 text-primary" : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+            !currentProject && "pointer-events-none opacity-30",
+          )}
+        >
+          {active && (
+            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+          )}
+          <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.2 : 1.8} />
+          {expanded && <span className="truncate">{label}</span>}
+        </Link>
+      </li>
+    );
+  }
 
   function handleLogout() {
     authLogout();
@@ -201,44 +244,34 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-1">
-          {navGroups.map((group) => (
-            <div key={group.label}>
-              {expanded ? (
-                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25">{group.label}</p>
-              ) : (
-                <div className="mx-2 mb-1.5 h-px bg-white/[0.06]" />
-              )}
+          {/* For you */}
+          <div>
+            {expanded ? (
+              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/60">{t("nav.forYou")}</p>
+            ) : (
+              <div className="mx-2 mb-1.5 h-px bg-white/[0.06]" />
+            )}
+            <ul className="space-y-0.5">
+              {primary.map((item) => renderNavItem(item))}
+            </ul>
+          </div>
+
+          {/* More tools */}
+          <div>
+            {expanded && (
+              <button
+                onClick={toggleMore}
+                className="mb-1.5 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25 hover:text-white/50"
+              >
+                {t("nav.moreTools")} <ChevronDown className={cn("h-3 w-3 transition-transform", moreOpen && "rotate-180")} />
+              </button>
+            )}
+            {(moreOpen || !expanded) && (
               <ul className="space-y-0.5">
-                {group.items.map((item) => {
-                  const href = currentProject ? `/${currentProject.id}/${item.href}` : "#";
-                  const active = !!currentProject &&
-                    (pathname === href || pathname.startsWith(`/${currentProject.id}/${item.href}`));
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={href}
-                        title={!expanded ? item.label : undefined}
-                        className={cn(
-                          "group relative flex items-center rounded-xl text-[13px] font-medium transition-all",
-                          expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
-                          active
-                            ? "bg-primary/15 text-primary"
-                            : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
-                          !currentProject && "pointer-events-none opacity-30",
-                        )}
-                      >
-                        {active && (
-                          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-                        )}
-                        <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.2 : 1.8} />
-                        {expanded && <span className="truncate">{item.label}</span>}
-                      </Link>
-                    </li>
-                  );
-                })}
+                {more.map((item) => renderNavItem(item))}
               </ul>
-            </div>
-          ))}
+            )}
+          </div>
         </nav>
 
         {/* Footer */}

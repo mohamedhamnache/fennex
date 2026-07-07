@@ -2,28 +2,20 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { FileText, BarChart2, Search, ExternalLink, Globe, MousePointerClick, Eye, TrendingUp, Crosshair } from "lucide-react";
+import { FileText, ExternalLink, Globe } from "lucide-react";
 import Link from "next/link";
 import {
   listProjects,
   listArticles,
-  getAnalyticsOverview,
-  getAnalyticsTraffic,
   type Article,
 } from "@/lib/api";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { MissionControl } from "@/components/projects/MissionControl";
+import { PersonaHomeSection } from "@/components/projects/PersonaHomeSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtNum(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   draft: "neutral",
@@ -32,20 +24,6 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   published: "success",
   failed: "danger",
 };
-
-// ─── QuickAction ─────────────────────────────────────────────────────────────
-
-function QuickAction({ icon: Icon, label, href }: { icon: React.ElementType; label: string; href: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm font-medium transition-colors hover:border-primary/25 hover:bg-accent"
-    >
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.9} />
-      {label}
-    </Link>
-  );
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -59,18 +37,6 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
     staleTime: 30_000,
   });
 
-  const { data: overview, isLoading: overviewLoading } = useQuery({
-    queryKey: ["analytics", "overview", projectId, "28d"],
-    queryFn: () => getAnalyticsOverview(projectId, "28d"),
-    staleTime: 5 * 60_000,
-  });
-
-  const { data: traffic = [] } = useQuery({
-    queryKey: ["analytics", "traffic", projectId, "28d"],
-    queryFn: () => getAnalyticsTraffic(projectId, "28d"),
-    staleTime: 5 * 60_000,
-  });
-
   const { data: articles = [], isLoading: articlesLoading } = useQuery({
     queryKey: ["articles", projectId],
     queryFn: () => listArticles(projectId),
@@ -81,9 +47,6 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
   const recentArticles = [...articles]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
-
-  const clicksSpark = traffic.map((tr) => tr.clicks);
-  const imprSpark = traffic.map((tr) => tr.impressions);
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -116,46 +79,11 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
       {/* Persona setup missions */}
       <MissionControl projectId={projectId} persona={project?.persona ?? "creator"} />
 
-      {/* Analytics stats — last 28 days */}
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">{t("overview.last28Days")}</h2>
-        {overviewLoading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-xl border bg-muted/30" />
-            ))}
-          </div>
-        ) : overview ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard
-              label={t("overview.stats.clicks")} tone="primary" icon={MousePointerClick}
-              value={fmtNum(overview.clicks)} change={overview.clicks_change}
-              spark={clicksSpark} href={`/${projectId}/analytics`}
-            />
-            <StatCard
-              label={t("overview.stats.impressions")} tone="violet" icon={Eye}
-              value={fmtNum(overview.impressions)} change={overview.impressions_change}
-              spark={imprSpark} href={`/${projectId}/analytics`}
-            />
-            <StatCard
-              label={t("overview.stats.avgCtr")} tone="emerald" icon={TrendingUp}
-              value={`${(overview.ctr * 100).toFixed(2)}%`} change={overview.ctr_change}
-              href={`/${projectId}/analytics`}
-            />
-            <StatCard
-              label={t("overview.stats.avgPosition")} tone="amber" icon={Crosshair}
-              value={overview.avg_position.toFixed(1)} change={overview.position_change}
-              href={`/${projectId}/analytics`} invertChange
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("overview.noAnalytics")}</p>
-        )}
-      </div>
+      <PersonaHomeSection projectId={projectId} persona={project?.persona ?? "creator"} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6">
         {/* Recent articles */}
-        <div className="lg:col-span-2">
+        <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium">{t("overview.recentArticles")}</h2>
             <Link href={`/${projectId}/articles`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">
@@ -203,16 +131,6 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
               </table>
             )}
           </Card>
-        </div>
-
-        {/* Quick actions */}
-        <div>
-          <h2 className="mb-3 text-sm font-medium">{t("overview.quickActions")}</h2>
-          <div className="flex flex-col gap-2">
-            <QuickAction icon={Search} label={t("overview.runKeywordResearch")} href={`/${projectId}/keywords`} />
-            <QuickAction icon={FileText} label={t("overview.createArticle")} href={`/${projectId}/articles`} />
-            <QuickAction icon={BarChart2} label={t("overview.viewAnalytics")} href={`/${projectId}/analytics`} />
-          </div>
         </div>
       </div>
     </div>

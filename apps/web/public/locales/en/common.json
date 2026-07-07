@@ -18,7 +18,45 @@
     "selectProject": "Select project",
     "research": "Research",
     "create": "Create",
-    "grow": "Grow"
+    "grow": "Grow",
+    "agents": "Agents",
+    "forYou": "For you",
+    "moreTools": "More tools"
+  },
+  "personaHome": {
+    "quickActions": "Quick actions",
+    "connectGsc": "Connect Search Console to see real data",
+    "emptyFocus": "Nothing here yet — sync more Search Console data.",
+    "northStar": {
+      "clicks": "Audience reached (clicks)",
+      "buyer_intent_clicks": "Buyer-intent clicks",
+      "niche_visibility": "Niche visibility (impressions)"
+    },
+    "secondary": {
+      "impressions": "Impressions",
+      "ctr": "Avg CTR",
+      "position": "Avg position",
+      "clicks": "Total clicks",
+      "bi_impressions": "Buyer-intent impressions",
+      "striking": "Striking-distance",
+      "topics": "Topics mapped"
+    },
+    "focus": {
+      "creator": "Content ideas with demand",
+      "ecommerce": "Commercial opportunities",
+      "freelancer": "Topics to target"
+    },
+    "actions": {
+      "keywords": "Run keyword research",
+      "articles": "Create article",
+      "social": "Create social post",
+      "productStudio": "Open Product Studio",
+      "market": "View market",
+      "analytics": "View analytics",
+      "outreach": "Plan outreach",
+      "marketReport": "Generate market report",
+      "competitor": "Scan a competitor"
+    }
   },
   "common": {
     "save": "Save",

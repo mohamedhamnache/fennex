@@ -26,6 +26,7 @@ from app.schemas.analytics import (
     HealthScore,
     MarketInsights,
     OpportunitiesResponse,
+    PersonaHome,
     RankingRow,
     TopPageRow,
     TopQueryRow,
@@ -187,6 +188,17 @@ async def analytics_opportunities(
     db: DB,
 ):
     return await get_opportunities(project_id, current_user.org_id, db)
+
+
+@router.get("/persona-home", response_model=PersonaHome)
+async def analytics_persona_home(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+    persona: str = "creator",
+):
+    from app.services.analytics_service import get_persona_home
+    return await get_persona_home(project_id, current_user.org_id, persona, db)
 
 
 @router.get("/gsc/status", response_model=GscConnectionStatus)

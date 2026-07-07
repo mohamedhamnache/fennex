@@ -201,3 +201,39 @@ class GscSyncResult(BaseModel):
     keywords_matched: int = 0
     last_synced_at: Optional[str] = None
     error: Optional[str] = None
+
+
+class NorthStar(BaseModel):
+    key: str
+    label: str
+    value: float
+    unit: str = ""
+    change: float | None = None
+    context: str | None = None
+    trend: list[float] = []
+
+
+class SecondaryMetric(BaseModel):
+    key: str
+    label: str
+    value: float
+    unit: str = ""
+    change: float | None = None
+    invert_change: bool = False
+
+
+class FocusItem(BaseModel):
+    label: str
+    detail: str
+
+
+class FocusList(BaseModel):
+    title: str
+    items: list[FocusItem]
+
+
+class PersonaHome(BaseModel):
+    persona: str
+    north_star: NorthStar
+    secondary: list[SecondaryMetric]
+    focus: FocusList
