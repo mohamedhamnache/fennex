@@ -92,59 +92,36 @@ async def seed_analytics_history(ctx, project_id: str):
 
 
 async def _sync_one_project(project_id: str):
-    """Sync today's analytics row and keyword ranking rows for a single project."""
+    """Refresh a single project's analytics.
+
+    If the project has an active Google Search Console connection, pull REAL data
+    (and never fabricate — synthetic rows would pollute the real figures). Only
+    projects without GSC fall back to synthetic demo snapshots.
+    """
     pid = uuid.UUID(project_id)
     today = date.today()
 
     async with async_session_factory() as session:
-        kw_result = await session.execute(
-            select(Keyword).where(Keyword.project_id == pid).limit(1)
-        )
-        sample_kw = kw_result.scalar_one_or_none()
-        if sample_kw is None:
-            return
-        org_id = sample_kw.org_id
-
-        all_kw_result = await session.execute(
-            select(Keyword).where(Keyword.project_id == pid, Keyword.org_id == org_id)
-        )
-        keywords = all_kw_result.scalars().all()
-
-        total_volume = sum(kw.search_volume or 0 for kw in keywords) or 1000
-        base_clicks_daily = total_volume * 0.02 / 30
-        rng = random.Random(int(pid) + today.toordinal())
-        variance = rng.uniform(0.8, 1.2)
-        clicks = max(0, int(base_clicks_daily * variance))
-        impressions = max(clicks, int(clicks * rng.uniform(8.0, 15.0)))
-        ctr = round(clicks / impressions, 4) if impressions else 0.0
-        all_positions = [_base_position(kw.difficulty) for kw in keywords]
-        avg_pos = round(sum(all_positions) / len(all_positions), 1) if all_positions else 10.0
-
-        snap = AnalyticsSnapshot(
-            project_id=pid,
-            org_id=org_id,
-            date=today,
-            clicks=clicks,
-            impressions=impressions,
-            ctr=ctr,
-            avg_position=avg_pos,
-        )
-        session.add(snap)
-
-        for kw in keywords:
-            base_pos = _base_position(kw.difficulty)
-            pos = _daily_position_drift(base_pos, 0, seed=hash(str(kw.id)) % 100000)
-            ranking = KeywordRanking(
-                keyword_id=kw.id,
-                project_id=pid,
-                org_id=org_id,
-                date=today,
-                position=pos,
-                url=f"https://example.com/{kw.keyword.replace(' ', '-').lower()}/",
+        from app.models.analytics import GscConnection
+        gsc_conn = (await session.execute(
+            select(GscConnection).where(
+                GscConnection.project_id == pid,
+                GscConnection.is_active.is_(True),
             )
-            session.add(ranking)
+        )).scalars().first()
 
-        await session.commit()
+        if gsc_conn is not None:
+            # Real Search Console data only. gsc_service.sync commits internally.
+            org_id = gsc_conn.org_id
+            from app.services import gsc_service
+            try:
+                await gsc_service.sync(pid, org_id, session)
+            except Exception:
+                pass  # best-effort; on failure leave existing real data untouched
+        else:
+            org_id = await _sync_synthetic(pid, today, session)
+            if org_id is None:
+                return
 
         # Closed-loop recommendation tracking: re-measure + detect after fresh data.
         from app.services.recommendation_service import measure, run_matching
@@ -153,6 +130,45 @@ async def _sync_one_project(project_id: str):
             await run_matching(pid, org_id, session)
         except Exception:
             pass  # never let tracking break the nightly analytics sync
+
+
+async def _sync_synthetic(pid, today, session) -> uuid.UUID | None:
+    """Fallback demo data for projects with no GSC connection. Returns org_id, or
+    None if the project has no keywords to base synthetic figures on."""
+    sample_kw = (await session.execute(
+        select(Keyword).where(Keyword.project_id == pid).limit(1)
+    )).scalar_one_or_none()
+    if sample_kw is None:
+        return None
+    org_id = sample_kw.org_id
+
+    keywords = (await session.execute(
+        select(Keyword).where(Keyword.project_id == pid, Keyword.org_id == org_id)
+    )).scalars().all()
+
+    total_volume = sum(kw.search_volume or 0 for kw in keywords) or 1000
+    base_clicks_daily = total_volume * 0.02 / 30
+    rng = random.Random(int(pid) + today.toordinal())
+    variance = rng.uniform(0.8, 1.2)
+    clicks = max(0, int(base_clicks_daily * variance))
+    impressions = max(clicks, int(clicks * rng.uniform(8.0, 15.0)))
+    ctr = round(clicks / impressions, 4) if impressions else 0.0
+    all_positions = [_base_position(kw.difficulty) for kw in keywords]
+    avg_pos = round(sum(all_positions) / len(all_positions), 1) if all_positions else 10.0
+
+    session.add(AnalyticsSnapshot(
+        project_id=pid, org_id=org_id, date=today,
+        clicks=clicks, impressions=impressions, ctr=ctr, avg_position=avg_pos,
+    ))
+    for kw in keywords:
+        base_pos = _base_position(kw.difficulty)
+        pos = _daily_position_drift(base_pos, 0, seed=hash(str(kw.id)) % 100000)
+        session.add(KeywordRanking(
+            keyword_id=kw.id, project_id=pid, org_id=org_id, date=today,
+            position=pos, url=f"https://example.com/{kw.keyword.replace(' ', '-').lower()}/",
+        ))
+    await session.commit()
+    return org_id
 
 
 async def sync_analytics_data(ctx, project_id: str | None = None):
