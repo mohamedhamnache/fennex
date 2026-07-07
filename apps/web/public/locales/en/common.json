@@ -27,6 +27,17 @@
     "quickActions": "Quick actions",
     "connectGsc": "Connect Search Console to see real data",
     "emptyFocus": "Nothing here yet — sync more Search Console data.",
+    "loadError": "Couldn't load your dashboard metrics. Refresh to try again.",
+    "persona": {
+      "creator": "Creator",
+      "ecommerce": "Ecommerce",
+      "freelancer": "Freelancer"
+    },
+    "goal": {
+      "creator": "Grow your audience",
+      "ecommerce": "Capture buyer intent",
+      "freelancer": "Win clients in your niche"
+    },
     "northStar": {
       "clicks": "Audience reached (clicks)",
       "buyer_intent_clicks": "Buyer-intent clicks",
