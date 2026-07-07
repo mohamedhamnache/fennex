@@ -234,3 +234,33 @@ async def test_publish_entry_skips_non_armed(db_session, org_and_project):
     await db_session.commit()
     out = await publish_entry(entry, db_session)
     assert out.state == "published"  # unchanged; not re-dispatched
+
+
+# ── /calendar REST endpoints ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_calendar_endpoints_crud(client, org_and_project, db_session):
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="Endpoint", status=ArticleStatus.ready)
+    db_session.add(art)
+    await db_session.commit()
+    r = await client.post(f"/api/v1/calendar?project_id={FAKE_PROJECT_ID}",
+        json={"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T09:00:00+00:00"})
+    assert r.status_code == 201, r.text
+    eid = r.json()["id"]
+    lst = await client.get(f"/api/v1/calendar?project_id={FAKE_PROJECT_ID}&start=2026-08-01T00:00:00+00:00&end=2026-08-31T23:59:59+00:00")
+    assert lst.status_code == 200 and len(lst.json()) == 1
+    patched = await client.patch(f"/api/v1/calendar/{eid}", json={"target_kind": "linkedin", "state": "scheduled"})
+    assert patched.status_code == 200 and patched.json()["state"] == "scheduled"
+    dele = await client.delete(f"/api/v1/calendar/{eid}")
+    assert dele.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_patch_schedule_without_target_400(client, org_and_project, db_session):
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="NT", status=ArticleStatus.ready)
+    db_session.add(art)
+    await db_session.commit()
+    eid = (await client.post(f"/api/v1/calendar?project_id={FAKE_PROJECT_ID}",
+        json={"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T09:00:00+00:00"})).json()["id"]
+    r = await client.patch(f"/api/v1/calendar/{eid}", json={"state": "scheduled"})
+    assert r.status_code == 400
