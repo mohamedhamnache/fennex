@@ -127,3 +127,55 @@ async def test_calendar_entry_persists(db_session, org_and_project):
     await db_session.refresh(rec)
     assert rec.id is not None
     assert rec.state == "planned"
+
+
+# ── calendar_service ──────────────────────────────────────────────────────────
+
+from app.models.article import Article, ArticleStatus
+
+
+@pytest.mark.asyncio
+async def test_create_entry_snapshots_article_title(db_session, org_and_project):
+    from app.services.calendar_service import create_entry
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="My SEO Guide", status=ArticleStatus.ready)
+    db_session.add(art)
+    await db_session.commit()
+    entry = await create_entry(FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T09:00:00+00:00"}, db_session)
+    assert entry.title == "My SEO Guide"
+    assert entry.state == "planned"
+
+
+@pytest.mark.asyncio
+async def test_create_entry_unknown_content_raises(db_session, org_and_project):
+    from app.services.calendar_service import create_entry, CalendarError
+    with pytest.raises(CalendarError):
+        await create_entry(FAKE_PROJECT_ID, FAKE_ORG_ID,
+            {"content_type": "article", "content_id": str(uuid.uuid4()), "scheduled_at": "2026-08-01T09:00:00+00:00"}, db_session)
+
+
+@pytest.mark.asyncio
+async def test_schedule_requires_valid_target(db_session, org_and_project):
+    from app.services.calendar_service import create_entry, update_entry, CalendarError
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="A", status=ArticleStatus.ready)
+    db_session.add(art)
+    await db_session.commit()
+    entry = await create_entry(FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T09:00:00+00:00"}, db_session)
+    with pytest.raises(CalendarError):
+        await update_entry(entry.id, FAKE_ORG_ID, {"state": "scheduled"}, db_session)
+    ok = await update_entry(entry.id, FAKE_ORG_ID, {"target_kind": "linkedin", "state": "scheduled"}, db_session)
+    assert ok.state == "scheduled"
+
+
+@pytest.mark.asyncio
+async def test_list_entries_in_range(db_session, org_and_project):
+    from app.services.calendar_service import create_entry, list_entries
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="A", status=ArticleStatus.ready)
+    db_session.add(art)
+    await db_session.commit()
+    await create_entry(FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-15T09:00:00+00:00"}, db_session)
+    inside = await list_entries(FAKE_PROJECT_ID, FAKE_ORG_ID, "2026-08-01T00:00:00+00:00", "2026-08-31T23:59:59+00:00", db_session)
+    outside = await list_entries(FAKE_PROJECT_ID, FAKE_ORG_ID, "2026-09-01T00:00:00+00:00", "2026-09-30T23:59:59+00:00", db_session)
+    assert len(inside) == 1 and len(outside) == 0
