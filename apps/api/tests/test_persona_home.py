@@ -186,3 +186,12 @@ async def test_persona_home_endpoint_defaults_creator(client, org_and_project):
     r = await client.get(f"/api/v1/analytics/persona-home?project_id={FAKE_PROJECT_ID}")
     assert r.status_code == 200
     assert r.json()["persona"] == "creator"
+
+
+@pytest.mark.asyncio
+async def test_persona_home_zero_data_is_safe(db_session, org_and_project):
+    from app.services.analytics_service import get_persona_home
+    for persona in ("creator", "ecommerce", "freelancer"):
+        home = await get_persona_home(FAKE_PROJECT_ID, FAKE_ORG_ID, persona, db_session)
+        assert home.north_star.value == 0.0
+        assert home.focus.items == []
