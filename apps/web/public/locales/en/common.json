@@ -21,7 +21,29 @@
     "grow": "Grow",
     "agents": "Agents",
     "forYou": "For you",
-    "moreTools": "More tools"
+    "moreTools": "More tools",
+    "calendar": "Calendar"
+  },
+  "calendar": {
+    "title": "Content calendar",
+    "subtitle": "Plan and schedule articles, social posts and banners",
+    "addContent": "Add content",
+    "prev": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "empty": "Nothing scheduled. Click a day or Add content to start.",
+    "publishNow": "Publish now",
+    "reschedule": "Reschedule",
+    "delete": "Remove from calendar",
+    "target": "Publish target",
+    "targetWordpress": "WordPress",
+    "targetLinkedin": "LinkedIn",
+    "state": { "planned": "Planned", "scheduled": "Scheduled", "publishing": "Publishing", "published": "Published", "failed": "Failed" },
+    "type": { "article": "Article", "social": "Social", "banner": "Banner" },
+    "pickDate": "Date & time",
+    "save": "Save",
+    "cancel": "Cancel",
+    "needTarget": "Choose a publish target to schedule this."
   },
   "personaHome": {
     "quickActions": "Quick actions",
