@@ -20,6 +20,7 @@
     "create": "Create",
     "grow": "Grow",
     "agents": "Agents",
+    "campaigns": "Campaigns",
     "forYou": "For you",
     "moreTools": "More tools",
     "calendar": "Calendar"
@@ -838,5 +839,26 @@
     "atLimit": "You've reached your {{label}} limit ({{used}}/{{limit}}).",
     "nearLimit": "You've used {{used}}/{{limit}} {{label}} this month.",
     "upgradeToContinue": "Upgrade to continue →"
+  },
+  "campaigns": {
+    "title": "Campaigns",
+    "subtitle": "Brief the Pack once — they plan and run a whole campaign",
+    "newGoal": "What do you want to achieve?",
+    "goalPlaceholder": "e.g. Win 3 new restaurant clients this quarter",
+    "draft": "Draft plan",
+    "drafting": "Drafting plan...",
+    "planReady": "Here's the plan",
+    "run": "Run campaign",
+    "running": "Running...",
+    "cancel": "Cancel",
+    "remove": "Remove step",
+    "why": "Why",
+    "empty": "No campaigns yet. Set a goal to start.",
+    "yourCampaigns": "Your campaigns",
+    "newCampaign": "New campaign",
+    "back": "Back",
+    "summary": "Summary",
+    "status": { "planned": "Planned", "running": "Running", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled" },
+    "stepStatus": { "pending": "Pending", "running": "Running", "completed": "Done", "failed": "Failed", "skipped": "Skipped" }
   }
 }

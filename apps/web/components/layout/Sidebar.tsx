@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
-  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays,
+  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,7 @@ const NAV_ITEMS: Record<string, NavItem> = {
   overview:   { key: "overview",   href: "overview",   icon: LayoutDashboard },
   calendar:   { key: "calendar",   href: "calendar",   icon: CalendarDays },
   agents:     { key: "agents",     href: "agents",     icon: Sparkles },
+  campaigns:  { key: "campaigns",  href: "campaigns",  icon: Megaphone },
   keywords:   { key: "keywords",   href: "keywords",   icon: SearchCode },
   content:    { key: "planner",    href: "content",    icon: FileText },
   articles:   { key: "articles",   href: "articles",   icon: Zap },
@@ -42,9 +43,9 @@ const NAV_ITEMS: Record<string, NavItem> = {
 
 // Persona -> primary tool order (the highlighted "For you" group).
 const PERSONA_PRIMARY: Record<string, string[]> = {
-  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "analytics"],
-  ecommerce:  ["overview", "calendar", "images", "analytics", "agents", "keywords"],
-  freelancer: ["overview", "calendar", "agents", "analytics", "social", "backlinks"],
+  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics"],
+  ecommerce:  ["overview", "calendar", "images", "analytics", "agents", "campaigns", "keywords"],
+  freelancer: ["overview", "calendar", "agents", "campaigns", "analytics", "social", "backlinks"],
 };
 
 function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {
