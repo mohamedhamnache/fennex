@@ -23,3 +23,4 @@ from app.models.billing import OrgUsage, SubscriptionEvent  # noqa: F401
 from app.models.publish_record import PublishRecord  # noqa: F401
 from app.models.image_score import ImageScore  # noqa: F401
 from app.models.ab_test import ABTest, ABTestVariant  # noqa: F401
+from app.models.calendar_entry import CalendarEntry  # noqa: F401

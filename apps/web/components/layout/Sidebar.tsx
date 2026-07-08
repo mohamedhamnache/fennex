@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
-  PanelLeftClose, PanelLeftOpen, Sparkles,
+  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -26,6 +26,7 @@ type NavItem = { key: string; href: string; icon: typeof LayoutDashboard };
 // matches the href slug except for `content`, whose translation key is `planner`.
 const NAV_ITEMS: Record<string, NavItem> = {
   overview:   { key: "overview",   href: "overview",   icon: LayoutDashboard },
+  calendar:   { key: "calendar",   href: "calendar",   icon: CalendarDays },
   agents:     { key: "agents",     href: "agents",     icon: Sparkles },
   keywords:   { key: "keywords",   href: "keywords",   icon: SearchCode },
   content:    { key: "planner",    href: "content",    icon: FileText },
@@ -40,9 +41,9 @@ const NAV_ITEMS: Record<string, NavItem> = {
 
 // Persona -> primary tool order (the highlighted "For you" group).
 const PERSONA_PRIMARY: Record<string, string[]> = {
-  creator:    ["overview", "articles", "social", "images", "agents", "analytics"],
-  ecommerce:  ["overview", "images", "analytics", "agents", "keywords"],
-  freelancer: ["overview", "agents", "analytics", "social", "backlinks"],
+  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "analytics"],
+  ecommerce:  ["overview", "calendar", "images", "analytics", "agents", "keywords"],
+  freelancer: ["overview", "calendar", "agents", "analytics", "social", "backlinks"],
 };
 
 function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {

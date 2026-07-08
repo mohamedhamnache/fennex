@@ -741,6 +741,7 @@ export interface GeneratedImage {
   folder_id?: string | null;
   tags?: string[];
   is_deleted?: boolean;
+  banner_format?: string | null;
 }
 
 export async function listImages(projectId: string, usage?: ImageUsage, folderId?: string | null): Promise<GeneratedImage[]> {
@@ -1945,4 +1946,57 @@ export async function decomposeImage(
   return apiClient.post<DecomposeResult>(`/images/${imageId}/decompose`, {
     inpaint_method: inpaintMethod,
   });
+}
+
+// ── Unified Content Calendar ──────────────────────────────────────────────────
+
+export type CalendarContentType = "article" | "social" | "banner";
+export type CalendarState = "planned" | "scheduled" | "publishing" | "published" | "failed";
+
+export interface CalendarEntry {
+  id: string;
+  content_type: CalendarContentType;
+  content_id: string;
+  title: string;
+  scheduled_at: string;
+  timezone: string;
+  target_kind: "wordpress" | "linkedin" | null;
+  connection_id: string | null;
+  state: CalendarState;
+  error: string | null;
+  published_at: string | null;
+  published_url: string | null;
+}
+
+export interface CreateCalendarEntryInput {
+  content_type: CalendarContentType;
+  content_id: string;
+  scheduled_at: string;
+  timezone?: string;
+  target_kind?: "wordpress" | "linkedin";
+  connection_id?: string;
+}
+
+export interface UpdateCalendarEntryInput {
+  scheduled_at?: string;
+  timezone?: string;
+  target_kind?: "wordpress" | "linkedin";
+  connection_id?: string;
+  state?: CalendarState;
+}
+
+export async function listCalendar(projectId: string, start: string, end: string): Promise<CalendarEntry[]> {
+  return apiClient.get<CalendarEntry[]>(`/calendar?project_id=${projectId}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+}
+export async function createCalendarEntry(projectId: string, body: CreateCalendarEntryInput): Promise<CalendarEntry> {
+  return apiClient.post<CalendarEntry>(`/calendar?project_id=${projectId}`, body);
+}
+export async function updateCalendarEntry(id: string, patch: UpdateCalendarEntryInput): Promise<CalendarEntry> {
+  return apiClient.patch<CalendarEntry>(`/calendar/${id}`, patch);
+}
+export async function deleteCalendarEntry(id: string): Promise<void> {
+  return apiClient.delete<void>(`/calendar/${id}`);
+}
+export async function publishCalendarEntryNow(id: string): Promise<CalendarEntry> {
+  return apiClient.post<CalendarEntry>(`/calendar/${id}/publish-now`, {});
 }
