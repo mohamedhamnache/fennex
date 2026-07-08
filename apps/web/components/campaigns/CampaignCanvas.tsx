@@ -27,8 +27,9 @@ export function CampaignCanvas({ campaign, activeStepId, selectedStepId, onSelec
           {layout.edges.map((e, i) => {
             const from = e.fromStepId ? byId.get(e.fromStepId) : null;
             const to = e.toStepId ? byId.get(e.toStepId) : null;
-            const doneEdge = (from === null || from?.status === "completed") &&
-              (e.fromStepId !== null || campaign.status !== "planned");
+            // An edge reads "done" once flow has traversed it: source step completed, or
+            // (for the goal edge) the target step has left pending.
+            const doneEdge = from ? from.status === "completed" : to ? to.status !== "pending" : mode !== "plan";
             const activeEdge = mode === "run" && to && to.id === activeStepId;
             return (
               <path
