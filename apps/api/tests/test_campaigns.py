@@ -200,6 +200,31 @@ async def test_dune_executor_creates_article(db_session, org_and_project):
 
 
 @pytest.mark.asyncio
+async def test_dune_executor_writes_full_article_fields(db_session, org_and_project):
+    """Campaign-generated articles must render in the reader, which uses body_html."""
+    from app.services.campaign_executors import exec_dune_write_article
+    from app.services.campaign_catalog import CampaignContext
+    from app.models.article import Article
+    db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="anthropic", encrypted_value=encrypt_value("test-key")))
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="dune", action="dune.write_article", brief={})
+    ctx = CampaignContext(goal="g", persona="creator", project_profile="",
+                          prior=[{"agent": "zerda", "action": "zerda.pick_angle", "summary": "",
+                                  "structured": {"topic": "Olive oil", "keyword": "olive oil benefits"}}])
+    markdown = "# Olive oil benefits\n\nThis is a full paragraph about olive oil benefits for health."
+    with patch("app.services.campaign_executors.call_llm", new=AsyncMock(return_value=markdown)):
+        await exec_dune_write_article(c, step, ctx, db_session)
+    art = (await db_session.execute(select(Article))).scalars().first()
+    assert art is not None
+    assert art.body_html  # must be non-empty so the reader can render it
+    assert "<h1" in art.body_html or "<h2" in art.body_html or "<p" in art.body_html
+    assert art.body_markdown == markdown
+    assert art.word_count > 0
+    assert art.seo_score is not None
+
+
+@pytest.mark.asyncio
 async def test_sirocco_executor_creates_image(db_session, org_and_project):
     from app.services.campaign_executors import exec_sirocco_generate_visual
     from app.models.image import GeneratedImage
@@ -307,6 +332,41 @@ async def test_execute_campaign_runs_steps_and_chains(db_session, org_and_projec
     assert c.status == "completed"
     assert [s.status for s in steps] == ["completed", "completed"]
     assert calls == [("zerda", 0), ("oasis", 1)]   # context grew between steps
+
+
+@pytest.mark.asyncio
+async def test_execute_campaign_resume_skips_completed_steps(db_session, org_and_project):
+    """An arq retry / resumed run must never re-execute an already-completed (possibly paid) step."""
+    from app.services.campaign_catalog import StepResult
+    from app.workers.tasks.campaign_tasks import execute_campaign
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle",
+                                status="completed", summary="angle picked",
+                                structured={"keyword": "k", "topic": "t"}))
+    db_session.add(CampaignStep(campaign_id=c.id, order=1, agent="oasis", action="oasis.market_report",
+                                status="pending"))
+    await db_session.commit()
+
+    async def exploding_zerda(campaign, step, context, db):
+        raise AssertionError("completed step's executor must not be called on resume")
+
+    calls = []
+    async def fake_oasis(campaign, step, context, db):
+        calls.append(("oasis", len(context.prior)))
+        return StepResult(summary="report", artifact_type="report")
+
+    from app.services import campaign_catalog
+    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": exploding_zerda}), \
+         patch.dict(campaign_catalog.ACTIONS["oasis.market_report"].__dict__, {"executor": fake_oasis}):
+        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
+
+    await db_session.refresh(c)
+    steps = (await db_session.execute(select(CampaignStep).where(
+        CampaignStep.campaign_id == c.id).order_by(CampaignStep.order))).scalars().all()
+    assert c.status == "completed"
+    assert [s.status for s in steps] == ["completed", "completed"]
+    assert calls == [("oasis", 1)]   # zerda's stored output was re-chained into context
 
 
 # ── API router ────────────────────────────────────────────────────────────────

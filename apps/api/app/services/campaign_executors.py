@@ -11,6 +11,7 @@ from app.services.image_service import generate_image_dalle
 from app.services.llm_service import call_llm, get_org_llm_keys
 from app.services.nomad_service import generate_outreach_plan
 from app.services.oasis_service import generate_market_report
+from app.services.article_service import _deterministic_seo_score, _markdown_to_html
 from app.workers.tasks.article_tasks import _build_system_prompt, _build_user_prompt, _parse_llm_response
 
 _PROVIDERS = [("anthropic", "claude-opus-4-8"), ("openai", "gpt-4o")]
@@ -91,7 +92,11 @@ async def exec_dune_write_article(campaign, step, context: CampaignContext, db) 
         raise
     parsed = _parse_llm_response(raw, title)
     article.body_markdown = parsed["body_markdown"]
+    article.body_html = _markdown_to_html(parsed["body_markdown"])
+    article.meta_title = parsed["meta_title"]
+    article.meta_description = parsed["meta_description"]
     article.word_count = len(parsed["body_markdown"].split())
+    article.seo_score = _deterministic_seo_score(title)
     article.status = ArticleStatus.ready
     await db.commit()
     return StepResult(summary=f"Drafted article: {title}", artifact_type="article",

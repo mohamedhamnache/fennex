@@ -25,48 +25,69 @@ async def execute_campaign(campaign_id, db_factory=None) -> None:
             return
         campaign.status = "running"
         await db.commit()
-        steps = (await db.execute(select(CampaignStep).where(
-            CampaignStep.campaign_id == campaign_id).order_by(CampaignStep.order))).scalars().all()
-
-        profile = ""
         try:
-            profile = await project_profile(campaign.project_id, db)
-        except Exception:
-            pass
-        context = CampaignContext(goal=campaign.goal, persona=campaign.persona, project_profile=profile, prior=[])
+            steps = (await db.execute(select(CampaignStep).where(
+                CampaignStep.campaign_id == campaign_id).order_by(CampaignStep.order))).scalars().all()
 
-        any_done = False
-        for step in steps:
+            profile = ""
+            try:
+                profile = await project_profile(campaign.project_id, db)
+            except Exception:
+                pass
+            context = CampaignContext(goal=campaign.goal, persona=campaign.persona, project_profile=profile, prior=[])
+
+            any_done = False
+            for step in steps:
+                await db.refresh(campaign)
+                if campaign.cancel_requested:
+                    break
+                if step.status == "completed":
+                    # Already-terminal step (e.g. a retried/resumed run): re-chain its
+                    # stored output without re-executing the (possibly paid) work.
+                    context.prior.append({"agent": step.agent, "action": step.action,
+                                          "summary": step.summary, "structured": step.structured or {}})
+                    any_done = True
+                    continue
+                if step.status == "skipped":
+                    continue
+                adef = ACTIONS.get(step.action)
+                if adef is None:
+                    step.status = "skipped"; step.error = "Unknown action."; await db.commit(); continue
+                step.status = "running"; step.started_at = _now(); await db.commit()
+                try:
+                    result = await adef.executor(campaign, step, context, db)
+                    if result.structured.get("skipped"):
+                        step.status = "skipped"; step.summary = result.summary
+                    else:
+                        step.status = "completed"; any_done = True
+                        step.summary = result.summary
+                        step.artifact_type = result.artifact_type
+                        step.artifact_ids = result.artifact_ids or None
+                        step.structured = result.structured or None
+                        context.prior.append({"agent": step.agent, "action": step.action,
+                                              "summary": result.summary, "structured": result.structured})
+                except Exception as exc:  # noqa: BLE001 — record + continue
+                    logger.exception("campaign step failed: %s", step.action)
+                    await db.rollback()
+                    step = await db.get(CampaignStep, step.id)
+                    step.status = "failed"; step.error = str(exc)[:2000]
+                    step.finished_at = _now(); await db.commit()
+                    continue
+                step.finished_at = _now(); await db.commit()
+
             await db.refresh(campaign)
             if campaign.cancel_requested:
-                break
-            adef = ACTIONS.get(step.action)
-            if adef is None:
-                step.status = "skipped"; step.error = "Unknown action."; await db.commit(); continue
-            step.status = "running"; step.started_at = _now(); await db.commit()
-            try:
-                result = await adef.executor(campaign, step, context, db)
-                if result.structured.get("skipped"):
-                    step.status = "skipped"; step.summary = result.summary
-                else:
-                    step.status = "completed"; any_done = True
-                    step.summary = result.summary
-                    step.artifact_type = result.artifact_type
-                    step.artifact_ids = result.artifact_ids or None
-                    step.structured = result.structured or None
-                    context.prior.append({"agent": step.agent, "action": step.action,
-                                          "summary": result.summary, "structured": result.structured})
-            except Exception as exc:  # noqa: BLE001 — record + continue
-                logger.exception("campaign step failed: %s", step.action)
-                step.status = "failed"; step.error = str(exc)[:2000]
-            step.finished_at = _now(); await db.commit()
-
-        await db.refresh(campaign)
-        if campaign.cancel_requested:
-            campaign.status = "cancelled"
-        else:
-            campaign.status = "completed" if any_done else "failed"
-        await db.commit()
+                campaign.status = "cancelled"
+            else:
+                campaign.status = "completed" if any_done else "failed"
+            await db.commit()
+        except Exception:
+            logger.exception("campaign execution crashed: %s", campaign_id)
+            await db.rollback()
+            campaign = await db.get(Campaign, campaign_id)
+            if campaign is not None:
+                campaign.status = "failed"
+                await db.commit()
 
 
 async def run_campaign(ctx, campaign_id: str) -> None:

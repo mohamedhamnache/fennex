@@ -19,7 +19,7 @@ class CampaignCreate(BaseModel):
 
 
 class PlanEdit(BaseModel):
-    step_ids: list[str]
+    step_ids: list[uuid.UUID]
 
 
 def _step(s: CampaignStep) -> dict:
@@ -98,7 +98,7 @@ async def edit_plan(campaign_id: uuid.UUID, body: PlanEdit, current_user: Curren
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
     if c.status != "planned":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Plan can only be edited before running.")
-    keep = [uuid.UUID(x) for x in body.step_ids]
+    keep = body.step_ids
     steps = await _steps(campaign_id, db)
     for s in steps:
         if s.id not in keep:
@@ -118,9 +118,12 @@ async def run(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
     if c.status != "planned":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Campaign is not in a runnable state.")
+    try:
+        await enqueue_campaign(str(campaign_id))
+    except Exception:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Could not start the campaign, try again.")
     c.status = "running"
     await db.commit()
-    await enqueue_campaign(str(campaign_id))
     return _campaign(c, await _steps(campaign_id, db))
 
 
