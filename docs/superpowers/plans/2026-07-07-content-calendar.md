@@ -17,7 +17,7 @@ Spec: `docs/superpowers/specs/2026-07-07-content-calendar-design.md`
 - Routers use `CurrentUser`/`DB` from `app.core.dependencies`; org-scoped via `current_user.org_id`. API under `/api/v1`; new router registered in `app/api/v1/router.py`.
 - Content types: `article` | `social` | `banner`. States: `planned` | `scheduled` | `publishing` | `published` | `failed`.
 - **Auto-publish gate:** only `scheduled` entries publish. Transition to `scheduled` requires a valid target: `target_kind` set, and for `wordpress` a `connection_id` owned by the org. `linkedin` needs no `connection_id` (uses the org's LinkedIn `SocialConnection`).
-- **v1 targets only:** `target_kind` in {`wordpress`, `linkedin`}. Article→WordPress via `WordPressConnector`; banner→WordPress via `publish_to_wordpress`; social→LinkedIn via `ugcPosts`. Shopify + non-LinkedIn social are out of scope (blocked from `scheduled`).
+- **v1 targets only:** `target_kind` ∈ {`wordpress`, `linkedin`}. Article→WordPress via `WordPressConnector`; banner→WordPress via `publish_to_wordpress`; social→LinkedIn via `ugcPosts`. Shopify + non-LinkedIn social are out of scope (blocked from `scheduled`).
 - `scheduled_at` stored ISO-8601 UTC; display tz from the entry's `timezone` (creator's browser tz).
 - Frontend: all API via `apiClient`; Tailwind CSS variables only; **full i18n** — every user-visible string via `t()`, keys added to `apps/web/public/locales/en/common.json` (other locales fall back to en). Verify with `npm run typecheck` (no FE test framework).
 - Tests run inside docker: `docker compose exec -T api pytest ...` from repo root. Commit style `feat(calendar): ...`.
@@ -161,7 +161,7 @@ def downgrade() -> None:
 - [ ] **Step 7: Apply + verify**
 
 Run: `make db-migrate` then `docker compose exec -T postgres psql -U fennex -d fennex -c "\d calendar_entries"`
-Expected: table exists with the columns above. (If a partial-apply error occurs — "relation already exists" with an unstamped revision — `docker compose exec -T postgres psql -U fennex -d fennex -c "DROP TABLE IF EXISTS calendar_entries CASCADE;"` then re-run `make db-migrate`.)
+Expected: table exists with the columns above. (If a partial apply error occurs — "relation already exists" with an unstamped revision — `docker compose exec -T postgres psql -U fennex -d fennex -c "DROP TABLE IF EXISTS calendar_entries CASCADE;"` then re-run `make db-migrate`.)
 
 - [ ] **Step 8: Commit**
 
@@ -185,9 +185,8 @@ git commit -m "feat(calendar): add CalendarEntry model and migration"
   - `async list_entries(project_id, org_id, start_iso, end_iso, db) -> list[CalendarEntry]`
   - `async update_entry(entry_id, org_id, patch: dict, db) -> CalendarEntry | None`
   - `async delete_entry(entry_id, org_id, db) -> bool`
-  - `class CalendarError(Exception)`
-  - `async _validate_target(entry, org_id, db) -> None` (raises CalendarError)
-  - `data` keys: `content_type, content_id, scheduled_at, timezone?, target_kind?, connection_id?`
+  - `class CalendarError(Exception)` (raised for invalid content / invalid scheduled transition)
+  - `data` keys: `content_type, content_id, scheduled_at, timezone?, target_kind?, connection_id?, state?`
 
 - [ ] **Step 1: Write failing tests** — append to `tests/test_calendar.py`:
 ```python
@@ -223,8 +222,10 @@ async def test_schedule_requires_valid_target(db_session, org_and_project):
     await db_session.commit()
     entry = await create_entry(FAKE_PROJECT_ID, FAKE_ORG_ID,
         {"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T09:00:00+00:00"}, db_session)
+    # no target -> cannot schedule
     with pytest.raises(CalendarError):
         await update_entry(entry.id, FAKE_ORG_ID, {"state": "scheduled"}, db_session)
+    # linkedin target needs no connection -> allowed
     ok = await update_entry(entry.id, FAKE_ORG_ID, {"target_kind": "linkedin", "state": "scheduled"}, db_session)
     assert ok.state == "scheduled"
 
@@ -298,6 +299,7 @@ async def _validate_target(entry: CalendarEntry, org_id, db: AsyncSession) -> No
             PublishingConnection.id == entry.connection_id, PublishingConnection.org_id == org_id))).scalars().first()
         if conn is None:
             raise CalendarError("The selected connection was not found.")
+    # linkedin: no connection_id required here
 
 
 async def create_entry(project_id, org_id, data: dict, db: AsyncSession) -> CalendarEntry:
@@ -379,10 +381,11 @@ git commit -m "feat(calendar): calendar_service CRUD with title snapshot and sch
 
 **Interfaces:**
 - Consumes: `CalendarEntry`, content models, `PublishingConnection`, `WordPressConnector`, `publish_to_wordpress`, `decrypt_credentials`, `decrypt_value`, `SocialConnection`.
-- Produces: `async publish_entry(entry, db) -> CalendarEntry`; internal `_publish_article/_publish_banner/_publish_social(entry, db) -> dict`.
+- Produces: `async publish_entry(entry, db) -> CalendarEntry` (sets `publishing` then `published`/`failed`).
 
 - [ ] **Step 1: Write failing tests** (publish paths mocked so no network) — append:
 ```python
+from datetime import datetime, timezone as _tz
 from unittest.mock import AsyncMock, patch
 from app.models.social import SocialPost, SocialPlatform, SocialPostStatus
 from app.models.calendar_entry import CalendarEntry
@@ -404,6 +407,8 @@ async def test_publish_entry_social_success(db_session, org_and_project):
         out = await publish_entry(entry, db_session)
     assert out.state == "published"
     assert out.published_at is not None
+    refreshed = (await db_session.execute(select(SocialPost))).scalars().first()
+    assert refreshed.status == SocialPostStatus.published
 
 
 @pytest.mark.asyncio
@@ -425,7 +430,7 @@ async def test_publish_entry_failure_sets_failed(db_session, org_and_project):
 
 
 @pytest.mark.asyncio
-async def test_publish_entry_skips_non_armed(db_session, org_and_project):
+async def test_publish_entry_skips_non_scheduled(db_session, org_and_project):
     from app.services.calendar_publish import publish_entry
     entry = CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
                           content_id=uuid.uuid4(), title="x", scheduled_at="2026-01-01T00:00:00+00:00",
@@ -705,6 +710,7 @@ async def publish_now(entry_id: uuid.UUID, current_user: CurrentUser, db: DB):
     if entry is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entry not found")
     if entry.state == "planned":
+        # allow immediate publish only when a target is set
         try:
             await svc._validate_target(entry, current_user.org_id, db)  # noqa: SLF001 — reuse gate
         except svc.CalendarError as exc:
@@ -843,8 +849,8 @@ git commit -m "feat(calendar): frontend api client and types"
 
 - [ ] **Step 2: Add `calendar` to the sidebar** — in `apps/web/components/layout/Sidebar.tsx`:
   - Import an icon: add `CalendarDays` to the existing `lucide-react` import.
-  - In `NAV_ITEMS`, add `calendar: { label: "Calendar", href: "calendar", key: "calendar", icon: CalendarDays },` matching the existing NavItem shape (label renders via `t("nav.calendar")`; `key` maps to the `nav.calendar` translation).
-  - In `PERSONA_PRIMARY`, add `"calendar"` to each persona's array (creator/ecommerce/freelancer), e.g. right after `"overview"`.
+  - In `NAV_ITEMS`, add: `calendar: { label: "Calendar", href: "calendar", key: "calendar", icon: CalendarDays },` (match the existing NavItem shape — if items use `key`, set `key: "calendar"`; the label renders via `t("nav.calendar")`).
+  - In `PERSONA_PRIMARY`, add `"calendar"` to each persona's array (e.g. after `overview`): creator/ecommerce/freelancer all get `calendar`.
 
 - [ ] **Step 3: Build the page** — `apps/web/app/(dashboard)/[projectId]/calendar/page.tsx`:
 ```typescript
@@ -985,41 +991,15 @@ git commit -m "feat(calendar): month calendar page with sidebar entry and i18n"
 - Modify: `apps/web/app/(dashboard)/[projectId]/calendar/page.tsx` (wire modal + popover)
 
 **Interfaces:**
-- Consumes: `createCalendarEntry`, `updateCalendarEntry`, `deleteCalendarEntry`, `publishCalendarEntryNow`, `CalendarEntry`, plus the existing list functions for draft content and WordPress connections (verify exact names in Step 1).
+- Consumes: `createCalendarEntry`, `updateCalendarEntry`, `deleteCalendarEntry`, `publishCalendarEntryNow`, `listArticles`, `getSocialPosts`/`listSocialPosts`, `listImages`/images list, `getPublishingConnections` (whatever the existing functions are named — verify in `lib/api.ts` before use), `CalendarEntry`.
 
-- [ ] **Step 1: Verify the existing list functions** you will reuse — run:
-`grep -n "export async function listArticles\|export async function.*[Ss]ocial\|export async function.*[Ii]mage\|export async function.*[Cc]onnection\|export interface PublishingConnection\|banner_format" apps/web/lib/api.ts`
-Note the exact function/type names for: draft articles, social posts, banner images (generated images with `banner_format`), and WordPress publishing connections. Use those exact names below. If a needed list function does not exist, add a thin wrapper in `lib/api.ts` following the existing `apiClient.get` pattern (e.g. `getPublishingConnections(projectId)` hitting `/publishing/connections?project_id=...`), and commit it as part of this task.
+- [ ] **Step 1: Verify the existing list functions** you will reuse — run `grep -n "export async function listArticles\|SocialPost\|export async function.*[Ii]mages\|[Cc]onnection" apps/web/lib/api.ts` and note the exact names for: draft articles, draft social posts, banners (generated images with a `banner_format`), and WordPress publishing connections. Use those exact names in the modal.
 
-- [ ] **Step 2: Build `AddToCalendarModal.tsx`** — a modal (follow the structure/styling of an existing modal such as `apps/web/components/projects/CreateProjectModal.tsx`; use the `.popover`/overlay patterns already in the codebase). Props: `{ projectId: string; defaultDate?: string; onClose: () => void }`. Contents:
-  - A content-type selector (Article / Social / Banner) via `t("calendar.type.*")`.
-  - A list of that type's schedulable items fetched with the functions verified in Step 1 (for banners, filter to items with a non-null `banner_format`); show title, radio/click to select.
-  - A `datetime-local` input (`t("calendar.pickDate")`), defaulting to `defaultDate` if given.
-  - A target selector shown only for Article/Banner: a WordPress connection `<select>` (from the connections list). Social implies `target_kind="linkedin"` with no connection.
-  - Submit calls:
-    ```typescript
-    await createCalendarEntry(projectId, {
-      content_type,
-      content_id,
-      scheduled_at: new Date(localDateTime).toISOString(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      target_kind: content_type === "social" ? "linkedin" : "wordpress",
-      connection_id: content_type === "social" ? undefined : selectedConnectionId,
-    });
-    ```
-    then `queryClient.invalidateQueries({ queryKey: ["calendar", projectId] })` and `onClose()`.
-  - All labels via `t("calendar.*")`. No emoji. Handle create errors with a toast (`useToast`).
+- [ ] **Step 2: Build `AddToCalendarModal.tsx`** — a dialog with: a content-type tab (Article/Social/Banner), a list of that type's schedulable items (fetched via the verified functions; for banners filter `banner_format != null`), a datetime-local input, and (shown only for article/banner) a WordPress connection select. On submit call `createCalendarEntry(projectId, { content_type, content_id, scheduled_at: new Date(local).toISOString(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, target_kind, connection_id })` then invalidate `["calendar", projectId]`. All labels via `t("calendar.*")`. Use `.popover`/existing modal styling patterns (see an existing modal such as `components/projects/CreateProjectModal.tsx`). No emoji.
 
-- [ ] **Step 3: Build `CalendarEntryPopover.tsx`** — Props: `{ projectId: string; entry: CalendarEntry; onClose: () => void }`. Contents:
-  - Title, a type badge (`t("calendar.type.*")`), a state badge (`t("calendar.state.*")`) colored by state (failed → destructive, published → success, scheduled → primary, else muted); show `entry.error` if present.
-  - A `datetime-local` prefilled from `entry.scheduled_at` → on change `updateCalendarEntry(entry.id, { scheduled_at: new Date(v).toISOString() })`.
-  - A target select (WordPress connection / LinkedIn) → `updateCalendarEntry(entry.id, { target_kind, connection_id })`.
-  - A Planned/Scheduled toggle → `updateCalendarEntry(entry.id, { state })`; if it rejects (400), show `t("calendar.needTarget")` via toast and leave it Planned.
-  - **Publish now** button → `publishCalendarEntryNow(entry.id)`.
-  - **Remove** button (`t("calendar.delete")`) → `deleteCalendarEntry(entry.id)`.
-  - After each mutation: `queryClient.invalidateQueries({ queryKey: ["calendar", projectId] })`. All labels via `t()`. No emoji.
+- [ ] **Step 3: Build `CalendarEntryPopover.tsx`** — given an entry: show its title, type badge, state badge; a datetime-local to reschedule (`updateCalendarEntry(id, { scheduled_at })`); a target select (WordPress connection / LinkedIn) (`updateCalendarEntry(id, { target_kind, connection_id })`); a Planned/Scheduled toggle (`updateCalendarEntry(id, { state })` — surface the 400 "needTarget" error via a toast if arming without a target); a **Publish now** button (`publishCalendarEntryNow(id)`); a **Remove** button (`deleteCalendarEntry(id)`). Invalidate `["calendar", projectId]` after each mutation. All labels via `t()`. No emoji.
 
-- [ ] **Step 4: Wire into the page** — in `calendar/page.tsx`: add an "Add content" button (`t("calendar.addContent")`) in the header that opens `AddToCalendarModal`; clicking a day cell opens the modal with `defaultDate` set to that day (09:00 local); clicking an entry chip opens `CalendarEntryPopover` for that entry. Add `useQueryClient` for invalidation. Add a small state badge dot to each chip based on `entry.state`.
+- [ ] **Step 4: Wire into the page** — add an "Add content" button in the header opening `AddToCalendarModal`; make each day cell clickable to open the modal pre-set to that date; make each entry chip clickable to open `CalendarEntryPopover`. Color the chip border/badge by `state` (e.g. failed → destructive, published → success).
 
 - [ ] **Step 5: Typecheck**
 
@@ -1034,7 +1014,7 @@ Expected: 200/302. Then in the browser: open `/<projectId>/calendar`, add a draf
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web/components/calendar/ "apps/web/app/(dashboard)/[projectId]/calendar/page.tsx" apps/web/lib/api.ts
+git add apps/web/components/calendar/ "apps/web/app/(dashboard)/[projectId]/calendar/page.tsx"
 git commit -m "feat(calendar): add-content modal and entry popover with publish-now"
 ```
 
@@ -1051,7 +1031,7 @@ git commit -m "feat(calendar): add-content modal and entry popover with publish-
 
 **Interfaces:**
 - Consumes: `publish_entry` (Task 3), `CalendarEntry`.
-- Produces: `async run_content_scheduler(ctx)`; `async publish_due(db, now_iso) -> int`.
+- Produces: `async run_content_scheduler(ctx)`; a testable helper `async publish_due(db, now_iso) -> int`.
 
 - [ ] **Step 1: Write failing tests** — append:
 ```python
@@ -1063,10 +1043,13 @@ async def test_publish_due_selects_only_scheduled_and_due(db_session, org_and_pr
                       content="x", status=SocialPostStatus.draft, char_count=1)
     db_session.add(post)
     await db_session.commit()
+    # due + scheduled
     db_session.add(CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
         content_id=post.id, title="due", scheduled_at="2020-01-01T00:00:00+00:00", target_kind="linkedin", state="scheduled"))
+    # future + scheduled -> skip
     db_session.add(CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
         content_id=post.id, title="future", scheduled_at="2099-01-01T00:00:00+00:00", target_kind="linkedin", state="scheduled"))
+    # due + planned -> skip
     db_session.add(CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
         content_id=post.id, title="planned", scheduled_at="2020-01-01T00:00:00+00:00", target_kind="linkedin", state="planned"))
     await db_session.commit()
@@ -1114,7 +1097,7 @@ async def run_content_scheduler(ctx):
         await publish_due(db, now_iso)
 ```
 
-- [ ] **Step 4: Register in the worker** — in `apps/api/app/workers/worker.py`: import `run_content_scheduler` alongside the other task imports; add it to the `functions = [...]` list; and add to `cron_jobs`:
+- [ ] **Step 4: Register in the worker** — in `apps/api/app/workers/worker.py`: import `run_content_scheduler` where the other task functions are imported; add it to the `functions = [...]` list; and add to `cron_jobs`:
 ```python
         cron(run_content_scheduler, minute={0, 15, 30, 45}, run_at_startup=False),
 ```
@@ -1124,7 +1107,7 @@ async def run_content_scheduler(ctx):
 Run: `docker compose exec -T api pytest tests/test_calendar.py -k publish_due -v`
 Expected: PASS
 Run: `docker compose restart worker && docker compose logs worker 2>&1 | grep -i "Starting worker for" | tail -1`
-Expected: the function list includes `run_content_scheduler` and `cron:run_content_scheduler`.
+Expected: the function list now includes `run_content_scheduler` and `cron:run_content_scheduler`.
 
 - [ ] **Step 6: Commit**
 
@@ -1140,5 +1123,5 @@ git commit -m "feat(calendar): auto-publish scheduler cron for due scheduled ent
 - [ ] Backend: `docker compose exec -T api pytest tests/test_calendar.py -v` — all PASS.
 - [ ] Frontend: `cd apps/web && npm run typecheck` — clean.
 - [ ] Restart: `docker compose restart api web worker`.
-- [ ] Live browser check at `http://localhost:3001/<projectId>/calendar`: add a draft article to a date, set a WordPress target, toggle Scheduled, Publish now → chip shows Published; add a LinkedIn social post, Publish now → posts (or a clear failure if LinkedIn not connected).
-- [ ] Scheduler smoke (container python): create a `scheduled` LinkedIn entry with `scheduled_at` in the past, run `publish_due(db, utcnow_iso)`, assert the entry moved to `published` (or `failed` with a clear error if no LinkedIn connection).
+- [ ] Live browser check at `http://localhost:3001/<projectId>/calendar`: add a draft article to a date, set a WordPress target, toggle Scheduled, Publish now → chip shows Published; add a LinkedIn social post, Publish now → posts (or shows a clear failure if LinkedIn not connected).
+- [ ] Scheduler smoke (container python, mirroring prior features): create a `scheduled` LinkedIn entry with `scheduled_at` in the past, run `publish_due(db, utcnow_iso)`, assert the entry moved to `published` (or `failed` with a clear error if no LinkedIn connection).

@@ -37,19 +37,15 @@ date/time in v1; drag is a later enhancement).
 
 ## Real publish paths reused (verified)
 
-- Article → `WordPressConnector.publish_post(title, content_html, status, meta_title, meta_description)`
-  with creds via `decrypt_credentials(conn.credentials_encrypted)` (`{username, app_password}`);
-  article must be `ready`/`published`. Pattern in `app/api/v1/routers/publishing.py::publish_article`.
-- Banner (`GeneratedImage`) → `app/services/publish_service.py::publish_to_wordpress(image_url,
-  seo_filename, alt_text, wp_url, wp_user, wp_app_password)`. Pattern in `image_publish.py`.
-- Social → LinkedIn `ugcPosts` via the org's LinkedIn `SocialConnection`; token/urn from
-  `json.loads(decrypt_value(conn.encrypted_token))`. Pattern in `social.py::publish_post`.
+- Article → `app/services/publish_service.py`: `publish_to_wordpress`, `publish_to_shopify`.
+- Banner (`GeneratedImage`) → `app/api/v1/routers/image_publish.py` (`publish_to_wordpress/shopify`).
+- Social → LinkedIn `ugcPosts` via the OAuth connection (`app/api/v1/routers/social.py`).
 - No auto-publish scheduler exists today; social `scheduled_at` is currently inert metadata.
 
 ## Data model — `calendar_entries`
 
-New model `app/models/calendar_entry.py` (`Base, TimestampMixin`); Alembic migration. Generic
-column types only (SQLite test compatibility).
+New model `app/models/calendar_entry.py` (`Base, TimestampMixin`); Alembic migration. Use generic
+`sqlalchemy.JSON` if any JSON is needed (SQLite test compatibility) — none required here.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -61,8 +57,8 @@ column types only (SQLite test compatibility).
 | `title` | str(500) | denormalized snapshot for calendar display |
 | `scheduled_at` | str(50) | ISO-8601 UTC planned publish time |
 | `timezone` | str(64) | IANA tz for display (creator's browser tz; default "UTC") |
-| `target_kind` | str(20) \| null | `"wordpress"` \| `"linkedin"` |
-| `connection_id` | UUID \| null | `PublishingConnection` id (WordPress); null for LinkedIn |
+| `target_kind` | str(20) \| null | `"wordpress"` \| `"shopify"` \| `"linkedin"` |
+| `connection_id` | UUID \| null | `PublishingConnection` id (WP/Shopify); null for LinkedIn |
 | `state` | str(20) | `planned` \| `scheduled` \| `publishing` \| `published` \| `failed` |
 | `error` | Text \| null | last publish error |
 | `published_at` | str(50) \| null | ISO timestamp on success |
@@ -77,9 +73,11 @@ Index on `(project_id)` and on `(state, scheduled_at)` for the scheduler due-que
 
 - `planned`: on the calendar with a date, not armed to publish.
 - `scheduled`: **the only state the scheduler publishes.** Transition to `scheduled` is rejected
-  unless a valid target is set: `target_kind` present, and for `wordpress` a `connection_id` that
-  belongs to the org. Social maps to `linkedin` only (unsupported platforms cannot reach `scheduled`).
-- `publishing`: set BEFORE calling the publish service, so overlapping cron runs never double-post.
+  unless a valid target is set: `target_kind` present, and for `wordpress`/`shopify` a
+  `connection_id` that belongs to the org. Social maps to `linkedin` only (unsupported platforms
+  cannot reach `scheduled`).
+- `publishing`: set by the scheduler (or Publish-now) BEFORE calling the publish service, so
+  overlapping cron runs never double-post.
 - `published`: `published_at`/`published_url` set; the underlying content's own status is updated
   (article/social → published).
 - `failed`: `error` set; user can retry (UI moves it back to `scheduled`).
@@ -87,71 +85,92 @@ Index on `(project_id)` and on `(state, scheduled_at)` for the scheduler due-que
 ## Backend
 
 ### Service — `app/services/calendar_service.py`
-- `list_entries(project_id, org_id, start_iso, end_iso, db)` — entries whose `scheduled_at` is in range.
-- `create_entry(project_id, org_id, data, db)` — validates content exists + belongs to the org,
-  snapshots a display `title`, defaults `state="planned"`. Title source per type: article →
-  `Article.title`; social → first ~80 chars of `SocialPost.content`; banner → `GeneratedImage.caption`
-  or `seo_filename` or first ~60 chars of `prompt`, else "Banner".
-- `update_entry(entry_id, org_id, patch, db)` — reschedule / target / state; enforces the
-  `scheduled`-requires-valid-target rule; None if not owned.
-- `delete_entry(entry_id, org_id, db)`.
-- `CalendarError` exception for invalid content / invalid schedule transition.
-
-Publish dispatch lives in `app/services/calendar_publish.py`:
-- `publish_entry(entry, db)` — no-op unless armed (`scheduled`/`failed`); sets `publishing`, resolves
-  content + connection, dispatches by `content_type`, sets `published` (+ source status) or `failed`.
+- `list_entries(project_id, org_id, start_iso, end_iso, db) -> list[CalendarEntry]` — entries whose
+  `scheduled_at` falls in `[start, end]`.
+- `create_entry(project_id, org_id, data, db) -> CalendarEntry` — validates the referenced content
+  exists and belongs to the org, snapshots a display `title`, defaults `state="planned"`. Title
+  source per type: article → `Article.title`; social → first ~80 chars of `SocialPost.content`;
+  banner → `GeneratedImage.caption` or `seo_filename` or first ~60 chars of `prompt`, else "Banner".
+- `update_entry(entry_id, org_id, patch, db) -> CalendarEntry | None` — reschedule / change target /
+  change state; enforces the `scheduled`-requires-valid-target rule; returns None if not owned.
+- `delete_entry(entry_id, org_id, db) -> bool`.
+- `publish_entry(entry, db) -> CalendarEntry` — the dispatch core (reused by cron and Publish-now):
+  set `publishing`; resolve content + connection; dispatch by `content_type`; on success set
+  `published` (+ update source status), on failure set `failed` + `error`. Idempotent: a no-op if
+  the entry is not currently `scheduled`/`failed` (guards against double dispatch).
 
 ### API — `app/api/v1/routers/calendar.py` at `/calendar`
-`GET ?project_id=&start=&end=`, `POST ?project_id=`, `PATCH /{id}`, `DELETE /{id}`,
-`POST /{id}/publish-now`. `CurrentUser`/`DB`, org-scoped. Registered in `router.py`.
+- `GET  /calendar?project_id=&start=&end=` → entries in range.
+- `POST /calendar?project_id=` → create (schedule content onto the calendar).
+- `PATCH /calendar/{entry_id}` → reschedule / state / target.
+- `DELETE /calendar/{entry_id}`.
+- `POST /calendar/{entry_id}/publish-now` → immediate `publish_entry`.
+All use `CurrentUser`/`DB`, org-scoped via `current_user.org_id`. Registered in `router.py` at
+prefix `/calendar`.
 
 ### Scheduler — Phase 2, `app/workers/tasks/calendar_tasks.py`
-`run_content_scheduler(ctx)` selects `state='scheduled' AND scheduled_at <= utcnow` (limit 50) and
-calls `publish_entry` per entry inside try/except. Registered in `worker.py` cron_jobs every 15 min.
+- `run_content_scheduler(ctx)`: select `CalendarEntry` where `state='scheduled'` and
+  `scheduled_at <= utcnow` (limit e.g. 50); call `publish_entry` on each inside try/except so one
+  failure never blocks the batch.
+- Register in `app/workers/worker.py`: add to `functions` and `cron_jobs` as
+  `cron(run_content_scheduler, minute={0, 15, 30, 45})` (every 15 min).
 
 ## Frontend
 
-- `apps/web/lib/api.ts`: `CalendarEntry` type + `listCalendar`, `createCalendarEntry`,
-  `updateCalendarEntry`, `deleteCalendarEntry`, `publishCalendarEntryNow`.
-- Page `app/(dashboard)/[projectId]/calendar/page.tsx`: month grid; day cells show entry chips
-  colored by `content_type` with a state badge. Sidebar: add `calendar` to `NAV_ITEMS` + each
-  persona primary list; `nav.calendar` key.
-- `AddToCalendarModal`: pick a schedulable draft (article/social/banner) + date/time + (WP) target
-  connection → `createCalendarEntry`.
-- `CalendarEntryPopover`: reschedule, set target, toggle Planned↔Scheduled, Publish now, Delete.
-- Full i18n; add a `calendar` block to `en/common.json`.
+### API client — `apps/web/lib/api.ts`
+`CalendarEntry` type + `listCalendar(projectId, start, end)`, `createCalendarEntry(projectId, body)`,
+`updateCalendarEntry(id, patch)`, `deleteCalendarEntry(id)`, `publishCalendarEntryNow(id)`.
+
+### Page — `apps/web/app/(dashboard)/[projectId]/calendar/page.tsx`
+- Month/week toggle grid. Each day cell renders entry chips colored by `content_type` (article /
+  social / banner) with a small state badge (Planned / Scheduled / Published / Failed).
+- **Add content** (`AddToCalendarModal`): lists schedulable drafts — draft articles, draft social
+  posts, banners — pick one + date/time + (for WP/Shopify) a target connection → `createCalendarEntry`.
+- **Entry popover** (`CalendarEntryPopover`): reschedule date/time, choose target connection,
+  toggle Planned↔Scheduled (blocked without a valid target), **Publish now**, Delete.
+- Sidebar: add `calendar` to `NAV_ITEMS` and each persona's primary list in `personaNav`; add the
+  `nav.calendar` key. New page shown for all personas.
+
+### i18n
+Full i18n (project convention): all new user-visible strings via `t()`; add a `calendar` key block
+to `apps/web/public/locales/en/common.json` (day/week/month labels, states, add-content, publish-now,
+delete, empty states, target labels). Other locales fall back to `en`.
 
 ## Timezone
 
-Store `scheduled_at` UTC; capture the creator's browser tz
-(`Intl.DateTimeFormat().resolvedOptions().timeZone`) into `timezone`; display converts. Scheduler
-compares in UTC.
+Store `scheduled_at` as ISO-8601 UTC. On create, capture the creator's browser timezone
+(`Intl.DateTimeFormat().resolvedOptions().timeZone`) into `timezone`; the calendar displays times
+converted to that tz. The scheduler compares in UTC. No server-side tz math beyond UTC comparison.
 
 ## Error handling
 
-- Move to `scheduled` without a valid target → 400 / blocked toggle.
-- Referenced content deleted before publish → `failed`, "content no longer exists".
-- Publish API failure → `failed` + `error`; failed badge on the chip; retry.
-- Unsupported social platform (non-LinkedIn) → cannot arm to `scheduled`.
-- Missing/expired connection at publish time → `failed` + clear error.
+- Move to `scheduled` without a valid target → 400 (API) / blocked toggle (UI).
+- Referenced content deleted before publish → `publish_entry` sets `failed`, error "content no
+  longer exists"; the source-status update is skipped.
+- Publish API failure → `failed` + `error`; the calendar chip shows a failed badge; retry available.
+- Unsupported social platform (non-LinkedIn) → cannot be armed to `scheduled` (validation).
+- Missing/expired publish connection at publish time → `failed` + a clear error.
 
 ## Testing
 
 Backend (pytest, SQLite harness mirroring `tests/test_recommendations.py`; tables: organizations,
 users, projects, articles, social_posts, generated_images, calendar_entries):
-- `create_entry` validates content + snapshots title; unknown content → `CalendarError`.
-- `update_entry` blocks `planned→scheduled` without a target; allows with one.
-- `publish_entry` success (publish paths mocked) → `published` + source status updated; failure →
-  `failed` + error; no-op on non-armed state.
-- scheduler `publish_due` picks only `scheduled` + due (not future, not planned).
-- endpoint tests: create, list-in-range, patch state (400 without target), delete, publish-now.
+- `create_entry` validates content existence + snapshots title; unknown content → error.
+- `update_entry` blocks `planned→scheduled` without a valid target; allows with one.
+- `publish_entry` success path with the publish services mocked → `state=published`,
+  `published_at` set, source content status updated.
+- `publish_entry` failure (mock raises) → `state=failed`, `error` set.
+- scheduler (`run_content_scheduler`) picks only `scheduled` + due entries, skips `publishing`
+  (idempotency) and future-dated ones.
+- endpoint tests: create, list-in-range, patch state, publish-now, delete (200/permission scoping).
 
-Frontend: `npm run typecheck`; visual check of grid, add-content modal, entry popover, publish-now.
+Frontend: `npm run typecheck`; visual check of month/week grid, add-content modal, entry popover,
+and a manual Publish-now.
 
 ## Reused infrastructure
 
-- `publish_service.py` (`publish_to_wordpress`); `WordPressConnector`; LinkedIn `ugcPosts`;
-  `PublishingConnection` / `PublishJob`; `SocialConnection`.
+- `publish_service.py` (`publish_to_wordpress`, `publish_to_shopify`); `image_publish` path;
+  LinkedIn publish (social router); `PublishingConnection` / `PublishRecord` / `PublishJob`.
 - arq cron in `app/workers/worker.py`.
 - `Card`, i18n, sidebar `NAV_ITEMS`/`personaNav`, TanStack Query.
-- Content sources `Article`, `SocialPost`, `GeneratedImage` (read-only from the calendar's view).
+- Content sources: `Article`, `SocialPost`, `GeneratedImage` (read-only from the calendar's view).
