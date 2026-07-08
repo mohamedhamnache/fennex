@@ -40,6 +40,9 @@ def _build_actions() -> dict[str, ActionDef]:
         ActionDef("dune.write_article", "dune", "Write an article",
                   "Write an SEO article on the chosen angle (uses the picked topic/keyword if present).",
                   {"title": "optional article title", "keyword": "optional target keyword"}, ex.exec_dune_write_article),
+        ActionDef("sirocco.generate_visual", "sirocco", "Generate a visual",
+                  "Generate a marketing visual image for the campaign (uses the chosen angle if no prompt given).",
+                  {"prompt": "optional image prompt"}, ex.exec_sirocco_generate_visual),
     ]
     return {d.key: d for d in defs}
 

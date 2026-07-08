@@ -199,6 +199,23 @@ async def test_dune_executor_creates_article(db_session, org_and_project):
     assert art is not None and art.body_markdown
 
 
+@pytest.mark.asyncio
+async def test_sirocco_executor_creates_image(db_session, org_and_project):
+    from app.services.campaign_executors import exec_sirocco_generate_visual
+    from app.models.image import GeneratedImage
+    db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="openai", encrypted_value=encrypt_value("test-key")))
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="sirocco", action="sirocco.generate_visual", brief={})
+    fake_result = {"ok": True, "image_url": "data:image/png;base64,xyz", "revised_prompt": "p",
+                   "width": 1024, "height": 1024, "cost_usd": 0.04}
+    with patch("app.services.campaign_executors.generate_image_dalle", new=AsyncMock(return_value=fake_result)):
+        res = await exec_sirocco_generate_visual(c, step, _ctx(), db_session)
+    assert res.artifact_type == "image" and res.artifact_ids
+    img = (await db_session.execute(select(GeneratedImage))).scalars().first()
+    assert img is not None and img.image_url == "data:image/png;base64,xyz"
+
+
 # ── Campaign director (LLM planner) ───────────────────────────────────────────
 
 @pytest.mark.asyncio

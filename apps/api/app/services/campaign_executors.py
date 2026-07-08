@@ -3,8 +3,10 @@ import json
 import re
 
 from app.models.article import Article, ArticleStatus
+from app.models.image import GeneratedImage, ImageStatus
 from app.services.analytics_service import get_market_insights, get_opportunities
 from app.services.campaign_catalog import CampaignContext, StepResult
+from app.services.image_service import generate_image_dalle
 from app.services.llm_service import call_llm, get_org_llm_keys
 from app.services.oasis_service import generate_market_report
 from app.workers.tasks.article_tasks import _build_system_prompt, _build_user_prompt, _parse_llm_response
@@ -92,3 +94,23 @@ async def exec_dune_write_article(campaign, step, context: CampaignContext, db) 
     await db.commit()
     return StepResult(summary=f"Drafted article: {title}", artifact_type="article",
                       artifact_ids=[str(article.id)], structured={"article_id": str(article.id), "title": title})
+
+
+async def exec_sirocco_generate_visual(campaign, step, context: CampaignContext, db) -> StepResult:
+    keys = await get_org_llm_keys(campaign.org_id, db)
+    if "openai" not in keys:
+        raise RuntimeError("Image generation needs an OpenAI key.")
+    brief = step.brief or {}
+    angle = _angle(context)
+    prompt = str(brief.get("prompt") or f"Marketing visual for: {angle.get('topic') or campaign.goal}")[:800]
+    result = await generate_image_dalle(prompt=prompt, style="professional", usage="marketing_banner",
+                                        openai_api_key=keys["openai"])
+    if not result.get("ok"):
+        raise RuntimeError(result.get("error", "Image generation failed."))
+    img = GeneratedImage(org_id=campaign.org_id, project_id=campaign.project_id, prompt=prompt,
+                         revised_prompt=result.get("revised_prompt"), style="professional", usage="marketing_banner",
+                         status=ImageStatus.ready, image_url=result.get("image_url"),
+                         width=result.get("width"), height=result.get("height"), cost_usd=result.get("cost_usd"))
+    db.add(img); await db.commit()
+    return StepResult(summary="Generated a campaign visual.", artifact_type="image",
+                      artifact_ids=[str(img.id)], structured={"image_id": str(img.id)})
