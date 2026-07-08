@@ -264,3 +264,25 @@ async def test_patch_schedule_without_target_400(client, org_and_project, db_ses
         json={"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T09:00:00+00:00"})).json()["id"]
     r = await client.patch(f"/api/v1/calendar/{eid}", json={"state": "scheduled"})
     assert r.status_code == 400
+
+
+# ── auto-publish scheduler ────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_publish_due_selects_only_scheduled_and_due(db_session, org_and_project):
+    from unittest.mock import AsyncMock, patch
+    from app.workers.tasks.calendar_tasks import publish_due
+    post = SocialPost(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, platform=SocialPlatform.linkedin,
+                      content="x", status=SocialPostStatus.draft, char_count=1)
+    db_session.add(post)
+    await db_session.commit()
+    db_session.add(CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
+        content_id=post.id, title="due", scheduled_at="2020-01-01T00:00:00+00:00", target_kind="linkedin", state="scheduled"))
+    db_session.add(CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
+        content_id=post.id, title="future", scheduled_at="2099-01-01T00:00:00+00:00", target_kind="linkedin", state="scheduled"))
+    db_session.add(CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="social",
+        content_id=post.id, title="planned", scheduled_at="2020-01-01T00:00:00+00:00", target_kind="linkedin", state="planned"))
+    await db_session.commit()
+    with patch("app.services.calendar_publish._publish_social", new=AsyncMock(return_value={"ok": True, "url": None})):
+        n = await publish_due(db_session, "2026-01-01T00:00:00+00:00")
+    assert n == 1
