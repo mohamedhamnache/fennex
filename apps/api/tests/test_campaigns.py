@@ -231,6 +231,30 @@ async def test_nomad_executor_creates_social_drafts(db_session, org_and_project)
     assert "3" in res.summary and "draft" in res.summary.lower()
 
 
+@pytest.mark.asyncio
+async def test_sable_executor_scans_competitor(db_session, org_and_project):
+    from app.services.campaign_executors import exec_sable_competitor_scan
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="sable", action="sable.competitor_scan",
+                        brief={"competitor_url": "https://x"})
+    fake_result = {"ok": True, "score": 80}
+    with patch("app.services.campaign_executors.analyze_competitor", new=AsyncMock(return_value=fake_result)):
+        res = await exec_sable_competitor_scan(c, step, _ctx(), db_session)
+    assert res.artifact_type == "analysis"
+    assert res.structured.get("analysis") == fake_result
+
+
+@pytest.mark.asyncio
+async def test_sable_executor_skips_without_url(db_session, org_and_project):
+    from app.services.campaign_executors import exec_sable_competitor_scan
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="sable", action="sable.competitor_scan", brief={})
+    res = await exec_sable_competitor_scan(c, step, _ctx(), db_session)
+    assert res.structured.get("skipped") is True
+
+
 # ── Campaign director (LLM planner) ───────────────────────────────────────────
 
 @pytest.mark.asyncio

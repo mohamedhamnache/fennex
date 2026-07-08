@@ -6,6 +6,7 @@ from app.models.article import Article, ArticleStatus
 from app.models.image import GeneratedImage, ImageStatus
 from app.services.analytics_service import get_market_insights, get_opportunities
 from app.services.campaign_catalog import CampaignContext, StepResult
+from app.services.competitor_service import analyze as analyze_competitor
 from app.services.image_service import generate_image_dalle
 from app.services.llm_service import call_llm, get_org_llm_keys
 from app.services.nomad_service import generate_outreach_plan
@@ -126,3 +127,13 @@ async def exec_nomad_social_posts(campaign, step, context: CampaignContext, db) 
     n = res.get("drafts_saved", 0)
     return StepResult(summary=f"Created {n} social drafts to distribute the campaign.",
                       artifact_type="social", structured={"drafts_saved": n})
+
+
+async def exec_sable_competitor_scan(campaign, step, context: CampaignContext, db) -> StepResult:
+    url = str((step.brief or {}).get("competitor_url") or "").strip()
+    if not url:
+        return StepResult(summary="No competitor URL provided — skipped.", structured={"skipped": True})
+    res = await analyze_competitor(campaign.project_id, campaign.org_id, url, db)
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error", "Competitor scan failed."))
+    return StepResult(summary=f"Scanned competitor {url}.", artifact_type="analysis", structured={"analysis": res})

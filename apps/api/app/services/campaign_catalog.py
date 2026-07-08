@@ -46,6 +46,9 @@ def _build_actions() -> dict[str, ActionDef]:
         ActionDef("nomad.social_posts", "nomad", "Create social posts",
                   "Generate a week of LinkedIn outreach posts and DM templates, saved as social drafts.",
                   {"goal": "optional outreach goal"}, ex.exec_nomad_social_posts),
+        ActionDef("sable.competitor_scan", "sable", "Scan a competitor",
+                  "Crawl and score a competitor page, with AI content-gap insights vs. the project's own demand.",
+                  {"competitor_url": "URL of the competitor page to analyze"}, ex.exec_sable_competitor_scan),
     ]
     return {d.key: d for d in defs}
 
