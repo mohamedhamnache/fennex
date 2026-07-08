@@ -865,6 +865,66 @@
     "viewImages": "View images",
     "viewSocial": "View social posts",
     "viewDetails": "View details",
-    "noDetails": "No details available."
+    "noDetails": "No details available.",
+    "canvas": {
+      "goal": "Goal",
+      "package": "Package",
+      "packagePending": "{{done}} / {{total}} artifacts",
+      "launch": "Launch campaign",
+      "estimatedTotal": "Estimated total",
+      "minutes": "min",
+      "directorNote": "Sirocco's plan",
+      "elapsed": "Elapsed",
+      "liveFeed": "Live feed",
+      "stepsDone": "{{done}} of {{total}} steps",
+      "actions": {
+        "oasis_market_report": "Market report",
+        "zerda_pick_angle": "Pick the angle",
+        "sable_competitor_scan": "Competitor scan",
+        "dune_write_article": "Write the article",
+        "sirocco_generate_visual": "Generate the visual",
+        "nomad_social_posts": "Social posts"
+      }
+    },
+    "stepPanel": {
+      "brief": "Brief",
+      "noBrief": "No parameters",
+      "errorLabel": "Error",
+      "removeStep": "Remove step",
+      "estimateLabel": "Estimated"
+    },
+    "ship": {
+      "ship": "Ship to Calendar",
+      "shipped": "Scheduled - view calendar",
+      "shipFailed": "Could not schedule. Try again."
+    },
+    "trackingChip": {
+      "title": "Zerda is tracking this campaign",
+      "body": "Targeting \"{{keyword}}\". Zerda will measure the real impact for 28 days after you publish and report whether it worked.",
+      "view": "View tracking"
+    },
+    "composer": {
+      "headline": "What should the Pack achieve?",
+      "subline": "One goal in. Research, strategy, content, visuals and distribution out.",
+      "cta": "Design my campaign",
+      "templatesHint": "Templates tuned to your persona",
+      "past": "Your campaigns",
+      "runAgain": "Run again",
+      "openArticle": "Open",
+      "reviewSocial": "Review in Social",
+      "wordCount": "{{count}} words",
+      "seoScore": "SEO {{score}}"
+    },
+    "templates": {
+      "audience_growth": { "label": "Grow my audience", "goal": "Grow my audience this month with content on the topics my readers already search for" },
+      "series_week": { "label": "A week-long series", "goal": "Create a one-week content series that owns one high-demand topic in my niche" },
+      "collab_push": { "label": "Collab announcement", "goal": "Announce and promote my new collaboration with an article, a visual and a social series" },
+      "product_launch": { "label": "Launch a product", "goal": "Launch my new product with a landing article, a hero visual and a social campaign" },
+      "buyer_guide": { "label": "Buyer's guide", "goal": "Publish a buyer's guide that captures the commercial searches in my category" },
+      "store_traffic": { "label": "Drive store traffic", "goal": "Drive more organic traffic to my store with content on my highest-potential keywords" },
+      "launch_offer": { "label": "Launch a new offer", "goal": "Launch my new service offer and attract qualified leads this quarter" },
+      "own_topic": { "label": "Own a topic in my niche", "goal": "Become the reference on one topic my potential clients search for" },
+      "seasonal_push": { "label": "Seasonal content push", "goal": "Prepare a seasonal campaign that captures the upcoming peak in my niche" }
+    }
   }
 }
