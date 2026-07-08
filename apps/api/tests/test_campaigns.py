@@ -232,3 +232,31 @@ async def test_execute_campaign_runs_steps_and_chains(db_session, org_and_projec
     assert c.status == "completed"
     assert [s.status for s in steps] == ["completed", "completed"]
     assert calls == [("zerda", 0), ("oasis", 1)]   # context grew between steps
+
+
+# ── API router ────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_campaign_persists_plan(client, org_and_project):
+    plan = {"summary": "s", "steps": [{"agent": "zerda", "action": "zerda.pick_angle", "brief": {}, "why": "w"},
+                                       {"agent": "oasis", "action": "oasis.market_report", "brief": {}, "why": "w2"}]}
+    with patch("app.api.v1.routers.campaigns.draft_plan", new=AsyncMock(return_value=plan)):
+        r = await client.post(f"/api/v1/campaigns?project_id={FAKE_PROJECT_ID}", json={"goal": "grow"})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["status"] == "planned" and len(body["steps"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_plan_edit_and_run(client, org_and_project):
+    plan = {"summary": "s", "steps": [{"agent": "zerda", "action": "zerda.pick_angle", "brief": {}, "why": "w"},
+                                       {"agent": "oasis", "action": "oasis.market_report", "brief": {}, "why": "w2"}]}
+    with patch("app.api.v1.routers.campaigns.draft_plan", new=AsyncMock(return_value=plan)):
+        cid = (await client.post(f"/api/v1/campaigns?project_id={FAKE_PROJECT_ID}", json={"goal": "grow"})).json()["id"]
+    got = (await client.get(f"/api/v1/campaigns/{cid}")).json()
+    keep = [got["steps"][1]["id"]]   # keep only the 2nd step
+    pr = await client.patch(f"/api/v1/campaigns/{cid}/plan", json={"step_ids": keep})
+    assert pr.status_code == 200 and len(pr.json()["steps"]) == 1
+    with patch("app.api.v1.routers.campaigns.enqueue_campaign", new=AsyncMock(return_value=None)):
+        run = await client.post(f"/api/v1/campaigns/{cid}/run")
+    assert run.status_code == 200 and run.json()["status"] == "running"
