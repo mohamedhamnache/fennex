@@ -11,16 +11,19 @@ from app.integrations.publishing.wordpress import WordPressConnector
 from app.models.article import Article, ArticleStatus
 from app.models.calendar_entry import CalendarEntry
 from app.models.image import GeneratedImage
-from app.models.publishing import PublishingConnection, PublishJob, PublishJobStatus
+from app.models.publishing import PublishingConnection, PublishingPlatform, PublishJob, PublishJobStatus
 from app.models.social import SocialConnection, SocialPlatform, SocialPost, SocialPostStatus
 from app.services.publish_service import publish_to_wordpress
 
 
 async def _wp_connection(entry: CalendarEntry, db: AsyncSession) -> PublishingConnection:
     conn = (await db.execute(select(PublishingConnection).where(
-        PublishingConnection.id == entry.connection_id, PublishingConnection.org_id == entry.org_id))).scalars().first()
+        PublishingConnection.id == entry.connection_id, PublishingConnection.org_id == entry.org_id,
+        PublishingConnection.platform == PublishingPlatform.wordpress))).scalars().first()
     if conn is None or not conn.credentials_encrypted:
         raise RuntimeError("WordPress connection missing or has no credentials.")
+    if not conn.is_active:
+        raise RuntimeError("WordPress connection is inactive.")
     return conn
 
 
@@ -29,6 +32,8 @@ async def _publish_article(entry: CalendarEntry, db: AsyncSession) -> dict:
         Article.id == entry.content_id, Article.org_id == entry.org_id))).scalars().first()
     if art is None:
         raise RuntimeError("Article no longer exists.")
+    if art.status not in (ArticleStatus.ready, ArticleStatus.published):
+        raise RuntimeError("Article is not ready to publish (status must be ready or published).")
     conn = await _wp_connection(entry, db)
     creds = decrypt_credentials(conn.credentials_encrypted)
     wp = WordPressConnector(site_url=conn.site_url, username=creds["username"], app_password=creds["app_password"])

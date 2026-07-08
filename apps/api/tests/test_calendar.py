@@ -24,6 +24,7 @@ from app.models.article import Article  # noqa: F401
 from app.models.social import SocialPost  # noqa: F401
 from app.models.image import GeneratedImage  # noqa: F401
 from app.models.calendar_entry import CalendarEntry  # noqa: F401
+from app.models.publishing import PublishingConnection, PublishingPlatform  # noqa: F401
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects",
-    "articles", "social_posts", "generated_images", "calendar_entries",
+    "articles", "social_posts", "generated_images", "calendar_entries", "publishing_connections",
 ]
 
 
@@ -147,6 +148,17 @@ async def test_create_entry_snapshots_article_title(db_session, org_and_project)
 
 
 @pytest.mark.asyncio
+async def test_create_entry_normalizes_scheduled_at_to_canonical_utc(db_session, org_and_project):
+    from app.services.calendar_service import create_entry
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="TZ Guide", status=ArticleStatus.ready)
+    db_session.add(art)
+    await db_session.commit()
+    entry = await create_entry(FAKE_PROJECT_ID, FAKE_ORG_ID,
+        {"content_type": "article", "content_id": str(art.id), "scheduled_at": "2026-08-01T11:00:00+02:00"}, db_session)
+    assert entry.scheduled_at == "2026-08-01T09:00:00+00:00"
+
+
+@pytest.mark.asyncio
 async def test_create_entry_unknown_content_raises(db_session, org_and_project):
     from app.services.calendar_service import create_entry, CalendarError
     with pytest.raises(CalendarError):
@@ -222,6 +234,27 @@ async def test_publish_entry_failure_sets_failed(db_session, org_and_project):
         out = await publish_entry(entry, db_session)
     assert out.state == "failed"
     assert "boom" in (out.error or "")
+
+
+@pytest.mark.asyncio
+async def test_publish_entry_article_not_ready_fails(db_session, org_and_project):
+    from app.services.calendar_publish import publish_entry
+    art = Article(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, title="Draft Article", status=ArticleStatus.draft)
+    db_session.add(art)
+    conn = PublishingConnection(
+        org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, name="wp",
+        platform=PublishingPlatform.wordpress, site_url="https://x", is_active=True,
+    )
+    db_session.add(conn)
+    await db_session.commit()
+    entry = CalendarEntry(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, content_type="article",
+                          content_id=art.id, title="Draft Article", scheduled_at="2026-01-01T00:00:00+00:00",
+                          target_kind="wordpress", connection_id=conn.id, state="scheduled")
+    db_session.add(entry)
+    await db_session.commit()
+    out = await publish_entry(entry, db_session)
+    assert out.state == "failed"
+    assert "not ready" in (out.error or "")
 
 
 @pytest.mark.asyncio

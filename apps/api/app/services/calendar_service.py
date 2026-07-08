@@ -1,5 +1,6 @@
 """Unified content calendar — scheduling authority + CRUD. Publish dispatch lives in calendar_publish.py."""
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,15 @@ VALID_TARGETS = {"wordpress", "linkedin"}
 
 class CalendarError(Exception):
     pass
+
+
+def _normalize_dt(value: str) -> str:
+    """Parse an ISO-8601 datetime (accepting a trailing Z), convert to UTC, and
+    return a fixed-width canonical form so string comparison equals time comparison."""
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat()
 
 
 async def _content_title(content_type: str, content_id: uuid.UUID, project_id, org_id, db: AsyncSession) -> str | None:
@@ -59,7 +69,7 @@ async def create_entry(project_id, org_id, data: dict, db: AsyncSession) -> Cale
         raise CalendarError("Content not found for this project.")
     entry = CalendarEntry(
         org_id=org_id, project_id=project_id, content_type=ctype, content_id=cid,
-        title=title[:500], scheduled_at=data["scheduled_at"],
+        title=title[:500], scheduled_at=_normalize_dt(data["scheduled_at"]),
         timezone=data.get("timezone") or "UTC",
         target_kind=data.get("target_kind"), connection_id=data.get("connection_id"),
         state="planned",
@@ -85,7 +95,10 @@ async def update_entry(entry_id, org_id, patch: dict, db: AsyncSession) -> Calen
         return None
     for field in ("scheduled_at", "timezone", "target_kind", "connection_id"):
         if field in patch and patch[field] is not None:
-            setattr(entry, field, patch[field])
+            value = patch[field]
+            if field == "scheduled_at":
+                value = _normalize_dt(value)
+            setattr(entry, field, value)
     if patch.get("state") == "scheduled":
         await _validate_target(entry, org_id, db)
         entry.state = "scheduled"

@@ -91,7 +91,8 @@ export function CalendarEntryPopover({ projectId, entry, onClose }: CalendarEntr
   }
 
   async function handleToggleState() {
-    const nextState: CalendarState = entry.state === "planned" ? "scheduled" : "planned";
+    const nextState: CalendarState =
+      entry.state === "planned" ? "scheduled" : entry.state === "failed" ? "scheduled" : "planned";
     setBusy(true);
     try {
       await updateCalendarEntry(entry.id, { state: nextState });

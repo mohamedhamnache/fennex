@@ -17,14 +17,14 @@ class EntryCreate(BaseModel):
     scheduled_at: str
     timezone: Optional[str] = None
     target_kind: Optional[str] = None
-    connection_id: Optional[str] = None
+    connection_id: Optional[uuid.UUID] = None
 
 
 class EntryPatch(BaseModel):
     scheduled_at: Optional[str] = None
     timezone: Optional[str] = None
     target_kind: Optional[str] = None
-    connection_id: Optional[str] = None
+    connection_id: Optional[uuid.UUID] = None
     state: Optional[str] = None
 
 
