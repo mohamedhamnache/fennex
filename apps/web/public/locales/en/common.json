@@ -859,6 +859,12 @@
     "back": "Back",
     "summary": "Summary",
     "status": { "planned": "Planned", "running": "Running", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled" },
-    "stepStatus": { "pending": "Pending", "running": "Running", "completed": "Done", "failed": "Failed", "skipped": "Skipped" }
+    "stepStatus": { "pending": "Pending", "running": "Running", "completed": "Done", "failed": "Failed", "skipped": "Skipped" },
+    "package": "Campaign package",
+    "viewArticle": "View article",
+    "viewImages": "View images",
+    "viewSocial": "View social posts",
+    "viewDetails": "View details",
+    "noDetails": "No details available."
   }
 }
