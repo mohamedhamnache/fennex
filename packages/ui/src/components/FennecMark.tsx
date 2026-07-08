@@ -13,7 +13,7 @@ interface FennecMarkProps {
  * On light surfaces it renders as-is; on the brand gradient add `brightness-0
  * invert` via className to render it white.
  */
-export function FennecMark({ size = 24, className = "", title, src = "/fennec.png" }: FennecMarkProps) {
+export function FennecMark({ size = 24, className = "", title, src = "/fennec.png?v=2" }: FennecMarkProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- shared package, no next/image config
     <img

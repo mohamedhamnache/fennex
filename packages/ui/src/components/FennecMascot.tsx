@@ -15,7 +15,7 @@ interface FennecMascotProps {
 export function FennecMascot({ size = 80, className = "", message }: FennecMascotProps) {
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>
-      <FennecMark size={size} className="opacity-80" title="Fennex" />
+      <FennecMark size={size} className="opacity-80 dark:opacity-90 dark:invert" title="Fennex" />
       {message && <p className="text-center text-sm text-muted-foreground">{message}</p>}
     </div>
   );
