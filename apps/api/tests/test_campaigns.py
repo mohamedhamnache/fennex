@@ -172,3 +172,28 @@ async def test_zerda_executor_picks_angle(db_session, org_and_project):
         res = await exec_zerda_pick_angle(c, step, _ctx(), db_session)
     assert res.structured.get("keyword") == "olive oil benefits"
     assert res.summary
+
+
+# ── Campaign director (LLM planner) ───────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_director_parses_and_sanitizes(db_session, org_and_project):
+    from app.services.campaign_director import draft_plan
+    db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="openai", encrypted_value=encrypt_value("k")))
+    await db_session.commit()
+    raw = '{"summary":"plan","steps":[{"agent":"zerda","action":"zerda.pick_angle","brief":{},"why":"focus"},{"agent":"x","action":"bogus.action","brief":{},"why":"drop me"}]}'
+    with patch("app.services.campaign_director.call_llm", new=AsyncMock(return_value=raw)):
+        plan = await draft_plan(FAKE_PROJECT_ID, FAKE_ORG_ID, "grow", "creator", db_session)
+    actions = [s["action"] for s in plan["steps"]]
+    assert "zerda.pick_angle" in actions
+    assert "bogus.action" not in actions   # unknown dropped
+
+
+@pytest.mark.asyncio
+async def test_director_fallback_on_bad_json(db_session, org_and_project):
+    from app.services.campaign_director import draft_plan
+    db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="openai", encrypted_value=encrypt_value("k")))
+    await db_session.commit()
+    with patch("app.services.campaign_director.call_llm", new=AsyncMock(return_value="not json at all")):
+        plan = await draft_plan(FAKE_PROJECT_ID, FAKE_ORG_ID, "grow", "creator", db_session)
+    assert [s["action"] for s in plan["steps"]] == ["zerda.pick_angle", "dune.write_article"]
