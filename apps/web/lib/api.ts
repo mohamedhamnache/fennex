@@ -2019,6 +2019,8 @@ export interface CampaignStep {
   artifact_ids: string[] | null;
   structured: Record<string, unknown> | null;
   error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
 }
 
 export interface Campaign {
