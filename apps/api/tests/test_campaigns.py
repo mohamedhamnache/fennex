@@ -26,6 +26,7 @@ from app.models.image import GeneratedImage  # noqa: F401
 from app.models.social import SocialPost  # noqa: F401
 from app.models.analytics import GscQueryStat, AnalyticsSnapshot  # noqa: F401
 from app.models.campaign import Campaign, CampaignStep  # noqa: F401
+from app.models.api_key import APIKey  # noqa: F401
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects",
     "articles", "generated_images", "social_posts", "gsc_query_stats", "analytics_snapshots",
-    "campaigns", "campaign_steps",
+    "campaigns", "campaign_steps", "api_keys",
 ]
 
 
@@ -128,3 +129,46 @@ async def test_campaign_persists(db_session, org_and_project):
     await db_session.commit()
     await db_session.refresh(c); await db_session.refresh(step)
     assert c.status == "planned" and step.order == 0
+
+
+# ── Action catalog + executors ────────────────────────────────────────────────
+
+from unittest.mock import AsyncMock, patch
+from app.models.analytics import GscQueryStat
+from app.core.security import encrypt_value
+
+
+def _ctx():
+    from app.services.campaign_catalog import CampaignContext
+    return CampaignContext(goal="grow", persona="creator", project_profile="", prior=[])
+
+
+@pytest.mark.asyncio
+async def test_oasis_executor_returns_report(db_session, org_and_project):
+    from app.services.campaign_executors import exec_oasis_market_report
+    from app.models.campaign import Campaign, CampaignStep
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="oasis", action="oasis.market_report")
+    with patch("app.services.campaign_executors.generate_market_report",
+               new=AsyncMock(return_value={"ok": True, "title": "T", "markdown": "# Report"})):
+        res = await exec_oasis_market_report(c, step, _ctx(), db_session)
+    assert res.artifact_type == "report"
+    assert "Report" in res.summary
+
+
+@pytest.mark.asyncio
+async def test_zerda_executor_picks_angle(db_session, org_and_project):
+    from app.services.campaign_executors import exec_zerda_pick_angle
+    from app.models.campaign import Campaign, CampaignStep
+    db_session.add(GscQueryStat(project_id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, query="olive oil benefits",
+                                clicks=5, impressions=900, ctr=0.005, position=7.0))
+    db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="anthropic", encrypted_value=encrypt_value("test-key")))
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle")
+    with patch("app.services.campaign_executors.call_llm",
+               new=AsyncMock(return_value='{"topic":"Olive oil health","keyword":"olive oil benefits","rationale":"striking distance"}')):
+        res = await exec_zerda_pick_angle(c, step, _ctx(), db_session)
+    assert res.structured.get("keyword") == "olive oil benefits"
+    assert res.summary
