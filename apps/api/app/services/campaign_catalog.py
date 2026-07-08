@@ -43,6 +43,9 @@ def _build_actions() -> dict[str, ActionDef]:
         ActionDef("sirocco.generate_visual", "sirocco", "Generate a visual",
                   "Generate a marketing visual image for the campaign (uses the chosen angle if no prompt given).",
                   {"prompt": "optional image prompt"}, ex.exec_sirocco_generate_visual),
+        ActionDef("nomad.social_posts", "nomad", "Create social posts",
+                  "Generate a week of LinkedIn outreach posts and DM templates, saved as social drafts.",
+                  {"goal": "optional outreach goal"}, ex.exec_nomad_social_posts),
     ]
     return {d.key: d for d in defs}
 

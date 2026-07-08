@@ -216,6 +216,21 @@ async def test_sirocco_executor_creates_image(db_session, org_and_project):
     assert img is not None and img.image_url == "data:image/png;base64,xyz"
 
 
+@pytest.mark.asyncio
+async def test_nomad_executor_creates_social_drafts(db_session, org_and_project):
+    from app.services.campaign_executors import exec_nomad_social_posts
+    from app.models.campaign import Campaign, CampaignStep
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="nomad", action="nomad.social_posts", brief={})
+    fake_result = {"ok": True, "posts": [{"day": "Monday", "type": "tip", "content": "c", "hashtags": []}],
+                   "messages": [], "tips": [], "drafts_saved": 3}
+    with patch("app.services.campaign_executors.generate_outreach_plan", new=AsyncMock(return_value=fake_result)):
+        res = await exec_nomad_social_posts(c, step, _ctx(), db_session)
+    assert res.artifact_type == "social"
+    assert "3" in res.summary and "draft" in res.summary.lower()
+
+
 # ── Campaign director (LLM planner) ───────────────────────────────────────────
 
 @pytest.mark.asyncio

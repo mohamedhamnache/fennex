@@ -8,6 +8,7 @@ from app.services.analytics_service import get_market_insights, get_opportunitie
 from app.services.campaign_catalog import CampaignContext, StepResult
 from app.services.image_service import generate_image_dalle
 from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.nomad_service import generate_outreach_plan
 from app.services.oasis_service import generate_market_report
 from app.workers.tasks.article_tasks import _build_system_prompt, _build_user_prompt, _parse_llm_response
 
@@ -114,3 +115,14 @@ async def exec_sirocco_generate_visual(campaign, step, context: CampaignContext,
     db.add(img); await db.commit()
     return StepResult(summary="Generated a campaign visual.", artifact_type="image",
                       artifact_ids=[str(img.id)], structured={"image_id": str(img.id)})
+
+
+async def exec_nomad_social_posts(campaign, step, context: CampaignContext, db) -> StepResult:
+    angle = _angle(context)
+    goal = str((step.brief or {}).get("goal") or angle.get("topic") or campaign.goal)
+    res = await generate_outreach_plan(campaign.project_id, campaign.org_id, goal, db)
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error", "Outreach generation failed."))
+    n = res.get("drafts_saved", 0)
+    return StepResult(summary=f"Created {n} social drafts to distribute the campaign.",
+                      artifact_type="social", structured={"drafts_saved": n})
