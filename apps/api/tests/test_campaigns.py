@@ -7,6 +7,7 @@ Strategy (mirrors test_recommendations.py):
 - Test the model
 """
 import uuid
+from contextlib import asynccontextmanager
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -95,6 +96,11 @@ async def setup_db():
 async def db_session():
     async with TestSessionLocal() as session:
         yield session
+
+
+@asynccontextmanager
+async def _single_session(session):
+    yield session
 
 
 @pytest.fixture
@@ -197,3 +203,32 @@ async def test_director_fallback_on_bad_json(db_session, org_and_project):
     with patch("app.services.campaign_director.call_llm", new=AsyncMock(return_value="not json at all")):
         plan = await draft_plan(FAKE_PROJECT_ID, FAKE_ORG_ID, "grow", "creator", db_session)
     assert [s["action"] for s in plan["steps"]] == ["zerda.pick_angle", "dune.write_article"]
+
+
+# ── Orchestrator (execute_campaign / run_campaign) ────────────────────────────
+
+@pytest.mark.asyncio
+async def test_execute_campaign_runs_steps_and_chains(db_session, org_and_project):
+    from app.services.campaign_catalog import StepResult
+    from app.workers.tasks.campaign_tasks import execute_campaign
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle"))
+    db_session.add(CampaignStep(campaign_id=c.id, order=1, agent="oasis", action="oasis.market_report"))
+    await db_session.commit()
+    calls = []
+    async def fake_zerda(campaign, step, context, db):
+        calls.append(("zerda", len(context.prior)))
+        return StepResult(summary="angle", structured={"keyword": "k"})
+    async def fake_oasis(campaign, step, context, db):
+        calls.append(("oasis", len(context.prior)))
+        return StepResult(summary="report", artifact_type="report")
+    from app.services import campaign_catalog
+    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}), \
+         patch.dict(campaign_catalog.ACTIONS["oasis.market_report"].__dict__, {"executor": fake_oasis}):
+        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
+    await db_session.refresh(c)
+    steps = (await db_session.execute(select(CampaignStep).where(CampaignStep.campaign_id == c.id).order_by(CampaignStep.order))).scalars().all()
+    assert c.status == "completed"
+    assert [s.status for s in steps] == ["completed", "completed"]
+    assert calls == [("zerda", 0), ("oasis", 1)]   # context grew between steps
