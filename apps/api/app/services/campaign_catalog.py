@@ -37,6 +37,9 @@ def _build_actions() -> dict[str, ActionDef]:
         ActionDef("zerda.pick_angle", "zerda", "Pick the angle",
                   "Choose one focus topic + target keyword from the project's real opportunities.",
                   {}, ex.exec_zerda_pick_angle),
+        ActionDef("dune.write_article", "dune", "Write an article",
+                  "Write an SEO article on the chosen angle (uses the picked topic/keyword if present).",
+                  {"title": "optional article title", "keyword": "optional target keyword"}, ex.exec_dune_write_article),
     ]
     return {d.key: d for d in defs}
 

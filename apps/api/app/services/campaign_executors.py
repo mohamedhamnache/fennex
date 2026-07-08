@@ -2,10 +2,12 @@
 import json
 import re
 
+from app.models.article import Article, ArticleStatus
 from app.services.analytics_service import get_market_insights, get_opportunities
 from app.services.campaign_catalog import CampaignContext, StepResult
 from app.services.llm_service import call_llm, get_org_llm_keys
 from app.services.oasis_service import generate_market_report
+from app.workers.tasks.article_tasks import _build_system_prompt, _build_user_prompt, _parse_llm_response
 
 _PROVIDERS = [("anthropic", "claude-opus-4-8"), ("openai", "gpt-4o")]
 
@@ -54,3 +56,39 @@ async def exec_zerda_pick_angle(campaign, step, context: CampaignContext, db) ->
         summary=f"Focus: {topic} (target keyword: {keyword}). {rationale}",
         structured={"topic": topic, "keyword": keyword, "rationale": rationale},
     )
+
+
+def _angle(context: CampaignContext) -> dict:
+    for p in context.prior:
+        st = p.get("structured") or {}
+        if st.get("keyword") or st.get("topic"):
+            return st
+    return {}
+
+
+async def exec_dune_write_article(campaign, step, context: CampaignContext, db) -> StepResult:
+    brief = step.brief or {}
+    angle = _angle(context)
+    title = str(brief.get("title") or angle.get("topic") or campaign.goal)[:500]
+    keyword = str(brief.get("keyword") or angle.get("keyword") or "")[:500] or None
+    keys = await get_org_llm_keys(campaign.org_id, db)
+    pm = _pick_provider(keys)
+    if pm is None:
+        raise RuntimeError("No AI key configured.")
+    article = Article(org_id=campaign.org_id, project_id=campaign.project_id, title=title,
+                      target_keyword=keyword, status=ArticleStatus.generating)
+    db.add(article); await db.flush()
+    system = _build_system_prompt(None, context.project_profile)
+    user = _build_user_prompt(article)
+    try:
+        raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user)
+    except Exception:
+        article.status = ArticleStatus.failed
+        raise
+    parsed = _parse_llm_response(raw, title)
+    article.body_markdown = parsed["body_markdown"]
+    article.word_count = len(parsed["body_markdown"].split())
+    article.status = ArticleStatus.ready
+    await db.commit()
+    return StepResult(summary=f"Drafted article: {title}", artifact_type="article",
+                      artifact_ids=[str(article.id)], structured={"article_id": str(article.id), "title": title})

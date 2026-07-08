@@ -180,6 +180,25 @@ async def test_zerda_executor_picks_angle(db_session, org_and_project):
     assert res.summary
 
 
+@pytest.mark.asyncio
+async def test_dune_executor_creates_article(db_session, org_and_project):
+    from app.services.campaign_executors import exec_dune_write_article
+    from app.services.campaign_catalog import CampaignContext
+    from app.models.article import Article
+    db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="anthropic", encrypted_value=encrypt_value("test-key")))
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    step = CampaignStep(campaign_id=c.id, order=0, agent="dune", action="dune.write_article", brief={})
+    ctx = CampaignContext(goal="g", persona="creator", project_profile="",
+                          prior=[{"agent": "zerda", "action": "zerda.pick_angle", "summary": "",
+                                  "structured": {"topic": "Olive oil", "keyword": "olive oil benefits"}}])
+    with patch("app.services.campaign_executors.call_llm", new=AsyncMock(return_value="# Olive oil benefits\n\nBody text here.")):
+        res = await exec_dune_write_article(c, step, ctx, db_session)
+    assert res.artifact_type == "article" and res.artifact_ids
+    art = (await db_session.execute(select(Article))).scalars().first()
+    assert art is not None and art.body_markdown
+
+
 # ── Campaign director (LLM planner) ───────────────────────────────────────────
 
 @pytest.mark.asyncio
