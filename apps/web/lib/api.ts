@@ -741,6 +741,7 @@ export interface GeneratedImage {
   folder_id?: string | null;
   tags?: string[];
   is_deleted?: boolean;
+  banner_format?: string | null;
 }
 
 export async function listImages(projectId: string, usage?: ImageUsage, folderId?: string | null): Promise<GeneratedImage[]> {
