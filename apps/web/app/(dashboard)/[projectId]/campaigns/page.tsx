@@ -1,16 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import {
-  Megaphone, Loader2, Plus, ChevronRight, ChevronDown,
-  FileText, Image as ImageIcon, Share2,
-} from "lucide-react";
+import { Megaphone, Loader2, Plus, ChevronRight } from "lucide-react";
 import {
   createCampaign, listCampaigns, getCampaign, updateCampaignPlan,
-  runCampaign, cancelCampaign, getImage, type Campaign, type CampaignStep,
+  runCampaign, cancelCampaign, type Campaign,
 } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
@@ -18,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { CampaignCanvas } from "@/components/campaigns/CampaignCanvas";
 import { StepPanel } from "@/components/campaigns/StepPanel";
 import { LiveFeed } from "@/components/campaigns/LiveFeed";
+import { PackagePanel } from "@/components/campaigns/PackagePanel";
 import { sumEstimates, fmtEstimate } from "@/lib/campaignMeta";
 
 const CAMPAIGN_STATUS_BADGE: Record<Campaign["status"], string> = {
@@ -30,79 +27,6 @@ const CAMPAIGN_STATUS_BADGE: Record<Campaign["status"], string> = {
 
 function statusBadgeClass(status: Campaign["status"]): string {
   return cn("shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold", CAMPAIGN_STATUS_BADGE[status]);
-}
-
-function PackageLinkCard({
-  href,
-  icon: Icon,
-  label,
-  step,
-}: {
-  href: string;
-  icon: typeof FileText;
-  label: string;
-  step: CampaignStep;
-}) {
-  const imageId = typeof step.structured?.image_id === "string" ? step.structured.image_id : null;
-  const { data: image } = useQuery({
-    queryKey: ["campaign-package-image", imageId],
-    queryFn: () => getImage(imageId as string),
-    enabled: !!imageId,
-    staleTime: 60_000,
-  });
-
-  return (
-    <Link href={href}>
-      <Card interactive className="flex items-center gap-3 p-4">
-        {image?.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image.thumbnail_url}
-            alt={image.alt_text ?? label}
-            className="h-10 w-10 shrink-0 rounded-md object-cover"
-          />
-        ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Icon className="h-4 w-4" strokeWidth={1.8} />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">{label}</p>
-          {step.summary && <p className="truncate text-xs text-muted-foreground">{step.summary}</p>}
-        </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </Card>
-    </Link>
-  );
-}
-
-function PackageDetailCard({ step, label }: { step: CampaignStep; label: string }) {
-  const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-  const markdown = typeof step.structured?.markdown === "string" ? step.structured.markdown : null;
-
-  return (
-    <Card className="p-4">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 text-left"
-      >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <FileText className="h-4 w-4" strokeWidth={1.8} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">{label}</p>
-          {step.summary && <p className="truncate text-xs text-muted-foreground">{step.summary}</p>}
-        </div>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} />
-      </button>
-      {expanded && (
-        <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/50 p-3 text-xs text-foreground">
-          {markdown ?? step.summary ?? t("campaigns.noDetails")}
-        </pre>
-      )}
-    </Card>
-  );
 }
 
 export default function CampaignsPage({ params }: { params: { projectId: string } }) {
@@ -349,54 +273,15 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
             />
           )}
           {activeCampaign.status !== "planned" && activeCampaign.status !== "running" && (
-            activeCampaign.status === "completed" && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  {t("campaigns.package")}
-                </p>
-                {activeCampaign.steps
-                  .filter((step) => step.status === "completed" && step.artifact_type)
-                  .map((step) => {
-                    switch (step.artifact_type) {
-                      case "article":
-                        return (
-                          <PackageLinkCard
-                            key={step.id}
-                            href={`/${projectId}/articles`}
-                            icon={FileText}
-                            label={t("campaigns.viewArticle")}
-                            step={step}
-                          />
-                        );
-                      case "image":
-                        return (
-                          <PackageLinkCard
-                            key={step.id}
-                            href={`/${projectId}/images`}
-                            icon={ImageIcon}
-                            label={t("campaigns.viewImages")}
-                            step={step}
-                          />
-                        );
-                      case "social":
-                        return (
-                          <PackageLinkCard
-                            key={step.id}
-                            href={`/${projectId}/social`}
-                            icon={Share2}
-                            label={t("campaigns.viewSocial")}
-                            step={step}
-                          />
-                        );
-                      case "report":
-                      case "analysis":
-                        return <PackageDetailCard key={step.id} step={step} label={t("campaigns.viewDetails")} />;
-                      default:
-                        return null;
-                    }
-                  })}
-              </div>
-            )
+            <PackagePanel
+              projectId={projectId}
+              campaign={activeCampaign}
+              onRunAgain={(g) => {
+                setActiveCampaignId(null);
+                setSelectedStepId(null);
+                setGoal(g);
+              }}
+            />
           )}
         </div>
       )}
