@@ -369,7 +369,8 @@
       "copyUrl": "URL kopieren",
       "delete": "Löschen",
       "free": "kostenlos"
-    }
+    },
+    "searchPlaceholder": "Nach Prompt, Alt-Text oder Bildunterschrift suchen..."
   },
   "social": {
     "title": "Social Studio",
@@ -1021,6 +1022,45 @@
       "freelancer_outreach": {
         "label": "LinkedIn-Outreach-Inhalte erstellen",
         "desc": "Posts und Visuals, die deine Zielkunden anziehen"
+      }
+    }
+  },
+  "studio": {
+    "styles": {
+      "professional": "Professionell",
+      "photorealistic": "Fotorealistisch",
+      "illustration": "Illustration",
+      "minimalist": "Minimalistisch",
+      "abstract": "Abstrakt",
+      "3d_render": "3D-Render",
+      "anime": "Anime",
+      "cinematic": "Filmisch",
+      "luxury_product": "Luxusprodukt"
+    },
+    "createLauncher": {
+      "heading": "Was erstellst du?",
+      "subtitle": "Wähle ein Ziel und wir richten das Studio ein — die richtigen Größen, Stile und Exportformate.",
+      "intents": {
+        "social": {
+          "label": "Social-Post",
+          "desc": "Plattformfertige Posts, Stories & Reels — eine Stimme, jede Größe, inklusive Bildtexte."
+        },
+        "product": {
+          "label": "Produktfoto",
+          "desc": "Studio- und Lifestyle-Fotografie für Shopify und WordPress, exportbereit."
+        },
+        "blog": {
+          "label": "Blog-Bild",
+          "desc": "Artikel-Titelbilder und Inline-Visuals mit integriertem SEO-Alt-Text."
+        },
+        "banner": {
+          "label": "Banner / Anzeige",
+          "desc": "Marketing-Banner und Werbemittel, die konvertieren."
+        },
+        "freeform": {
+          "label": "Freiform",
+          "desc": "Beschreibe alles und generiere — volle Kontrolle über Stil und Qualität."
+        }
       }
     }
   }

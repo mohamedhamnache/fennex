@@ -446,7 +446,8 @@
       "copyUrl": "Copy URL",
       "delete": "Delete",
       "free": "free"
-    }
+    },
+    "searchPlaceholder": "Search by prompt, alt text, or caption..."
   },
   "social": {
     "title": "Social Studio",
@@ -1098,6 +1099,45 @@
       "freelancer_outreach": {
         "label": "Create LinkedIn outreach content",
         "desc": "Posts and visuals that attract your target clients"
+      }
+    }
+  },
+  "studio": {
+    "styles": {
+      "professional": "Professional",
+      "photorealistic": "Photorealistic",
+      "illustration": "Illustration",
+      "minimalist": "Minimalist",
+      "abstract": "Abstract",
+      "3d_render": "3D Render",
+      "anime": "Anime",
+      "cinematic": "Cinematic",
+      "luxury_product": "Luxury Product"
+    },
+    "createLauncher": {
+      "heading": "What are you making?",
+      "subtitle": "Pick a goal and we'll tailor the studio — the right sizes, styles, and export targets.",
+      "intents": {
+        "social": {
+          "label": "Social post",
+          "desc": "Platform-ready posts, stories & reels — one voice, every size, captions included."
+        },
+        "product": {
+          "label": "Product shot",
+          "desc": "Studio & lifestyle photography for Shopify and WordPress, export-ready."
+        },
+        "blog": {
+          "label": "Blog image",
+          "desc": "Article covers and inline visuals with SEO alt-text baked in."
+        },
+        "banner": {
+          "label": "Banner / Ad",
+          "desc": "Marketing banners and ad creatives that convert."
+        },
+        "freeform": {
+          "label": "Free-form",
+          "desc": "Describe anything and generate — full control over style and quality."
+        }
       }
     }
   }

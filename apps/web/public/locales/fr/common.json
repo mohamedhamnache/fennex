@@ -369,7 +369,8 @@
       "copyUrl": "Copier l'URL",
       "delete": "Supprimer",
       "free": "gratuit"
-    }
+    },
+    "searchPlaceholder": "Rechercher par prompt, texte alternatif ou légende..."
   },
   "social": {
     "title": "Studio social",
@@ -1021,6 +1022,45 @@
       "freelancer_outreach": {
         "label": "Créer du contenu de prospection LinkedIn",
         "desc": "Posts et visuels qui attirent vos clients cibles"
+      }
+    }
+  },
+  "studio": {
+    "styles": {
+      "professional": "Professionnel",
+      "photorealistic": "Photoréaliste",
+      "illustration": "Illustration",
+      "minimalist": "Minimaliste",
+      "abstract": "Abstrait",
+      "3d_render": "Rendu 3D",
+      "anime": "Anime",
+      "cinematic": "Cinématique",
+      "luxury_product": "Produit de luxe"
+    },
+    "createLauncher": {
+      "heading": "Que créez-vous ?",
+      "subtitle": "Choisissez un objectif et nous adaptons le studio — les bons formats, styles et cibles d'export.",
+      "intents": {
+        "social": {
+          "label": "Post social",
+          "desc": "Posts, stories et reels prêts à publier — une voix, tous les formats, légendes incluses."
+        },
+        "product": {
+          "label": "Photo produit",
+          "desc": "Photographie studio et lifestyle pour Shopify et WordPress, prête à l'export."
+        },
+        "blog": {
+          "label": "Image d'article",
+          "desc": "Couvertures d'article et visuels intégrés avec texte alternatif SEO."
+        },
+        "banner": {
+          "label": "Bannière / Pub",
+          "desc": "Bannières marketing et créations publicitaires qui convertissent."
+        },
+        "freeform": {
+          "label": "Libre",
+          "desc": "Décrivez n'importe quoi et générez — contrôle total du style et de la qualité."
+        }
       }
     }
   }

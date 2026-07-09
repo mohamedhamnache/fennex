@@ -369,7 +369,8 @@
       "copyUrl": "Copiar URL",
       "delete": "Eliminar",
       "free": "gratis"
-    }
+    },
+    "searchPlaceholder": "Buscar por prompt, texto alternativo o pie de foto..."
   },
   "social": {
     "title": "Estudio social",
@@ -1021,6 +1022,45 @@
       "freelancer_outreach": {
         "label": "Crear contenido de prospección en LinkedIn",
         "desc": "Posts y visuales que atraen a tus clientes objetivo"
+      }
+    }
+  },
+  "studio": {
+    "styles": {
+      "professional": "Profesional",
+      "photorealistic": "Fotorrealista",
+      "illustration": "Ilustración",
+      "minimalist": "Minimalista",
+      "abstract": "Abstracto",
+      "3d_render": "Render 3D",
+      "anime": "Anime",
+      "cinematic": "Cinematográfico",
+      "luxury_product": "Producto de lujo"
+    },
+    "createLauncher": {
+      "heading": "¿Qué estás creando?",
+      "subtitle": "Elige un objetivo y adaptamos el estudio — los tamaños, estilos y destinos de exportación correctos.",
+      "intents": {
+        "social": {
+          "label": "Publicación social",
+          "desc": "Publicaciones, stories y reels listos para cada plataforma — una voz, todos los tamaños, con textos."
+        },
+        "product": {
+          "label": "Foto de producto",
+          "desc": "Fotografía de estudio y lifestyle para Shopify y WordPress, lista para exportar."
+        },
+        "blog": {
+          "label": "Imagen de blog",
+          "desc": "Portadas de artículo y visuales con texto alternativo SEO incluido."
+        },
+        "banner": {
+          "label": "Banner / Anuncio",
+          "desc": "Banners de marketing y creatividades publicitarias que convierten."
+        },
+        "freeform": {
+          "label": "Libre",
+          "desc": "Describe lo que sea y genera — control total del estilo y la calidad."
+        }
       }
     }
   }
