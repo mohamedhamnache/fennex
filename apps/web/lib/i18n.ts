@@ -40,8 +40,12 @@ if (!i18n.isInitialized) {
   });
 }
 
-/** Cookie that records an explicit language pick from the LanguagePicker. */
-export const LANG_COOKIE = "fennex_lang";
+// Cookie that records an EXPLICIT language pick from the LanguagePicker only.
+// Deliberately not "fennex_lang": the old LanguageDetector auto-cached a
+// detected/browser value into that name, which would wrongly override the
+// project's language. This fresh name is written only on a real user pick, so
+// with no explicit choice the interface defaults to the project's language.
+export const LANG_COOKIE = "fennex_ui_lang";
 
 export function readLangCookie(): string | null {
   if (typeof document === "undefined") return null;
