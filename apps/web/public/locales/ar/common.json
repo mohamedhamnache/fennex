@@ -194,7 +194,10 @@
       "metaTitle": "عنوان ميتا",
       "metaDescription": "وصف ميتا",
       "articleTitle": "عنوان المقال",
-      "words": "كلمة"
+      "words": "كلمة",
+      "bodyPlaceholder": "ابدأ الكتابة بصيغة Markdown…",
+      "metaTitlePlaceholder": "عنوان SEO…",
+      "metaDescPlaceholder": "وصف موجز للصفحة…"
     },
     "newArticleModal": {
       "title": "مقال جديد",
@@ -206,7 +209,9 @@
       "tone": "الأسلوب",
       "wordCount": "عدد الكلمات المستهدف",
       "cancel": "إلغاء",
-      "create": "إنشاء وتوليد"
+      "create": "إنشاء وتوليد",
+      "titlePlaceholder": "مثال: أفضل 10 ممارسات SEO لعام 2025",
+      "keywordPlaceholder": "مثال: SEO داخل الصفحة"
     },
     "publishModal": {
       "title": "نشر المقال",
@@ -223,6 +228,17 @@
       "edit": "تعديل",
       "regenerate": "إعادة الإنشاء",
       "delete": "حذف"
+    },
+    "toast": {
+      "saveError": "تعذّر حفظ التغييرات",
+      "regenerated": "تم إعادة إنشاء المقال",
+      "regenerateError": "تعذّر إعادة إنشاء المقال",
+      "revisionSaved": "تم حفظ المراجعة",
+      "revisionError": "تعذّر حفظ المراجعة",
+      "deleted": "تم حذف المقال",
+      "deleteError": "تعذّر حذف المقال",
+      "regenStarted": "بدأت إعادة الإنشاء",
+      "regenStartedMsg": "تتم إعادة كتابة مقالك."
     }
   },
   "keywords": {

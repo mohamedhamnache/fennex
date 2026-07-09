@@ -194,7 +194,10 @@
       "metaTitle": "Meta-Titel",
       "metaDescription": "Meta-Beschreibung",
       "articleTitle": "Artikeltitel",
-      "words": "Wörter"
+      "words": "Wörter",
+      "bodyPlaceholder": "Beginne in Markdown zu schreiben…",
+      "metaTitlePlaceholder": "SEO-Titel…",
+      "metaDescPlaceholder": "Kurze Seitenbeschreibung…"
     },
     "newArticleModal": {
       "title": "Neuer Artikel",
@@ -206,7 +209,9 @@
       "tone": "Ton",
       "wordCount": "Ziel-Wortanzahl",
       "cancel": "Abbrechen",
-      "create": "Erstellen und generieren"
+      "create": "Erstellen und generieren",
+      "titlePlaceholder": "z. B. Die 10 besten SEO-Praktiken für 2025",
+      "keywordPlaceholder": "z. B. On-Page-SEO"
     },
     "publishModal": {
       "title": "Artikel veröffentlichen",
@@ -223,6 +228,17 @@
       "edit": "Bearbeiten",
       "regenerate": "Neu generieren",
       "delete": "Löschen"
+    },
+    "toast": {
+      "saveError": "Änderungen konnten nicht gespeichert werden",
+      "regenerated": "Artikel neu generiert",
+      "regenerateError": "Artikel konnte nicht neu generiert werden",
+      "revisionSaved": "Revision gespeichert",
+      "revisionError": "Revision konnte nicht gespeichert werden",
+      "deleted": "Artikel gelöscht",
+      "deleteError": "Artikel konnte nicht gelöscht werden",
+      "regenStarted": "Neugenerierung gestartet",
+      "regenStartedMsg": "Dein Artikel wird neu geschrieben."
     }
   },
   "keywords": {

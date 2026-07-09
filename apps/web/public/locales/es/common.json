@@ -194,7 +194,10 @@
       "metaTitle": "Título meta",
       "metaDescription": "Descripción meta",
       "articleTitle": "Título del artículo",
-      "words": "palabras"
+      "words": "palabras",
+      "bodyPlaceholder": "Empieza a escribir en Markdown…",
+      "metaTitlePlaceholder": "Título SEO…",
+      "metaDescPlaceholder": "Breve descripción de la página…"
     },
     "newArticleModal": {
       "title": "Nuevo artículo",
@@ -206,7 +209,9 @@
       "tone": "Tono",
       "wordCount": "Recuento de palabras objetivo",
       "cancel": "Cancelar",
-      "create": "Crear y generar"
+      "create": "Crear y generar",
+      "titlePlaceholder": "ej. Las 10 mejores prácticas SEO para 2025",
+      "keywordPlaceholder": "ej. SEO on-page"
     },
     "publishModal": {
       "title": "Publicar artículo",
@@ -223,6 +228,17 @@
       "edit": "Editar",
       "regenerate": "Regenerar",
       "delete": "Eliminar"
+    },
+    "toast": {
+      "saveError": "No se pudieron guardar los cambios",
+      "regenerated": "Artículo regenerado",
+      "regenerateError": "No se pudo regenerar el artículo",
+      "revisionSaved": "Revisión guardada",
+      "revisionError": "No se pudo guardar la revisión",
+      "deleted": "Artículo eliminado",
+      "deleteError": "No se pudo eliminar el artículo",
+      "regenStarted": "Regeneración iniciada",
+      "regenStartedMsg": "Tu artículo se está reescribiendo."
     }
   },
   "keywords": {
