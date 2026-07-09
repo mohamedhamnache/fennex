@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 from app.services.analytics_service import get_market_insights, get_top_queries
 
 _PROVIDERS = [
@@ -105,7 +105,7 @@ async def analyze(project_id: uuid.UUID, org_id: uuid.UUID, url: str, db: AsyncS
         for provider, model in _PROVIDERS:
             if provider in keys:
                 try:
-                    insights = (await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt)).strip()
+                    insights = (await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt, locale=await project_locale(project_id, db))).strip()
                     break
                 except Exception:
                     continue

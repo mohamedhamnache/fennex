@@ -3,7 +3,7 @@ import json
 import uuid
 from typing import Optional, TYPE_CHECKING
 
-from app.services.llm_service import get_org_llm_keys, call_llm
+from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
 
 if TYPE_CHECKING:
     from app.models.image import GeneratedImage
@@ -61,12 +61,13 @@ async def score_image(
         context_parts.append("Brand kit: not configured")
 
     user_msg = "\n".join(context_parts)
+    loc = await project_locale(image.project_id, db)
 
     for provider, model in _PROVIDERS:
         if provider not in keys:
             continue
         try:
-            raw = await call_llm(provider, model, keys[provider], _SCORING_SYSTEM, user_msg)
+            raw = await call_llm(provider, model, keys[provider], _SCORING_SYSTEM, user_msg, locale=loc)
             data = json.loads(raw.strip())
             for key in ("visual_quality", "brand_consistency", "seo_score", "ad_performance", "overall"):
                 if key in data:

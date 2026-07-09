@@ -8,7 +8,7 @@ from app.services.analytics_service import get_market_insights, get_opportunitie
 from app.services.campaign_catalog import CampaignContext, StepResult
 from app.services.competitor_service import analyze as analyze_competitor
 from app.services.image_service import generate_image_dalle
-from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 from app.services.nomad_service import generate_outreach_plan
 from app.services.oasis_service import generate_market_report
 from app.services.article_service import _deterministic_seo_score, _markdown_to_html
@@ -48,7 +48,7 @@ async def exec_zerda_pick_angle(campaign, step, context: CampaignContext, db) ->
         "Prefer a striking-distance query with real demand aligned to the goal."
     )
     user = f"GOAL: {campaign.goal}\nPERSONA: {campaign.persona}\nTOPIC CLUSTERS: {clusters}\nOPPORTUNITIES:\n" + "\n".join(lines)
-    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user)
+    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(campaign.project_id, db))
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     try:
         data = json.loads(cleaned)
@@ -86,7 +86,7 @@ async def exec_dune_write_article(campaign, step, context: CampaignContext, db) 
     system = _build_system_prompt(None, context.project_profile)
     user = _build_user_prompt(article)
     try:
-        raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user)
+        raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(campaign.project_id, db))
     except Exception:
         article.status = ArticleStatus.failed
         raise

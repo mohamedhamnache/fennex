@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
 
-from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 from app.services.analytics_service import (
     get_opportunities,
     get_overview,
@@ -212,7 +212,7 @@ async def answer(
     for provider, model in _PROVIDERS:
         if provider in keys:
             try:
-                raw = await call_llm(provider, model, keys[provider], system, user_prompt)
+                raw = await call_llm(provider, model, keys[provider], system, user_prompt, locale=await project_locale(project_id, db))
                 break
             except Exception:
                 continue

@@ -11,6 +11,7 @@ from app.core.dependencies import CurrentUser, DB
 from app.core.storage import upload_bytes
 from app.models.image import GeneratedImage, ImageStatus
 from app.services.ai_command_service import parse_ai_command_steps
+from app.services.llm_service import project_locale
 from app.services import editing_service
 from app.api.v1.routers.images import ImageOut
 
@@ -65,7 +66,7 @@ async def ai_command(image_id: uuid.UUID, body: AiCommandRequest, current_user: 
     if not source:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
 
-    parsed = await parse_ai_command_steps(body.command, body.history, current_user.org_id, db)
+    parsed = await parse_ai_command_steps(body.command, body.history, current_user.org_id, db, locale=await project_locale(source.project_id, db))
 
     if "error" in parsed:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, parsed["error"])

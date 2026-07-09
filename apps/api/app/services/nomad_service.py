@@ -61,7 +61,7 @@ async def generate_outreach_plan(
     for provider, model in _PROVIDERS:
         if provider in keys:
             try:
-                raw = await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt)
+                raw = await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt, locale=(project.locale if project else "en"))
                 break
             except Exception:
                 continue

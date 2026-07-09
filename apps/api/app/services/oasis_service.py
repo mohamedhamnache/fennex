@@ -81,7 +81,7 @@ async def generate_market_report(project_id: uuid.UUID, org_id: uuid.UUID, db: A
     for provider, model in _PROVIDERS:
         if provider in keys:
             try:
-                md = (await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt)).strip()
+                md = (await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt, locale=(project.locale if project else "en"))).strip()
                 return {"ok": True, "title": f"{name} — Market Report", "markdown": md, "generated_at": date.today().isoformat()}
             except Exception:
                 continue

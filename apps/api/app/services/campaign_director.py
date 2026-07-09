@@ -5,7 +5,7 @@ import re
 from app.agents.registry import agent_persona
 from app.services.ai_analytics_service import project_profile
 from app.services.campaign_catalog import ACTIONS
-from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 
 _PROVIDERS = [("anthropic", "claude-opus-4-8"), ("openai", "gpt-4o")]
 _MAX_STEPS = 8
@@ -39,7 +39,7 @@ async def draft_plan(project_id, org_id, goal: str, persona: str, db) -> dict:
         "with ONLY JSON: {\"summary\": str, \"steps\": [...]}. Max 8 steps.\n\nACTION CATALOG:\n" + _catalog_text()
     )
     user = f"GOAL: {goal}\nPERSONA: {persona}" + (f"\nCLIENT PROFILE: {profile}" if profile else "")
-    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user)
+    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(project_id, db))
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     try:
         parsed = json.loads(cleaned)

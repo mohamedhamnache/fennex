@@ -7,7 +7,7 @@ from app.core.database import async_session_factory
 from app.models.article import Article, ArticleRevision, ArticleStatus
 from app.models.brand_voice import BrandVoice
 from app.services.article_service import _deterministic_seo_score, _markdown_to_html
-from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 
 
 def _parse_llm_response(raw: str, article_title: str) -> dict:
@@ -138,10 +138,11 @@ async def generate_article_task(
         system_prompt = _build_system_prompt(brand_voice, profile)
         user_prompt = _build_user_prompt(article)
         article_title = article.title
+        article_locale = await project_locale(article.project_id, db)
 
     # Phase 2: call LLM (outside DB session)
     try:
-        raw = await call_llm(provider_val, model, api_key, system_prompt, user_prompt)
+        raw = await call_llm(provider_val, model, api_key, system_prompt, user_prompt, locale=article_locale)
     except Exception as e:
         async with async_session_factory() as db:
             art = await db.get(Article, article_id_uuid)

@@ -12,6 +12,7 @@ from app.core.storage import upload_bytes
 from app.models.image import GeneratedImage
 from app.services.editing_service import _download
 from app.services.seo_service import generate_seo_data
+from app.services.llm_service import project_locale
 
 router = APIRouter()
 
@@ -95,7 +96,7 @@ async def _convert_and_upload(
 async def generate_image_seo(image_id: uuid.UUID, current_user: CurrentUser, db: DB):
     img = await _get_image_or_404(image_id, current_user.org_id, db)
 
-    seo = await generate_seo_data(img.prompt or "", img.usage or "article_cover", current_user.org_id, db)
+    seo = await generate_seo_data(img.prompt or "", img.usage or "article_cover", current_user.org_id, db, locale=await project_locale(img.project_id, db))
 
     img.alt_text = seo.get("alt_text")
     img.caption = seo.get("caption")

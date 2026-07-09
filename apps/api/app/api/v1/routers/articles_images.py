@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article
-from app.services.llm_service import get_org_llm_keys, call_llm
+from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
 
 router = APIRouter()
 
@@ -65,7 +65,7 @@ async def suggest_images_for_article(article_id: uuid.UUID, current_user: Curren
         if provider not in keys:
             continue
         try:
-            raw = await call_llm(provider, model, keys[provider], _SUGGEST_SYSTEM, user_msg)
+            raw = await call_llm(provider, model, keys[provider], _SUGGEST_SYSTEM, user_msg, locale=await project_locale(article.project_id, db))
             suggestions_data = json.loads(raw.strip())
             return [ImageSuggestion(**s) for s in suggestions_data[:5]]
         except Exception as e:
