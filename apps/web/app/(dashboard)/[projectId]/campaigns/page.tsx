@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Megaphone, Loader2, Plus, ChevronRight } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import {
   createCampaign, listCampaigns, getCampaign, updateCampaignPlan,
   runCampaign, cancelCampaign, type Campaign,
 } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { CampaignCanvas } from "@/components/campaigns/CampaignCanvas";
+import { CampaignComposer } from "@/components/campaigns/CampaignComposer";
 import { StepPanel } from "@/components/campaigns/StepPanel";
 import { LiveFeed } from "@/components/campaigns/LiveFeed";
 import { PackagePanel } from "@/components/campaigns/PackagePanel";
@@ -98,11 +98,6 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
     },
   });
 
-  function handleDraft() {
-    if (!goal.trim() || draftMutation.isPending) return;
-    draftMutation.mutate();
-  }
-
   function handleRemoveStep(stepId: string) {
     if (!activeCampaign) return;
     const remainingIds = activeCampaign.steps.filter((s) => s.id !== stepId).map((s) => s.id);
@@ -135,72 +130,15 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
       </div>
 
       {!activeCampaign ? (
-        <>
-          <Card className="p-5">
-            <label className="text-sm font-semibold text-foreground" htmlFor="campaign-goal">
-              {t("campaigns.newGoal")}
-            </label>
-            <textarea
-              id="campaign-goal"
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder={t("campaigns.goalPlaceholder")}
-              rows={3}
-              className="mt-2 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-            />
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={handleDraft}
-                disabled={!goal.trim() || draftMutation.isPending}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {draftMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("campaigns.drafting")}
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-3.5 w-3.5" /> {t("campaigns.draft")}
-                  </>
-                )}
-              </button>
-            </div>
-          </Card>
-
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {t("campaigns.yourCampaigns")}
-            </p>
-            {campaigns.length === 0 ? (
-              <Card className="p-6 text-center text-sm text-muted-foreground">{t("campaigns.empty")}</Card>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {campaigns.map((c) => (
-                  <Card
-                    key={c.id}
-                    interactive
-                    onClick={() => {
-                      setActiveCampaignId(c.id);
-                      setSelectedStepId(null);
-                    }}
-                    className="flex items-center justify-between gap-3 p-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">{c.goal}</p>
-                      {c.director_summary && (
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.director_summary}</p>
-                      )}
-                    </div>
-                    <span className={statusBadgeClass(c.status)}>
-                      {t(`campaigns.status.${c.status}`)}
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
+        <CampaignComposer
+          projectId={projectId}
+          campaigns={campaigns}
+          goal={goal}
+          setGoal={setGoal}
+          onDraft={() => draftMutation.mutate()}
+          drafting={draftMutation.isPending}
+          onOpenCampaign={(id) => setActiveCampaignId(id)}
+        />
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
