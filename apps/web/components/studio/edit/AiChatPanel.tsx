@@ -1,18 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { sendAiCommand, type GeneratedImage, type AiCommandMessage } from "@/lib/api";
 
-const SUGGESTION_GROUPS: { label: string; items: string[] }[] = [
-  { label: "In one go", items: ["Brighten, remove the background, and upscale 2x", "Warm it up and add a soft shadow", "Black & white with more contrast, then sharpen"] },
-  { label: "Enhance", items: ["Make it brighter and more vibrant", "Auto-enhance the colors", "Sharpen the details"] },
-  { label: "Retouch", items: ["Remove the background", "Restore the face"] },
-  { label: "Style", items: ["Convert to black and white", "Warm cozy tones"] },
-  { label: "Transform", items: ["Add a soft drop shadow", "Upscale 2x", "Relight from the top"] },
-];
+const SUGGESTION_GROUPS = ["oneGo", "enhance", "retouch", "style", "transform"] as const;
 
 interface AiChatPanelProps {
   imageId: string;
@@ -39,6 +34,7 @@ function TypingIndicator() {
 }
 
 export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<AiCommandMessage[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -55,7 +51,7 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
       setHistory((prev) => [
         ...prev,
         { role: "user", content: command },
-        { role: "assistant", content: `Done — applied ${opLabel}.` },
+        { role: "assistant", content: t("mirage.applied", { op: opLabel }) },
       ]);
       onVersionAdded(img);
       setInput("");
@@ -66,7 +62,7 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
         { role: "user", content: command },
         {
           role: "assistant",
-          content: `Could not apply: ${err instanceof Error ? err.message : "unknown error"}`,
+          content: t("mirage.failed", { error: err instanceof Error ? err.message : t("mirage.unknownError") }),
         },
       ]);
       setInput("");
@@ -95,8 +91,8 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
             <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={1.8} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground leading-tight">Mirage · Image Artisan</p>
-            <p className="text-[10px] text-muted-foreground leading-tight">Describe an edit in plain language — Mirage transforms what you see</p>
+            <p className="text-sm font-semibold text-foreground leading-tight">{t("mirage.header")}</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">{t("mirage.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -108,26 +104,29 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
         {history.length === 0 && !mutation.isPending && (
           <div className="flex flex-col gap-3 animate-fade-in">
             <p className="text-xs text-muted-foreground leading-relaxed px-1">
-              Describe any edit in plain language — you can chain several in one message. Try one of these:
+              {t("mirage.tryPrompt")}
             </p>
-            {SUGGESTION_GROUPS.map((group) => (
-              <div key={group.label} className="flex flex-col gap-1.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">{group.label}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.items.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => submit(s)}
-                      disabled={mutation.isPending}
-                      className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50"
-                    >
-                      {s}
-                    </button>
-                  ))}
+            {SUGGESTION_GROUPS.map((gid) => {
+              const items = t(`mirage.suggestions.${gid}`, { returnObjects: true }) as string[];
+              return (
+                <div key={gid} className="flex flex-col gap-1.5">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">{t(`mirage.groups.${gid}`)}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(Array.isArray(items) ? items : []).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => submit(s)}
+                        disabled={mutation.isPending}
+                        className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -181,7 +180,7 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder='e.g. "make it warmer and remove the background"'
+            placeholder={t("mirage.placeholder")}
             rows={2}
             className="flex-1 resize-none px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground bg-transparent focus:outline-none"
           />
@@ -195,7 +194,7 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
           </button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
-          Press Enter to send, Shift+Enter for new line
+          {t("mirage.enterHint")}
         </p>
       </div>
     </div>

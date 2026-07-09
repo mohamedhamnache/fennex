@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { BarChart2, ChevronDown, ChevronUp, Loader2, Sparkles } from "lucide-react";
 import { scoreImage, getImageScore, type ImageScore } from "@/lib/api";
 
-const DIMENSIONS: { key: keyof ImageScore; label: string }[] = [
-  { key: "visual_quality", label: "Visual Quality" },
-  { key: "brand_consistency", label: "Brand Consistency" },
-  { key: "seo_score", label: "SEO Score" },
-  { key: "ad_performance", label: "Ad Performance" },
+const DIMENSION_KEYS: (keyof ImageScore)[] = [
+  "visual_quality", "brand_consistency", "seo_score", "ad_performance",
 ];
 
 interface ScorePanelProps {
@@ -36,6 +34,7 @@ function ScoreBar({ value }: { value: number | null }) {
 }
 
 export function ScorePanel({ imageId }: ScorePanelProps) {
+  const { t } = useTranslation();
   const { data: cached, refetch } = useQuery<ImageScore>({
     queryKey: ["image-score", imageId],
     queryFn: () => getImageScore(imageId),
@@ -60,7 +59,7 @@ export function ScorePanel({ imageId }: ScorePanelProps) {
         >
           {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           <BarChart2 className="h-3.5 w-3.5 text-primary" />
-          Score
+          {t("imageEdit.score.title")}
           {cached?.overall != null && (
             <span className="ml-1 font-bold text-primary">
               {Math.round(cached.overall)}/100
@@ -79,7 +78,7 @@ export function ScorePanel({ imageId }: ScorePanelProps) {
             ) : (
               <Sparkles className="h-3 w-3" strokeWidth={1.8} />
             )}
-            {cached ? "Re-score" : "Score image"}
+            {cached ? t("imageEdit.score.rescore") : t("imageEdit.score.scoreImage")}
           </button>
         </div>
       </div>
@@ -90,10 +89,10 @@ export function ScorePanel({ imageId }: ScorePanelProps) {
           {cached && (
             <>
               <div className="flex flex-col gap-2">
-                {DIMENSIONS.map(({ key, label }) => (
+                {DIMENSION_KEYS.map((key) => (
                   <div key={key} className="flex flex-col gap-1">
                     <span className="text-[10px] text-muted-foreground font-medium">
-                      {label}
+                      {t(`imageEdit.score.${key}`)}
                     </span>
                     <ScoreBar value={cached[key] as number | null} />
                   </div>
@@ -110,13 +109,13 @@ export function ScorePanel({ imageId }: ScorePanelProps) {
 
           {!cached && !mutation.isPending && (
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Score this image across visual quality, brand consistency, SEO, and ad performance.
+              {t("imageEdit.score.hint")}
             </p>
           )}
 
           {mutation.isError && (
             <p className="text-xs text-destructive">
-              {mutation.error instanceof Error ? mutation.error.message : "Scoring failed"}
+              {mutation.error instanceof Error ? mutation.error.message : t("imageEdit.score.error")}
             </p>
           )}
         </div>

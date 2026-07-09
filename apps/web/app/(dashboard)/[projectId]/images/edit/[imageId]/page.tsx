@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PencilLine, Undo2, Redo2, Sparkles, Eye, Download, BarChart3, Check, SlidersHorizontal, Keyboard, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +22,7 @@ export default function EditPage({
   params: { projectId: string; imageId: string };
 }) {
   const { projectId, imageId } = params;
+  const { t } = useTranslation();
   const router = useRouter();
   const canvasRef = useRef<EditCanvasRef>(null);
 
@@ -484,12 +486,12 @@ export default function EditPage({
         <div className="flex items-center gap-1.5">
           {/* Undo / redo group */}
           <div className="flex items-center rounded-lg border border-border overflow-hidden">
-            <button type="button" onClick={handleUndo} disabled={!canUndo} title="Undo (Ctrl+Z)"
+            <button type="button" onClick={handleUndo} disabled={!canUndo} title={t("imageEdit.toolbar.undo")}
               className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
               <Undo2 className="h-3.5 w-3.5" />
             </button>
             <div className="h-5 w-px bg-border" />
-            <button type="button" onClick={handleRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)"
+            <button type="button" onClick={handleRedo} disabled={!canRedo} title={t("imageEdit.toolbar.redo")}
               className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
               <Redo2 className="h-3.5 w-3.5" />
             </button>
@@ -502,7 +504,7 @@ export default function EditPage({
             onPointerDown={() => setComparing(true)}
             onPointerUp={() => setComparing(false)}
             onPointerLeave={() => setComparing(false)}
-            title="Hold to compare with the original"
+            title={t("imageEdit.toolbar.compare")}
             className={cn(iconBtn, comparing && "border-primary bg-primary/10 text-primary")}
           >
             <Eye className="h-3.5 w-3.5" />
@@ -512,7 +514,7 @@ export default function EditPage({
           <button
             type="button"
             onClick={() => setShowInsights((v) => !v)}
-            title="SEO & quality insights"
+            title={t("imageEdit.toolbar.insights")}
             className={cn(iconBtn, showInsights && "border-primary bg-primary/10 text-primary")}
           >
             <BarChart3 className="h-3.5 w-3.5" />
@@ -522,7 +524,7 @@ export default function EditPage({
           <button
             type="button"
             onClick={() => setShowShortcuts((v) => !v)}
-            title="Keyboard shortcuts (?)"
+            title={t("imageEdit.toolbar.shortcuts")}
             className={cn(iconBtn, showShortcuts && "border-primary bg-primary/10 text-primary")}
           >
             <Keyboard className="h-3.5 w-3.5" />
@@ -533,7 +535,7 @@ export default function EditPage({
             type="button"
             disabled={!displayImage?.image_url}
             onClick={() => setShowExport(true)}
-            title="Export (format, quality, size)"
+            title={t("imageEdit.toolbar.export")}
             className={cn(iconBtn, showExport && "border-primary bg-primary/10 text-primary")}
           >
             <Download className="h-3.5 w-3.5" />
@@ -629,7 +631,7 @@ export default function EditPage({
                   rightTab === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent",
                 )}
               >
-                <Icon className="h-3.5 w-3.5" strokeWidth={1.8} /> {label}
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.8} /> {t(`imageEdit.tabs.${id}`)}
               </button>
             ))}
           </div>

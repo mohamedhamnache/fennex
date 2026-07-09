@@ -1063,5 +1063,101 @@
         }
       }
     }
+  },
+  "imageEdit": {
+    "toolGroups": {
+      "basic": "Básico",
+      "ai": "IA",
+      "advanced": "Avançado"
+    },
+    "tools": {
+      "crop": "Cortar",
+      "resize": "Redimensionar",
+      "rotate": "Girar",
+      "adjust": "Ajustar",
+      "filter": "Filtro",
+      "denoise": "Reduzir ruído",
+      "sharpen": "Nitidez",
+      "text": "Adicionar texto",
+      "shapes": "Formas",
+      "templates": "Modelos",
+      "add_image": "Adicionar imagem",
+      "convert_canvas": "Converter em camadas",
+      "remove_background": "Remover fundo",
+      "replace_background": "Substituir fundo",
+      "remove_object": "Remover objeto",
+      "insert_object": "Inserir objeto",
+      "generative_fill": "Preenchimento generativo",
+      "smart_erase": "Apagar inteligente",
+      "generate_shadow": "Adicionar sombra",
+      "relight": "Reiluminar",
+      "restore_face": "Restaurar rosto",
+      "upscale": "Ampliar"
+    },
+    "score": {
+      "title": "Pontuação",
+      "rescore": "Recalcular",
+      "scoreImage": "Avaliar imagem",
+      "hint": "Avalie esta imagem em qualidade visual, consistência de marca, SEO e desempenho de anúncio.",
+      "error": "Falha na avaliação",
+      "visual_quality": "Qualidade visual",
+      "brand_consistency": "Consistência de marca",
+      "seo_score": "Pontuação SEO",
+      "ad_performance": "Desempenho do anúncio"
+    },
+    "toolbar": {
+      "undo": "Desfazer (Ctrl+Z)",
+      "redo": "Refazer (Ctrl+Shift+Z)",
+      "compare": "Segure para comparar com o original",
+      "insights": "Análises de SEO e qualidade",
+      "shortcuts": "Atalhos de teclado (?)",
+      "export": "Exportar (formato, qualidade, tamanho)"
+    },
+    "tabs": {
+      "edit": "Editar",
+      "assistant": "Mirage"
+    }
+  },
+  "mirage": {
+    "header": "Mirage · Artesão de imagem",
+    "subtitle": "Descreva uma edição em linguagem natural — Mirage transforma o que você vê",
+    "tryPrompt": "Descreva qualquer edição em linguagem natural — você pode encadear várias em uma mensagem. Experimente:",
+    "applied": "Pronto — {{op}} aplicado.",
+    "failed": "Não foi possível aplicar: {{error}}",
+    "unknownError": "erro desconhecido",
+    "placeholder": "ex. \"deixe mais quente e remova o fundo\"",
+    "enterHint": "Enter para enviar, Shift+Enter para nova linha",
+    "groups": {
+      "oneGo": "De uma vez",
+      "enhance": "Melhorar",
+      "retouch": "Retocar",
+      "style": "Estilo",
+      "transform": "Transformar"
+    },
+    "suggestions": {
+      "oneGo": [
+        "Clarear, remover o fundo e ampliar 2x",
+        "Aquecer e adicionar uma sombra suave",
+        "Preto e branco com mais contraste, depois aumentar a nitidez"
+      ],
+      "enhance": [
+        "Deixar mais brilhante e vibrante",
+        "Melhorar as cores automaticamente",
+        "Aumentar a nitidez dos detalhes"
+      ],
+      "retouch": [
+        "Remover o fundo",
+        "Restaurar o rosto"
+      ],
+      "style": [
+        "Converter para preto e branco",
+        "Tons quentes e aconchegantes"
+      ],
+      "transform": [
+        "Adicionar uma sombra suave",
+        "Ampliar 2x",
+        "Reiluminar de cima"
+      ]
+    }
   }
 }

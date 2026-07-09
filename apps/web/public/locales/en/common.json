@@ -1140,5 +1140,101 @@
         }
       }
     }
+  },
+  "imageEdit": {
+    "toolGroups": {
+      "basic": "Basic",
+      "ai": "AI",
+      "advanced": "Advanced"
+    },
+    "tools": {
+      "crop": "Crop",
+      "resize": "Resize",
+      "rotate": "Rotate",
+      "adjust": "Adjust",
+      "filter": "Filter",
+      "denoise": "Denoise",
+      "sharpen": "Sharpen",
+      "text": "Add Text",
+      "shapes": "Shapes",
+      "templates": "Templates",
+      "add_image": "Add Image",
+      "convert_canvas": "Convert to Canvas",
+      "remove_background": "Remove BG",
+      "replace_background": "Replace BG",
+      "remove_object": "Remove Object",
+      "insert_object": "Insert Object",
+      "generative_fill": "Generative Fill",
+      "smart_erase": "Smart Erase",
+      "generate_shadow": "Add Shadow",
+      "relight": "Relight",
+      "restore_face": "Restore Face",
+      "upscale": "Upscale"
+    },
+    "score": {
+      "title": "Score",
+      "rescore": "Re-score",
+      "scoreImage": "Score image",
+      "hint": "Score this image across visual quality, brand consistency, SEO, and ad performance.",
+      "error": "Scoring failed",
+      "visual_quality": "Visual Quality",
+      "brand_consistency": "Brand Consistency",
+      "seo_score": "SEO Score",
+      "ad_performance": "Ad Performance"
+    },
+    "toolbar": {
+      "undo": "Undo (Ctrl+Z)",
+      "redo": "Redo (Ctrl+Shift+Z)",
+      "compare": "Hold to compare with the original",
+      "insights": "SEO & quality insights",
+      "shortcuts": "Keyboard shortcuts (?)",
+      "export": "Export (format, quality, size)"
+    },
+    "tabs": {
+      "edit": "Edit",
+      "assistant": "Mirage"
+    }
+  },
+  "mirage": {
+    "header": "Mirage · Image Artisan",
+    "subtitle": "Describe an edit in plain language — Mirage transforms what you see",
+    "tryPrompt": "Describe any edit in plain language — you can chain several in one message. Try one of these:",
+    "applied": "Done — applied {{op}}.",
+    "failed": "Could not apply: {{error}}",
+    "unknownError": "unknown error",
+    "placeholder": "e.g. \"make it warmer and remove the background\"",
+    "enterHint": "Press Enter to send, Shift+Enter for new line",
+    "groups": {
+      "oneGo": "In one go",
+      "enhance": "Enhance",
+      "retouch": "Retouch",
+      "style": "Style",
+      "transform": "Transform"
+    },
+    "suggestions": {
+      "oneGo": [
+        "Brighten, remove the background, and upscale 2x",
+        "Warm it up and add a soft shadow",
+        "Black & white with more contrast, then sharpen"
+      ],
+      "enhance": [
+        "Make it brighter and more vibrant",
+        "Auto-enhance the colors",
+        "Sharpen the details"
+      ],
+      "retouch": [
+        "Remove the background",
+        "Restore the face"
+      ],
+      "style": [
+        "Convert to black and white",
+        "Warm cozy tones"
+      ],
+      "transform": [
+        "Add a soft drop shadow",
+        "Upscale 2x",
+        "Relight from the top"
+      ]
+    }
   }
 }

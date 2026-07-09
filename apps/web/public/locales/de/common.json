@@ -1063,5 +1063,101 @@
         }
       }
     }
+  },
+  "imageEdit": {
+    "toolGroups": {
+      "basic": "Basis",
+      "ai": "KI",
+      "advanced": "Erweitert"
+    },
+    "tools": {
+      "crop": "Zuschneiden",
+      "resize": "Größe ändern",
+      "rotate": "Drehen",
+      "adjust": "Anpassen",
+      "filter": "Filter",
+      "denoise": "Entrauschen",
+      "sharpen": "Schärfen",
+      "text": "Text hinzufügen",
+      "shapes": "Formen",
+      "templates": "Vorlagen",
+      "add_image": "Bild hinzufügen",
+      "convert_canvas": "In Ebenen umwandeln",
+      "remove_background": "Hintergrund entfernen",
+      "replace_background": "Hintergrund ersetzen",
+      "remove_object": "Objekt entfernen",
+      "insert_object": "Objekt einfügen",
+      "generative_fill": "Generatives Füllen",
+      "smart_erase": "Intelligentes Löschen",
+      "generate_shadow": "Schatten hinzufügen",
+      "relight": "Neu beleuchten",
+      "restore_face": "Gesicht wiederherstellen",
+      "upscale": "Hochskalieren"
+    },
+    "score": {
+      "title": "Score",
+      "rescore": "Neu bewerten",
+      "scoreImage": "Bild bewerten",
+      "hint": "Bewerte dieses Bild nach visueller Qualität, Markenkonsistenz, SEO und Werbeleistung.",
+      "error": "Bewertung fehlgeschlagen",
+      "visual_quality": "Visuelle Qualität",
+      "brand_consistency": "Markenkonsistenz",
+      "seo_score": "SEO-Score",
+      "ad_performance": "Werbeleistung"
+    },
+    "toolbar": {
+      "undo": "Rückgängig (Strg+Z)",
+      "redo": "Wiederholen (Strg+Umschalt+Z)",
+      "compare": "Halten, um mit dem Original zu vergleichen",
+      "insights": "SEO- und Qualitätsanalysen",
+      "shortcuts": "Tastenkürzel (?)",
+      "export": "Exportieren (Format, Qualität, Größe)"
+    },
+    "tabs": {
+      "edit": "Bearbeiten",
+      "assistant": "Mirage"
+    }
+  },
+  "mirage": {
+    "header": "Mirage · Bild-Künstler",
+    "subtitle": "Beschreibe eine Bearbeitung in natürlicher Sprache — Mirage verwandelt, was du siehst",
+    "tryPrompt": "Beschreibe jede Bearbeitung in natürlicher Sprache — du kannst mehrere in einer Nachricht verketten. Probiere eine:",
+    "applied": "Fertig — {{op}} angewendet.",
+    "failed": "Konnte nicht angewendet werden: {{error}}",
+    "unknownError": "unbekannter Fehler",
+    "placeholder": "z. B. „mach es wärmer und entferne den Hintergrund\"",
+    "enterHint": "Enter zum Senden, Umschalt+Enter für neue Zeile",
+    "groups": {
+      "oneGo": "Alles auf einmal",
+      "enhance": "Verbessern",
+      "retouch": "Retuschieren",
+      "style": "Stil",
+      "transform": "Transformieren"
+    },
+    "suggestions": {
+      "oneGo": [
+        "Aufhellen, Hintergrund entfernen und 2x hochskalieren",
+        "Wärmer machen und einen weichen Schatten hinzufügen",
+        "Schwarz-Weiß mit mehr Kontrast, dann schärfen"
+      ],
+      "enhance": [
+        "Heller und lebendiger machen",
+        "Farben automatisch verbessern",
+        "Details schärfen"
+      ],
+      "retouch": [
+        "Hintergrund entfernen",
+        "Gesicht wiederherstellen"
+      ],
+      "style": [
+        "In Schwarz-Weiß umwandeln",
+        "Warme, gemütliche Töne"
+      ],
+      "transform": [
+        "Weichen Schlagschatten hinzufügen",
+        "2x hochskalieren",
+        "Von oben neu beleuchten"
+      ]
+    }
   }
 }

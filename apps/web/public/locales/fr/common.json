@@ -1063,5 +1063,101 @@
         }
       }
     }
+  },
+  "imageEdit": {
+    "toolGroups": {
+      "basic": "Base",
+      "ai": "IA",
+      "advanced": "Avancé"
+    },
+    "tools": {
+      "crop": "Rogner",
+      "resize": "Redimensionner",
+      "rotate": "Pivoter",
+      "adjust": "Ajuster",
+      "filter": "Filtre",
+      "denoise": "Débruiter",
+      "sharpen": "Netteté",
+      "text": "Ajouter du texte",
+      "shapes": "Formes",
+      "templates": "Modèles",
+      "add_image": "Ajouter une image",
+      "convert_canvas": "Convertir en calques",
+      "remove_background": "Supprimer le fond",
+      "replace_background": "Remplacer le fond",
+      "remove_object": "Supprimer un objet",
+      "insert_object": "Insérer un objet",
+      "generative_fill": "Remplissage génératif",
+      "smart_erase": "Gomme intelligente",
+      "generate_shadow": "Ajouter une ombre",
+      "relight": "Rééclairer",
+      "restore_face": "Restaurer le visage",
+      "upscale": "Agrandir"
+    },
+    "score": {
+      "title": "Score",
+      "rescore": "Recalculer",
+      "scoreImage": "Évaluer l'image",
+      "hint": "Évaluez cette image sur la qualité visuelle, la cohérence de marque, le SEO et la performance publicitaire.",
+      "error": "Échec de l'évaluation",
+      "visual_quality": "Qualité visuelle",
+      "brand_consistency": "Cohérence de marque",
+      "seo_score": "Score SEO",
+      "ad_performance": "Performance pub"
+    },
+    "toolbar": {
+      "undo": "Annuler (Ctrl+Z)",
+      "redo": "Rétablir (Ctrl+Shift+Z)",
+      "compare": "Maintenir pour comparer à l'original",
+      "insights": "Analyses SEO et qualité",
+      "shortcuts": "Raccourcis clavier (?)",
+      "export": "Exporter (format, qualité, taille)"
+    },
+    "tabs": {
+      "edit": "Édition",
+      "assistant": "Mirage"
+    }
+  },
+  "mirage": {
+    "header": "Mirage · Artisan d'image",
+    "subtitle": "Décrivez une retouche en langage naturel — Mirage transforme ce que vous voyez",
+    "tryPrompt": "Décrivez n'importe quelle retouche en langage naturel — vous pouvez en enchaîner plusieurs dans un message. Essayez :",
+    "applied": "Terminé — {{op}} appliqué.",
+    "failed": "Impossible d'appliquer : {{error}}",
+    "unknownError": "erreur inconnue",
+    "placeholder": "ex. « éclaircis-la et supprime le fond »",
+    "enterHint": "Entrée pour envoyer, Maj+Entrée pour un saut de ligne",
+    "groups": {
+      "oneGo": "En une fois",
+      "enhance": "Améliorer",
+      "retouch": "Retoucher",
+      "style": "Style",
+      "transform": "Transformer"
+    },
+    "suggestions": {
+      "oneGo": [
+        "Éclaircir, supprimer le fond et agrandir 2x",
+        "Réchauffer et ajouter une ombre douce",
+        "Noir et blanc avec plus de contraste, puis accentuer la netteté"
+      ],
+      "enhance": [
+        "La rendre plus lumineuse et vive",
+        "Améliorer automatiquement les couleurs",
+        "Accentuer les détails"
+      ],
+      "retouch": [
+        "Supprimer le fond",
+        "Restaurer le visage"
+      ],
+      "style": [
+        "Convertir en noir et blanc",
+        "Tons chaleureux"
+      ],
+      "transform": [
+        "Ajouter une ombre portée douce",
+        "Agrandir 2x",
+        "Rééclairer depuis le haut"
+      ]
+    }
   }
 }
