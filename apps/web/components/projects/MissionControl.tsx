@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check, ChevronDown, ArrowRight, Rocket,
@@ -17,8 +18,8 @@ import { cn } from "@/lib/cn";
 
 interface Mission {
   id: string;
-  label: string;
-  desc: string;
+  /** i18n key suffix under missionControl.missions (e.g. "creator_gsc") */
+  key: string;
   href?: string;
   /** Imperative missions (e.g. start an OAuth flow) use an action instead of a link */
   action?: () => void;
@@ -26,13 +27,14 @@ interface Mission {
   done?: boolean;
 }
 
-const PERSONA_META: Record<ProjectPersona, { label: string; Icon: LucideIcon }> = {
-  creator: { label: "Content creator", Icon: PenLine },
-  ecommerce: { label: "Ecommerce seller", Icon: ShoppingBag },
-  freelancer: { label: "Freelancer / business", Icon: Briefcase },
+const PERSONA_ICON: Record<ProjectPersona, LucideIcon> = {
+  creator: PenLine,
+  ecommerce: ShoppingBag,
+  freelancer: Briefcase,
 };
 
 export function MissionControl({ projectId, persona }: { projectId: string; persona: ProjectPersona }) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [personaMenu, setPersonaMenu] = useState(false);
   const queryClient = useQueryClient();
@@ -84,7 +86,7 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
       const res = await connectLinkedIn(window.location.pathname);
       window.location.href = res.redirect_url;
     } catch (e) {
-      setMissionError(e instanceof Error ? e.message : "Could not start LinkedIn connect.");
+      setMissionError(e instanceof Error ? e.message : t("missionControl.linkedInError"));
     }
   }
 
@@ -101,33 +103,33 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
   const missions: Mission[] =
     persona === "creator"
       ? [
-          { id: "gsc", label: "Connect Google Search Console", desc: "See your real traffic, queries and rankings", href: `${base}/analytics`, done: gscConnected },
-          { id: "sync", label: "Sync your search data", desc: "Pull 90 days of clicks, impressions and positions", href: `${base}/analytics`, done: gscSynced },
-          { id: "article", label: "Generate your first article", desc: "AI-written, SEO-optimized for your niche", href: `${base}/articles`, done: hasArticle },
-          { id: "social", label: "Create a multi-platform social set", desc: "One topic — every format, sized and captioned", href: `${base}/images/studio?mode=create&intent=social`, done: hasSocialImage },
-          { id: "market", label: "Discover what your audience searches", desc: "Topic clusters and content ideas from real demand", href: `${base}/analytics?ws=market` },
+          { id: "gsc", key: "creator_gsc", href: `${base}/analytics`, done: gscConnected },
+          { id: "sync", key: "creator_sync", href: `${base}/analytics`, done: gscSynced },
+          { id: "article", key: "creator_article", href: `${base}/articles`, done: hasArticle },
+          { id: "social", key: "creator_social", href: `${base}/images/studio?mode=create&intent=social`, done: hasSocialImage },
+          { id: "market", key: "creator_market", href: `${base}/analytics?ws=market` },
         ]
       : persona === "ecommerce"
       ? [
-          { id: "store", label: "Connect your store", desc: "Publish images and content straight to Shopify / WordPress", href: `${base}/publishing`, done: hasStore },
-          { id: "gsc", label: "Connect Google Search Console", desc: "Track buyer-intent queries and product rankings", href: `${base}/analytics`, done: gscConnected },
-          { id: "sync", label: "Sync your search data", desc: "Real clicks, impressions and positions for your store", href: `${base}/analytics`, done: gscSynced },
-          { id: "product", label: "Shoot a product photo with AI", desc: "Studio & lifestyle scenes from one upload", href: `${base}/images/studio?mode=create&intent=product`, done: hasProductShot },
-          { id: "market", label: "Study your market", desc: "Commercial queries, comparisons and competitor scans", href: `${base}/analytics?ws=market` },
+          { id: "store", key: "ecommerce_store", href: `${base}/publishing`, done: hasStore },
+          { id: "gsc", key: "ecommerce_gsc", href: `${base}/analytics`, done: gscConnected },
+          { id: "sync", key: "ecommerce_sync", href: `${base}/analytics`, done: gscSynced },
+          { id: "product", key: "ecommerce_product", href: `${base}/images/studio?mode=create&intent=product`, done: hasProductShot },
+          { id: "market", key: "ecommerce_market", href: `${base}/analytics?ws=market` },
         ]
       : [
-          { id: "gsc", label: "Connect Google Search Console", desc: "Ground your market analysis in real data", href: `${base}/analytics`, done: gscConnected },
-          { id: "sync", label: "Sync & size the market", desc: "Demand, topics and niche gaps from real searches", href: `${base}/analytics`, done: gscSynced },
-          { id: "linkedin", label: "Connect LinkedIn", desc: "Publish outreach posts to your feed with one click", action: startLinkedIn, done: hasLinkedIn },
-          { id: "brand", label: "Set up your brand kit", desc: "Colors and fonts applied across everything you create", href: `/settings`, done: hasBrandKit },
-          { id: "competitor", label: "Run a competitor scan", desc: "Crawl a rival page and find the gaps to win", href: `${base}/analytics?ws=competitors` },
-          { id: "outreach", label: "Create LinkedIn outreach content", desc: "Posts and visuals that attract your target clients", href: `${base}/images/studio?mode=create&intent=social`, done: hasSocialImage },
+          { id: "gsc", key: "freelancer_gsc", href: `${base}/analytics`, done: gscConnected },
+          { id: "sync", key: "freelancer_sync", href: `${base}/analytics`, done: gscSynced },
+          { id: "linkedin", key: "freelancer_linkedin", action: startLinkedIn, done: hasLinkedIn },
+          { id: "brand", key: "freelancer_brand", href: `/settings`, done: hasBrandKit },
+          { id: "competitor", key: "freelancer_competitor", href: `${base}/analytics?ws=competitors` },
+          { id: "outreach", key: "freelancer_outreach", href: `${base}/images/studio?mode=create&intent=social`, done: hasSocialImage },
         ];
 
   const trackable = missions.filter((m) => m.done !== undefined);
   const doneCount = trackable.filter((m) => m.done).length;
   const allDone = trackable.length > 0 && doneCount === trackable.length;
-  const meta = PERSONA_META[persona];
+  const PersonaIcon = PERSONA_ICON[persona];
 
   return (
     <Card className="overflow-hidden">
@@ -146,25 +148,25 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">
-            {allDone ? "Setup complete — you're flying" : "Get set up"}
+            {allDone ? t("missionControl.done") : t("missionControl.getSetUp")}
           </p>
           <span className="relative flex items-center gap-1.5 text-xs text-muted-foreground">
-            <meta.Icon className="h-3 w-3" /> {meta.label}
+            <PersonaIcon className="h-3 w-3" /> {t(`missionControl.persona.${persona}`)}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setPersonaMenu((v) => !v); }}
               className="text-primary hover:underline"
             >
-              change
+              {t("missionControl.change")}
             </button>
-            · {doneCount}/{trackable.length} missions done
+            · {t("missionControl.missionsDone", { done: doneCount, total: trackable.length })}
             {personaMenu && (
               <span
                 className="absolute left-0 top-6 z-20 flex w-52 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >
-                {(Object.keys(PERSONA_META) as ProjectPersona[]).map((p) => {
-                  const M = PERSONA_META[p];
+                {(Object.keys(PERSONA_ICON) as ProjectPersona[]).map((p) => {
+                  const PIcon = PERSONA_ICON[p];
                   return (
                     <button
                       key={p}
@@ -175,7 +177,7 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
                         p === persona ? "font-semibold text-primary" : "text-foreground",
                       )}
                     >
-                      <M.Icon className="h-3.5 w-3.5" /> {M.label}
+                      <PIcon className="h-3.5 w-3.5" /> {t(`missionControl.persona.${p}`)}
                       {p === persona && <Check className="ml-auto h-3 w-3" />}
                     </button>
                   );
@@ -214,9 +216,9 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
                 )}
                 <div className="min-w-0 flex-1">
                   <p className={cn("text-sm font-medium", m.done ? "text-muted-foreground line-through decoration-border" : "text-foreground")}>
-                    {m.label}
+                    {t(`missionControl.missions.${m.key}.label`)}
                   </p>
-                  <p className="text-xs text-muted-foreground">{m.desc}</p>
+                  <p className="text-xs text-muted-foreground">{t(`missionControl.missions.${m.key}.desc`)}</p>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/0 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
               </>

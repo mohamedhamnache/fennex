@@ -160,6 +160,15 @@
       "impressions": "Impressions",
       "avgCtr": "CTR moyen",
       "avgPosition": "Position moyenne"
+    },
+    "dashboard": "Tableau de bord",
+    "project": "Projet",
+    "status": {
+      "draft": "Brouillon",
+      "generating": "Génération",
+      "ready": "Prêt",
+      "published": "Publié",
+      "failed": "Échoué"
     }
   },
   "articles": {
@@ -918,6 +927,84 @@
       "seasonal_push": {
         "label": "Campagne saisonnière",
         "goal": "Préparer une campagne saisonnière qui capte le pic à venir dans ma niche"
+      }
+    }
+  },
+  "missionControl": {
+    "getSetUp": "Mise en route",
+    "done": "Configuration terminée — vous êtes prêt",
+    "change": "modifier",
+    "missionsDone": "{{done}}/{{total}} missions faites",
+    "linkedInError": "Impossible de démarrer la connexion LinkedIn.",
+    "persona": {
+      "creator": "Créateur de contenu",
+      "ecommerce": "Vendeur e-commerce",
+      "freelancer": "Freelance / entreprise"
+    },
+    "missions": {
+      "creator_gsc": {
+        "label": "Connecter Google Search Console",
+        "desc": "Voyez votre trafic, vos requêtes et vos positions réelles"
+      },
+      "creator_sync": {
+        "label": "Synchroniser vos données de recherche",
+        "desc": "Récupérez 90 jours de clics, impressions et positions"
+      },
+      "creator_article": {
+        "label": "Générer votre premier article",
+        "desc": "Rédigé par l'IA, optimisé SEO pour votre niche"
+      },
+      "creator_social": {
+        "label": "Créer un pack social multi-plateforme",
+        "desc": "Un sujet — tous les formats, dimensionnés et légendés"
+      },
+      "creator_market": {
+        "label": "Découvrir ce que votre audience recherche",
+        "desc": "Clusters de sujets et idées de contenu issus de la demande réelle"
+      },
+      "ecommerce_store": {
+        "label": "Connecter votre boutique",
+        "desc": "Publiez images et contenu directement sur Shopify / WordPress"
+      },
+      "ecommerce_gsc": {
+        "label": "Connecter Google Search Console",
+        "desc": "Suivez les requêtes d'achat et les positions de vos produits"
+      },
+      "ecommerce_sync": {
+        "label": "Synchroniser vos données de recherche",
+        "desc": "Clics, impressions et positions réels pour votre boutique"
+      },
+      "ecommerce_product": {
+        "label": "Photographier un produit avec l'IA",
+        "desc": "Scènes studio et lifestyle à partir d'un seul upload"
+      },
+      "ecommerce_market": {
+        "label": "Étudier votre marché",
+        "desc": "Requêtes commerciales, comparaisons et analyses de concurrents"
+      },
+      "freelancer_gsc": {
+        "label": "Connecter Google Search Console",
+        "desc": "Ancrez votre analyse de marché dans des données réelles"
+      },
+      "freelancer_sync": {
+        "label": "Synchroniser et dimensionner le marché",
+        "desc": "Demande, sujets et lacunes de niche à partir de recherches réelles"
+      },
+      "freelancer_linkedin": {
+        "label": "Connecter LinkedIn",
+        "desc": "Publiez des posts de prospection sur votre fil en un clic"
+      },
+      "freelancer_brand": {
+        "label": "Configurer votre kit de marque",
+        "desc": "Couleurs et polices appliquées à tout ce que vous créez"
+      },
+      "freelancer_competitor": {
+        "label": "Lancer une analyse concurrent",
+        "desc": "Explorez une page rivale et trouvez les failles à exploiter"
+      },
+      "freelancer_outreach": {
+        "label": "Créer du contenu de prospection LinkedIn",
+        "desc": "Posts et visuels qui attirent vos clients cibles"
       }
     }
   }

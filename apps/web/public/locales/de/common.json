@@ -160,6 +160,15 @@
       "impressions": "Impressionen",
       "avgCtr": "Durchschn. CTR",
       "avgPosition": "Durchschn. Position"
+    },
+    "dashboard": "Dashboard",
+    "project": "Projekt",
+    "status": {
+      "draft": "Entwurf",
+      "generating": "Wird generiert",
+      "ready": "Bereit",
+      "published": "Veröffentlicht",
+      "failed": "Fehlgeschlagen"
     }
   },
   "articles": {
@@ -918,6 +927,84 @@
       "seasonal_push": {
         "label": "Saisonale Content-Aktion",
         "goal": "Eine saisonale Kampagne vorbereiten, die den kommenden Höhepunkt in meiner Nische erfasst"
+      }
+    }
+  },
+  "missionControl": {
+    "getSetUp": "Einrichtung",
+    "done": "Einrichtung abgeschlossen — es kann losgehen",
+    "change": "ändern",
+    "missionsDone": "{{done}}/{{total}} Missionen erledigt",
+    "linkedInError": "LinkedIn-Verbindung konnte nicht gestartet werden.",
+    "persona": {
+      "creator": "Content-Creator",
+      "ecommerce": "E-Commerce-Verkäufer",
+      "freelancer": "Freelancer / Unternehmen"
+    },
+    "missions": {
+      "creator_gsc": {
+        "label": "Google Search Console verbinden",
+        "desc": "Sieh deinen echten Traffic, deine Suchanfragen und Positionen"
+      },
+      "creator_sync": {
+        "label": "Suchdaten synchronisieren",
+        "desc": "Hole 90 Tage Klicks, Impressionen und Positionen"
+      },
+      "creator_article": {
+        "label": "Ersten Artikel generieren",
+        "desc": "KI-geschrieben, SEO-optimiert für deine Nische"
+      },
+      "creator_social": {
+        "label": "Ein plattformübergreifendes Social-Set erstellen",
+        "desc": "Ein Thema — jedes Format, zugeschnitten und betextet"
+      },
+      "creator_market": {
+        "label": "Entdecken, wonach deine Zielgruppe sucht",
+        "desc": "Themencluster und Content-Ideen aus echter Nachfrage"
+      },
+      "ecommerce_store": {
+        "label": "Deinen Shop verbinden",
+        "desc": "Bilder und Inhalte direkt auf Shopify / WordPress veröffentlichen"
+      },
+      "ecommerce_gsc": {
+        "label": "Google Search Console verbinden",
+        "desc": "Verfolge Kaufabsicht-Anfragen und Produktpositionen"
+      },
+      "ecommerce_sync": {
+        "label": "Suchdaten synchronisieren",
+        "desc": "Echte Klicks, Impressionen und Positionen für deinen Shop"
+      },
+      "ecommerce_product": {
+        "label": "Ein Produktfoto mit KI erstellen",
+        "desc": "Studio- und Lifestyle-Szenen aus einem Upload"
+      },
+      "ecommerce_market": {
+        "label": "Deinen Markt analysieren",
+        "desc": "Kommerzielle Anfragen, Vergleiche und Wettbewerbsscans"
+      },
+      "freelancer_gsc": {
+        "label": "Google Search Console verbinden",
+        "desc": "Verankere deine Marktanalyse in echten Daten"
+      },
+      "freelancer_sync": {
+        "label": "Markt synchronisieren & einschätzen",
+        "desc": "Nachfrage, Themen und Nischenlücken aus echten Suchen"
+      },
+      "freelancer_linkedin": {
+        "label": "LinkedIn verbinden",
+        "desc": "Veröffentliche Outreach-Posts mit einem Klick in deinem Feed"
+      },
+      "freelancer_brand": {
+        "label": "Dein Brand Kit einrichten",
+        "desc": "Farben und Schriften für alles, was du erstellst"
+      },
+      "freelancer_competitor": {
+        "label": "Wettbewerbsanalyse starten",
+        "desc": "Analysiere eine Konkurrenzseite und finde die Lücken"
+      },
+      "freelancer_outreach": {
+        "label": "LinkedIn-Outreach-Inhalte erstellen",
+        "desc": "Posts und Visuals, die deine Zielkunden anziehen"
       }
     }
   }
