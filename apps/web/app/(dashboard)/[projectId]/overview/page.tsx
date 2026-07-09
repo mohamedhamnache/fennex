@@ -31,7 +31,7 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
   const { projectId } = params;
   const { t, i18n } = useTranslation();
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: listProjects,
     staleTime: 30_000,
@@ -76,10 +76,19 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
         }
       />
 
-      {/* Persona setup missions */}
-      <MissionControl projectId={projectId} persona={project?.persona ?? "creator"} />
-
-      <PersonaHomeSection projectId={projectId} persona={project?.persona ?? "creator"} />
+      {/* Persona-driven sections — gated until the project is loaded so we never
+          flash the default "creator" layout before the real persona is known. */}
+      {projectsLoading || !project ? (
+        <div className="flex flex-col gap-6">
+          <div className="h-40 rounded-xl border bg-muted/20 animate-pulse" />
+          <div className="h-64 rounded-xl border bg-muted/20 animate-pulse" />
+        </div>
+      ) : (
+        <>
+          <MissionControl projectId={projectId} persona={project.persona ?? "creator"} />
+          <PersonaHomeSection projectId={projectId} persona={project.persona ?? "creator"} />
+        </>
+      )}
 
       <div className="grid grid-cols-1 gap-6">
         {/* Recent articles */}
