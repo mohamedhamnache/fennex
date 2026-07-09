@@ -399,6 +399,15 @@ async def test_plan_edit_and_run(client, org_and_project):
     assert run.status_code == 200 and run.json()["status"] == "running"
 
 
+@pytest.mark.asyncio
+async def test_plan_edit_rejects_empty_step_list(client, org_and_project):
+    plan = {"summary": "s", "steps": [{"agent": "zerda", "action": "zerda.pick_angle", "brief": {}, "why": "w"}]}
+    with patch("app.api.v1.routers.campaigns.draft_plan", new=AsyncMock(return_value=plan)):
+        cid = (await client.post(f"/api/v1/campaigns?project_id={FAKE_PROJECT_ID}", json={"goal": "g"})).json()["id"]
+    r = await client.patch(f"/api/v1/campaigns/{cid}/plan", json={"step_ids": []})
+    assert r.status_code == 400
+
+
 # ── Zerda auto-track hook ─────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

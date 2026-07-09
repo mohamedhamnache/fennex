@@ -69,7 +69,7 @@ export function StepPanel({ step, campaign, onClose, onRemove, removing }: StepP
         <button
           type="button"
           onClick={() => onRemove(step.id)}
-          disabled={removing}
+          disabled={removing || campaign.steps.length <= 1}
           className="mt-auto flex items-center justify-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
         >
           <Trash2 className="h-3.5 w-3.5" /> {t("campaigns.stepPanel.removeStep")}

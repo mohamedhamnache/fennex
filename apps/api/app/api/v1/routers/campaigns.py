@@ -99,6 +99,8 @@ async def edit_plan(campaign_id: uuid.UUID, body: PlanEdit, current_user: Curren
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
     if c.status != "planned":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Plan can only be edited before running.")
+    if not body.step_ids:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "A campaign needs at least one step.")
     keep = body.step_ids
     steps = await _steps(campaign_id, db)
     for s in steps:

@@ -196,7 +196,7 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
               </p>
               <button
                 onClick={() => runMutation.mutate()}
-                disabled={runMutation.isPending}
+                disabled={runMutation.isPending || activeCampaign.steps.length === 0}
                 className="btn-primary px-5 py-2 text-sm"
               >
                 {t("campaigns.canvas.launch")}
