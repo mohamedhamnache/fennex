@@ -9,12 +9,47 @@ from app.core.database import async_session_factory
 from app.models.campaign import Campaign, CampaignStep
 from app.services.ai_analytics_service import project_profile
 from app.services.campaign_catalog import ACTIONS, CampaignContext
+from app.services.recommendation_service import create_recommendation
 
 logger = logging.getLogger(__name__)
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+async def _autotrack_campaign(campaign, steps, db) -> None:
+    """On completion, hand the campaign's angle to Zerda's closed-loop tracking."""
+    try:
+        keyword = None
+        rationale = ""
+        for s in steps:
+            st = s.structured or {}
+            if s.status == "completed" and st.get("keyword"):
+                keyword = str(st["keyword"])
+                rationale = str(st.get("rationale", ""))
+                break
+        if not keyword:
+            return
+        title = f"Campaign: {campaign.goal[:80]}"
+        from app.models.recommendation import Recommendation
+        from sqlalchemy import select as _select
+        existing = (await db.execute(_select(Recommendation).where(
+            Recommendation.project_id == campaign.project_id,
+            Recommendation.anchor_query == keyword,
+            Recommendation.title == title,
+        ))).scalars().first()
+        if existing is not None:
+            return
+        await create_recommendation(
+            campaign.project_id, campaign.org_id,
+            {"source": "agent", "source_agent": "zerda", "title": title,
+             "detail": (campaign.goal + ("\n\nAngle: " + rationale if rationale else ""))[:2000],
+             "anchor_query": keyword},
+            db,
+        )
+    except Exception:
+        logger.exception("campaign auto-track failed: %s", campaign.id)
 
 
 async def execute_campaign(campaign_id, db_factory=None) -> None:
@@ -81,6 +116,8 @@ async def execute_campaign(campaign_id, db_factory=None) -> None:
             else:
                 campaign.status = "completed" if any_done else "failed"
             await db.commit()
+            if campaign.status == "completed":
+                await _autotrack_campaign(campaign, steps, db)
         except Exception:
             logger.exception("campaign execution crashed: %s", campaign_id)
             await db.rollback()

@@ -28,6 +28,7 @@ from app.models.social import SocialPost  # noqa: F401
 from app.models.analytics import GscQueryStat, AnalyticsSnapshot  # noqa: F401
 from app.models.campaign import Campaign, CampaignStep  # noqa: F401
 from app.models.api_key import APIKey  # noqa: F401
+from app.models.recommendation import Recommendation  # noqa: F401
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects",
     "articles", "generated_images", "social_posts", "gsc_query_stats", "analytics_snapshots",
-    "campaigns", "campaign_steps", "api_keys",
+    "campaigns", "campaign_steps", "api_keys", "recommendations",
 ]
 
 
@@ -396,3 +397,66 @@ async def test_plan_edit_and_run(client, org_and_project):
     with patch("app.api.v1.routers.campaigns.enqueue_campaign", new=AsyncMock(return_value=None)):
         run = await client.post(f"/api/v1/campaigns/{cid}/run")
     assert run.status_code == 200 and run.json()["status"] == "running"
+
+
+# ── Zerda auto-track hook ─────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_completed_campaign_autotracks_angle(db_session, org_and_project):
+    from app.services.campaign_catalog import StepResult
+    from app.workers.tasks.campaign_tasks import execute_campaign
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="Win clients", persona="freelancer", status="running")
+    db_session.add(c); await db_session.commit()
+    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle"))
+    await db_session.commit()
+    async def fake_zerda(campaign, step, context, db):
+        return StepResult(summary="angle", structured={"topic": "T", "keyword": "menu digital", "rationale": "striking"})
+    from app.services import campaign_catalog
+    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}):
+        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
+    rec = (await db_session.execute(select(Recommendation))).scalars().first()
+    assert rec is not None
+    assert rec.anchor_query == "menu digital"
+    assert rec.title.startswith("Campaign:")
+    # duplicate guard: re-running (resume path re-chains completed steps) must not create a second one
+    c.status = "running"; c.cancel_requested = False
+    await db_session.commit()
+    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}):
+        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
+    recs = (await db_session.execute(select(Recommendation))).scalars().all()
+    assert len(recs) == 1
+
+
+@pytest.mark.asyncio
+async def test_campaign_without_angle_creates_no_recommendation(db_session, org_and_project):
+    from app.services.campaign_catalog import StepResult
+    from app.workers.tasks.campaign_tasks import execute_campaign
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="oasis", action="oasis.market_report"))
+    await db_session.commit()
+    async def fake_oasis(campaign, step, context, db):
+        return StepResult(summary="report", artifact_type="report")
+    from app.services import campaign_catalog
+    with patch.dict(campaign_catalog.ACTIONS["oasis.market_report"].__dict__, {"executor": fake_oasis}):
+        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
+    recs = (await db_session.execute(select(Recommendation))).scalars().all()
+    assert recs == []
+
+
+@pytest.mark.asyncio
+async def test_autotrack_failure_does_not_change_campaign_status(db_session, org_and_project):
+    from app.services.campaign_catalog import StepResult
+    from app.workers.tasks.campaign_tasks import execute_campaign
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
+    db_session.add(c); await db_session.commit()
+    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle"))
+    await db_session.commit()
+    async def fake_zerda(campaign, step, context, db):
+        return StepResult(summary="angle", structured={"keyword": "k"})
+    from app.services import campaign_catalog
+    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}), \
+         patch("app.workers.tasks.campaign_tasks.create_recommendation", new=AsyncMock(side_effect=RuntimeError("boom"))):
+        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
+    await db_session.refresh(c)
+    assert c.status == "completed"
