@@ -759,6 +759,28 @@
         "audits": "Audit-Durchläufe",
         "backlinks": "Backlink-Analysen"
       }
+    },
+    "project": {
+      "title": "Projekt",
+      "subtitle": "Verwalte das Projekt, an dem das Rudel arbeitet",
+      "selectProject": "Projekt",
+      "name": "Name",
+      "domain": "Domain",
+      "language": "Inhaltssprache",
+      "languageHint": "Die Agenten schreiben in dieser Sprache; sie legt auch die Standardsprache der Oberfläche fest.",
+      "country": "Zielland",
+      "industry": "Branche",
+      "persona": "Profil",
+      "save": "Änderungen speichern",
+      "saving": "Speichern...",
+      "saved": "Projekt aktualisiert",
+      "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+      "none": "Noch kein Projekt. Erstelle eines, um zu starten.",
+      "personas": {
+        "creator": "Creator",
+        "ecommerce": "E-Commerce",
+        "freelancer": "Freelancer"
+      }
     }
   },
   "billing": {

@@ -759,6 +759,28 @@
         "audits": "Ejecuciones de auditoría",
         "backlinks": "Análisis de backlinks"
       }
+    },
+    "project": {
+      "title": "Proyecto",
+      "subtitle": "Gestiona el proyecto en el que trabaja la Manada",
+      "selectProject": "Proyecto",
+      "name": "Nombre",
+      "domain": "Dominio",
+      "language": "Idioma del contenido",
+      "languageHint": "Los agentes escriben en este idioma, que también define el idioma predeterminado de la interfaz.",
+      "country": "País objetivo",
+      "industry": "Sector",
+      "persona": "Perfil",
+      "save": "Guardar cambios",
+      "saving": "Guardando...",
+      "saved": "Proyecto actualizado",
+      "saveError": "No se pudo guardar. Inténtalo de nuevo.",
+      "none": "Aún no hay proyectos. Crea uno para empezar.",
+      "personas": {
+        "creator": "Creador",
+        "ecommerce": "E-commerce",
+        "freelancer": "Freelance"
+      }
     }
   },
   "billing": {

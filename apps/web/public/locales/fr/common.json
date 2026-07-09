@@ -759,6 +759,28 @@
         "audits": "Exécutions d'audit",
         "backlinks": "Analyses de backlinks"
       }
+    },
+    "project": {
+      "title": "Projet",
+      "subtitle": "Gérez le projet sur lequel la Meute travaille",
+      "selectProject": "Projet",
+      "name": "Nom",
+      "domain": "Domaine",
+      "language": "Langue du contenu",
+      "languageHint": "Les agents écrivent dans cette langue, qui définit aussi la langue par défaut de l'interface.",
+      "country": "Pays cible",
+      "industry": "Secteur",
+      "persona": "Profil",
+      "save": "Enregistrer",
+      "saving": "Enregistrement...",
+      "saved": "Projet mis à jour",
+      "saveError": "Échec de l'enregistrement. Réessayez.",
+      "none": "Aucun projet pour l'instant. Créez-en un pour commencer.",
+      "personas": {
+        "creator": "Créateur",
+        "ecommerce": "E-commerce",
+        "freelancer": "Freelance"
+      }
     }
   },
   "billing": {

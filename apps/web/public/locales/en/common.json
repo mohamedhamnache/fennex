@@ -39,8 +39,18 @@
     "target": "Publish target",
     "targetWordpress": "WordPress",
     "targetLinkedin": "LinkedIn",
-    "state": { "planned": "Planned", "scheduled": "Scheduled", "publishing": "Publishing", "published": "Published", "failed": "Failed" },
-    "type": { "article": "Article", "social": "Social", "banner": "Banner" },
+    "state": {
+      "planned": "Planned",
+      "scheduled": "Scheduled",
+      "publishing": "Publishing",
+      "published": "Published",
+      "failed": "Failed"
+    },
+    "type": {
+      "article": "Article",
+      "social": "Social",
+      "banner": "Banner"
+    },
     "pickDate": "Date & time",
     "save": "Save",
     "cancel": "Cancel",
@@ -826,6 +836,28 @@
         "audits": "Audit runs",
         "backlinks": "Backlink analyses"
       }
+    },
+    "project": {
+      "title": "Project",
+      "subtitle": "Manage the project the Pack works on",
+      "selectProject": "Project",
+      "name": "Name",
+      "domain": "Domain",
+      "language": "Content language",
+      "languageHint": "Agents write in this language, and it sets your default interface language.",
+      "country": "Target country",
+      "industry": "Industry",
+      "persona": "Profile",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "saved": "Project updated",
+      "saveError": "Could not save. Try again.",
+      "none": "No project yet. Create one to get started.",
+      "personas": {
+        "creator": "Creator",
+        "ecommerce": "E-commerce",
+        "freelancer": "Freelancer"
+      }
     }
   },
   "billing": {
@@ -858,8 +890,20 @@
     "newCampaign": "New campaign",
     "back": "Back",
     "summary": "Summary",
-    "status": { "planned": "Planned", "running": "Running", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled" },
-    "stepStatus": { "pending": "Pending", "running": "Running", "completed": "Done", "failed": "Failed", "skipped": "Skipped" },
+    "status": {
+      "planned": "Planned",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "stepStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Done",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
     "package": "Campaign package",
     "viewArticle": "View article",
     "viewImages": "View images",
@@ -916,15 +960,42 @@
       "seoScore": "SEO {{score}}"
     },
     "templates": {
-      "audience_growth": { "label": "Grow my audience", "goal": "Grow my audience this month with content on the topics my readers already search for" },
-      "series_week": { "label": "A week-long series", "goal": "Create a one-week content series that owns one high-demand topic in my niche" },
-      "collab_push": { "label": "Collab announcement", "goal": "Announce and promote my new collaboration with an article, a visual and a social series" },
-      "product_launch": { "label": "Launch a product", "goal": "Launch my new product with a landing article, a hero visual and a social campaign" },
-      "buyer_guide": { "label": "Buyer's guide", "goal": "Publish a buyer's guide that captures the commercial searches in my category" },
-      "store_traffic": { "label": "Drive store traffic", "goal": "Drive more organic traffic to my store with content on my highest-potential keywords" },
-      "launch_offer": { "label": "Launch a new offer", "goal": "Launch my new service offer and attract qualified leads this quarter" },
-      "own_topic": { "label": "Own a topic in my niche", "goal": "Become the reference on one topic my potential clients search for" },
-      "seasonal_push": { "label": "Seasonal content push", "goal": "Prepare a seasonal campaign that captures the upcoming peak in my niche" }
+      "audience_growth": {
+        "label": "Grow my audience",
+        "goal": "Grow my audience this month with content on the topics my readers already search for"
+      },
+      "series_week": {
+        "label": "A week-long series",
+        "goal": "Create a one-week content series that owns one high-demand topic in my niche"
+      },
+      "collab_push": {
+        "label": "Collab announcement",
+        "goal": "Announce and promote my new collaboration with an article, a visual and a social series"
+      },
+      "product_launch": {
+        "label": "Launch a product",
+        "goal": "Launch my new product with a landing article, a hero visual and a social campaign"
+      },
+      "buyer_guide": {
+        "label": "Buyer's guide",
+        "goal": "Publish a buyer's guide that captures the commercial searches in my category"
+      },
+      "store_traffic": {
+        "label": "Drive store traffic",
+        "goal": "Drive more organic traffic to my store with content on my highest-potential keywords"
+      },
+      "launch_offer": {
+        "label": "Launch a new offer",
+        "goal": "Launch my new service offer and attract qualified leads this quarter"
+      },
+      "own_topic": {
+        "label": "Own a topic in my niche",
+        "goal": "Become the reference on one topic my potential clients search for"
+      },
+      "seasonal_push": {
+        "label": "Seasonal content push",
+        "goal": "Prepare a seasonal campaign that captures the upcoming peak in my niche"
+      }
     }
   }
 }

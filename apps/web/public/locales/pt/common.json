@@ -759,6 +759,28 @@
         "audits": "Execuções de auditoria",
         "backlinks": "Análises de backlinks"
       }
+    },
+    "project": {
+      "title": "Projeto",
+      "subtitle": "Gerencie o projeto em que a Matilha trabalha",
+      "selectProject": "Projeto",
+      "name": "Nome",
+      "domain": "Domínio",
+      "language": "Idioma do conteúdo",
+      "languageHint": "Os agentes escrevem neste idioma, que também define o idioma padrão da interface.",
+      "country": "País-alvo",
+      "industry": "Setor",
+      "persona": "Perfil",
+      "save": "Salvar alterações",
+      "saving": "Salvando...",
+      "saved": "Projeto atualizado",
+      "saveError": "Não foi possível salvar. Tente novamente.",
+      "none": "Ainda não há projeto. Crie um para começar.",
+      "personas": {
+        "creator": "Criador",
+        "ecommerce": "E-commerce",
+        "freelancer": "Freelancer"
+      }
     }
   },
   "billing": {
