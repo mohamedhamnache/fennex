@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.billing import check_usage_limit
-from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.project import Project
 
@@ -73,13 +72,8 @@ async def create_project(
     await db.flush()
     await db.refresh(project)
 
-    try:
-        import arq
-        redis_pool = await arq.create_pool(settings.REDIS_SETTINGS)
-        await redis_pool.enqueue_job("seed_analytics_history", str(project.id))
-        await redis_pool.aclose()
-    except Exception:
-        pass  # Worker may not be running in dev — seed can be run manually
+    # Analytics start empty and are populated only by real Google Search Console
+    # data once the user connects GSC — we never fabricate synthetic history.
 
     return project
 
