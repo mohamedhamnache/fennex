@@ -380,6 +380,7 @@ async def test_create_campaign_persists_plan(client, org_and_project):
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["status"] == "planned" and len(body["steps"]) == 2
+    assert "started_at" in body["steps"][0]
 
 
 @pytest.mark.asyncio

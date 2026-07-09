@@ -25,7 +25,8 @@ class PlanEdit(BaseModel):
 def _step(s: CampaignStep) -> dict:
     return {"id": str(s.id), "order": s.order, "agent": s.agent, "action": s.action, "brief": s.brief,
             "why": s.why, "status": s.status, "summary": s.summary, "artifact_type": s.artifact_type,
-            "artifact_ids": s.artifact_ids, "structured": s.structured, "error": s.error}
+            "artifact_ids": s.artifact_ids, "structured": s.structured, "error": s.error,
+            "started_at": s.started_at, "finished_at": s.finished_at}
 
 
 def _campaign(c: Campaign, steps: list[CampaignStep]) -> dict:
