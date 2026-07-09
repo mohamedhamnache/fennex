@@ -767,5 +767,131 @@
     "atLimit": "Du hast dein Limit für {{label}} erreicht ({{used}}/{{limit}}).",
     "nearLimit": "Du hast {{used}}/{{limit}} {{label}} diesen Monat verwendet.",
     "upgradeToContinue": "Upgraden um fortzufahren →"
+  },
+  "campaigns": {
+    "title": "Kampagnen",
+    "subtitle": "Briefe das Rudel einmal — es plant und führt eine ganze Kampagne aus",
+    "newGoal": "Was möchtest du erreichen?",
+    "goalPlaceholder": "z. B. 3 neue Restaurant-Kunden in diesem Quartal gewinnen",
+    "draft": "Plan entwerfen",
+    "drafting": "Plan wird erstellt...",
+    "planReady": "Hier ist der Plan",
+    "run": "Kampagne starten",
+    "running": "Läuft...",
+    "cancel": "Abbrechen",
+    "remove": "Schritt entfernen",
+    "why": "Warum",
+    "empty": "Noch keine Kampagnen. Lege ein Ziel fest, um zu starten.",
+    "yourCampaigns": "Deine Kampagnen",
+    "newCampaign": "Neue Kampagne",
+    "back": "Zurück",
+    "summary": "Zusammenfassung",
+    "status": {
+      "planned": "Geplant",
+      "running": "Läuft",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen"
+    },
+    "stepStatus": {
+      "pending": "Ausstehend",
+      "running": "Läuft",
+      "completed": "Fertig",
+      "failed": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "package": "Kampagnen-Paket",
+    "viewArticle": "Artikel ansehen",
+    "viewImages": "Bilder ansehen",
+    "viewSocial": "Social-Posts ansehen",
+    "viewDetails": "Details ansehen",
+    "noDetails": "Keine Details verfügbar.",
+    "canvas": {
+      "goal": "Ziel",
+      "package": "Paket",
+      "packagePending": "{{done}} / {{total}} Artefakte",
+      "launch": "Kampagne starten",
+      "estimatedTotal": "Geschätzt gesamt",
+      "minutes": "Min.",
+      "directorNote": "Siroccos Plan",
+      "elapsed": "Verstrichen",
+      "liveFeed": "Live-Feed",
+      "stepsDone": "{{done}} von {{total}} Schritten",
+      "actions": {
+        "oasis_market_report": "Marktbericht",
+        "zerda_pick_angle": "Blickwinkel wählen",
+        "sable_competitor_scan": "Wettbewerbsanalyse",
+        "dune_write_article": "Artikel schreiben",
+        "sirocco_generate_visual": "Visual erstellen",
+        "nomad_social_posts": "Social-Posts"
+      }
+    },
+    "stepPanel": {
+      "brief": "Brief",
+      "noBrief": "Keine Parameter",
+      "errorLabel": "Fehler",
+      "removeStep": "Schritt entfernen",
+      "estimateLabel": "Geschätzt"
+    },
+    "ship": {
+      "ship": "Zum Kalender hinzufügen",
+      "shipped": "Geplant – Kalender ansehen",
+      "shipFailed": "Planung fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "trackingChip": {
+      "title": "Zerda verfolgt diese Kampagne",
+      "body": "Fokus auf „{{keyword}}“. Zerda misst 28 Tage nach der Veröffentlichung die tatsächliche Wirkung und meldet, ob es funktioniert hat.",
+      "view": "Tracking ansehen"
+    },
+    "composer": {
+      "headline": "Was soll das Rudel erreichen?",
+      "subline": "Ein Ziel rein. Recherche, Strategie, Inhalte, Visuals und Distribution raus.",
+      "cta": "Meine Kampagne entwerfen",
+      "templatesHint": "Vorlagen passend zu deinem Profil",
+      "past": "Deine Kampagnen",
+      "runAgain": "Erneut ausführen",
+      "openArticle": "Öffnen",
+      "reviewSocial": "In Social prüfen",
+      "wordCount": "{{count}} Wörter",
+      "seoScore": "SEO {{score}}"
+    },
+    "templates": {
+      "audience_growth": {
+        "label": "Meine Zielgruppe vergrößern",
+        "goal": "Meine Zielgruppe diesen Monat mit Inhalten zu Themen vergrößern, nach denen meine Leser bereits suchen"
+      },
+      "series_week": {
+        "label": "Eine einwöchige Serie",
+        "goal": "Eine einwöchige Content-Serie erstellen, die ein stark nachgefragtes Thema in meiner Nische besetzt"
+      },
+      "collab_push": {
+        "label": "Kollaborations-Ankündigung",
+        "goal": "Meine neue Kollaboration mit einem Artikel, einem Visual und einer Social-Serie ankündigen und bewerben"
+      },
+      "product_launch": {
+        "label": "Ein Produkt einführen",
+        "goal": "Mein neues Produkt mit einem Landing-Artikel, einem Hero-Visual und einer Social-Kampagne einführen"
+      },
+      "buyer_guide": {
+        "label": "Kaufratgeber",
+        "goal": "Einen Kaufratgeber veröffentlichen, der die kommerziellen Suchanfragen in meiner Kategorie erfasst"
+      },
+      "store_traffic": {
+        "label": "Shop-Traffic steigern",
+        "goal": "Mehr organischen Traffic auf meinen Shop lenken mit Inhalten zu meinen aussichtsreichsten Keywords"
+      },
+      "launch_offer": {
+        "label": "Ein neues Angebot starten",
+        "goal": "Mein neues Serviceangebot starten und in diesem Quartal qualifizierte Leads gewinnen"
+      },
+      "own_topic": {
+        "label": "Ein Thema meiner Nische besetzen",
+        "goal": "Zur Referenz für ein Thema werden, nach dem meine potenziellen Kunden suchen"
+      },
+      "seasonal_push": {
+        "label": "Saisonale Content-Aktion",
+        "goal": "Eine saisonale Kampagne vorbereiten, die den kommenden Höhepunkt in meiner Nische erfasst"
+      }
+    }
   }
 }

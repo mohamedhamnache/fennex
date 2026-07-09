@@ -767,5 +767,131 @@
     "atLimit": "Vous avez atteint votre limite de {{label}} ({{used}}/{{limit}}).",
     "nearLimit": "Vous avez utilisé {{used}}/{{limit}} {{label}} ce mois.",
     "upgradeToContinue": "Améliorer pour continuer →"
+  },
+  "campaigns": {
+    "title": "Campagnes",
+    "subtitle": "Briefez la Meute une fois — elle planifie et exécute toute une campagne",
+    "newGoal": "Que voulez-vous accomplir ?",
+    "goalPlaceholder": "ex. Gagner 3 nouveaux clients restaurateurs ce trimestre",
+    "draft": "Préparer le plan",
+    "drafting": "Préparation du plan...",
+    "planReady": "Voici le plan",
+    "run": "Lancer la campagne",
+    "running": "En cours...",
+    "cancel": "Annuler",
+    "remove": "Retirer l'étape",
+    "why": "Pourquoi",
+    "empty": "Aucune campagne pour l'instant. Définissez un objectif pour commencer.",
+    "yourCampaigns": "Vos campagnes",
+    "newCampaign": "Nouvelle campagne",
+    "back": "Retour",
+    "summary": "Résumé",
+    "status": {
+      "planned": "Planifiée",
+      "running": "En cours",
+      "completed": "Terminée",
+      "failed": "Échouée",
+      "cancelled": "Annulée"
+    },
+    "stepStatus": {
+      "pending": "En attente",
+      "running": "En cours",
+      "completed": "Terminé",
+      "failed": "Échoué",
+      "skipped": "Ignoré"
+    },
+    "package": "Livrable de campagne",
+    "viewArticle": "Voir l'article",
+    "viewImages": "Voir les images",
+    "viewSocial": "Voir les posts sociaux",
+    "viewDetails": "Voir les détails",
+    "noDetails": "Aucun détail disponible.",
+    "canvas": {
+      "goal": "Objectif",
+      "package": "Livrable",
+      "packagePending": "{{done}} / {{total}} livrables",
+      "launch": "Lancer la campagne",
+      "estimatedTotal": "Total estimé",
+      "minutes": "min",
+      "directorNote": "Le plan de Sirocco",
+      "elapsed": "Écoulé",
+      "liveFeed": "Flux en direct",
+      "stepsDone": "{{done}} sur {{total}} étapes",
+      "actions": {
+        "oasis_market_report": "Rapport de marché",
+        "zerda_pick_angle": "Choisir l'angle",
+        "sable_competitor_scan": "Analyse concurrent",
+        "dune_write_article": "Rédiger l'article",
+        "sirocco_generate_visual": "Générer le visuel",
+        "nomad_social_posts": "Posts sociaux"
+      }
+    },
+    "stepPanel": {
+      "brief": "Brief",
+      "noBrief": "Aucun paramètre",
+      "errorLabel": "Erreur",
+      "removeStep": "Retirer l'étape",
+      "estimateLabel": "Estimé"
+    },
+    "ship": {
+      "ship": "Ajouter au calendrier",
+      "shipped": "Planifié - voir le calendrier",
+      "shipFailed": "Échec de la planification. Réessayez."
+    },
+    "trackingChip": {
+      "title": "Zerda suit cette campagne",
+      "body": "Cible « {{keyword}} ». Zerda mesurera l'impact réel pendant 28 jours après publication et indiquera si ça a fonctionné.",
+      "view": "Voir le suivi"
+    },
+    "composer": {
+      "headline": "Que doit accomplir la Meute ?",
+      "subline": "Un objectif en entrée. Recherche, stratégie, contenu, visuels et diffusion en sortie.",
+      "cta": "Concevoir ma campagne",
+      "templatesHint": "Modèles adaptés à votre profil",
+      "past": "Vos campagnes",
+      "runAgain": "Relancer",
+      "openArticle": "Ouvrir",
+      "reviewSocial": "Revoir dans Social",
+      "wordCount": "{{count}} mots",
+      "seoScore": "SEO {{score}}"
+    },
+    "templates": {
+      "audience_growth": {
+        "label": "Développer mon audience",
+        "goal": "Développer mon audience ce mois-ci avec du contenu sur les sujets que mes lecteurs recherchent déjà"
+      },
+      "series_week": {
+        "label": "Une série d'une semaine",
+        "goal": "Créer une série de contenu d'une semaine qui s'approprie un sujet très demandé dans ma niche"
+      },
+      "collab_push": {
+        "label": "Annonce de collaboration",
+        "goal": "Annoncer et promouvoir ma nouvelle collaboration avec un article, un visuel et une série sociale"
+      },
+      "product_launch": {
+        "label": "Lancer un produit",
+        "goal": "Lancer mon nouveau produit avec un article de destination, un visuel phare et une campagne sociale"
+      },
+      "buyer_guide": {
+        "label": "Guide d'achat",
+        "goal": "Publier un guide d'achat qui capte les recherches commerciales de ma catégorie"
+      },
+      "store_traffic": {
+        "label": "Générer du trafic en boutique",
+        "goal": "Générer plus de trafic organique vers ma boutique avec du contenu sur mes mots-clés à plus fort potentiel"
+      },
+      "launch_offer": {
+        "label": "Lancer une nouvelle offre",
+        "goal": "Lancer ma nouvelle offre de service et attirer des prospects qualifiés ce trimestre"
+      },
+      "own_topic": {
+        "label": "Dominer un sujet de ma niche",
+        "goal": "Devenir la référence sur un sujet que mes clients potentiels recherchent"
+      },
+      "seasonal_push": {
+        "label": "Campagne saisonnière",
+        "goal": "Préparer une campagne saisonnière qui capte le pic à venir dans ma niche"
+      }
+    }
   }
 }

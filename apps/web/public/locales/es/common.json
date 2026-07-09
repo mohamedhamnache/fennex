@@ -767,5 +767,131 @@
     "atLimit": "Has alcanzado tu límite de {{label}} ({{used}}/{{limit}}).",
     "nearLimit": "Has usado {{used}}/{{limit}} {{label}} este mes.",
     "upgradeToContinue": "Mejorar para continuar →"
+  },
+  "campaigns": {
+    "title": "Campañas",
+    "subtitle": "Informa a la Manada una vez: planifican y ejecutan toda una campaña",
+    "newGoal": "¿Qué quieres lograr?",
+    "goalPlaceholder": "p. ej. Conseguir 3 nuevos clientes de restaurantes este trimestre",
+    "draft": "Preparar plan",
+    "drafting": "Preparando el plan...",
+    "planReady": "Aquí está el plan",
+    "run": "Ejecutar campaña",
+    "running": "Ejecutando...",
+    "cancel": "Cancelar",
+    "remove": "Quitar paso",
+    "why": "Por qué",
+    "empty": "Aún no hay campañas. Define un objetivo para empezar.",
+    "yourCampaigns": "Tus campañas",
+    "newCampaign": "Nueva campaña",
+    "back": "Volver",
+    "summary": "Resumen",
+    "status": {
+      "planned": "Planificada",
+      "running": "En curso",
+      "completed": "Completada",
+      "failed": "Fallida",
+      "cancelled": "Cancelada"
+    },
+    "stepStatus": {
+      "pending": "Pendiente",
+      "running": "En curso",
+      "completed": "Hecho",
+      "failed": "Fallido",
+      "skipped": "Omitido"
+    },
+    "package": "Paquete de campaña",
+    "viewArticle": "Ver artículo",
+    "viewImages": "Ver imágenes",
+    "viewSocial": "Ver publicaciones sociales",
+    "viewDetails": "Ver detalles",
+    "noDetails": "No hay detalles disponibles.",
+    "canvas": {
+      "goal": "Objetivo",
+      "package": "Paquete",
+      "packagePending": "{{done}} / {{total}} recursos",
+      "launch": "Lanzar campaña",
+      "estimatedTotal": "Total estimado",
+      "minutes": "min",
+      "directorNote": "El plan de Sirocco",
+      "elapsed": "Transcurrido",
+      "liveFeed": "Flujo en vivo",
+      "stepsDone": "{{done}} de {{total}} pasos",
+      "actions": {
+        "oasis_market_report": "Informe de mercado",
+        "zerda_pick_angle": "Elegir el enfoque",
+        "sable_competitor_scan": "Análisis de competencia",
+        "dune_write_article": "Escribir el artículo",
+        "sirocco_generate_visual": "Generar el visual",
+        "nomad_social_posts": "Publicaciones sociales"
+      }
+    },
+    "stepPanel": {
+      "brief": "Brief",
+      "noBrief": "Sin parámetros",
+      "errorLabel": "Error",
+      "removeStep": "Quitar paso",
+      "estimateLabel": "Estimado"
+    },
+    "ship": {
+      "ship": "Añadir al calendario",
+      "shipped": "Programado - ver calendario",
+      "shipFailed": "No se pudo programar. Inténtalo de nuevo."
+    },
+    "trackingChip": {
+      "title": "Zerda está siguiendo esta campaña",
+      "body": "Apuntando a «{{keyword}}». Zerda medirá el impacto real durante 28 días tras la publicación e informará si funcionó.",
+      "view": "Ver seguimiento"
+    },
+    "composer": {
+      "headline": "¿Qué debe lograr la Manada?",
+      "subline": "Un objetivo de entrada. Investigación, estrategia, contenido, visuales y distribución de salida.",
+      "cta": "Diseñar mi campaña",
+      "templatesHint": "Plantillas adaptadas a tu perfil",
+      "past": "Tus campañas",
+      "runAgain": "Ejecutar de nuevo",
+      "openArticle": "Abrir",
+      "reviewSocial": "Revisar en Social",
+      "wordCount": "{{count}} palabras",
+      "seoScore": "SEO {{score}}"
+    },
+    "templates": {
+      "audience_growth": {
+        "label": "Hacer crecer mi audiencia",
+        "goal": "Hacer crecer mi audiencia este mes con contenido sobre los temas que mis lectores ya buscan"
+      },
+      "series_week": {
+        "label": "Una serie de una semana",
+        "goal": "Crear una serie de contenido de una semana que domine un tema de alta demanda en mi nicho"
+      },
+      "collab_push": {
+        "label": "Anuncio de colaboración",
+        "goal": "Anunciar y promocionar mi nueva colaboración con un artículo, un visual y una serie social"
+      },
+      "product_launch": {
+        "label": "Lanzar un producto",
+        "goal": "Lanzar mi nuevo producto con un artículo de aterrizaje, un visual principal y una campaña social"
+      },
+      "buyer_guide": {
+        "label": "Guía de compra",
+        "goal": "Publicar una guía de compra que capte las búsquedas comerciales de mi categoría"
+      },
+      "store_traffic": {
+        "label": "Atraer tráfico a la tienda",
+        "goal": "Atraer más tráfico orgánico a mi tienda con contenido sobre mis palabras clave de mayor potencial"
+      },
+      "launch_offer": {
+        "label": "Lanzar una nueva oferta",
+        "goal": "Lanzar mi nueva oferta de servicio y atraer clientes potenciales cualificados este trimestre"
+      },
+      "own_topic": {
+        "label": "Dominar un tema de mi nicho",
+        "goal": "Convertirme en la referencia sobre un tema que buscan mis clientes potenciales"
+      },
+      "seasonal_push": {
+        "label": "Campaña de temporada",
+        "goal": "Preparar una campaña de temporada que capte el próximo pico en mi nicho"
+      }
+    }
   }
 }
