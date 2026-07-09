@@ -18,7 +18,12 @@
     "selectProject": "اختر مشروعًا",
     "research": "بحث",
     "create": "إنشاء",
-    "grow": "النمو"
+    "grow": "النمو",
+    "agents": "الوكلاء",
+    "campaigns": "الحملات",
+    "forYou": "لك",
+    "moreTools": "أدوات أخرى",
+    "calendar": "التقويم"
   },
   "common": {
     "save": "حفظ",

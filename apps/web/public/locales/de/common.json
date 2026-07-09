@@ -18,7 +18,12 @@
     "selectProject": "Projekt auswählen",
     "research": "Recherche",
     "create": "Erstellen",
-    "grow": "Wachsen"
+    "grow": "Wachsen",
+    "agents": "Agenten",
+    "campaigns": "Kampagnen",
+    "forYou": "Für dich",
+    "moreTools": "Weitere Tools",
+    "calendar": "Kalender"
   },
   "common": {
     "save": "Speichern",
@@ -770,7 +775,7 @@
   },
   "campaigns": {
     "title": "Kampagnen",
-    "subtitle": "Briefe das Rudel einmal — es plant und führt eine ganze Kampagne aus",
+    "subtitle": "Ein Briefing genügt — das Rudel plant und führt eine ganze Kampagne aus",
     "newGoal": "Was möchtest du erreichen?",
     "goalPlaceholder": "z. B. 3 neue Restaurant-Kunden in diesem Quartal gewinnen",
     "draft": "Plan entwerfen",

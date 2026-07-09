@@ -18,7 +18,12 @@
     "selectProject": "Sélectionner un projet",
     "research": "Recherche",
     "create": "Créer",
-    "grow": "Croissance"
+    "grow": "Croissance",
+    "agents": "Agents",
+    "campaigns": "Campagnes",
+    "forYou": "Pour vous",
+    "moreTools": "Plus d'outils",
+    "calendar": "Calendrier"
   },
   "common": {
     "save": "Enregistrer",
