@@ -18,7 +18,13 @@
     "selectProject": "Sélectionner un projet",
     "research": "Recherche",
     "create": "Créer",
-    "grow": "Croissance"
+    "grow": "Croissance",
+    "agents": "Agents",
+    "campaigns": "Campagnes",
+    "forYou": "Pour vous",
+    "moreTools": "Plus d'outils",
+    "calendar": "Calendrier",
+    "home": "Accueil"
   },
   "common": {
     "save": "Enregistrer",
@@ -155,6 +161,15 @@
       "impressions": "Impressions",
       "avgCtr": "CTR moyen",
       "avgPosition": "Position moyenne"
+    },
+    "dashboard": "Tableau de bord",
+    "project": "Projet",
+    "status": {
+      "draft": "Brouillon",
+      "generating": "Génération",
+      "ready": "Prêt",
+      "published": "Publié",
+      "failed": "Échoué"
     }
   },
   "articles": {
@@ -180,7 +195,10 @@
       "metaTitle": "Titre méta",
       "metaDescription": "Description méta",
       "articleTitle": "Titre de l'article",
-      "words": "mots"
+      "words": "mots",
+      "bodyPlaceholder": "Commencez à écrire en Markdown…",
+      "metaTitlePlaceholder": "Titre SEO…",
+      "metaDescPlaceholder": "Brève description de la page…"
     },
     "newArticleModal": {
       "title": "Nouvel article",
@@ -192,7 +210,9 @@
       "tone": "Ton",
       "wordCount": "Nombre de mots cible",
       "cancel": "Annuler",
-      "create": "Créer et générer"
+      "create": "Créer et générer",
+      "titlePlaceholder": "ex. Les 10 meilleures pratiques SEO pour 2025",
+      "keywordPlaceholder": "ex. SEO on-page"
     },
     "publishModal": {
       "title": "Publier l'article",
@@ -209,6 +229,17 @@
       "edit": "Modifier",
       "regenerate": "Régénérer",
       "delete": "Supprimer"
+    },
+    "toast": {
+      "saveError": "Impossible d'enregistrer les modifications",
+      "regenerated": "Article régénéré",
+      "regenerateError": "Impossible de régénérer l'article",
+      "revisionSaved": "Révision enregistrée",
+      "revisionError": "Impossible d'enregistrer la révision",
+      "deleted": "Article supprimé",
+      "deleteError": "Impossible de supprimer l'article",
+      "regenStarted": "Régénération lancée",
+      "regenStartedMsg": "Votre article est en cours de réécriture."
     }
   },
   "keywords": {
@@ -339,7 +370,8 @@
       "copyUrl": "Copier l'URL",
       "delete": "Supprimer",
       "free": "gratuit"
-    }
+    },
+    "searchPlaceholder": "Rechercher par prompt, texte alternatif ou légende..."
   },
   "social": {
     "title": "Studio social",
@@ -754,6 +786,28 @@
         "audits": "Exécutions d'audit",
         "backlinks": "Analyses de backlinks"
       }
+    },
+    "project": {
+      "title": "Projet",
+      "subtitle": "Gérez le projet sur lequel la Meute travaille",
+      "selectProject": "Projet",
+      "name": "Nom",
+      "domain": "Domaine",
+      "language": "Langue du contenu",
+      "languageHint": "Les agents écrivent dans cette langue, qui définit aussi la langue par défaut de l'interface.",
+      "country": "Pays cible",
+      "industry": "Secteur",
+      "persona": "Profil",
+      "save": "Enregistrer",
+      "saving": "Enregistrement...",
+      "saved": "Projet mis à jour",
+      "saveError": "Échec de l'enregistrement. Réessayez.",
+      "none": "Aucun projet pour l'instant. Créez-en un pour commencer.",
+      "personas": {
+        "creator": "Créateur",
+        "ecommerce": "E-commerce",
+        "freelancer": "Freelance"
+      }
     }
   },
   "billing": {
@@ -767,5 +821,344 @@
     "atLimit": "Vous avez atteint votre limite de {{label}} ({{used}}/{{limit}}).",
     "nearLimit": "Vous avez utilisé {{used}}/{{limit}} {{label}} ce mois.",
     "upgradeToContinue": "Améliorer pour continuer →"
+  },
+  "campaigns": {
+    "title": "Campagnes",
+    "subtitle": "Briefez la Meute une fois — elle planifie et exécute toute une campagne",
+    "newGoal": "Que voulez-vous accomplir ?",
+    "goalPlaceholder": "ex. Gagner 3 nouveaux clients restaurateurs ce trimestre",
+    "draft": "Préparer le plan",
+    "drafting": "Préparation du plan...",
+    "planReady": "Voici le plan",
+    "run": "Lancer la campagne",
+    "running": "En cours...",
+    "cancel": "Annuler",
+    "remove": "Retirer l'étape",
+    "why": "Pourquoi",
+    "empty": "Aucune campagne pour l'instant. Définissez un objectif pour commencer.",
+    "yourCampaigns": "Vos campagnes",
+    "newCampaign": "Nouvelle campagne",
+    "back": "Retour",
+    "summary": "Résumé",
+    "status": {
+      "planned": "Planifiée",
+      "running": "En cours",
+      "completed": "Terminée",
+      "failed": "Échouée",
+      "cancelled": "Annulée"
+    },
+    "stepStatus": {
+      "pending": "En attente",
+      "running": "En cours",
+      "completed": "Terminé",
+      "failed": "Échoué",
+      "skipped": "Ignoré"
+    },
+    "package": "Livrable de campagne",
+    "viewArticle": "Voir l'article",
+    "viewImages": "Voir les images",
+    "viewSocial": "Voir les posts sociaux",
+    "viewDetails": "Voir les détails",
+    "noDetails": "Aucun détail disponible.",
+    "canvas": {
+      "goal": "Objectif",
+      "package": "Livrable",
+      "packagePending": "{{done}} / {{total}} livrables",
+      "launch": "Lancer la campagne",
+      "estimatedTotal": "Total estimé",
+      "minutes": "min",
+      "directorNote": "Le plan de Sirocco",
+      "elapsed": "Écoulé",
+      "liveFeed": "Flux en direct",
+      "stepsDone": "{{done}} sur {{total}} étapes",
+      "actions": {
+        "oasis_market_report": "Rapport de marché",
+        "zerda_pick_angle": "Choisir l'angle",
+        "sable_competitor_scan": "Analyse concurrent",
+        "dune_write_article": "Rédiger l'article",
+        "sirocco_generate_visual": "Générer le visuel",
+        "nomad_social_posts": "Posts sociaux"
+      }
+    },
+    "stepPanel": {
+      "brief": "Brief",
+      "noBrief": "Aucun paramètre",
+      "errorLabel": "Erreur",
+      "removeStep": "Retirer l'étape",
+      "estimateLabel": "Estimé"
+    },
+    "ship": {
+      "ship": "Ajouter au calendrier",
+      "shipped": "Planifié - voir le calendrier",
+      "shipFailed": "Échec de la planification. Réessayez."
+    },
+    "trackingChip": {
+      "title": "Zerda suit cette campagne",
+      "body": "Cible « {{keyword}} ». Zerda mesurera l'impact réel pendant 28 jours après publication et indiquera si ça a fonctionné.",
+      "view": "Voir le suivi"
+    },
+    "composer": {
+      "headline": "Que doit accomplir la Meute ?",
+      "subline": "Un objectif en entrée. Recherche, stratégie, contenu, visuels et diffusion en sortie.",
+      "cta": "Concevoir ma campagne",
+      "templatesHint": "Modèles adaptés à votre profil",
+      "past": "Vos campagnes",
+      "runAgain": "Relancer",
+      "openArticle": "Ouvrir",
+      "reviewSocial": "Revoir dans Social",
+      "wordCount": "{{count}} mots",
+      "seoScore": "SEO {{score}}"
+    },
+    "templates": {
+      "audience_growth": {
+        "label": "Développer mon audience",
+        "goal": "Développer mon audience ce mois-ci avec du contenu sur les sujets que mes lecteurs recherchent déjà"
+      },
+      "series_week": {
+        "label": "Une série d'une semaine",
+        "goal": "Créer une série de contenu d'une semaine qui s'approprie un sujet très demandé dans ma niche"
+      },
+      "collab_push": {
+        "label": "Annonce de collaboration",
+        "goal": "Annoncer et promouvoir ma nouvelle collaboration avec un article, un visuel et une série sociale"
+      },
+      "product_launch": {
+        "label": "Lancer un produit",
+        "goal": "Lancer mon nouveau produit avec un article de destination, un visuel phare et une campagne sociale"
+      },
+      "buyer_guide": {
+        "label": "Guide d'achat",
+        "goal": "Publier un guide d'achat qui capte les recherches commerciales de ma catégorie"
+      },
+      "store_traffic": {
+        "label": "Générer du trafic en boutique",
+        "goal": "Générer plus de trafic organique vers ma boutique avec du contenu sur mes mots-clés à plus fort potentiel"
+      },
+      "launch_offer": {
+        "label": "Lancer une nouvelle offre",
+        "goal": "Lancer ma nouvelle offre de service et attirer des prospects qualifiés ce trimestre"
+      },
+      "own_topic": {
+        "label": "Dominer un sujet de ma niche",
+        "goal": "Devenir la référence sur un sujet que mes clients potentiels recherchent"
+      },
+      "seasonal_push": {
+        "label": "Campagne saisonnière",
+        "goal": "Préparer une campagne saisonnière qui capte le pic à venir dans ma niche"
+      }
+    }
+  },
+  "missionControl": {
+    "getSetUp": "Mise en route",
+    "done": "Configuration terminée — vous êtes prêt",
+    "change": "modifier",
+    "missionsDone": "{{done}}/{{total}} missions faites",
+    "linkedInError": "Impossible de démarrer la connexion LinkedIn.",
+    "persona": {
+      "creator": "Créateur de contenu",
+      "ecommerce": "Vendeur e-commerce",
+      "freelancer": "Freelance / entreprise"
+    },
+    "missions": {
+      "creator_gsc": {
+        "label": "Connecter Google Search Console",
+        "desc": "Voyez votre trafic, vos requêtes et vos positions réelles"
+      },
+      "creator_sync": {
+        "label": "Synchroniser vos données de recherche",
+        "desc": "Récupérez 90 jours de clics, impressions et positions"
+      },
+      "creator_article": {
+        "label": "Générer votre premier article",
+        "desc": "Rédigé par l'IA, optimisé SEO pour votre niche"
+      },
+      "creator_social": {
+        "label": "Créer un pack social multi-plateforme",
+        "desc": "Un sujet — tous les formats, dimensionnés et légendés"
+      },
+      "creator_market": {
+        "label": "Découvrir ce que votre audience recherche",
+        "desc": "Clusters de sujets et idées de contenu issus de la demande réelle"
+      },
+      "ecommerce_store": {
+        "label": "Connecter votre boutique",
+        "desc": "Publiez images et contenu directement sur Shopify / WordPress"
+      },
+      "ecommerce_gsc": {
+        "label": "Connecter Google Search Console",
+        "desc": "Suivez les requêtes d'achat et les positions de vos produits"
+      },
+      "ecommerce_sync": {
+        "label": "Synchroniser vos données de recherche",
+        "desc": "Clics, impressions et positions réels pour votre boutique"
+      },
+      "ecommerce_product": {
+        "label": "Photographier un produit avec l'IA",
+        "desc": "Scènes studio et lifestyle à partir d'un seul upload"
+      },
+      "ecommerce_market": {
+        "label": "Étudier votre marché",
+        "desc": "Requêtes commerciales, comparaisons et analyses de concurrents"
+      },
+      "freelancer_gsc": {
+        "label": "Connecter Google Search Console",
+        "desc": "Ancrez votre analyse de marché dans des données réelles"
+      },
+      "freelancer_sync": {
+        "label": "Synchroniser et dimensionner le marché",
+        "desc": "Demande, sujets et lacunes de niche à partir de recherches réelles"
+      },
+      "freelancer_linkedin": {
+        "label": "Connecter LinkedIn",
+        "desc": "Publiez des posts de prospection sur votre fil en un clic"
+      },
+      "freelancer_brand": {
+        "label": "Configurer votre kit de marque",
+        "desc": "Couleurs et polices appliquées à tout ce que vous créez"
+      },
+      "freelancer_competitor": {
+        "label": "Lancer une analyse concurrent",
+        "desc": "Explorez une page rivale et trouvez les failles à exploiter"
+      },
+      "freelancer_outreach": {
+        "label": "Créer du contenu de prospection LinkedIn",
+        "desc": "Posts et visuels qui attirent vos clients cibles"
+      }
+    }
+  },
+  "studio": {
+    "styles": {
+      "professional": "Professionnel",
+      "photorealistic": "Photoréaliste",
+      "illustration": "Illustration",
+      "minimalist": "Minimaliste",
+      "abstract": "Abstrait",
+      "3d_render": "Rendu 3D",
+      "anime": "Anime",
+      "cinematic": "Cinématique",
+      "luxury_product": "Produit de luxe"
+    },
+    "createLauncher": {
+      "heading": "Que créez-vous ?",
+      "subtitle": "Choisissez un objectif et nous adaptons le studio — les bons formats, styles et cibles d'export.",
+      "intents": {
+        "social": {
+          "label": "Post social",
+          "desc": "Posts, stories et reels prêts à publier — une voix, tous les formats, légendes incluses."
+        },
+        "product": {
+          "label": "Photo produit",
+          "desc": "Photographie studio et lifestyle pour Shopify et WordPress, prête à l'export."
+        },
+        "blog": {
+          "label": "Image d'article",
+          "desc": "Couvertures d'article et visuels intégrés avec texte alternatif SEO."
+        },
+        "banner": {
+          "label": "Bannière / Pub",
+          "desc": "Bannières marketing et créations publicitaires qui convertissent."
+        },
+        "freeform": {
+          "label": "Libre",
+          "desc": "Décrivez n'importe quoi et générez — contrôle total du style et de la qualité."
+        }
+      }
+    }
+  },
+  "imageEdit": {
+    "toolGroups": {
+      "basic": "Base",
+      "ai": "IA",
+      "advanced": "Avancé"
+    },
+    "tools": {
+      "crop": "Rogner",
+      "resize": "Redimensionner",
+      "rotate": "Pivoter",
+      "adjust": "Ajuster",
+      "filter": "Filtre",
+      "denoise": "Débruiter",
+      "sharpen": "Netteté",
+      "text": "Ajouter du texte",
+      "shapes": "Formes",
+      "templates": "Modèles",
+      "add_image": "Ajouter une image",
+      "convert_canvas": "Convertir en calques",
+      "remove_background": "Supprimer le fond",
+      "replace_background": "Remplacer le fond",
+      "remove_object": "Supprimer un objet",
+      "insert_object": "Insérer un objet",
+      "generative_fill": "Remplissage génératif",
+      "smart_erase": "Gomme intelligente",
+      "generate_shadow": "Ajouter une ombre",
+      "relight": "Rééclairer",
+      "restore_face": "Restaurer le visage",
+      "upscale": "Agrandir"
+    },
+    "score": {
+      "title": "Score",
+      "rescore": "Recalculer",
+      "scoreImage": "Évaluer l'image",
+      "hint": "Évaluez cette image sur la qualité visuelle, la cohérence de marque, le SEO et la performance publicitaire.",
+      "error": "Échec de l'évaluation",
+      "visual_quality": "Qualité visuelle",
+      "brand_consistency": "Cohérence de marque",
+      "seo_score": "Score SEO",
+      "ad_performance": "Performance pub"
+    },
+    "toolbar": {
+      "undo": "Annuler (Ctrl+Z)",
+      "redo": "Rétablir (Ctrl+Shift+Z)",
+      "compare": "Maintenir pour comparer à l'original",
+      "insights": "Analyses SEO et qualité",
+      "shortcuts": "Raccourcis clavier (?)",
+      "export": "Exporter (format, qualité, taille)"
+    },
+    "tabs": {
+      "edit": "Édition",
+      "assistant": "Mirage"
+    }
+  },
+  "mirage": {
+    "header": "Mirage · Artisan d'image",
+    "subtitle": "Décrivez une retouche en langage naturel — Mirage transforme ce que vous voyez",
+    "tryPrompt": "Décrivez n'importe quelle retouche en langage naturel — vous pouvez en enchaîner plusieurs dans un message. Essayez :",
+    "applied": "Terminé — {{op}} appliqué.",
+    "failed": "Impossible d'appliquer : {{error}}",
+    "unknownError": "erreur inconnue",
+    "placeholder": "ex. « éclaircis-la et supprime le fond »",
+    "enterHint": "Entrée pour envoyer, Maj+Entrée pour un saut de ligne",
+    "groups": {
+      "oneGo": "En une fois",
+      "enhance": "Améliorer",
+      "retouch": "Retoucher",
+      "style": "Style",
+      "transform": "Transformer"
+    },
+    "suggestions": {
+      "oneGo": [
+        "Éclaircir, supprimer le fond et agrandir 2x",
+        "Réchauffer et ajouter une ombre douce",
+        "Noir et blanc avec plus de contraste, puis accentuer la netteté"
+      ],
+      "enhance": [
+        "La rendre plus lumineuse et vive",
+        "Améliorer automatiquement les couleurs",
+        "Accentuer les détails"
+      ],
+      "retouch": [
+        "Supprimer le fond",
+        "Restaurer le visage"
+      ],
+      "style": [
+        "Convertir en noir et blanc",
+        "Tons chaleureux"
+      ],
+      "transform": [
+        "Ajouter une ombre portée douce",
+        "Agrandir 2x",
+        "Rééclairer depuis le haut"
+      ]
+    }
   }
 }

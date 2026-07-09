@@ -119,9 +119,9 @@ async def _sync_one_project(project_id: str):
             except Exception:
                 pass  # best-effort; on failure leave existing real data untouched
         else:
-            org_id = await _sync_synthetic(pid, today, session)
-            if org_id is None:
-                return
+            # No GSC connection → nothing real to sync. We never fabricate
+            # synthetic figures (they would look like real traffic on the home).
+            return
 
         # Closed-loop recommendation tracking: re-measure + detect after fresh data.
         from app.services.recommendation_service import measure, run_matching

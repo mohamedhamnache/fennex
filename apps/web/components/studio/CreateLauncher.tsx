@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Share2, ShoppingBag, Newspaper, Megaphone, Wand2, ArrowRight, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -7,46 +8,16 @@ export type CreateIntent = "social" | "product" | "blog" | "banner" | "freeform"
 
 interface IntentDef {
   id: CreateIntent;
-  label: string;
-  desc: string;
   Icon: LucideIcon;
   featured?: boolean;
 }
 
 const INTENTS: IntentDef[] = [
-  {
-    id: "social",
-    label: "Social post",
-    desc: "Platform-ready posts, stories & reels — one voice, every size, captions included.",
-    Icon: Share2,
-    featured: true,
-  },
-  {
-    id: "product",
-    label: "Product shot",
-    desc: "Studio & lifestyle photography for Shopify and WordPress, export-ready.",
-    Icon: ShoppingBag,
-    featured: true,
-  },
-  {
-    id: "blog",
-    label: "Blog image",
-    desc: "Article covers and inline visuals with SEO alt-text baked in.",
-    Icon: Newspaper,
-    featured: true,
-  },
-  {
-    id: "banner",
-    label: "Banner / Ad",
-    desc: "Marketing banners and ad creatives that convert.",
-    Icon: Megaphone,
-  },
-  {
-    id: "freeform",
-    label: "Free-form",
-    desc: "Describe anything and generate — full control over style and quality.",
-    Icon: Wand2,
-  },
+  { id: "social", Icon: Share2, featured: true },
+  { id: "product", Icon: ShoppingBag, featured: true },
+  { id: "blog", Icon: Newspaper, featured: true },
+  { id: "banner", Icon: Megaphone },
+  { id: "freeform", Icon: Wand2 },
 ];
 
 interface CreateLauncherProps {
@@ -54,6 +25,7 @@ interface CreateLauncherProps {
 }
 
 export function CreateLauncher({ onPick }: CreateLauncherProps) {
+  const { t } = useTranslation();
   const featured = INTENTS.filter((i) => i.featured);
   const secondary = INTENTS.filter((i) => !i.featured);
 
@@ -61,15 +33,15 @@ export function CreateLauncher({ onPick }: CreateLauncherProps) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl px-6 py-10 animate-fade-in">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">What are you making?</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{t("studio.createLauncher.heading")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Pick a goal and we&apos;ll tailor the studio — the right sizes, styles, and export targets.
+            {t("studio.createLauncher.subtitle")}
           </p>
         </div>
 
         {/* Featured personas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {featured.map(({ id, label, desc, Icon }) => (
+          {featured.map(({ id, Icon }) => (
             <button
               key={id}
               type="button"
@@ -83,8 +55,8 @@ export function CreateLauncher({ onPick }: CreateLauncherProps) {
                 <Icon className="h-5 w-5" strokeWidth={1.8} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">{label}</p>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                <p className="text-sm font-semibold text-foreground">{t(`studio.createLauncher.intents.${id}.label`)}</p>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{t(`studio.createLauncher.intents.${id}.desc`)}</p>
               </div>
               <ArrowRight className="absolute top-5 right-5 h-4 w-4 text-muted-foreground/0 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
             </button>
@@ -93,7 +65,7 @@ export function CreateLauncher({ onPick }: CreateLauncherProps) {
 
         {/* Secondary options */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {secondary.map(({ id, label, desc, Icon }) => (
+          {secondary.map(({ id, Icon }) => (
             <button
               key={id}
               type="button"
@@ -107,8 +79,8 @@ export function CreateLauncher({ onPick }: CreateLauncherProps) {
                 <Icon className="h-5 w-5" strokeWidth={1.8} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">{label}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                <p className="text-sm font-semibold text-foreground">{t(`studio.createLauncher.intents.${id}.label`)}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{t(`studio.createLauncher.intents.${id}.desc`)}</p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
             </button>

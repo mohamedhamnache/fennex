@@ -62,6 +62,7 @@ async def parse_ai_command_steps(
     history: list[dict],
     org_id: uuid.UUID,
     db,
+    locale: str = "en",
 ) -> dict:
     """Parse a command into an ordered list of steps: {"steps": [...]} or {"error": ...}."""
     keys = await get_org_llm_keys(org_id, db)
@@ -78,7 +79,7 @@ async def parse_ai_command_steps(
         if provider not in keys:
             continue
         try:
-            raw = await call_llm(provider, model, keys[provider], _STEPS_SYSTEM, user_msg)
+            raw = await call_llm(provider, model, keys[provider], _STEPS_SYSTEM, user_msg, locale=locale)
             data = json.loads(raw.strip())
             if "error" in data:
                 return data
@@ -96,6 +97,7 @@ async def parse_ai_command(
     history: list[dict],
     org_id: uuid.UUID,
     db,
+    locale: str = "en",
 ) -> dict:
     keys = await get_org_llm_keys(org_id, db)
     if not keys:
@@ -112,7 +114,7 @@ async def parse_ai_command(
         if provider not in keys:
             continue
         try:
-            raw = await call_llm(provider, model, keys[provider], _SYSTEM, user_msg)
+            raw = await call_llm(provider, model, keys[provider], _SYSTEM, user_msg, locale=locale)
             data = json.loads(raw.strip())
             if "operation" in data or "error" in data:
                 return data

@@ -18,7 +18,13 @@
     "selectProject": "Projekt auswählen",
     "research": "Recherche",
     "create": "Erstellen",
-    "grow": "Wachsen"
+    "grow": "Wachsen",
+    "agents": "Agenten",
+    "campaigns": "Kampagnen",
+    "forYou": "Für dich",
+    "moreTools": "Weitere Tools",
+    "calendar": "Kalender",
+    "home": "Startseite"
   },
   "common": {
     "save": "Speichern",
@@ -155,6 +161,15 @@
       "impressions": "Impressionen",
       "avgCtr": "Durchschn. CTR",
       "avgPosition": "Durchschn. Position"
+    },
+    "dashboard": "Dashboard",
+    "project": "Projekt",
+    "status": {
+      "draft": "Entwurf",
+      "generating": "Wird generiert",
+      "ready": "Bereit",
+      "published": "Veröffentlicht",
+      "failed": "Fehlgeschlagen"
     }
   },
   "articles": {
@@ -180,7 +195,10 @@
       "metaTitle": "Meta-Titel",
       "metaDescription": "Meta-Beschreibung",
       "articleTitle": "Artikeltitel",
-      "words": "Wörter"
+      "words": "Wörter",
+      "bodyPlaceholder": "Beginne in Markdown zu schreiben…",
+      "metaTitlePlaceholder": "SEO-Titel…",
+      "metaDescPlaceholder": "Kurze Seitenbeschreibung…"
     },
     "newArticleModal": {
       "title": "Neuer Artikel",
@@ -192,7 +210,9 @@
       "tone": "Ton",
       "wordCount": "Ziel-Wortanzahl",
       "cancel": "Abbrechen",
-      "create": "Erstellen und generieren"
+      "create": "Erstellen und generieren",
+      "titlePlaceholder": "z. B. Die 10 besten SEO-Praktiken für 2025",
+      "keywordPlaceholder": "z. B. On-Page-SEO"
     },
     "publishModal": {
       "title": "Artikel veröffentlichen",
@@ -209,6 +229,17 @@
       "edit": "Bearbeiten",
       "regenerate": "Neu generieren",
       "delete": "Löschen"
+    },
+    "toast": {
+      "saveError": "Änderungen konnten nicht gespeichert werden",
+      "regenerated": "Artikel neu generiert",
+      "regenerateError": "Artikel konnte nicht neu generiert werden",
+      "revisionSaved": "Revision gespeichert",
+      "revisionError": "Revision konnte nicht gespeichert werden",
+      "deleted": "Artikel gelöscht",
+      "deleteError": "Artikel konnte nicht gelöscht werden",
+      "regenStarted": "Neugenerierung gestartet",
+      "regenStartedMsg": "Dein Artikel wird neu geschrieben."
     }
   },
   "keywords": {
@@ -339,7 +370,8 @@
       "copyUrl": "URL kopieren",
       "delete": "Löschen",
       "free": "kostenlos"
-    }
+    },
+    "searchPlaceholder": "Nach Prompt, Alt-Text oder Bildunterschrift suchen..."
   },
   "social": {
     "title": "Social Studio",
@@ -754,6 +786,28 @@
         "audits": "Audit-Durchläufe",
         "backlinks": "Backlink-Analysen"
       }
+    },
+    "project": {
+      "title": "Projekt",
+      "subtitle": "Verwalte das Projekt, an dem das Rudel arbeitet",
+      "selectProject": "Projekt",
+      "name": "Name",
+      "domain": "Domain",
+      "language": "Inhaltssprache",
+      "languageHint": "Die Agenten schreiben in dieser Sprache; sie legt auch die Standardsprache der Oberfläche fest.",
+      "country": "Zielland",
+      "industry": "Branche",
+      "persona": "Profil",
+      "save": "Änderungen speichern",
+      "saving": "Speichern...",
+      "saved": "Projekt aktualisiert",
+      "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+      "none": "Noch kein Projekt. Erstelle eines, um zu starten.",
+      "personas": {
+        "creator": "Creator",
+        "ecommerce": "E-Commerce",
+        "freelancer": "Freelancer"
+      }
     }
   },
   "billing": {
@@ -767,5 +821,344 @@
     "atLimit": "Du hast dein Limit für {{label}} erreicht ({{used}}/{{limit}}).",
     "nearLimit": "Du hast {{used}}/{{limit}} {{label}} diesen Monat verwendet.",
     "upgradeToContinue": "Upgraden um fortzufahren →"
+  },
+  "campaigns": {
+    "title": "Kampagnen",
+    "subtitle": "Ein Briefing genügt — das Rudel plant und führt eine ganze Kampagne aus",
+    "newGoal": "Was möchtest du erreichen?",
+    "goalPlaceholder": "z. B. 3 neue Restaurant-Kunden in diesem Quartal gewinnen",
+    "draft": "Plan entwerfen",
+    "drafting": "Plan wird erstellt...",
+    "planReady": "Hier ist der Plan",
+    "run": "Kampagne starten",
+    "running": "Läuft...",
+    "cancel": "Abbrechen",
+    "remove": "Schritt entfernen",
+    "why": "Warum",
+    "empty": "Noch keine Kampagnen. Lege ein Ziel fest, um zu starten.",
+    "yourCampaigns": "Deine Kampagnen",
+    "newCampaign": "Neue Kampagne",
+    "back": "Zurück",
+    "summary": "Zusammenfassung",
+    "status": {
+      "planned": "Geplant",
+      "running": "Läuft",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen"
+    },
+    "stepStatus": {
+      "pending": "Ausstehend",
+      "running": "Läuft",
+      "completed": "Fertig",
+      "failed": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "package": "Kampagnen-Paket",
+    "viewArticle": "Artikel ansehen",
+    "viewImages": "Bilder ansehen",
+    "viewSocial": "Social-Posts ansehen",
+    "viewDetails": "Details ansehen",
+    "noDetails": "Keine Details verfügbar.",
+    "canvas": {
+      "goal": "Ziel",
+      "package": "Paket",
+      "packagePending": "{{done}} / {{total}} Artefakte",
+      "launch": "Kampagne starten",
+      "estimatedTotal": "Geschätzt gesamt",
+      "minutes": "Min.",
+      "directorNote": "Siroccos Plan",
+      "elapsed": "Verstrichen",
+      "liveFeed": "Live-Feed",
+      "stepsDone": "{{done}} von {{total}} Schritten",
+      "actions": {
+        "oasis_market_report": "Marktbericht",
+        "zerda_pick_angle": "Blickwinkel wählen",
+        "sable_competitor_scan": "Wettbewerbsanalyse",
+        "dune_write_article": "Artikel schreiben",
+        "sirocco_generate_visual": "Visual erstellen",
+        "nomad_social_posts": "Social-Posts"
+      }
+    },
+    "stepPanel": {
+      "brief": "Brief",
+      "noBrief": "Keine Parameter",
+      "errorLabel": "Fehler",
+      "removeStep": "Schritt entfernen",
+      "estimateLabel": "Geschätzt"
+    },
+    "ship": {
+      "ship": "Zum Kalender hinzufügen",
+      "shipped": "Geplant – Kalender ansehen",
+      "shipFailed": "Planung fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "trackingChip": {
+      "title": "Zerda verfolgt diese Kampagne",
+      "body": "Fokus auf „{{keyword}}“. Zerda misst 28 Tage nach der Veröffentlichung die tatsächliche Wirkung und meldet, ob es funktioniert hat.",
+      "view": "Tracking ansehen"
+    },
+    "composer": {
+      "headline": "Was soll das Rudel erreichen?",
+      "subline": "Ein Ziel rein. Recherche, Strategie, Inhalte, Visuals und Distribution raus.",
+      "cta": "Meine Kampagne entwerfen",
+      "templatesHint": "Vorlagen passend zu deinem Profil",
+      "past": "Deine Kampagnen",
+      "runAgain": "Erneut ausführen",
+      "openArticle": "Öffnen",
+      "reviewSocial": "In Social prüfen",
+      "wordCount": "{{count}} Wörter",
+      "seoScore": "SEO {{score}}"
+    },
+    "templates": {
+      "audience_growth": {
+        "label": "Meine Zielgruppe vergrößern",
+        "goal": "Meine Zielgruppe diesen Monat mit Inhalten zu Themen vergrößern, nach denen meine Leser bereits suchen"
+      },
+      "series_week": {
+        "label": "Eine einwöchige Serie",
+        "goal": "Eine einwöchige Content-Serie erstellen, die ein stark nachgefragtes Thema in meiner Nische besetzt"
+      },
+      "collab_push": {
+        "label": "Kollaborations-Ankündigung",
+        "goal": "Meine neue Kollaboration mit einem Artikel, einem Visual und einer Social-Serie ankündigen und bewerben"
+      },
+      "product_launch": {
+        "label": "Ein Produkt einführen",
+        "goal": "Mein neues Produkt mit einem Landing-Artikel, einem Hero-Visual und einer Social-Kampagne einführen"
+      },
+      "buyer_guide": {
+        "label": "Kaufratgeber",
+        "goal": "Einen Kaufratgeber veröffentlichen, der die kommerziellen Suchanfragen in meiner Kategorie erfasst"
+      },
+      "store_traffic": {
+        "label": "Shop-Traffic steigern",
+        "goal": "Mehr organischen Traffic auf meinen Shop lenken mit Inhalten zu meinen aussichtsreichsten Keywords"
+      },
+      "launch_offer": {
+        "label": "Ein neues Angebot starten",
+        "goal": "Mein neues Serviceangebot starten und in diesem Quartal qualifizierte Leads gewinnen"
+      },
+      "own_topic": {
+        "label": "Ein Thema meiner Nische besetzen",
+        "goal": "Zur Referenz für ein Thema werden, nach dem meine potenziellen Kunden suchen"
+      },
+      "seasonal_push": {
+        "label": "Saisonale Content-Aktion",
+        "goal": "Eine saisonale Kampagne vorbereiten, die den kommenden Höhepunkt in meiner Nische erfasst"
+      }
+    }
+  },
+  "missionControl": {
+    "getSetUp": "Einrichtung",
+    "done": "Einrichtung abgeschlossen — es kann losgehen",
+    "change": "ändern",
+    "missionsDone": "{{done}}/{{total}} Missionen erledigt",
+    "linkedInError": "LinkedIn-Verbindung konnte nicht gestartet werden.",
+    "persona": {
+      "creator": "Content-Creator",
+      "ecommerce": "E-Commerce-Verkäufer",
+      "freelancer": "Freelancer / Unternehmen"
+    },
+    "missions": {
+      "creator_gsc": {
+        "label": "Google Search Console verbinden",
+        "desc": "Sieh deinen echten Traffic, deine Suchanfragen und Positionen"
+      },
+      "creator_sync": {
+        "label": "Suchdaten synchronisieren",
+        "desc": "Hole 90 Tage Klicks, Impressionen und Positionen"
+      },
+      "creator_article": {
+        "label": "Ersten Artikel generieren",
+        "desc": "KI-geschrieben, SEO-optimiert für deine Nische"
+      },
+      "creator_social": {
+        "label": "Ein plattformübergreifendes Social-Set erstellen",
+        "desc": "Ein Thema — jedes Format, zugeschnitten und betextet"
+      },
+      "creator_market": {
+        "label": "Entdecken, wonach deine Zielgruppe sucht",
+        "desc": "Themencluster und Content-Ideen aus echter Nachfrage"
+      },
+      "ecommerce_store": {
+        "label": "Deinen Shop verbinden",
+        "desc": "Bilder und Inhalte direkt auf Shopify / WordPress veröffentlichen"
+      },
+      "ecommerce_gsc": {
+        "label": "Google Search Console verbinden",
+        "desc": "Verfolge Kaufabsicht-Anfragen und Produktpositionen"
+      },
+      "ecommerce_sync": {
+        "label": "Suchdaten synchronisieren",
+        "desc": "Echte Klicks, Impressionen und Positionen für deinen Shop"
+      },
+      "ecommerce_product": {
+        "label": "Ein Produktfoto mit KI erstellen",
+        "desc": "Studio- und Lifestyle-Szenen aus einem Upload"
+      },
+      "ecommerce_market": {
+        "label": "Deinen Markt analysieren",
+        "desc": "Kommerzielle Anfragen, Vergleiche und Wettbewerbsscans"
+      },
+      "freelancer_gsc": {
+        "label": "Google Search Console verbinden",
+        "desc": "Verankere deine Marktanalyse in echten Daten"
+      },
+      "freelancer_sync": {
+        "label": "Markt synchronisieren & einschätzen",
+        "desc": "Nachfrage, Themen und Nischenlücken aus echten Suchen"
+      },
+      "freelancer_linkedin": {
+        "label": "LinkedIn verbinden",
+        "desc": "Veröffentliche Outreach-Posts mit einem Klick in deinem Feed"
+      },
+      "freelancer_brand": {
+        "label": "Dein Brand Kit einrichten",
+        "desc": "Farben und Schriften für alles, was du erstellst"
+      },
+      "freelancer_competitor": {
+        "label": "Wettbewerbsanalyse starten",
+        "desc": "Analysiere eine Konkurrenzseite und finde die Lücken"
+      },
+      "freelancer_outreach": {
+        "label": "LinkedIn-Outreach-Inhalte erstellen",
+        "desc": "Posts und Visuals, die deine Zielkunden anziehen"
+      }
+    }
+  },
+  "studio": {
+    "styles": {
+      "professional": "Professionell",
+      "photorealistic": "Fotorealistisch",
+      "illustration": "Illustration",
+      "minimalist": "Minimalistisch",
+      "abstract": "Abstrakt",
+      "3d_render": "3D-Render",
+      "anime": "Anime",
+      "cinematic": "Filmisch",
+      "luxury_product": "Luxusprodukt"
+    },
+    "createLauncher": {
+      "heading": "Was erstellst du?",
+      "subtitle": "Wähle ein Ziel und wir richten das Studio ein — die richtigen Größen, Stile und Exportformate.",
+      "intents": {
+        "social": {
+          "label": "Social-Post",
+          "desc": "Plattformfertige Posts, Stories & Reels — eine Stimme, jede Größe, inklusive Bildtexte."
+        },
+        "product": {
+          "label": "Produktfoto",
+          "desc": "Studio- und Lifestyle-Fotografie für Shopify und WordPress, exportbereit."
+        },
+        "blog": {
+          "label": "Blog-Bild",
+          "desc": "Artikel-Titelbilder und Inline-Visuals mit integriertem SEO-Alt-Text."
+        },
+        "banner": {
+          "label": "Banner / Anzeige",
+          "desc": "Marketing-Banner und Werbemittel, die konvertieren."
+        },
+        "freeform": {
+          "label": "Freiform",
+          "desc": "Beschreibe alles und generiere — volle Kontrolle über Stil und Qualität."
+        }
+      }
+    }
+  },
+  "imageEdit": {
+    "toolGroups": {
+      "basic": "Basis",
+      "ai": "KI",
+      "advanced": "Erweitert"
+    },
+    "tools": {
+      "crop": "Zuschneiden",
+      "resize": "Größe ändern",
+      "rotate": "Drehen",
+      "adjust": "Anpassen",
+      "filter": "Filter",
+      "denoise": "Entrauschen",
+      "sharpen": "Schärfen",
+      "text": "Text hinzufügen",
+      "shapes": "Formen",
+      "templates": "Vorlagen",
+      "add_image": "Bild hinzufügen",
+      "convert_canvas": "In Ebenen umwandeln",
+      "remove_background": "Hintergrund entfernen",
+      "replace_background": "Hintergrund ersetzen",
+      "remove_object": "Objekt entfernen",
+      "insert_object": "Objekt einfügen",
+      "generative_fill": "Generatives Füllen",
+      "smart_erase": "Intelligentes Löschen",
+      "generate_shadow": "Schatten hinzufügen",
+      "relight": "Neu beleuchten",
+      "restore_face": "Gesicht wiederherstellen",
+      "upscale": "Hochskalieren"
+    },
+    "score": {
+      "title": "Score",
+      "rescore": "Neu bewerten",
+      "scoreImage": "Bild bewerten",
+      "hint": "Bewerte dieses Bild nach visueller Qualität, Markenkonsistenz, SEO und Werbeleistung.",
+      "error": "Bewertung fehlgeschlagen",
+      "visual_quality": "Visuelle Qualität",
+      "brand_consistency": "Markenkonsistenz",
+      "seo_score": "SEO-Score",
+      "ad_performance": "Werbeleistung"
+    },
+    "toolbar": {
+      "undo": "Rückgängig (Strg+Z)",
+      "redo": "Wiederholen (Strg+Umschalt+Z)",
+      "compare": "Halten, um mit dem Original zu vergleichen",
+      "insights": "SEO- und Qualitätsanalysen",
+      "shortcuts": "Tastenkürzel (?)",
+      "export": "Exportieren (Format, Qualität, Größe)"
+    },
+    "tabs": {
+      "edit": "Bearbeiten",
+      "assistant": "Mirage"
+    }
+  },
+  "mirage": {
+    "header": "Mirage · Bild-Künstler",
+    "subtitle": "Beschreibe eine Bearbeitung in natürlicher Sprache — Mirage verwandelt, was du siehst",
+    "tryPrompt": "Beschreibe jede Bearbeitung in natürlicher Sprache — du kannst mehrere in einer Nachricht verketten. Probiere eine:",
+    "applied": "Fertig — {{op}} angewendet.",
+    "failed": "Konnte nicht angewendet werden: {{error}}",
+    "unknownError": "unbekannter Fehler",
+    "placeholder": "z. B. „mach es wärmer und entferne den Hintergrund\"",
+    "enterHint": "Enter zum Senden, Umschalt+Enter für neue Zeile",
+    "groups": {
+      "oneGo": "Alles auf einmal",
+      "enhance": "Verbessern",
+      "retouch": "Retuschieren",
+      "style": "Stil",
+      "transform": "Transformieren"
+    },
+    "suggestions": {
+      "oneGo": [
+        "Aufhellen, Hintergrund entfernen und 2x hochskalieren",
+        "Wärmer machen und einen weichen Schatten hinzufügen",
+        "Schwarz-Weiß mit mehr Kontrast, dann schärfen"
+      ],
+      "enhance": [
+        "Heller und lebendiger machen",
+        "Farben automatisch verbessern",
+        "Details schärfen"
+      ],
+      "retouch": [
+        "Hintergrund entfernen",
+        "Gesicht wiederherstellen"
+      ],
+      "style": [
+        "In Schwarz-Weiß umwandeln",
+        "Warme, gemütliche Töne"
+      ],
+      "transform": [
+        "Weichen Schlagschatten hinzufügen",
+        "2x hochskalieren",
+        "Von oben neu beleuchten"
+      ]
+    }
   }
 }

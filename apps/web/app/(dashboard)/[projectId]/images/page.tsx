@@ -813,7 +813,7 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by prompt, alt text, or caption..."
+              placeholder={t("images.searchPlaceholder")}
               className="w-full rounded-lg border border-border bg-input pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>

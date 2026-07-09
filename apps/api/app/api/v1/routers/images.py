@@ -22,7 +22,7 @@ from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.project import Project
 from app.services.image_service import build_image_prompt, build_social_prompt, generate_image_dalle, get_placeholder_url, SOCIAL_PRESETS
 from app.core.storage import upload_file
-from app.services.llm_service import get_org_llm_keys, call_llm
+from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
 
 router = APIRouter()
 
@@ -285,7 +285,7 @@ async def plan_campaign(body: PlanCampaignRequest, current_user: CurrentUser, db
     for provider, model in _CAMPAIGN_PROVIDERS:
         if provider in keys:
             try:
-                raw = await call_llm(provider, model, keys[provider], _CAMPAIGN_SYSTEM, user_prompt)
+                raw = await call_llm(provider, model, keys[provider], _CAMPAIGN_SYSTEM, user_prompt, locale=await project_locale(getattr(body, "project_id", None), db))
                 break
             except Exception:
                 continue

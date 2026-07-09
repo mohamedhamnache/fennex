@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
-  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays,
+  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone, Home,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,7 @@ const NAV_ITEMS: Record<string, NavItem> = {
   overview:   { key: "overview",   href: "overview",   icon: LayoutDashboard },
   calendar:   { key: "calendar",   href: "calendar",   icon: CalendarDays },
   agents:     { key: "agents",     href: "agents",     icon: Sparkles },
+  campaigns:  { key: "campaigns",  href: "campaigns",  icon: Megaphone },
   keywords:   { key: "keywords",   href: "keywords",   icon: SearchCode },
   content:    { key: "planner",    href: "content",    icon: FileText },
   articles:   { key: "articles",   href: "articles",   icon: Zap },
@@ -42,9 +43,9 @@ const NAV_ITEMS: Record<string, NavItem> = {
 
 // Persona -> primary tool order (the highlighted "For you" group).
 const PERSONA_PRIMARY: Record<string, string[]> = {
-  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "analytics"],
-  ecommerce:  ["overview", "calendar", "images", "analytics", "agents", "keywords"],
-  freelancer: ["overview", "calendar", "agents", "analytics", "social", "backlinks"],
+  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics"],
+  ecommerce:  ["overview", "calendar", "images", "analytics", "agents", "campaigns", "keywords"],
+  freelancer: ["overview", "calendar", "agents", "campaigns", "analytics", "social", "backlinks"],
 };
 
 function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {
@@ -243,6 +244,27 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-1">
+          {/* Home — the global dashboard at "/" (distinct from a project's Overview) */}
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/"
+                title={!expanded ? t("nav.home") : undefined}
+                className={cn(
+                  "group relative flex items-center rounded-xl text-[13px] font-medium transition-all",
+                  expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
+                  pathname === "/" ? "bg-primary/15 text-primary" : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+                )}
+              >
+                {pathname === "/" && (
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                )}
+                <Home className="h-[18px] w-[18px] shrink-0" strokeWidth={pathname === "/" ? 2.2 : 1.8} />
+                {expanded && <span className="truncate">{t("nav.home")}</span>}
+              </Link>
+            </li>
+          </ul>
+
           {/* For you */}
           <div>
             {expanded ? (

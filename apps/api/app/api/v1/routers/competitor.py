@@ -15,7 +15,7 @@ from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.image import GeneratedImage, ImageStatus, ImageStyle, ImageUsage
 from app.models.project import Project
 from app.services.image_service import generate_image_dalle
-from app.services.llm_service import call_llm, get_org_llm_keys
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 from app.api.v1.routers.images import ImageOut
 
 router = APIRouter()
@@ -91,7 +91,7 @@ async def competitor_analysis(body: CompetitorRequest, current_user: CurrentUser
         if provider not in keys:
             continue
         try:
-            raw = await call_llm(provider, model, keys[provider], _COMPETITOR_SYSTEM, user_msg)
+            raw = await call_llm(provider, model, keys[provider], _COMPETITOR_SYSTEM, user_msg, locale=await project_locale(body.project_id, db))
             data = json.loads(raw.strip())
             analysis = data.get("analysis", "")
             improved_prompt = data.get("improved_prompt", "")

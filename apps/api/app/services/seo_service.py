@@ -33,6 +33,7 @@ async def generate_seo_data(
     usage: str,
     org_id: uuid.UUID,
     db,
+    locale: str = "en",
 ) -> dict:
     keys = await get_org_llm_keys(org_id, db)
     if not keys:
@@ -44,7 +45,7 @@ async def generate_seo_data(
         if provider not in keys:
             continue
         try:
-            raw = await call_llm(provider, model, keys[provider], _SEO_SYSTEM, user_msg)
+            raw = await call_llm(provider, model, keys[provider], _SEO_SYSTEM, user_msg, locale=locale)
             data = json.loads(raw.strip())
             return {
                 "alt_text": str(data.get("alt_text", ""))[:125] or None,

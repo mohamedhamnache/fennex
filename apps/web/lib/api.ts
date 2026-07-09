@@ -2000,3 +2000,53 @@ export async function deleteCalendarEntry(id: string): Promise<void> {
 export async function publishCalendarEntryNow(id: string): Promise<CalendarEntry> {
   return apiClient.post<CalendarEntry>(`/calendar/${id}/publish-now`, {});
 }
+
+// ── Orchestrated Campaigns ─────────────────────────────────────────────────────
+
+export type CampaignStatus = "planned" | "running" | "completed" | "failed" | "cancelled";
+export type CampaignStepStatus = "pending" | "running" | "completed" | "failed" | "skipped";
+
+export interface CampaignStep {
+  id: string;
+  order: number;
+  agent: string;
+  action: string;
+  brief: Record<string, unknown> | null;
+  why: string | null;
+  status: CampaignStepStatus;
+  summary: string | null;
+  artifact_type: string | null;
+  artifact_ids: string[] | null;
+  structured: Record<string, unknown> | null;
+  error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface Campaign {
+  id: string;
+  goal: string;
+  persona: string;
+  status: CampaignStatus;
+  director_summary: string | null;
+  steps: CampaignStep[];
+}
+
+export async function createCampaign(projectId: string, goal: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns?project_id=${projectId}`, { goal });
+}
+export async function listCampaigns(projectId: string): Promise<Campaign[]> {
+  return apiClient.get<Campaign[]>(`/campaigns?project_id=${projectId}`);
+}
+export async function getCampaign(id: string): Promise<Campaign> {
+  return apiClient.get<Campaign>(`/campaigns/${id}`);
+}
+export async function updateCampaignPlan(id: string, stepIds: string[]): Promise<Campaign> {
+  return apiClient.patch<Campaign>(`/campaigns/${id}/plan`, { step_ids: stepIds });
+}
+export async function runCampaign(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/run`, {});
+}
+export async function cancelCampaign(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/cancel`, {});
+}

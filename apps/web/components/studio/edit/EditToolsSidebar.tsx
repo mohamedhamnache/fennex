@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, Crop, RotateCw, ZoomIn, SlidersHorizontal, Sparkles, Layers, Wand2, Eraser, Sun, Maximize2, Smile, PaintBucket, Filter, Type, ImagePlus, ScanLine, LayoutTemplate, Shapes } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -65,6 +66,7 @@ interface EditToolsSidebarProps {
 }
 
 export function EditToolsSidebar({ selected, onSelect }: EditToolsSidebarProps) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   function toggleGroup(id: string) {
@@ -82,7 +84,7 @@ export function EditToolsSidebar({ selected, onSelect }: EditToolsSidebarProps) 
               onClick={() => toggleGroup(group.id)}
               className="w-full flex items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
             >
-              {group.label}
+              {t(`imageEdit.toolGroups.${group.id}`)}
               <ChevronDown
                 className={cn(
                   "h-3.5 w-3.5 transition-transform",
@@ -114,7 +116,7 @@ export function EditToolsSidebar({ selected, onSelect }: EditToolsSidebarProps) 
                       )}>
                         <Icon className="h-3.5 w-3.5" />
                       </span>
-                      {tool.label}
+                      {t(`imageEdit.tools.${tool.id}`)}
                     </button>
                   );
                 })}

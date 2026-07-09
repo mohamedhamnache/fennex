@@ -8,6 +8,7 @@ from app.workers.tasks.article_tasks import generate_article_task
 from app.workers.tasks.audit_tasks import run_seo_audit
 from app.workers.tasks.backlink_tasks import sync_backlink_profile, verify_exchange_link, weekly_backlink_discovery
 from app.workers.tasks.calendar_tasks import run_content_scheduler
+from app.workers.tasks.campaign_tasks import run_campaign
 from app.workers.tasks.crawl_tasks import crawl_website
 from app.workers.tasks.digest_tasks import send_weekly_digests
 from app.workers.tasks.keyword_tasks import run_keyword_research
@@ -39,6 +40,7 @@ class WorkerSettings:
         generate_article_task,
         send_weekly_digests,
         run_content_scheduler,
+        run_campaign,
     ]
     cron_jobs = [
         cron(sync_analytics_data, hour=6, minute=0, run_at_startup=False),

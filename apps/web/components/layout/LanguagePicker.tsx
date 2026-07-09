@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SUPPORTED_LOCALES, Locale } from "@/lib/i18n";
+import { SUPPORTED_LOCALES, Locale, writeLangCookie } from "@/lib/i18n";
 import { updateMyLanguage, isAuthenticated } from "@/lib/api";
 
 const LOCALE_META: Record<Locale, { label: string; flag: string }> = {
@@ -42,6 +42,7 @@ export function LanguagePicker({ showLabel = false }: LanguagePickerProps) {
 
   const mutation = useMutation({
     mutationFn: (lang: Locale) => {
+      writeLangCookie(lang); // explicit pick — top priority on next load
       i18n.changeLanguage(lang);
       if (isAuthenticated()) return updateMyLanguage(lang);
       return Promise.resolve({ language: lang });

@@ -29,9 +29,9 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
 export default function ProjectOverviewPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: listProjects,
     staleTime: 30_000,
@@ -53,7 +53,7 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
       <PageHeader
         title={project?.name ?? t("overview.title")}
         icon={Globe}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: project?.name ?? "Project" }]}
+        breadcrumbs={[{ label: t("overview.dashboard"), href: "/" }, { label: project?.name ?? t("overview.project") }]}
         description={
           project?.domain ? (
             <a
@@ -76,10 +76,19 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
         }
       />
 
-      {/* Persona setup missions */}
-      <MissionControl projectId={projectId} persona={project?.persona ?? "creator"} />
-
-      <PersonaHomeSection projectId={projectId} persona={project?.persona ?? "creator"} />
+      {/* Persona-driven sections — gated until the project is loaded so we never
+          flash the default "creator" layout before the real persona is known. */}
+      {projectsLoading || !project ? (
+        <div className="flex flex-col gap-6">
+          <div className="h-40 rounded-xl border bg-muted/20 animate-pulse" />
+          <div className="h-64 rounded-xl border bg-muted/20 animate-pulse" />
+        </div>
+      ) : (
+        <>
+          <MissionControl projectId={projectId} persona={project.persona ?? "creator"} />
+          <PersonaHomeSection projectId={projectId} persona={project.persona ?? "creator"} />
+        </>
+      )}
 
       <div className="grid grid-cols-1 gap-6">
         {/* Recent articles */}
@@ -119,11 +128,11 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <Badge tone={STATUS_TONE[article.status] ?? "neutral"}>
-                          {article.status.charAt(0).toUpperCase() + article.status.slice(1)}
+                          {t(`overview.status.${article.status}`, { defaultValue: article.status })}
                         </Badge>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-xs text-muted-foreground">
-                        {new Date(article.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {new Date(article.created_at).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
                       </td>
                     </tr>
                   ))}

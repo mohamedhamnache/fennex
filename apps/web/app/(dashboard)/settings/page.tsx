@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import {
   User, Building2, KeyRound, Share2, Users,
   Trash2, Plus, Eye, EyeOff, Link2, Link2Off,
   UserX, UserPlus, Copy, Check, ChevronRight,
-  Shield, AtSign, Calendar, CreditCard, Palette,
+  Shield, AtSign, Calendar, CreditCard, Palette, Globe,
 } from "lucide-react";
 import {
   getMe,
@@ -16,8 +16,10 @@ import {
   listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection,
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
   createCheckoutSession, createPortalSession, getBillingUsage,
+  listProjects, updateProject, type ProjectPersona,
 } from "@/lib/api";
 import { BrandKitSection } from "@/components/settings/BrandKitSection";
+import { useProjectStore } from "@/lib/store";
 import { useUsageStore } from "@/lib/billing-store";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
@@ -77,12 +79,24 @@ type PlatformId = (typeof SOCIAL_PLATFORMS)[number]["id"];
 const NAV_ITEMS = [
   { id: "account", label: "Account", icon: User },
   { id: "organization", label: "Organization", icon: Building2 },
+  { id: "project", label: "Project", icon: Globe },
   { id: "team", label: "Team", icon: Users },
   { id: "ai-keys", label: "AI Keys", icon: KeyRound },
   { id: "brand-kit", label: "Brand Kit", icon: Palette },
   { id: "social", label: "Social Accounts", icon: Share2 },
   { id: "billing", label: "Billing", icon: CreditCard },
 ] as const;
+
+const PROJECT_LANGS = [
+  { code: "en", label: "English" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+  { code: "de", label: "Deutsch" },
+  { code: "pt", label: "Português" },
+  { code: "ar", label: "العربية" },
+] as const;
+
+const PROJECT_PERSONAS: ProjectPersona[] = ["creator", "ecommerce", "freelancer"];
 
 type SectionId = (typeof NAV_ITEMS)[number]["id"];
 
@@ -199,6 +213,19 @@ function Input({ type = "text", placeholder, value, onChange, className = "" }: 
 function ErrorMsg({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-destructive font-medium">{children}</p>;
 }
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</label>
+      {children}
+      {hint && <p className="mt-1 text-xs text-muted-foreground/70">{hint}</p>}
+    </div>
+  );
+}
+
+const SELECT_CLS =
+  "w-full rounded-lg border bg-background px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition";
 
 function initials(name: string): string {
   return name.split(" ").map((n) => n[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "?";
@@ -952,6 +979,146 @@ function BillingSection() {
   );
 }
 
+// ─── Project ──────────────────────────────────────────────────────────────────
+
+function ProjectSection() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { success, error } = useToast();
+  const currentProjectId = useProjectStore((s) => s.currentProjectId);
+
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    staleTime: 5 * 60_000,
+  });
+
+  const [editId, setEditId] = useState<string | null>(null);
+  const active = projects.find((p) => p.id === (editId ?? currentProjectId)) ?? projects[0];
+
+  const [form, setForm] = useState({
+    name: "", domain: "", locale: "en", target_country: "", industry: "", persona: "" as ProjectPersona | "",
+  });
+
+  // Re-seed the form whenever the selected project changes.
+  useEffect(() => {
+    if (active) {
+      setForm({
+        name: active.name ?? "",
+        domain: active.domain ?? "",
+        locale: active.locale ?? "en",
+        target_country: active.target_country ?? "",
+        industry: active.industry ?? "",
+        persona: active.persona ?? "",
+      });
+    }
+  }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      updateProject(active!.id, {
+        name: form.name.trim(),
+        domain: form.domain.trim(),
+        locale: form.locale,
+        target_country: form.target_country.trim() || null,
+        industry: form.industry.trim() || null,
+        persona: form.persona || undefined,
+      }),
+    onSuccess: () => {
+      // Refreshing projects also lets I18nProvider pick up a new project
+      // language and update the default interface language.
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      success(t("settings.project.saved"));
+    },
+    onError: () => error(t("settings.project.saveError")),
+  });
+
+  if (isLoading) {
+    return (
+      <div>
+        <SectionHeader title={t("settings.project.title")} description={t("settings.project.subtitle")} />
+        <div className="h-64 rounded-xl border bg-muted/20 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!active) {
+    return (
+      <div>
+        <SectionHeader title={t("settings.project.title")} description={t("settings.project.subtitle")} />
+        <p className="text-sm text-muted-foreground">{t("settings.project.none")}</p>
+      </div>
+    );
+  }
+
+  const knownLang = PROJECT_LANGS.some((l) => l.code === form.locale);
+
+  return (
+    <div>
+      <SectionHeader title={t("settings.project.title")} description={t("settings.project.subtitle")} />
+
+      <Card className="flex flex-col gap-4 p-5">
+        {projects.length > 1 && (
+          <Field label={t("settings.project.selectProject")}>
+            <select value={active.id} onChange={(e) => setEditId(e.target.value)} className={SELECT_CLS}>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+
+        <Field label={t("settings.project.name")}>
+          <Input value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
+        </Field>
+
+        <Field label={t("settings.project.domain")}>
+          <Input value={form.domain} onChange={(v) => setForm((f) => ({ ...f, domain: v }))} placeholder="example.com" />
+        </Field>
+
+        <Field label={t("settings.project.language")} hint={t("settings.project.languageHint")}>
+          <select value={form.locale} onChange={(e) => setForm((f) => ({ ...f, locale: e.target.value }))} className={SELECT_CLS}>
+            {!knownLang && <option value={form.locale}>{form.locale}</option>}
+            {PROJECT_LANGS.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={t("settings.project.country")}>
+            <Input value={form.target_country} onChange={(v) => setForm((f) => ({ ...f, target_country: v }))} placeholder="US" />
+          </Field>
+          <Field label={t("settings.project.industry")}>
+            <Input value={form.industry} onChange={(v) => setForm((f) => ({ ...f, industry: v }))} />
+          </Field>
+        </div>
+
+        <Field label={t("settings.project.persona")}>
+          <select
+            value={form.persona}
+            onChange={(e) => setForm((f) => ({ ...f, persona: e.target.value as ProjectPersona | "" }))}
+            className={SELECT_CLS}
+          >
+            <option value="">—</option>
+            {PROJECT_PERSONAS.map((p) => (
+              <option key={p} value={p}>{t(`settings.project.personas.${p}`)}</option>
+            ))}
+          </select>
+        </Field>
+
+        {saveMutation.isError && <ErrorMsg>{t("settings.project.saveError")}</ErrorMsg>}
+
+        <div>
+          <PrimaryBtn onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
+            {saveMutation.isPending ? t("settings.project.saving") : t("settings.project.save")}
+          </PrimaryBtn>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -975,6 +1142,7 @@ export default function SettingsPage() {
     switch (activeSection) {
       case "account": return <AccountSection me={me} />;
       case "organization": return <OrganizationSection me={me} />;
+      case "project": return <ProjectSection />;
       case "team": return <TeamSection orgId={me.org_id} myId={me.id} myRole={me.role} />;
       case "ai-keys": return <AIKeysSection />;
       case "brand-kit": return <BrandKitSection />;

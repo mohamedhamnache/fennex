@@ -289,7 +289,7 @@ function NewArticleModal({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. 10 Best SEO Practices for 2025"
+                placeholder={t("articles.newArticleModal.titlePlaceholder")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
@@ -301,7 +301,7 @@ function NewArticleModal({
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="e.g. on-page SEO"
+                placeholder={t("articles.newArticleModal.keywordPlaceholder")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
@@ -598,7 +598,7 @@ function ArticleEditor({
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
     },
-    onError: () => { setSaveState("idle"); error("Couldn't save changes"); },
+    onError: () => { setSaveState("idle"); error(t("articles.toast.saveError")); },
   });
 
   const generateMutation = useMutation({
@@ -613,18 +613,18 @@ function ArticleEditor({
       queryClient.setQueryData(["article", articleId], updated);
       setBody(updated.body_markdown ?? "");
       queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
-      success("Article regenerated");
+      success(t("articles.toast.regenerated"));
     },
-    onError: () => error("Couldn't regenerate article"),
+    onError: () => error(t("articles.toast.regenerateError")),
   });
 
   const revisionMutation = useMutation({
     mutationFn: () => saveRevision(articleId),
     onSuccess: () => {
-      setRevisionMsg("Revision saved");
+      setRevisionMsg(t("articles.toast.revisionSaved"));
       setTimeout(() => setRevisionMsg(null), 2500);
     },
-    onError: () => error("Couldn't save revision"),
+    onError: () => error(t("articles.toast.revisionError")),
   });
 
   function handleBodyChange(val: string) {
@@ -752,7 +752,7 @@ function ArticleEditor({
               value={body}
               onChange={(e) => handleBodyChange(e.target.value)}
               className="w-full flex-1 resize-none bg-transparent text-sm font-mono leading-relaxed focus:outline-none text-foreground"
-              placeholder="Start writing in Markdown…"
+              placeholder={t("articles.editor.bodyPlaceholder")}
               style={{ lineHeight: 1.7 }}
             />
           ) : (
@@ -820,7 +820,7 @@ function ArticleEditor({
                 value={metaTitle}
                 onChange={(e) => setMetaTitle(e.target.value)}
                 onBlur={handleMetaTitleBlur}
-                placeholder="SEO title…"
+                placeholder={t("articles.editor.metaTitlePlaceholder")}
                 className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
             </div>
@@ -845,7 +845,7 @@ function ArticleEditor({
                 value={metaDesc}
                 onChange={(e) => setMetaDesc(e.target.value)}
                 onBlur={handleMetaDescBlur}
-                placeholder="Brief page description…"
+                placeholder={t("articles.editor.metaDescPlaceholder")}
                 rows={3}
                 className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
               />
@@ -981,18 +981,18 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     mutationFn: deleteArticle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
-      success("Article deleted");
+      success(t("articles.toast.deleted"));
     },
-    onError: () => error("Couldn't delete article"),
+    onError: () => error(t("articles.toast.deleteError")),
   });
 
   const generateMutation = useMutation({
     mutationFn: (id: string) => generateArticle(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
-      success("Regeneration started", { message: "Your article is being rewritten." });
+      success(t("articles.toast.regenStarted"), { message: t("articles.toast.regenStartedMsg") });
     },
-    onError: () => error("Couldn't regenerate article"),
+    onError: () => error(t("articles.toast.regenerateError")),
   });
 
   function handleCreated(article: Article) {
