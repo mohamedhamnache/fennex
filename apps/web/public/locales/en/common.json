@@ -23,7 +23,8 @@
     "campaigns": "Campaigns",
     "forYou": "For you",
     "moreTools": "More tools",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "home": "Home"
   },
   "calendar": {
     "title": "Content calendar",

@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
-  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone,
+  PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone, Home,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -244,6 +244,27 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-1">
+          {/* Home — the global dashboard at "/" (distinct from a project's Overview) */}
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/"
+                title={!expanded ? t("nav.home") : undefined}
+                className={cn(
+                  "group relative flex items-center rounded-xl text-[13px] font-medium transition-all",
+                  expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
+                  pathname === "/" ? "bg-primary/15 text-primary" : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+                )}
+              >
+                {pathname === "/" && (
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                )}
+                <Home className="h-[18px] w-[18px] shrink-0" strokeWidth={pathname === "/" ? 2.2 : 1.8} />
+                {expanded && <span className="truncate">{t("nav.home")}</span>}
+              </Link>
+            </li>
+          </ul>
+
           {/* For you */}
           <div>
             {expanded ? (
