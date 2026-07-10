@@ -96,7 +96,7 @@
   "alertsCenter": {
     "bell": "Alertas",
     "title": "Alertas",
-    "subtitle": "La Manada vigila - los cambios de posicionamiento, de la competencia y del mercado llegan aquí",
+    "subtitle": "El Pack vigila - los cambios de posicionamiento, de la competencia y del mercado llegan aquí",
     "viewAll": "Ver todas",
     "caughtUp": "Todo al día — sin cambios de posición, competencia o mercado que informar.",
     "markAllRead": "Marcar todas como leídas",
@@ -817,7 +817,7 @@
     },
     "project": {
       "title": "Proyecto",
-      "subtitle": "Gestiona el proyecto en el que trabaja la Manada",
+      "subtitle": "Gestiona el proyecto en el que trabaja el Pack",
       "selectProject": "Proyecto",
       "name": "Nombre",
       "domain": "Dominio",
@@ -827,7 +827,7 @@
       "industry": "Sector",
       "persona": "Perfil",
       "autopilot": "Piloto automático",
-      "autopilotHint": "Cada lunes, la Manada propone un plan semanal basado en tus datos reales de búsqueda. Tú lo apruebas, ellos lo ejecutan.",
+      "autopilotHint": "Cada lunes, el Pack propone un plan semanal basado en tus datos reales de búsqueda. Tú lo apruebas, ellos lo ejecutan.",
       "save": "Guardar cambios",
       "saving": "Guardando...",
       "saved": "Proyecto actualizado",
@@ -854,7 +854,7 @@
   },
   "campaigns": {
     "title": "Campañas",
-    "subtitle": "Informa a la Manada una vez: planifican y ejecutan toda una campaña",
+    "subtitle": "Informa al Pack una vez: planifica y ejecuta toda una campaña",
     "newGoal": "¿Qué quieres lograr?",
     "goalPlaceholder": "p. ej. Conseguir 3 nuevos clientes de restaurantes este trimestre",
     "draft": "Preparar plan",
@@ -928,7 +928,7 @@
       "view": "Ver seguimiento"
     },
     "composer": {
-      "headline": "¿Qué debe lograr la Manada?",
+      "headline": "¿Qué debe lograr el Pack?",
       "subline": "Un objetivo de entrada. Investigación, estrategia, contenido, visuales y distribución de salida.",
       "cta": "Diseñar mi campaña",
       "templatesHint": "Plantillas adaptadas a tu perfil",
@@ -981,7 +981,7 @@
   "autopilot": {
     "badge": "Piloto automático",
     "weekOf": "Semana del {{date}}",
-    "titlePlanned": "La Manada planificó tu semana",
+    "titlePlanned": "El Pack planificó tu semana",
     "bodyPlanned": "{{count}} pasos · est. {{estimate}}",
     "review": "Revisar y aprobar",
     "view": "Ver",

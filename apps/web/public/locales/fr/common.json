@@ -96,7 +96,7 @@
   "alertsCenter": {
     "bell": "Alertes",
     "title": "Alertes",
-    "subtitle": "La Meute veille - les mouvements de classement, les changements de concurrents et les évolutions du marché arrivent ici",
+    "subtitle": "Le Pack veille - les mouvements de classement, les changements de concurrents et les évolutions du marché arrivent ici",
     "viewAll": "Tout voir",
     "caughtUp": "Tout est à jour — aucun changement de position, de concurrent ou de marché à signaler.",
     "markAllRead": "Tout marquer comme lu",
@@ -817,7 +817,7 @@
     },
     "project": {
       "title": "Projet",
-      "subtitle": "Gérez le projet sur lequel la Meute travaille",
+      "subtitle": "Gérez le projet sur lequel le Pack travaille",
       "selectProject": "Projet",
       "name": "Nom",
       "domain": "Domaine",
@@ -827,7 +827,7 @@
       "industry": "Secteur",
       "persona": "Profil",
       "autopilot": "Pilote automatique",
-      "autopilotHint": "Chaque lundi, la Meute propose un plan hebdomadaire basé sur vos vraies données de recherche. Vous validez, ils exécutent.",
+      "autopilotHint": "Chaque lundi, le Pack propose un plan hebdomadaire basé sur vos vraies données de recherche. Vous validez, ils exécutent.",
       "save": "Enregistrer",
       "saving": "Enregistrement...",
       "saved": "Projet mis à jour",
@@ -854,7 +854,7 @@
   },
   "campaigns": {
     "title": "Campagnes",
-    "subtitle": "Briefez la Meute une fois — elle planifie et exécute toute une campagne",
+    "subtitle": "Briefez le Pack une fois — il planifie et exécute toute une campagne",
     "newGoal": "Que voulez-vous accomplir ?",
     "goalPlaceholder": "ex. Gagner 3 nouveaux clients restaurateurs ce trimestre",
     "draft": "Préparer le plan",
@@ -928,7 +928,7 @@
       "view": "Voir le suivi"
     },
     "composer": {
-      "headline": "Que doit accomplir la Meute ?",
+      "headline": "Que doit accomplir le Pack ?",
       "subline": "Un objectif en entrée. Recherche, stratégie, contenu, visuels et diffusion en sortie.",
       "cta": "Concevoir ma campagne",
       "templatesHint": "Modèles adaptés à votre profil",
@@ -981,7 +981,7 @@
   "autopilot": {
     "badge": "Pilote automatique",
     "weekOf": "Semaine du {{date}}",
-    "titlePlanned": "La Meute a planifié votre semaine",
+    "titlePlanned": "Le Pack a planifié votre semaine",
     "bodyPlanned": "{{count}} étapes · est. {{estimate}}",
     "review": "Vérifier et approuver",
     "view": "Voir",
