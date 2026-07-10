@@ -364,3 +364,10 @@ async def test_watchlist_endpoints_validation(client, db_session, org_and_projec
     assert len(r.json()) == 10
     r = await client.delete(f"/api/v1/monitoring/competitors/{wid}")
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_watchlist_add_rejects_foreign_project(client, db_session, org_and_project):
+    r = await client.post("/api/v1/monitoring/competitors",
+                          json={"project_id": str(uuid.uuid4()), "url": "https://rival.com"})
+    assert r.status_code == 404

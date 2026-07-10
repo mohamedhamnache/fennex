@@ -8,10 +8,18 @@ from sqlalchemy import func, select, update
 
 from app.core.dependencies import CurrentUser, DB
 from app.models.monitoring import Alert, WatchedCompetitor
+from app.models.project import Project
 
 router = APIRouter()
 
 WATCHLIST_CAP = 10
+
+
+async def _assert_project(project_id, org_id, db):
+    proj = (await db.execute(select(Project).where(
+        Project.id == project_id, Project.org_id == org_id))).scalars().first()
+    if proj is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
 
 
 def _alert(a: Alert) -> dict:
@@ -80,6 +88,7 @@ async def list_watchlist(project_id: uuid.UUID, current_user: CurrentUser, db: D
 
 @router.post("/competitors", status_code=status.HTTP_201_CREATED)
 async def add_watch(body: WatchIn, current_user: CurrentUser, db: DB):
+    await _assert_project(body.project_id, current_user.org_id, db)
     parsed = urlparse(body.url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter a valid http(s) URL.")
