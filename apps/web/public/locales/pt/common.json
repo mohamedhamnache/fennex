@@ -93,6 +93,33 @@
     "notificationsHint": "Conclusões de tarefas e alertas aparecerão aqui.",
     "loading": "Carregando…"
   },
+  "alertsCenter": {
+    "bell": "Alertas",
+    "title": "Alertas",
+    "subtitle": "A Alcateia vigia - movimentos de ranking, mudanças da concorrência e do mercado chegam aqui",
+    "viewAll": "Ver tudo",
+    "caughtUp": "Tudo em dia - a Alcateia não tem nada a relatar",
+    "markAllRead": "Marcar tudo como lido",
+    "unreadOnly": "Não lidos",
+    "all": "Todos",
+    "open": "Abrir",
+    "empty": "A Alcateia está vigiando - ainda não há alertas.",
+    "kinds": {
+      "ranking_drop": "Queda de ranking",
+      "ranking_gain": "Alta de ranking",
+      "competitor_change": "Mudança da concorrência",
+      "market_shift": "Mudança de mercado"
+    },
+    "watchlist": {
+      "title": "Concorrentes monitorados",
+      "hint": "Sable reanalisa essas páginas toda semana e avisa você quando elas mudam.",
+      "add": "Monitorar",
+      "urlPlaceholder": "https://concorrente.com/melhor-pagina-deles",
+      "labelPlaceholder": "Rótulo (opcional)",
+      "cap": "A lista de monitoramento está cheia (10). Remova um para adicionar outro.",
+      "empty": "Nenhum concorrente monitorado ainda."
+    }
+  },
   "commandPalette": {
     "placeholder": "Buscar comandos, páginas, projetos…",
     "noResults": "Sem resultados para «{{query}}»",

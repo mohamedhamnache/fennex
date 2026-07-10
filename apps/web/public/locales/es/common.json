@@ -93,6 +93,33 @@
     "notificationsHint": "Las finalizaciones de tareas y alertas aparecerán aquí.",
     "loading": "Cargando…"
   },
+  "alertsCenter": {
+    "bell": "Alertas",
+    "title": "Alertas",
+    "subtitle": "La Manada vigila - los cambios de posicionamiento, de la competencia y del mercado llegan aquí",
+    "viewAll": "Ver todas",
+    "caughtUp": "Todo al día - la Manada no tiene nada que informar",
+    "markAllRead": "Marcar todas como leídas",
+    "unreadOnly": "No leídas",
+    "all": "Todas",
+    "open": "Abrir",
+    "empty": "La Manada está vigilando - todavía no hay alertas.",
+    "kinds": {
+      "ranking_drop": "Caída de posición",
+      "ranking_gain": "Subida de posición",
+      "competitor_change": "Cambio de la competencia",
+      "market_shift": "Cambio de mercado"
+    },
+    "watchlist": {
+      "title": "Competidores vigilados",
+      "hint": "Sable vuelve a analizar estas páginas cada semana y te avisa cuando cambian.",
+      "add": "Vigilar",
+      "urlPlaceholder": "https://competidor.com/su-mejor-pagina",
+      "labelPlaceholder": "Etiqueta (opcional)",
+      "cap": "La lista de vigilancia está llena (10). Elimina uno para añadir otro.",
+      "empty": "Todavía no hay competidores vigilados."
+    }
+  },
   "commandPalette": {
     "placeholder": "Buscar comandos, páginas, proyectos…",
     "noResults": "Sin resultados para «{{query}}»",

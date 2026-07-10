@@ -93,6 +93,33 @@
     "notificationsHint": "Aufgabenfertigstellungen und Warnungen erscheinen hier.",
     "loading": "Wird geladen…"
   },
+  "alertsCenter": {
+    "bell": "Benachrichtigungen",
+    "title": "Benachrichtigungen",
+    "subtitle": "Das Rudel hält Wache - Ranking-Bewegungen, Änderungen bei Wettbewerbern und Marktverschiebungen landen hier",
+    "viewAll": "Alle anzeigen",
+    "caughtUp": "Alles erledigt - das Rudel hat nichts zu melden",
+    "markAllRead": "Alle als gelesen markieren",
+    "unreadOnly": "Ungelesen",
+    "all": "Alle",
+    "open": "Öffnen",
+    "empty": "Das Rudel hält Wache - noch keine Benachrichtigungen.",
+    "kinds": {
+      "ranking_drop": "Ranking-Abfall",
+      "ranking_gain": "Ranking-Anstieg",
+      "competitor_change": "Wettbewerber-Änderung",
+      "market_shift": "Marktverschiebung"
+    },
+    "watchlist": {
+      "title": "Beobachtete Wettbewerber",
+      "hint": "Sable scannt diese Seiten jede Woche erneut und benachrichtigt dich bei Änderungen.",
+      "add": "Beobachten",
+      "urlPlaceholder": "https://wettbewerber.com/ihre-beste-seite",
+      "labelPlaceholder": "Bezeichnung (optional)",
+      "cap": "Die Beobachtungsliste ist voll (10). Entferne einen Eintrag, um einen weiteren hinzuzufügen.",
+      "empty": "Noch keine Wettbewerber beobachtet."
+    }
+  },
   "commandPalette": {
     "placeholder": "Befehle, Seiten, Projekte suchen…",
     "noResults": "Keine Ergebnisse für »{{query}}«",

@@ -93,6 +93,33 @@
     "notificationsHint": "Les complétions de tâches et alertes apparaîtront ici.",
     "loading": "Chargement…"
   },
+  "alertsCenter": {
+    "bell": "Alertes",
+    "title": "Alertes",
+    "subtitle": "La Meute veille - les mouvements de classement, les changements de concurrents et les évolutions du marché arrivent ici",
+    "viewAll": "Tout voir",
+    "caughtUp": "Tout est à jour - la Meute n'a rien à signaler",
+    "markAllRead": "Tout marquer comme lu",
+    "unreadOnly": "Non lues",
+    "all": "Toutes",
+    "open": "Ouvrir",
+    "empty": "La Meute veille - aucune alerte pour l'instant.",
+    "kinds": {
+      "ranking_drop": "Baisse de classement",
+      "ranking_gain": "Hausse de classement",
+      "competitor_change": "Changement concurrent",
+      "market_shift": "Évolution du marché"
+    },
+    "watchlist": {
+      "title": "Concurrents surveillés",
+      "hint": "Sable réanalyse ces pages chaque semaine et vous alerte en cas de changement.",
+      "add": "Surveiller",
+      "urlPlaceholder": "https://concurrent.com/leur-meilleure-page",
+      "labelPlaceholder": "Libellé (optionnel)",
+      "cap": "La liste de surveillance est pleine (10). Retirez-en un pour en ajouter un autre.",
+      "empty": "Aucun concurrent surveillé pour l'instant."
+    }
+  },
   "commandPalette": {
     "placeholder": "Rechercher commandes, pages, projets…",
     "noResults": "Aucun résultat pour « {{query}} »",

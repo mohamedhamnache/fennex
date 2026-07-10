@@ -170,6 +170,33 @@
     "notificationsHint": "Job completions and alerts will show up here.",
     "loading": "Loading…"
   },
+  "alertsCenter": {
+    "bell": "Alerts",
+    "title": "Alerts",
+    "subtitle": "The Pack keeps watch - ranking moves, competitor changes and market shifts land here",
+    "viewAll": "View all",
+    "caughtUp": "All caught up - the Pack has nothing to report",
+    "markAllRead": "Mark all read",
+    "unreadOnly": "Unread",
+    "all": "All",
+    "open": "Open",
+    "empty": "The Pack is keeping watch - no alerts yet.",
+    "kinds": {
+      "ranking_drop": "Ranking drop",
+      "ranking_gain": "Ranking gain",
+      "competitor_change": "Competitor change",
+      "market_shift": "Market shift"
+    },
+    "watchlist": {
+      "title": "Watched competitors",
+      "hint": "Sable re-scans these pages every week and alerts you when they change.",
+      "add": "Watch",
+      "urlPlaceholder": "https://competitor.com/their-best-page",
+      "labelPlaceholder": "Label (optional)",
+      "cap": "Watchlist is full (10). Remove one to add another.",
+      "empty": "No competitors watched yet."
+    }
+  },
   "commandPalette": {
     "placeholder": "Search commands, pages, projects…",
     "noResults": "No results for \"{{query}}\"",

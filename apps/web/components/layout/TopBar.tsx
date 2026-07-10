@@ -4,12 +4,13 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Sun, Moon, Bell, Search, Settings, Mic2, LogOut, Check, ChevronDown } from "lucide-react";
+import { Sun, Moon, Search, Settings, Mic2, LogOut, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getMe, authLogout } from "@/lib/api";
 import { useCommandPalette } from "@/components/layout/CommandPalette";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
+import { AlertsBell } from "@/components/monitoring/AlertsBell";
 import { cn } from "@/lib/cn";
 
 function initials(name?: string | null): string {
@@ -35,14 +36,11 @@ export function TopBar() {
   const { open: openPalette } = useCommandPalette();
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const notifRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
-  useClickOutside(notifRef, () => setNotifOpen(false), notifOpen);
   useClickOutside(menuRef, () => setMenuOpen(false), menuOpen);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe, staleTime: 5 * 60_000 });
@@ -71,40 +69,8 @@ export function TopBar() {
         {/* Language picker */}
         <LanguagePicker />
 
-        {/* Notifications */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => { setNotifOpen((o) => !o); setMenuOpen(false); }}
-            className={cn(
-              "relative rounded-lg p-2 transition-colors hover:bg-accent hover:text-foreground",
-              notifOpen ? "bg-accent text-foreground" : "text-muted-foreground",
-            )}
-            aria-label={t("topbar.notifications")}
-          >
-            <Bell className="h-4 w-4" strokeWidth={1.8} />
-          </button>
-          {notifOpen && (
-            <div className="popover animate-scale-in absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <p className="text-sm font-semibold">{t("topbar.notifications")}</p>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {t("topbar.allCaughtUp")}
-                </span>
-              </div>
-              <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-success/10">
-                  <Check className="h-5 w-5 text-success" strokeWidth={2} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">{t("topbar.allCaughtUpDesc")}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {t("topbar.notificationsHint")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Alerts */}
+        <AlertsBell />
 
         {/* Theme toggle */}
         {mounted && (
@@ -122,7 +88,7 @@ export function TopBar() {
         {/* User menu */}
         <div className="relative ml-1.5" ref={menuRef}>
           <button
-            onClick={() => { setMenuOpen((o) => !o); setNotifOpen(false); }}
+            onClick={() => setMenuOpen((o) => !o)}
             className={cn(
               "flex items-center gap-2 rounded-xl border py-1 pl-1 pr-2 transition-all",
               menuOpen
