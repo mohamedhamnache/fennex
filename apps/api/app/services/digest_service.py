@@ -67,6 +67,22 @@ async def compose_digest(project: Project, db: AsyncSession) -> tuple[str, str]:
     else:
         standup_html = ""
 
+    unread_alerts = 0
+    try:
+        from sqlalchemy import func as _func, select as _select
+        from app.models.monitoring import Alert
+        unread_alerts = (await db.execute(
+            _select(_func.count()).select_from(Alert).where(
+                Alert.project_id == project.id, Alert.is_read.is_(False))
+        )).scalar() or 0
+    except Exception:
+        pass  # monitoring must never break the digest
+
+    alerts_html = (
+        f"<p style='margin:12px 0'><strong>{unread_alerts}</strong> unread alert(s) from the Pack - "
+        f"<a href='{base_url}/alerts'>open your inbox</a>.</p>"
+    ) if unread_alerts else ""
+
     html = f"""
 <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
   <div style="padding:24px 0 12px">
@@ -95,6 +111,8 @@ async def compose_digest(project: Project, db: AsyncSession) -> tuple[str, str]:
 
   <h3 style="margin:20px 0 8px;font-size:15px">Top opportunities</h3>
   <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.5">{opps_html}</ul>
+
+  {alerts_html}
 
   <div style="margin:24px 0">
     <a href="{base_url}{cta_path}"

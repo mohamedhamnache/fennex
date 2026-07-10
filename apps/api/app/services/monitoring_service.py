@@ -152,3 +152,40 @@ async def detect_competitors(project_id, org_id, db: AsyncSession) -> int:
         w.last_scanned_at = _now_iso()
     await db.commit()
     return created
+
+
+MARKET_NEW_MIN_IMPRESSIONS = 50
+MARKET_RISER_MIN_IMPRESSIONS = 100
+MARKET_RISER_RATIO = 2.0
+MARKET_TOP_FINDINGS = 5
+
+
+async def detect_market(project_id, org_id, db: AsyncSession) -> int:
+    """Oasis: new demand and rising queries vs last week's snapshot - one alert/week."""
+    stats = (await db.execute(select(GscQueryStat).where(
+        GscQueryStat.project_id == project_id,
+    ).order_by(GscQueryStat.impressions.desc()).limit(TOP_QUERIES))).scalars().all()
+    current = {s.query: int(s.impressions or 0) for s in stats}
+    prev = await _prev_snapshot(project_id, "market", db)
+    created = 0
+    if prev is not None:
+        findings: list[tuple[int, str]] = []
+        for q, imp in current.items():
+            old = prev.get(q)
+            if old is None and imp >= MARKET_NEW_MIN_IMPRESSIONS:
+                findings.append((imp, f"new demand: '{q}' ({imp} impressions)"))
+            elif old and imp >= MARKET_RISER_MIN_IMPRESSIONS and imp >= MARKET_RISER_RATIO * old:
+                findings.append((imp, f"rising: '{q}' ({old} -> {imp} impressions)"))
+        if findings:
+            top = [line for _, line in sorted(findings, reverse=True)[:MARKET_TOP_FINDINGS]]
+            if await _create_alert(
+                project_id, org_id, kind="market_shift", severity="info",
+                title=f"Market shift: {len(findings)} queries moved",
+                detail="; ".join(top) + ".",
+                url=f"/{project_id}/analytics?ws=market",
+                dedupe_key=f"market_shift:{_iso_week()}", db=db,
+            ):
+                created += 1
+    await _store_snapshot(project_id, org_id, "market", current, db)
+    await db.commit()
+    return created

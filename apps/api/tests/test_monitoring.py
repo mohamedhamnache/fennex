@@ -6,6 +6,7 @@ Strategy (mirrors test_autopilot.py):
 - Create only the SQLite-compatible tables this feature touches
 """
 import uuid
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -163,6 +164,11 @@ async def _mk_watch(db, project_id, url="https://rival.com/guide", card=None):
     return w
 
 
+@asynccontextmanager
+async def _single_session(session):
+    yield session
+
+
 @pytest.mark.asyncio
 async def test_competitor_first_scan_is_silent_and_stores(db_session):
     from app.services import monitoring_service
@@ -208,3 +214,49 @@ async def test_competitor_crawl_failure_skips_and_keeps_scorecard(db_session):
     await db_session.refresh(w)
     assert w.last_scorecard == _card()  # unchanged
     assert (await db_session.execute(select(Alert))).scalars().first() is None
+
+
+@pytest.mark.asyncio
+async def test_market_first_run_silent_then_single_aggregated_alert(db_session):
+    from app.services.monitoring_service import detect_market
+    p = await _mk_project(db_session)
+    await _seed_stats(db_session, p.id, [("existing topic", 5.0, 400)])
+    assert await detect_market(p.id, FAKE_ORG_ID, db_session) == 0
+    await _seed_stats(db_session, p.id, [
+        ("existing topic", 5.0, 900),      # riser: 400 -> 900 (>=2x, >=100)
+        ("brand new query", 6.0, 120),     # new demand (>=50)
+        ("tiny new query", 6.0, 20),       # new but < 50 -> ignored
+    ])
+    created = await detect_market(p.id, FAKE_ORG_ID, db_session)
+    assert created == 1  # ONE aggregated alert
+    a = (await db_session.execute(select(Alert).where(Alert.kind == "market_shift"))).scalars().one()
+    assert a.severity == "info"
+    assert "brand new query" in (a.detail or "") and "existing topic" in (a.detail or "")
+    assert "tiny new query" not in (a.detail or "")
+    # re-run same week -> deduped
+    assert await detect_market(p.id, FAKE_ORG_ID, db_session) == 0
+
+
+@pytest.mark.asyncio
+async def test_weekly_crons_iterate_and_isolate_failures(db_session):
+    from app.workers.tasks import monitoring_tasks
+    p_gsc = await _mk_project(db_session)               # active GSC -> market monitor
+    p_watch = await _mk_project(db_session, gsc=False)  # watchlist -> competitor monitor
+    await _mk_watch(db_session, p_watch.id)
+    calls: list[str] = []
+
+    async def fake_market(project_id, org_id, db):
+        calls.append(f"market:{project_id}")
+        raise RuntimeError("boom")
+
+    async def fake_comp(project_id, org_id, db):
+        calls.append(f"comp:{project_id}")
+        return 0
+
+    with patch.object(monitoring_tasks, "detect_market", new=fake_market), \
+         patch.object(monitoring_tasks, "detect_competitors", new=fake_comp), \
+         patch.object(monitoring_tasks, "async_session_factory",
+                      new=lambda: _single_session(db_session)):
+        await monitoring_tasks.run_market_monitor(None)     # must not raise despite boom
+        await monitoring_tasks.run_competitor_monitor(None)
+    assert f"market:{p_gsc.id}" in calls and f"comp:{p_watch.id}" in calls
