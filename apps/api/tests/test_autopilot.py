@@ -115,7 +115,7 @@ async def test_planner_requires_optin_gsc_and_opportunities(db_session):
     no_gsc = await _mk_project(db_session, gsc=False)
     empty = await _mk_project(db_session)
     with patch("app.services.autopilot_service.get_opportunities",
-               new=AsyncMock(return_value=_opps(striking=[_opp()]))) as m:
+               new=AsyncMock(return_value=_opps(striking=[_opp()]))):
         assert await generate_weekly_plan(disabled, db_session) is None
         assert await generate_weekly_plan(no_gsc, db_session) is None
     with patch("app.services.autopilot_service.get_opportunities",
@@ -138,3 +138,23 @@ async def test_planner_idempotent_per_week_and_supersedes_stale(db_session):
         assert second is not None and second.week_of == monday_of(date.today())
         await db_session.refresh(first)
         assert first.status == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_stale_cancelled_even_when_no_opportunities(db_session):
+    p = await _mk_project(db_session)
+    stale = Campaign(
+        org_id=FAKE_ORG_ID, project_id=p.id, goal="stale plan", persona="creator",
+        source="autopilot", status="planned",
+        week_of=monday_of(date.today() - timedelta(days=7)),
+    )
+    db_session.add(stale)
+    await db_session.commit()
+
+    with patch("app.services.autopilot_service.get_opportunities",
+               new=AsyncMock(return_value=_opps())):
+        result = await generate_weekly_plan(p, db_session)
+    assert result is None
+
+    await db_session.refresh(stale)
+    assert stale.status == "cancelled"
