@@ -2,7 +2,6 @@
 Oasis (market). Deterministic - no LLM calls. First run per (project, kind)
 stores the snapshot and emits nothing."""
 import logging
-import uuid
 from datetime import date, datetime, timezone
 
 from sqlalchemy import select
