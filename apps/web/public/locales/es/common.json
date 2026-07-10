@@ -950,6 +950,19 @@
       }
     }
   },
+  "autopilot": {
+    "badge": "Piloto automático",
+    "weekOf": "Semana del {{date}}",
+    "titlePlanned": "La Manada planificó tu semana",
+    "bodyPlanned": "{{count}} pasos · est. {{estimate}}",
+    "review": "Revisar y aprobar",
+    "view": "Ver",
+    "titleRunning": "El piloto automático está ejecutando tu semana",
+    "progress": "{{done}} de {{total}} pasos completados",
+    "titleDone": "Tu semana está programada",
+    "bodyDone": "{{count}} contenidos creados - los borradores están en tu calendario",
+    "viewCalendar": "Abrir calendario"
+  },
   "missionControl": {
     "getSetUp": "Puesta en marcha",
     "done": "Configuración completa — ya estás listo",

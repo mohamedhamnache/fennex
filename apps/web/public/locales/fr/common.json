@@ -950,6 +950,19 @@
       }
     }
   },
+  "autopilot": {
+    "badge": "Pilote automatique",
+    "weekOf": "Semaine du {{date}}",
+    "titlePlanned": "La Meute a planifié votre semaine",
+    "bodyPlanned": "{{count}} étapes · est. {{estimate}}",
+    "review": "Vérifier et approuver",
+    "view": "Voir",
+    "titleRunning": "Le pilote automatique exécute votre semaine",
+    "progress": "{{done}} sur {{total}} étapes terminées",
+    "titleDone": "Votre semaine est planifiée",
+    "bodyDone": "{{count}} contenus créés - les brouillons sont sur votre calendrier",
+    "viewCalendar": "Ouvrir le calendrier"
+  },
   "missionControl": {
     "getSetUp": "Mise en route",
     "done": "Configuration terminée — vous êtes prêt",

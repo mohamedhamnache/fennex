@@ -1027,6 +1027,19 @@
       }
     }
   },
+  "autopilot": {
+    "badge": "Autopilot",
+    "weekOf": "Week of {{date}}",
+    "titlePlanned": "The Pack planned your week",
+    "bodyPlanned": "{{count}} steps · est. {{estimate}}",
+    "review": "Review & approve",
+    "view": "View",
+    "titleRunning": "Autopilot is running your week",
+    "progress": "{{done}} of {{total}} steps done",
+    "titleDone": "Your week is scheduled",
+    "bodyDone": "{{count}} artifacts created - drafts are on your calendar",
+    "viewCalendar": "Open calendar"
+  },
   "missionControl": {
     "getSetUp": "Get set up",
     "done": "Setup complete — you're flying",

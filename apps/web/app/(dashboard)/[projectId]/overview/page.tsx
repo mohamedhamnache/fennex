@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { MissionControl } from "@/components/projects/MissionControl";
 import { PersonaHomeSection } from "@/components/projects/PersonaHomeSection";
+import { AutopilotCard } from "@/components/autopilot/AutopilotCard";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,8 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
           </Link>
         }
       />
+
+      <AutopilotCard projectId={projectId} />
 
       {/* Persona-driven sections — gated until the project is loaded so we never
           flash the default "creator" layout before the real persona is known. */}

@@ -950,6 +950,19 @@
       }
     }
   },
+  "autopilot": {
+    "badge": "الطيار الآلي",
+    "weekOf": "أسبوع {{date}}",
+    "titlePlanned": "خطّطت المجموعة أسبوعك",
+    "bodyPlanned": "{{count}} خطوات · تقديريًا {{estimate}}",
+    "review": "مراجعة واعتماد",
+    "view": "عرض",
+    "titleRunning": "الطيار الآلي ينفّذ أسبوعك",
+    "progress": "تم إنجاز {{done}} من {{total}} خطوات",
+    "titleDone": "تمت جدولة أسبوعك",
+    "bodyDone": "تم إنشاء {{count}} محتويات - المسودات موجودة في تقويمك",
+    "viewCalendar": "فتح التقويم"
+  },
   "missionControl": {
     "getSetUp": "ابدأ الإعداد",
     "done": "اكتمل الإعداد — أنت جاهز",

@@ -950,6 +950,19 @@
       }
     }
   },
+  "autopilot": {
+    "badge": "Piloto automático",
+    "weekOf": "Semana de {{date}}",
+    "titlePlanned": "A Alcateia planejou sua semana",
+    "bodyPlanned": "{{count}} etapas · est. {{estimate}}",
+    "review": "Revisar e aprovar",
+    "view": "Ver",
+    "titleRunning": "O piloto automático está executando sua semana",
+    "progress": "{{done}} de {{total}} etapas concluídas",
+    "titleDone": "Sua semana está agendada",
+    "bodyDone": "{{count}} conteúdos criados - os rascunhos estão no seu calendário",
+    "viewCalendar": "Abrir calendário"
+  },
   "missionControl": {
     "getSetUp": "Configuração",
     "done": "Configuração concluída — tudo pronto",

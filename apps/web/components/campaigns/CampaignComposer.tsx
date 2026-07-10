@@ -41,7 +41,7 @@ export function CampaignComposer({
   drafting,
   onOpenCampaign,
 }: CampaignComposerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -151,7 +151,24 @@ export function CampaignComposer({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{c.goal}</p>
-                    <span className={statusBadgeClass(c.status)}>{t(`campaigns.status.${c.status}`)}</span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {c.source === "autopilot" && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          {t("autopilot.badge")}
+                          {c.week_of && (
+                            <>
+                              {" · "}
+                              {t("autopilot.weekOf", {
+                                date: new Date(`${c.week_of}T00:00:00`).toLocaleDateString(i18n.language, {
+                                  month: "short", day: "numeric",
+                                }),
+                              })}
+                            </>
+                          )}
+                        </span>
+                      )}
+                      <span className={statusBadgeClass(c.status)}>{t(`campaigns.status.${c.status}`)}</span>
+                    </div>
                   </div>
                   <div className="flex">
                     {avatars.map((visual, i) => {
