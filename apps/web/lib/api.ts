@@ -2053,3 +2053,60 @@ export async function runCampaign(id: string): Promise<Campaign> {
 export async function cancelCampaign(id: string): Promise<Campaign> {
   return apiClient.post<Campaign>(`/campaigns/${id}/cancel`, {});
 }
+
+// ── Monitoring: alerts + competitor watchlist ─────────────────────────────────
+
+export interface Alert {
+  id: string;
+  kind: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  detail: string | null;
+  url: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface WatchedCompetitor {
+  id: string;
+  url: string;
+  label: string | null;
+  last_scanned_at: string | null;
+}
+
+export async function listAlerts(
+  projectId: string,
+  opts?: { unreadOnly?: boolean; kind?: string; limit?: number },
+): Promise<Alert[]> {
+  const params = new URLSearchParams({ project_id: projectId });
+  if (opts?.unreadOnly) params.set("unread_only", "true");
+  if (opts?.kind) params.set("kind", opts.kind);
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  return apiClient.get<Alert[]>(`/monitoring/alerts?${params.toString()}`);
+}
+export async function markAlertRead(alertId: string): Promise<{ ok: boolean }> {
+  return apiClient.post<{ ok: boolean }>(`/monitoring/alerts/${alertId}/read`, {});
+}
+export async function markAllAlertsRead(projectId: string): Promise<{ marked: number }> {
+  return apiClient.post<{ marked: number }>(`/monitoring/alerts/read-all?project_id=${projectId}`, {});
+}
+export async function getUnreadAlertCount(projectId: string): Promise<{ count: number }> {
+  return apiClient.get<{ count: number }>(`/monitoring/alerts/unread-count?project_id=${projectId}`);
+}
+export async function listWatchedCompetitors(projectId: string): Promise<WatchedCompetitor[]> {
+  return apiClient.get<WatchedCompetitor[]>(`/monitoring/competitors?project_id=${projectId}`);
+}
+export async function addWatchedCompetitor(
+  projectId: string,
+  url: string,
+  label?: string,
+): Promise<WatchedCompetitor> {
+  return apiClient.post<WatchedCompetitor>("/monitoring/competitors", {
+    project_id: projectId,
+    url,
+    label,
+  });
+}
+export async function removeWatchedCompetitor(watchId: string): Promise<{ ok: boolean }> {
+  return apiClient.delete<{ ok: boolean }>(`/monitoring/competitors/${watchId}`);
+}

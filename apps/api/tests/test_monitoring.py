@@ -10,11 +10,16 @@ from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
+from app.core.dependencies import get_current_user, get_db
+from app.main import app
+from app.models.organization import Organization
 from app.models.project import Project
+from app.models.user import User, UserRole
 from app.models.analytics import GscConnection
 from app.models.monitoring import WatchedCompetitor, MonitorSnapshot, Alert  # noqa: F401
 
@@ -26,11 +31,26 @@ test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
 
 SQLITE_COMPATIBLE_TABLES = [
-    "projects", "gsc_connections", "gsc_query_stats",
+    "organizations", "users", "projects", "gsc_connections", "gsc_query_stats",
     "watched_competitors", "monitor_snapshots", "alerts",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
+FAKE_USER_ID = uuid.uuid4()
+
+fake_user = User(
+    id=FAKE_USER_ID,
+    org_id=FAKE_ORG_ID,
+    email="test@fennex.ai",
+    hashed_password="hashed",
+    full_name="Test User",
+    role=UserRole.OWNER,
+    is_active=True,
+)
+
+
+async def override_get_current_user():
+    return fake_user
 
 
 @pytest.fixture(autouse=True)
@@ -51,6 +71,38 @@ async def setup_db():
 async def db_session():
     async with TestSessionLocal() as session:
         yield session
+
+
+async def override_get_db():
+    async with TestSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+@pytest.fixture
+async def org_and_project(db_session):
+    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+    db_session.add(org)
+    await db_session.flush()
+    project = Project(id=uuid.uuid4(), org_id=FAKE_ORG_ID, name="Test Project", domain="example.com")
+    db_session.add(project)
+    await db_session.commit()
+    return org, project
+
+
+@pytest.fixture
+async def client():
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -260,3 +312,55 @@ async def test_weekly_crons_iterate_and_isolate_failures(db_session):
         await monitoring_tasks.run_market_monitor(None)     # must not raise despite boom
         await monitoring_tasks.run_competitor_monitor(None)
     assert f"market:{p_gsc.id}" in calls and f"comp:{p_watch.id}" in calls
+
+
+# ── API router ────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_alerts_endpoints(client, db_session, org_and_project):
+    p = await _mk_project(db_session)
+    for i in range(3):
+        db_session.add(Alert(org_id=FAKE_ORG_ID, project_id=p.id, kind="ranking_drop",
+                             severity="warning", title=f"t{i}", url="/x", dedupe_key=f"k{i}"))
+    await db_session.commit()
+    r = await client.get(f"/api/v1/monitoring/alerts?project_id={p.id}")
+    assert r.status_code == 200 and len(r.json()) == 3
+    first_id = r.json()[0]["id"]
+    r = await client.post(f"/api/v1/monitoring/alerts/{first_id}/read")
+    assert r.status_code == 200
+    r = await client.get(f"/api/v1/monitoring/alerts?project_id={p.id}&unread_only=true")
+    assert len(r.json()) == 2
+    r = await client.get(f"/api/v1/monitoring/alerts/unread-count?project_id={p.id}")
+    assert r.json()["count"] == 2
+    r = await client.post(f"/api/v1/monitoring/alerts/read-all?project_id={p.id}")
+    assert r.json()["marked"] == 2
+    r = await client.get(f"/api/v1/monitoring/alerts/unread-count?project_id={p.id}")
+    assert r.json()["count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_watchlist_endpoints_validation(client, db_session, org_and_project):
+    p = await _mk_project(db_session)
+    r = await client.post("/api/v1/monitoring/competitors",
+                          json={"project_id": str(p.id), "url": "https://rival.com", "label": "Rival"})
+    assert r.status_code == 201, r.text
+    wid = r.json()["id"]
+    # duplicate URL -> 409
+    r = await client.post("/api/v1/monitoring/competitors",
+                          json={"project_id": str(p.id), "url": "https://rival.com"})
+    assert r.status_code == 409
+    # invalid URL -> 400
+    r = await client.post("/api/v1/monitoring/competitors",
+                          json={"project_id": str(p.id), "url": "not-a-url"})
+    assert r.status_code == 400
+    # cap 10
+    for i in range(9):
+        await client.post("/api/v1/monitoring/competitors",
+                          json={"project_id": str(p.id), "url": f"https://r{i}.com"})
+    r = await client.post("/api/v1/monitoring/competitors",
+                          json={"project_id": str(p.id), "url": "https://one-too-many.com"})
+    assert r.status_code == 400
+    r = await client.get(f"/api/v1/monitoring/competitors?project_id={p.id}")
+    assert len(r.json()) == 10
+    r = await client.delete(f"/api/v1/monitoring/competitors/{wid}")
+    assert r.status_code == 200
