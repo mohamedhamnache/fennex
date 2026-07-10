@@ -798,6 +798,8 @@
       "country": "Pays cible",
       "industry": "Secteur",
       "persona": "Profil",
+      "autopilot": "Pilote automatique",
+      "autopilotHint": "Chaque lundi, la Meute propose un plan hebdomadaire basé sur vos vraies données de recherche. Vous validez, ils exécutent.",
       "save": "Enregistrer",
       "saving": "Enregistrement...",
       "saved": "Projet mis à jour",

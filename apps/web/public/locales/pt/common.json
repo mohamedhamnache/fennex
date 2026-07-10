@@ -798,6 +798,8 @@
       "country": "País-alvo",
       "industry": "Setor",
       "persona": "Perfil",
+      "autopilot": "Piloto automático",
+      "autopilotHint": "Toda segunda-feira, a Matilha propõe um plano semanal com base nos seus dados reais de busca. Você aprova, eles executam.",
       "save": "Salvar alterações",
       "saving": "Salvando...",
       "saved": "Projeto atualizado",

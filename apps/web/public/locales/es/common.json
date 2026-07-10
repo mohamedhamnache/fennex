@@ -798,6 +798,8 @@
       "country": "País objetivo",
       "industry": "Sector",
       "persona": "Perfil",
+      "autopilot": "Piloto automático",
+      "autopilotHint": "Cada lunes, la Manada propone un plan semanal basado en tus datos reales de búsqueda. Tú lo apruebas, ellos lo ejecutan.",
       "save": "Guardar cambios",
       "saving": "Guardando...",
       "saved": "Proyecto actualizado",

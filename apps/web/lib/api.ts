@@ -173,6 +173,7 @@ export interface Project {
   industry: string | null;
   persona?: ProjectPersona | null;
   persona_data?: Record<string, unknown> | null;
+  autopilot_enabled: boolean;
   created_at: string;
 }
 
@@ -222,7 +223,7 @@ export async function listProjects(): Promise<Project[]> {
 
 export async function updateProject(
   projectId: string,
-  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "target_country" | "industry" | "persona" | "persona_data">>,
+  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled">>,
 ): Promise<Project> {
   return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }
@@ -2030,6 +2031,8 @@ export interface Campaign {
   status: CampaignStatus;
   director_summary: string | null;
   steps: CampaignStep[];
+  source: string;
+  week_of: string | null;
 }
 
 export async function createCampaign(projectId: string, goal: string): Promise<Campaign> {

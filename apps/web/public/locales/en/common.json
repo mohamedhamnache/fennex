@@ -875,6 +875,8 @@
       "country": "Target country",
       "industry": "Industry",
       "persona": "Profile",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Every Monday the Pack proposes a weekly plan from your real search data. You approve, they execute.",
       "save": "Save changes",
       "saving": "Saving...",
       "saved": "Project updated",

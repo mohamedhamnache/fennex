@@ -798,6 +798,8 @@
       "country": "Zielland",
       "industry": "Branche",
       "persona": "Profil",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Jeden Montag schlägt das Rudel einen Wochenplan auf Basis deiner echten Suchdaten vor. Du genehmigst, sie setzen um.",
       "save": "Änderungen speichern",
       "saving": "Speichern...",
       "saved": "Projekt aktualisiert",
