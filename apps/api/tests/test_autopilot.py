@@ -17,9 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
+from app.models.calendar_entry import CalendarEntry
 from app.models.campaign import Campaign, CampaignStep
 from app.models.project import Project
 from app.models.analytics import GscConnection
+from app.models.article import Article, ArticleStatus
+from app.models.image import GeneratedImage, ImageStatus
 from app.services.autopilot_service import generate_weekly_plan, monday_of
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
@@ -29,7 +32,10 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
 
-SQLITE_COMPATIBLE_TABLES = ["projects", "campaigns", "campaign_steps", "gsc_connections"]
+SQLITE_COMPATIBLE_TABLES = [
+    "projects", "campaigns", "campaign_steps", "gsc_connections",
+    "calendar_entries", "articles", "generated_images",
+]
 
 FAKE_ORG_ID = uuid.uuid4()
 FAKE_PROJECT_ID = uuid.uuid4()
@@ -189,3 +195,70 @@ async def test_cron_plans_only_enabled_projects_and_isolates_failures(db_session
         await autopilot_tasks.run_autopilot_planner(None)
 
     assert set(calls) == {enabled_a.id, enabled_b.id}
+
+
+# ── Ship-to-calendar hook ─────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_ship_hook_schedules_article_and_banner(db_session):
+    from app.workers.tasks.campaign_tasks import _ship_autopilot_artifacts, _ship_dates
+    p = await _mk_project(db_session)
+    article = Article(org_id=FAKE_ORG_ID, project_id=p.id, title="T", status=ArticleStatus.ready)
+    image = GeneratedImage(org_id=FAKE_ORG_ID, project_id=p.id, prompt="v", status=ImageStatus.ready)
+    db_session.add_all([article, image]); await db_session.commit()
+
+    week = monday_of(date.today())
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=p.id, goal="g", persona="creator",
+                 status="completed", source="autopilot", week_of=week)
+    db_session.add(c); await db_session.commit()
+    steps = [
+        CampaignStep(campaign_id=c.id, order=0, agent="dune", action="dune.write_article",
+                     status="completed", artifact_type="article", artifact_ids=[str(article.id)]),
+        CampaignStep(campaign_id=c.id, order=1, agent="sirocco", action="sirocco.generate_visual",
+                     status="completed", artifact_type="image",
+                     structured={"image_id": str(image.id)}),
+    ]
+    db_session.add_all(steps); await db_session.commit()
+
+    await _ship_autopilot_artifacts(c, steps, db_session)
+    entries = (await db_session.execute(select(CalendarEntry))).scalars().all()
+    assert {(e.content_type, e.state) for e in entries} == {("article", "planned"), ("banner", "planned")}
+    assert all(e.scheduled_at.endswith("09:00:00+00:00") or "T09:00" in e.scheduled_at for e in entries)
+    # duplicate guard: running again (resume) creates nothing new
+    await _ship_autopilot_artifacts(c, steps, db_session)
+    assert len((await db_session.execute(select(CalendarEntry))).scalars().all()) == 2
+    # dates are distinct weekdays
+    dates = sorted(e.scheduled_at[:10] for e in entries)
+    assert len(set(dates)) == 2
+
+
+@pytest.mark.asyncio
+async def test_ship_hook_skips_manual_campaigns_and_isolates_failures(db_session):
+    from app.workers.tasks import campaign_tasks
+    p = await _mk_project(db_session)
+    manual = Campaign(org_id=FAKE_ORG_ID, project_id=p.id, goal="g", persona="creator",
+                      status="completed", source="manual")
+    db_session.add(manual); await db_session.commit()
+    await campaign_tasks._ship_autopilot_artifacts(manual, [], db_session)
+    assert (await db_session.execute(select(CalendarEntry))).scalars().first() is None
+    # a raising create_entry must not propagate
+    auto = Campaign(org_id=FAKE_ORG_ID, project_id=p.id, goal="g", persona="creator",
+                    status="completed", source="autopilot", week_of=monday_of(date.today()))
+    db_session.add(auto); await db_session.commit()
+    step = CampaignStep(campaign_id=auto.id, order=0, agent="dune", action="dune.write_article",
+                        status="completed", artifact_type="article", artifact_ids=[str(uuid.uuid4())])
+    db_session.add(step); await db_session.commit()
+    with patch.object(campaign_tasks, "create_calendar_entry",
+                      new=AsyncMock(side_effect=RuntimeError("boom"))):
+        await campaign_tasks._ship_autopilot_artifacts(auto, [step], db_session)  # must not raise
+
+
+def test_ship_dates_spread_and_rollover():
+    from app.workers.tasks.campaign_tasks import _ship_dates
+    week = date(2026, 7, 6)  # a Monday
+    # early in the week: next weekdays of the same week
+    d = _ship_dates(week, today=date(2026, 7, 6), count=2)
+    assert d == ["2026-07-07T09:00:00+00:00", "2026-07-08T09:00:00+00:00"]
+    # week exhausted: rolls into early next week
+    d = _ship_dates(week, today=date(2026, 7, 10), count=2)
+    assert d == ["2026-07-13T09:00:00+00:00", "2026-07-14T09:00:00+00:00"]
