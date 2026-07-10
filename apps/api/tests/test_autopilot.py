@@ -8,6 +8,7 @@ Strategy (mirrors test_campaigns.py):
 """
 import types
 import uuid
+from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -73,6 +74,11 @@ async def _mk_project(db, persona="creator", enabled=True, gsc=True):
         db.add(GscConnection(project_id=p.id, org_id=FAKE_ORG_ID, is_active=True))
         await db.commit()
     return p
+
+
+@asynccontextmanager
+async def _single_session(session):
+    yield session
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -158,3 +164,28 @@ async def test_stale_cancelled_even_when_no_opportunities(db_session):
 
     await db_session.refresh(stale)
     assert stale.status == "cancelled"
+
+
+# ── Cron task ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_cron_plans_only_enabled_projects_and_isolates_failures(db_session):
+    from app.workers.tasks import autopilot_tasks
+    enabled_a = await _mk_project(db_session, enabled=True)
+    enabled_b = await _mk_project(db_session, enabled=True)
+    await _mk_project(db_session, enabled=False)
+
+    calls: list = []
+
+    async def fake_plan(project, db):
+        calls.append(project.id)
+        if project.id == enabled_a.id:
+            raise RuntimeError("boom")  # one project failing must not break the batch
+        return None
+
+    with patch.object(autopilot_tasks, "generate_weekly_plan", new=fake_plan), \
+         patch.object(autopilot_tasks, "async_session_factory",
+                      new=lambda: _single_session(db_session)):
+        await autopilot_tasks.run_autopilot_planner(None)
+
+    assert set(calls) == {enabled_a.id, enabled_b.id}
