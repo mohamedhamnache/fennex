@@ -6,6 +6,7 @@ Strategy (mirrors test_autopilot.py):
 - Create only the SQLite-compatible tables this feature touches
 """
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import delete, select
@@ -146,3 +147,64 @@ async def test_rankings_dedupe_same_week_and_warning_severity(db_session):
     # previous snapshot now 7.5 -> 11.0 = 3.5 drop again, but same query+week dedupe key
     assert await detect_rankings(p.id, FAKE_ORG_ID, db_session) == 0
     assert len((await db_session.execute(select(Alert))).scalars().all()) == 1
+
+
+def _card(title="T", meta="M", wc=1000, h2=5, schema=None):
+    return {"title": title, "meta_description": meta, "word_count": wc,
+            "h2_count": h2, "schema_types": schema or ["Article"]}
+
+
+async def _mk_watch(db, project_id, url="https://rival.com/guide", card=None):
+    w = WatchedCompetitor(org_id=FAKE_ORG_ID, project_id=project_id, url=url,
+                          last_scorecard=card)
+    db.add(w)
+    await db.commit()
+    await db.refresh(w)
+    return w
+
+
+@pytest.mark.asyncio
+async def test_competitor_first_scan_is_silent_and_stores(db_session):
+    from app.services import monitoring_service
+    p = await _mk_project(db_session)
+    w = await _mk_watch(db_session, p.id, card=None)
+    with patch.object(monitoring_service, "scan_scorecard", new=AsyncMock(return_value=_card())):
+        assert await monitoring_service.detect_competitors(p.id, FAKE_ORG_ID, db_session) == 0
+    await db_session.refresh(w)
+    assert w.last_scorecard == _card() and w.last_scanned_at is not None
+    assert (await db_session.execute(select(Alert))).scalars().first() is None
+
+
+@pytest.mark.asyncio
+async def test_competitor_change_facets_alert(db_session):
+    from app.services import monitoring_service
+    p = await _mk_project(db_session)
+    await _mk_watch(db_session, p.id, card=_card())
+    changed = _card(title="New Title", wc=1300, schema=["Article", "FAQPage"])  # 3 facets
+    with patch.object(monitoring_service, "scan_scorecard", new=AsyncMock(return_value=changed)):
+        assert await monitoring_service.detect_competitors(p.id, FAKE_ORG_ID, db_session) == 1
+    a = (await db_session.execute(select(Alert))).scalars().one()
+    assert a.kind == "competitor_change" and a.severity == "warning"
+    assert "title" in (a.detail or "") and "word count" in (a.detail or "") and "FAQPage" in (a.detail or "")
+
+
+@pytest.mark.asyncio
+async def test_competitor_unchanged_and_small_changes_are_silent(db_session):
+    from app.services import monitoring_service
+    p = await _mk_project(db_session)
+    await _mk_watch(db_session, p.id, card=_card(wc=1000, h2=5))
+    minor = _card(wc=1100, h2=7)  # wc +10% (<20%), h2 +2 (<3) -> silent
+    with patch.object(monitoring_service, "scan_scorecard", new=AsyncMock(return_value=minor)):
+        assert await monitoring_service.detect_competitors(p.id, FAKE_ORG_ID, db_session) == 0
+
+
+@pytest.mark.asyncio
+async def test_competitor_crawl_failure_skips_and_keeps_scorecard(db_session):
+    from app.services import monitoring_service
+    p = await _mk_project(db_session)
+    w = await _mk_watch(db_session, p.id, card=_card())
+    with patch.object(monitoring_service, "scan_scorecard", new=AsyncMock(side_effect=RuntimeError("down"))):
+        assert await monitoring_service.detect_competitors(p.id, FAKE_ORG_ID, db_session) == 0
+    await db_session.refresh(w)
+    assert w.last_scorecard == _card()  # unchanged
+    assert (await db_session.execute(select(Alert))).scalars().first() is None
