@@ -32,6 +32,7 @@ def _step(s: CampaignStep) -> dict:
 def _campaign(c: Campaign, steps: list[CampaignStep]) -> dict:
     return {"id": str(c.id), "goal": c.goal, "persona": c.persona, "status": c.status,
             "director_summary": c.director_summary,
+            "source": c.source, "week_of": c.week_of.isoformat() if c.week_of else None,
             "steps": [_step(s) for s in sorted(steps, key=lambda x: x.order)]}
 
 
