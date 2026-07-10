@@ -39,6 +39,7 @@ from app.api.v1.routers import (
     webhooks,
     billing,
     campaigns,
+    monitoring,
 )
 
 api_router = APIRouter()
@@ -83,3 +84,4 @@ api_router.include_router(recommendations.router, prefix="/recommendations", tag
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(campaigns.router, prefix="/campaigns", tags=["campaigns"])
+api_router.include_router(monitoring.router, prefix="/monitoring", tags=["monitoring"])

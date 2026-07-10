@@ -93,6 +93,34 @@
     "notificationsHint": "Aufgabenfertigstellungen und Warnungen erscheinen hier.",
     "loading": "Wird geladen…"
   },
+  "alertsCenter": {
+    "bell": "Benachrichtigungen",
+    "title": "Benachrichtigungen",
+    "subtitle": "Das Pack hält Wache - Ranking-Bewegungen, Änderungen bei Wettbewerbern und Marktverschiebungen landen hier",
+    "viewAll": "Alle anzeigen",
+    "caughtUp": "Alles erledigt — keine Ranking-, Wettbewerbs- oder Marktänderungen zu melden.",
+    "markAllRead": "Alle als gelesen markieren",
+    "unreadOnly": "Ungelesen",
+    "all": "Alle",
+    "open": "Öffnen",
+    "empty": "Noch keine Meldungen. Wir beobachten deine Rankings, Wettbewerber und deinen Markt und melden hier alles Wichtige.",
+    "kinds": {
+      "ranking_drop": "Ranking-Abfall",
+      "ranking_gain": "Ranking-Anstieg",
+      "competitor_change": "Wettbewerber-Änderung",
+      "market_shift": "Marktverschiebung"
+    },
+    "watchlist": {
+      "title": "Beobachtete Wettbewerber",
+      "hint": "Sable scannt diese Seiten jede Woche erneut und benachrichtigt dich bei Änderungen.",
+      "add": "Beobachten",
+      "urlPlaceholder": "https://wettbewerber.com/ihre-beste-seite",
+      "labelPlaceholder": "Bezeichnung (optional)",
+      "cap": "Die Beobachtungsliste ist voll (10). Entferne einen Eintrag, um einen weiteren hinzuzufügen.",
+      "empty": "Noch keine Wettbewerber beobachtet.",
+      "remove": "Entfernen"
+    }
+  },
   "commandPalette": {
     "placeholder": "Befehle, Seiten, Projekte suchen…",
     "noResults": "Keine Ergebnisse für »{{query}}«",
@@ -789,7 +817,7 @@
     },
     "project": {
       "title": "Projekt",
-      "subtitle": "Verwalte das Projekt, an dem das Rudel arbeitet",
+      "subtitle": "Verwalte das Projekt, an dem das Pack arbeitet",
       "selectProject": "Projekt",
       "name": "Name",
       "domain": "Domain",
@@ -799,7 +827,7 @@
       "industry": "Branche",
       "persona": "Profil",
       "autopilot": "Autopilot",
-      "autopilotHint": "Jeden Montag schlägt das Rudel einen Wochenplan auf Basis deiner echten Suchdaten vor. Du genehmigst, sie setzen um.",
+      "autopilotHint": "Jeden Montag schlägt das Pack einen Wochenplan auf Basis deiner echten Suchdaten vor. Du genehmigst, sie setzen um.",
       "save": "Änderungen speichern",
       "saving": "Speichern...",
       "saved": "Projekt aktualisiert",
@@ -826,7 +854,7 @@
   },
   "campaigns": {
     "title": "Kampagnen",
-    "subtitle": "Ein Briefing genügt — das Rudel plant und führt eine ganze Kampagne aus",
+    "subtitle": "Ein Briefing genügt — das Pack plant und führt eine ganze Kampagne aus",
     "newGoal": "Was möchtest du erreichen?",
     "goalPlaceholder": "z. B. 3 neue Restaurant-Kunden in diesem Quartal gewinnen",
     "draft": "Plan entwerfen",
@@ -900,7 +928,7 @@
       "view": "Tracking ansehen"
     },
     "composer": {
-      "headline": "Was soll das Rudel erreichen?",
+      "headline": "Was soll das Pack erreichen?",
       "subline": "Ein Ziel rein. Recherche, Strategie, Inhalte, Visuals und Distribution raus.",
       "cta": "Meine Kampagne entwerfen",
       "templatesHint": "Vorlagen passend zu deinem Profil",
@@ -953,7 +981,7 @@
   "autopilot": {
     "badge": "Autopilot",
     "weekOf": "Woche vom {{date}}",
-    "titlePlanned": "Das Rudel hat deine Woche geplant",
+    "titlePlanned": "Das Pack hat deine Woche geplant",
     "bodyPlanned": "{{count}} Schritte · geschätzt {{estimate}}",
     "review": "Prüfen & genehmigen",
     "view": "Ansehen",

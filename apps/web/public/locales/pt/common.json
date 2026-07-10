@@ -93,6 +93,34 @@
     "notificationsHint": "Conclusões de tarefas e alertas aparecerão aqui.",
     "loading": "Carregando…"
   },
+  "alertsCenter": {
+    "bell": "Alertas",
+    "title": "Alertas",
+    "subtitle": "O Pack vigia - movimentos de ranking, mudanças da concorrência e do mercado chegam aqui",
+    "viewAll": "Ver tudo",
+    "caughtUp": "Tudo em dia — nenhuma mudança de posição, concorrente ou mercado a relatar.",
+    "markAllRead": "Marcar tudo como lido",
+    "unreadOnly": "Não lidos",
+    "all": "Todos",
+    "open": "Abrir",
+    "empty": "Ainda não há alertas. Acompanhamos suas posições, concorrentes e mercado e avisamos aqui tudo o que importa.",
+    "kinds": {
+      "ranking_drop": "Queda de ranking",
+      "ranking_gain": "Alta de ranking",
+      "competitor_change": "Mudança da concorrência",
+      "market_shift": "Mudança de mercado"
+    },
+    "watchlist": {
+      "title": "Concorrentes monitorados",
+      "hint": "Sable reanalisa essas páginas toda semana e avisa você quando elas mudam.",
+      "add": "Monitorar",
+      "urlPlaceholder": "https://concorrente.com/melhor-pagina-deles",
+      "labelPlaceholder": "Rótulo (opcional)",
+      "cap": "A lista de monitoramento está cheia (10). Remova um para adicionar outro.",
+      "empty": "Nenhum concorrente monitorado ainda.",
+      "remove": "Remover"
+    }
+  },
   "commandPalette": {
     "placeholder": "Buscar comandos, páginas, projetos…",
     "noResults": "Sem resultados para «{{query}}»",
@@ -789,7 +817,7 @@
     },
     "project": {
       "title": "Projeto",
-      "subtitle": "Gerencie o projeto em que a Matilha trabalha",
+      "subtitle": "Gerencie o projeto em que o Pack trabalha",
       "selectProject": "Projeto",
       "name": "Nome",
       "domain": "Domínio",
@@ -799,7 +827,7 @@
       "industry": "Setor",
       "persona": "Perfil",
       "autopilot": "Piloto automático",
-      "autopilotHint": "Toda segunda-feira, a Matilha propõe um plano semanal com base nos seus dados reais de busca. Você aprova, eles executam.",
+      "autopilotHint": "Toda segunda-feira, o Pack propõe um plano semanal com base nos seus dados reais de busca. Você aprova, eles executam.",
       "save": "Salvar alterações",
       "saving": "Salvando...",
       "saved": "Projeto atualizado",
@@ -826,7 +854,7 @@
   },
   "campaigns": {
     "title": "Campanhas",
-    "subtitle": "Instrua a Matilha uma vez — ela planeja e executa uma campanha inteira",
+    "subtitle": "Instrua o Pack uma vez — ele planeja e executa uma campanha inteira",
     "newGoal": "O que você quer alcançar?",
     "goalPlaceholder": "ex. Conquistar 3 novos clientes de restaurante neste trimestre",
     "draft": "Rascunhar plano",
@@ -900,7 +928,7 @@
       "view": "Ver acompanhamento"
     },
     "composer": {
-      "headline": "O que a Matilha deve alcançar?",
+      "headline": "O que o Pack deve alcançar?",
       "subline": "Um objetivo na entrada. Pesquisa, estratégia, conteúdo, visuais e distribuição na saída.",
       "cta": "Criar minha campanha",
       "templatesHint": "Modelos ajustados ao seu perfil",
@@ -953,7 +981,7 @@
   "autopilot": {
     "badge": "Piloto automático",
     "weekOf": "Semana de {{date}}",
-    "titlePlanned": "A Alcateia planejou sua semana",
+    "titlePlanned": "O Pack planejou sua semana",
     "bodyPlanned": "{{count}} etapas · est. {{estimate}}",
     "review": "Revisar e aprovar",
     "view": "Ver",

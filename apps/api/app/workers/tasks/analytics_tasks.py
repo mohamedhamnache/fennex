@@ -131,6 +131,13 @@ async def _sync_one_project(project_id: str):
         except Exception:
             pass  # never let tracking break the nightly analytics sync
 
+        # The Pack keeps watch: Zerda's ranking-move detection on fresh GSC data.
+        from app.services.monitoring_service import detect_rankings
+        try:
+            await detect_rankings(pid, org_id, session)
+        except Exception:
+            pass  # monitoring must never break the nightly sync
+
 
 async def _sync_synthetic(pid, today, session) -> uuid.UUID | None:
     """Fallback demo data for projects with no GSC connection. Returns org_id, or

@@ -75,6 +75,14 @@ def _scorecard(page: dict) -> dict:
     }
 
 
+async def scan_scorecard(url: str) -> dict:
+    """Crawl a URL and return its scorecard only (no LLM insights). Raises on failure."""
+    page = await _crawl(url)
+    if page.get("error") or page.get("status_code", 0) >= 400:
+        raise RuntimeError(page.get("error") or f"HTTP {page.get('status_code')}")
+    return _scorecard(page)
+
+
 async def analyze(project_id: uuid.UUID, org_id: uuid.UUID, url: str, db: AsyncSession) -> dict:
     try:
         page = await _crawl(url)

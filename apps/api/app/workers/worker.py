@@ -13,6 +13,7 @@ from app.workers.tasks.campaign_tasks import run_campaign
 from app.workers.tasks.crawl_tasks import crawl_website
 from app.workers.tasks.digest_tasks import send_weekly_digests
 from app.workers.tasks.keyword_tasks import run_keyword_research
+from app.workers.tasks.monitoring_tasks import run_competitor_monitor, run_market_monitor
 
 
 async def startup(ctx):
@@ -43,6 +44,8 @@ class WorkerSettings:
         run_content_scheduler,
         run_campaign,
         run_autopilot_planner,
+        run_market_monitor,
+        run_competitor_monitor,
     ]
     cron_jobs = [
         cron(sync_analytics_data, hour=6, minute=0, run_at_startup=False),
@@ -52,6 +55,10 @@ class WorkerSettings:
         cron(run_content_scheduler, minute={0, 15, 30, 45}, run_at_startup=False),
         # Monday-morning autopilot planning, after the 06:00 analytics sync
         cron(run_autopilot_planner, weekday=0, hour=7, minute=30, run_at_startup=False),
+        # The Pack keeps watch: Oasis market shifts Monday (before the 08:00 digest),
+        # Sable competitor re-scans Tuesday.
+        cron(run_market_monitor, weekday=0, hour=7, minute=0, run_at_startup=False),
+        cron(run_competitor_monitor, weekday=1, hour=7, minute=0, run_at_startup=False),
     ]
     on_startup = startup
     on_shutdown = shutdown
