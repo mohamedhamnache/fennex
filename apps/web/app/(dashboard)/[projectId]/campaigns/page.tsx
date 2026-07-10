@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import {
   createCampaign, listCampaigns, getCampaign, updateCampaignPlan,
@@ -31,13 +32,19 @@ function statusBadgeClass(status: Campaign["status"]): string {
 
 export default function CampaignsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
 
   const [goal, setGoal] = useState("");
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const c = searchParams.get("campaign");
+    if (c) setActiveCampaignId(c);
+  }, [searchParams]);
 
   const { data: campaigns = [] } = useQuery({
     queryKey: ["campaigns", projectId],
@@ -156,6 +163,21 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
                 </p>
               )}
             </div>
+            {activeCampaign.source === "autopilot" && (
+              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+                {t("autopilot.badge")}
+                {activeCampaign.week_of && (
+                  <>
+                    {" · "}
+                    {t("autopilot.weekOf", {
+                      date: new Date(`${activeCampaign.week_of}T00:00:00`).toLocaleDateString(i18n.language, {
+                        month: "short", day: "numeric",
+                      }),
+                    })}
+                  </>
+                )}
+              </span>
+            )}
             <span className={statusBadgeClass(activeCampaign.status)}>
               {t(`campaigns.status.${activeCampaign.status}`)}
             </span>

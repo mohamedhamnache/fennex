@@ -32,6 +32,7 @@ class ProjectUpdate(BaseModel):
     industry: Optional[str] = None
     persona: Optional[str] = None
     persona_data: Optional[dict] = None
+    autopilot_enabled: Optional[bool] = None
 
 
 class ProjectResponse(BaseModel):
@@ -44,6 +45,7 @@ class ProjectResponse(BaseModel):
     industry: Optional[str]
     persona: Optional[str] = None
     persona_data: Optional[dict] = None
+    autopilot_enabled: bool = False
 
     class Config:
         from_attributes = True

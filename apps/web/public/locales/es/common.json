@@ -798,6 +798,8 @@
       "country": "País objetivo",
       "industry": "Sector",
       "persona": "Perfil",
+      "autopilot": "Piloto automático",
+      "autopilotHint": "Cada lunes, la Manada propone un plan semanal basado en tus datos reales de búsqueda. Tú lo apruebas, ellos lo ejecutan.",
       "save": "Guardar cambios",
       "saving": "Guardando...",
       "saved": "Proyecto actualizado",
@@ -947,6 +949,19 @@
         "goal": "Preparar una campaña de temporada que capte el próximo pico en mi nicho"
       }
     }
+  },
+  "autopilot": {
+    "badge": "Piloto automático",
+    "weekOf": "Semana del {{date}}",
+    "titlePlanned": "La Manada planificó tu semana",
+    "bodyPlanned": "{{count}} pasos · est. {{estimate}}",
+    "review": "Revisar y aprobar",
+    "view": "Ver",
+    "titleRunning": "El piloto automático está ejecutando tu semana",
+    "progress": "{{done}} de {{total}} pasos completados",
+    "titleDone": "Tu semana está programada",
+    "bodyDone": "{{count}} contenidos creados - los borradores están en tu calendario",
+    "viewCalendar": "Abrir calendario"
   },
   "missionControl": {
     "getSetUp": "Puesta en marcha",

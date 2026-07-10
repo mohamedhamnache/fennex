@@ -1,13 +1,15 @@
 """Campaign orchestrator: run a planned campaign's steps in order, chaining outputs."""
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
+from app.models.calendar_entry import CalendarEntry
 from app.models.campaign import Campaign, CampaignStep
 from app.services.ai_analytics_service import project_profile
+from app.services.calendar_service import create_entry as create_calendar_entry
 from app.services.campaign_catalog import ACTIONS, CampaignContext
 from app.services.recommendation_service import create_recommendation
 
@@ -50,6 +52,51 @@ async def _autotrack_campaign(campaign, steps, db) -> None:
         )
     except Exception:
         logger.exception("campaign auto-track failed: %s", campaign.id)
+
+
+def _ship_dates(week_of, today, count: int) -> list[str]:
+    """ISO datetimes at 09:00 UTC on distinct weekdays: the remaining weekdays of
+    week_of's week strictly after today, rolling into early next week if exhausted."""
+    out: list[str] = []
+    d = max(week_of, today) + timedelta(days=1)
+    while len(out) < count:
+        if d.weekday() < 5:  # Mon-Fri
+            out.append(f"{d.isoformat()}T09:00:00+00:00")
+        d += timedelta(days=1)
+    return out
+
+
+async def _ship_autopilot_artifacts(campaign, steps, db) -> None:
+    """Schedule a completed autopilot campaign's artifacts on the Content Calendar
+    as planned entries (the calendar's arm/publish gate is unchanged). Isolated:
+    failures are logged and never affect the campaign."""
+    try:
+        if campaign.source != "autopilot" or campaign.status != "completed":
+            return
+        targets: list[tuple[str, str]] = []  # (content_type, content_id)
+        for s in steps:
+            if s.status != "completed":
+                continue
+            if s.artifact_type == "article" and s.artifact_ids:
+                targets.append(("article", str(s.artifact_ids[0])))
+            elif s.artifact_type == "image" and (s.structured or {}).get("image_id"):
+                targets.append(("banner", str(s.structured["image_id"])))
+        if not targets:
+            return
+        dates = _ship_dates(campaign.week_of or date.today(), date.today(), len(targets))
+        for (ctype, cid), when in zip(targets, dates):
+            existing = (await db.execute(select(CalendarEntry).where(
+                CalendarEntry.project_id == campaign.project_id,
+                CalendarEntry.content_type == ctype,
+                CalendarEntry.content_id == uuid.UUID(cid),
+            ))).scalars().first()
+            if existing is not None:
+                continue
+            await create_calendar_entry(campaign.project_id, campaign.org_id,
+                                        {"content_type": ctype, "content_id": cid,
+                                         "scheduled_at": when}, db)
+    except Exception:
+        logger.exception("autopilot ship-to-calendar failed: %s", campaign.id)
 
 
 async def execute_campaign(campaign_id, db_factory=None) -> None:
@@ -118,6 +165,7 @@ async def execute_campaign(campaign_id, db_factory=None) -> None:
             await db.commit()
             if campaign.status == "completed":
                 await _autotrack_campaign(campaign, steps, db)
+                await _ship_autopilot_artifacts(campaign, steps, db)
         except Exception:
             logger.exception("campaign execution crashed: %s", campaign_id)
             await db.rollback()

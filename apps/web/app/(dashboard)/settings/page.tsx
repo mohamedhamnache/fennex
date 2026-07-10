@@ -998,6 +998,7 @@ function ProjectSection() {
 
   const [form, setForm] = useState({
     name: "", domain: "", locale: "en", target_country: "", industry: "", persona: "" as ProjectPersona | "",
+    autopilot_enabled: false,
   });
 
   // Re-seed the form whenever the selected project changes.
@@ -1010,6 +1011,7 @@ function ProjectSection() {
         target_country: active.target_country ?? "",
         industry: active.industry ?? "",
         persona: active.persona ?? "",
+        autopilot_enabled: active.autopilot_enabled ?? false,
       });
     }
   }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1023,6 +1025,7 @@ function ProjectSection() {
         target_country: form.target_country.trim() || null,
         industry: form.industry.trim() || null,
         persona: form.persona || undefined,
+        autopilot_enabled: form.autopilot_enabled,
       }),
     onSuccess: () => {
       // Refreshing projects also lets I18nProvider pick up a new project
@@ -1106,6 +1109,22 @@ function ProjectSection() {
             ))}
           </select>
         </Field>
+
+        <div className="flex items-center justify-between rounded-lg border border-border px-3.5 py-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">{t("settings.project.autopilot")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.project.autopilotHint")}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.autopilot_enabled}
+            onClick={() => setForm((f) => ({ ...f, autopilot_enabled: !f.autopilot_enabled }))}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${form.autopilot_enabled ? "bg-primary" : "bg-muted"}`}
+          >
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.autopilot_enabled ? "left-[22px]" : "left-0.5"}`} />
+          </button>
+        </div>
 
         {saveMutation.isError && <ErrorMsg>{t("settings.project.saveError")}</ErrorMsg>}
 

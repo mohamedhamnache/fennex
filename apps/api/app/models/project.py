@@ -26,5 +26,7 @@ class Project(Base, TimestampMixin):
     persona: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Persona-specific onboarding answers (niche, platforms, store type, services…)
     persona_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Autopilot: opt-in per project for the Monday weekly-plan proposal
+    autopilot_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     organization: Mapped["Organization"] = relationship("Organization", back_populates="projects")

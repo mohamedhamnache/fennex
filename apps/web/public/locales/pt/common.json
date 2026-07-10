@@ -798,6 +798,8 @@
       "country": "País-alvo",
       "industry": "Setor",
       "persona": "Perfil",
+      "autopilot": "Piloto automático",
+      "autopilotHint": "Toda segunda-feira, a Matilha propõe um plano semanal com base nos seus dados reais de busca. Você aprova, eles executam.",
       "save": "Salvar alterações",
       "saving": "Salvando...",
       "saved": "Projeto atualizado",
@@ -947,6 +949,19 @@
         "goal": "Preparar uma campanha sazonal que capte o próximo pico no meu nicho"
       }
     }
+  },
+  "autopilot": {
+    "badge": "Piloto automático",
+    "weekOf": "Semana de {{date}}",
+    "titlePlanned": "A Alcateia planejou sua semana",
+    "bodyPlanned": "{{count}} etapas · est. {{estimate}}",
+    "review": "Revisar e aprovar",
+    "view": "Ver",
+    "titleRunning": "O piloto automático está executando sua semana",
+    "progress": "{{done}} de {{total}} etapas concluídas",
+    "titleDone": "Sua semana está agendada",
+    "bodyDone": "{{count}} conteúdos criados - os rascunhos estão no seu calendário",
+    "viewCalendar": "Abrir calendário"
   },
   "missionControl": {
     "getSetUp": "Configuração",

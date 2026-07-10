@@ -798,6 +798,8 @@
       "country": "Pays cible",
       "industry": "Secteur",
       "persona": "Profil",
+      "autopilot": "Pilote automatique",
+      "autopilotHint": "Chaque lundi, la Meute propose un plan hebdomadaire basé sur vos vraies données de recherche. Vous validez, ils exécutent.",
       "save": "Enregistrer",
       "saving": "Enregistrement...",
       "saved": "Projet mis à jour",
@@ -947,6 +949,19 @@
         "goal": "Préparer une campagne saisonnière qui capte le pic à venir dans ma niche"
       }
     }
+  },
+  "autopilot": {
+    "badge": "Pilote automatique",
+    "weekOf": "Semaine du {{date}}",
+    "titlePlanned": "La Meute a planifié votre semaine",
+    "bodyPlanned": "{{count}} étapes · est. {{estimate}}",
+    "review": "Vérifier et approuver",
+    "view": "Voir",
+    "titleRunning": "Le pilote automatique exécute votre semaine",
+    "progress": "{{done}} sur {{total}} étapes terminées",
+    "titleDone": "Votre semaine est planifiée",
+    "bodyDone": "{{count}} contenus créés - les brouillons sont sur votre calendrier",
+    "viewCalendar": "Ouvrir le calendrier"
   },
   "missionControl": {
     "getSetUp": "Mise en route",

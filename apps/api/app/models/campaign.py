@@ -1,6 +1,7 @@
 import uuid
+from datetime import date
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Date, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,6 +20,8 @@ class Campaign(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), default="planned", nullable=False)
     director_summary: Mapped[str | None] = mapped_column(Text)
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)  # manual | autopilot
+    week_of: Mapped[date | None] = mapped_column(Date, nullable=True)  # Monday of the plan's week (autopilot only)
 
 
 class CampaignStep(Base, TimestampMixin):

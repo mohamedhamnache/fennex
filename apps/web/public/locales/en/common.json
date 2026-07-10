@@ -875,6 +875,8 @@
       "country": "Target country",
       "industry": "Industry",
       "persona": "Profile",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Every Monday the Pack proposes a weekly plan from your real search data. You approve, they execute.",
       "save": "Save changes",
       "saving": "Saving...",
       "saved": "Project updated",
@@ -1024,6 +1026,19 @@
         "goal": "Prepare a seasonal campaign that captures the upcoming peak in my niche"
       }
     }
+  },
+  "autopilot": {
+    "badge": "Autopilot",
+    "weekOf": "Week of {{date}}",
+    "titlePlanned": "The Pack planned your week",
+    "bodyPlanned": "{{count}} steps · est. {{estimate}}",
+    "review": "Review & approve",
+    "view": "View",
+    "titleRunning": "Autopilot is running your week",
+    "progress": "{{done}} of {{total}} steps done",
+    "titleDone": "Your week is scheduled",
+    "bodyDone": "{{count}} artifacts created - drafts are on your calendar",
+    "viewCalendar": "Open calendar"
   },
   "missionControl": {
     "getSetUp": "Get set up",

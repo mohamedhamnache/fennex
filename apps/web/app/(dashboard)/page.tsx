@@ -18,6 +18,7 @@ import { useProjectStore } from "@/lib/store";
 import { StatCard } from "@/components/ui/StatCard";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { AutopilotCard } from "@/components/autopilot/AutopilotCard";
 
 function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -258,6 +259,8 @@ export default function DashboardPage() {
           </Link>
         )}
       </header>
+
+      {projectId && <AutopilotCard projectId={projectId} />}
 
       {/* Bento: hero + setup */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -798,6 +798,8 @@
       "country": "Zielland",
       "industry": "Branche",
       "persona": "Profil",
+      "autopilot": "Autopilot",
+      "autopilotHint": "Jeden Montag schlägt das Rudel einen Wochenplan auf Basis deiner echten Suchdaten vor. Du genehmigst, sie setzen um.",
       "save": "Änderungen speichern",
       "saving": "Speichern...",
       "saved": "Projekt aktualisiert",
@@ -947,6 +949,19 @@
         "goal": "Eine saisonale Kampagne vorbereiten, die den kommenden Höhepunkt in meiner Nische erfasst"
       }
     }
+  },
+  "autopilot": {
+    "badge": "Autopilot",
+    "weekOf": "Woche vom {{date}}",
+    "titlePlanned": "Das Rudel hat deine Woche geplant",
+    "bodyPlanned": "{{count}} Schritte · geschätzt {{estimate}}",
+    "review": "Prüfen & genehmigen",
+    "view": "Ansehen",
+    "titleRunning": "Autopilot führt deine Woche aus",
+    "progress": "{{done}} von {{total}} Schritten erledigt",
+    "titleDone": "Deine Woche ist geplant",
+    "bodyDone": "{{count}} Inhalte erstellt - Entwürfe sind in deinem Kalender",
+    "viewCalendar": "Kalender öffnen"
   },
   "missionControl": {
     "getSetUp": "Einrichtung",

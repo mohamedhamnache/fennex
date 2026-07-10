@@ -382,6 +382,8 @@ async def test_create_campaign_persists_plan(client, org_and_project):
     body = r.json()
     assert body["status"] == "planned" and len(body["steps"]) == 2
     assert "started_at" in body["steps"][0]
+    assert body["source"] == "manual"
+    assert body["week_of"] is None
 
 
 @pytest.mark.asyncio
