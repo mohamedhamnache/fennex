@@ -8,6 +8,7 @@ Strategy (mirrors test_autopilot.py):
 import uuid
 
 import pytest
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
@@ -77,3 +78,71 @@ async def test_alert_dedupe_unique_constraint(db_session):
     with pytest.raises(Exception):
         await db_session.commit()
     await db_session.rollback()
+
+
+async def _seed_stats(db, project_id, rows):
+    """rows: list of (query, position, impressions[, clicks])"""
+    from app.models.analytics import GscQueryStat
+    await db.execute(delete(GscQueryStat).where(GscQueryStat.project_id == project_id))
+    for r in rows:
+        q, pos, imp = r[0], r[1], r[2]
+        clicks = r[3] if len(r) > 3 else 0
+        db.add(GscQueryStat(project_id=project_id, org_id=FAKE_ORG_ID,
+                            query=q, position=pos, impressions=imp, clicks=clicks, ctr=0.0))
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_rankings_first_run_is_silent(db_session):
+    from app.services.monitoring_service import detect_rankings
+    p = await _mk_project(db_session)
+    await _seed_stats(db_session, p.id, [("menu digital", 4.0, 200)])
+    assert await detect_rankings(p.id, FAKE_ORG_ID, db_session) == 0
+    snaps = (await db_session.execute(select(MonitorSnapshot))).scalars().all()
+    assert len(snaps) == 1 and snaps[0].kind == "rankings"
+    assert (await db_session.execute(select(Alert))).scalars().first() is None
+
+
+@pytest.mark.asyncio
+async def test_rankings_drop_gain_and_thresholds(db_session):
+    from app.services.monitoring_service import detect_rankings
+    p = await _mk_project(db_session)
+    await _seed_stats(db_session, p.id, [
+        ("off page one", 8.0, 200),   # will fall off page 1 -> critical
+        ("small drop", 5.0, 200),     # will worsen 2.0 -> below threshold, silent
+        ("big riser", 14.0, 200),     # will improve into top10 -> info gain
+        ("low traffic", 4.0, 30),     # will worsen 5.0 but impressions < 50 -> silent
+    ])
+    await detect_rankings(p.id, FAKE_ORG_ID, db_session)  # first run: snapshot only
+    await _seed_stats(db_session, p.id, [
+        ("off page one", 12.5, 200),
+        ("small drop", 7.0, 200),
+        ("big riser", 6.0, 200),
+        ("low traffic", 9.0, 30),
+    ])
+    created = await detect_rankings(p.id, FAKE_ORG_ID, db_session)
+    alerts = (await db_session.execute(select(Alert))).scalars().all()
+    kinds = {(a.kind, a.severity) for a in alerts}
+    assert created == 2
+    assert ("ranking_drop", "critical") in kinds       # off page one: 8.0 -> 12.5
+    assert ("ranking_gain", "info") in kinds           # big riser: 14.0 -> 6.0
+    assert all("small drop" not in a.title and "low traffic" not in a.title for a in alerts)
+    drop = next(a for a in alerts if a.kind == "ranking_drop")
+    assert "off page one" in drop.title and "8.0" in (drop.detail or "") and "12.5" in (drop.detail or "")
+
+
+@pytest.mark.asyncio
+async def test_rankings_dedupe_same_week_and_warning_severity(db_session):
+    from app.services.monitoring_service import detect_rankings
+    p = await _mk_project(db_session)
+    await _seed_stats(db_session, p.id, [("stays page one", 3.0, 200)])
+    await detect_rankings(p.id, FAKE_ORG_ID, db_session)
+    await _seed_stats(db_session, p.id, [("stays page one", 7.5, 200)])  # worsens 4.5, still page 1
+    assert await detect_rankings(p.id, FAKE_ORG_ID, db_session) == 1
+    a = (await db_session.execute(select(Alert))).scalars().one()
+    assert a.severity == "warning"
+    # same condition re-detected the same week -> deduped
+    await _seed_stats(db_session, p.id, [("stays page one", 11.0, 200)])
+    # previous snapshot now 7.5 -> 11.0 = 3.5 drop again, but same query+week dedupe key
+    assert await detect_rankings(p.id, FAKE_ORG_ID, db_session) == 0
+    assert len((await db_session.execute(select(Alert))).scalars().all()) == 1
