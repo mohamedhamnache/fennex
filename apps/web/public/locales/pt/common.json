@@ -117,7 +117,8 @@
       "urlPlaceholder": "https://concorrente.com/melhor-pagina-deles",
       "labelPlaceholder": "Rótulo (opcional)",
       "cap": "A lista de monitoramento está cheia (10). Remova um para adicionar outro.",
-      "empty": "Nenhum concorrente monitorado ainda."
+      "empty": "Nenhum concorrente monitorado ainda.",
+      "remove": "Remover"
     }
   },
   "commandPalette": {

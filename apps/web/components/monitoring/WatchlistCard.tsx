@@ -86,7 +86,7 @@ export function WatchlistCard({ projectId }: { projectId: string }) {
               onClick={() => removeMutation.mutate(c.id)}
               disabled={removeMutation.isPending}
               className="shrink-0 rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-              aria-label={t("alertsCenter.watchlist.title")}
+              aria-label={t("alertsCenter.watchlist.remove")}
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.8} />
             </button>

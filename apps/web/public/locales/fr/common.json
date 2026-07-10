@@ -117,7 +117,8 @@
       "urlPlaceholder": "https://concurrent.com/leur-meilleure-page",
       "labelPlaceholder": "Libellé (optionnel)",
       "cap": "La liste de surveillance est pleine (10). Retirez-en un pour en ajouter un autre.",
-      "empty": "Aucun concurrent surveillé pour l'instant."
+      "empty": "Aucun concurrent surveillé pour l'instant.",
+      "remove": "Retirer"
     }
   },
   "commandPalette": {

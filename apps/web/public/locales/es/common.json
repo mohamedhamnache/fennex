@@ -117,7 +117,8 @@
       "urlPlaceholder": "https://competidor.com/su-mejor-pagina",
       "labelPlaceholder": "Etiqueta (opcional)",
       "cap": "La lista de vigilancia está llena (10). Elimina uno para añadir otro.",
-      "empty": "Todavía no hay competidores vigilados."
+      "empty": "Todavía no hay competidores vigilados.",
+      "remove": "Quitar"
     }
   },
   "commandPalette": {

@@ -194,7 +194,8 @@
       "urlPlaceholder": "https://competitor.com/their-best-page",
       "labelPlaceholder": "Label (optional)",
       "cap": "Watchlist is full (10). Remove one to add another.",
-      "empty": "No competitors watched yet."
+      "empty": "No competitors watched yet.",
+      "remove": "Remove"
     }
   },
   "commandPalette": {

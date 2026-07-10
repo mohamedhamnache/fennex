@@ -117,7 +117,8 @@
       "urlPlaceholder": "https://wettbewerber.com/ihre-beste-seite",
       "labelPlaceholder": "Bezeichnung (optional)",
       "cap": "Die Beobachtungsliste ist voll (10). Entferne einen Eintrag, um einen weiteren hinzuzufügen.",
-      "empty": "Noch keine Wettbewerber beobachtet."
+      "empty": "Noch keine Wettbewerber beobachtet.",
+      "remove": "Entfernen"
     }
   },
   "commandPalette": {
