@@ -11,11 +11,16 @@ from datetime import date, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
+from app.core.dependencies import get_current_user, get_db
+from app.main import app
+from app.models.organization import Organization
 from app.models.project import Project
+from app.models.user import User, UserRole
 from app.models.analytics import GscConnection
 from app.models.api_key import APIKey  # noqa: F401
 from app.models.monitoring import Alert, MonitorSnapshot  # noqa: F401
@@ -30,11 +35,26 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 
 # Grows over the following tasks in this feature.
 SQLITE_COMPATIBLE_TABLES = [
-    "projects", "gsc_connections", "api_keys",
+    "organizations", "users", "projects", "gsc_connections", "api_keys",
     "tracked_keywords", "serp_snapshots", "alerts", "monitor_snapshots",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
+FAKE_USER_ID = uuid.uuid4()
+
+fake_user = User(
+    id=FAKE_USER_ID,
+    org_id=FAKE_ORG_ID,
+    email="test@fennex.ai",
+    hashed_password="hashed",
+    full_name="Test User",
+    role=UserRole.OWNER,
+    is_active=True,
+)
+
+
+async def override_get_current_user():
+    return fake_user
 
 
 @pytest.fixture(autouse=True)
@@ -55,6 +75,38 @@ async def setup_db():
 async def db_session():
     async with TestSessionLocal() as session:
         yield session
+
+
+async def override_get_db():
+    async with TestSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+@pytest.fixture
+async def org_and_project(db_session):
+    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+    db_session.add(org)
+    await db_session.flush()
+    project = Project(id=uuid.uuid4(), org_id=FAKE_ORG_ID, name="Test Project", domain="example.com")
+    db_session.add(project)
+    await db_session.commit()
+    return org, project
+
+
+@pytest.fixture
+async def client():
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -293,3 +345,38 @@ async def test_rank_tracker_cron_isolates_and_filters(db_session):
          patch.object(seo_tasks, "async_session_factory", new=lambda: _single_session(db_session)):
         await seo_tasks.run_rank_tracker(None)
     assert calls == [p_ok.id]
+
+
+# ── Task 5: /seo router (CRUD, history, refresh, provider-status, suggestions) ──
+
+@pytest.mark.asyncio
+async def test_seo_keyword_endpoints(client, db_session, org_and_project):
+    p = await _mk_project(db_session)
+    r = await client.get(f"/api/v1/seo/provider-status?project_id={p.id}")
+    assert r.status_code == 200 and r.json()["connected"] in (True, False)
+    r = await client.post("/api/v1/seo/keywords", json={"project_id": str(p.id), "keyword": "menu digital"})
+    assert r.status_code == 201, r.text
+    kid = r.json()["id"]
+    r = await client.post("/api/v1/seo/keywords", json={"project_id": str(p.id), "keyword": "menu digital"})
+    assert r.status_code == 409
+    r = await client.post("/api/v1/seo/keywords", json={"project_id": str(uuid.uuid4()), "keyword": "x"})
+    assert r.status_code == 404
+    r = await client.get(f"/api/v1/seo/keywords?project_id={p.id}")
+    assert len(r.json()) == 1 and r.json()[0]["keyword"] == "menu digital"
+    r = await client.get(f"/api/v1/seo/keywords/{kid}/history?days=30")
+    assert r.status_code == 200 and r.json()["keyword"] == "menu digital"
+    r = await client.delete(f"/api/v1/seo/keywords/{kid}")
+    assert r.status_code == 200
+    r = await client.get(f"/api/v1/seo/keywords?project_id={p.id}")
+    assert r.json() == []
+
+
+@pytest.mark.asyncio
+async def test_refresh_without_provider_returns_409_code(client, db_session, org_and_project, monkeypatch):
+    from app.services import serp_service
+    p = await _mk_project(db_session)
+    r = await client.post("/api/v1/seo/keywords", json={"project_id": str(p.id), "keyword": "kw"})
+    kid = r.json()["id"]
+    with patch.object(serp_service, "get_seo_provider_for_org", new=AsyncMock(return_value=None)):
+        r = await client.post(f"/api/v1/seo/keywords/{kid}/refresh")
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "no_seo_provider"
