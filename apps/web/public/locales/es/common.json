@@ -9,6 +9,7 @@
     "publishing": "Publicación",
     "backlinks": "Backlinks",
     "analytics": "Analítica",
+    "seo": "SEO",
     "audit": "Auditoría",
     "brandVoice": "Identidad de marca",
     "settings": "Configuración",
@@ -346,6 +347,36 @@
       "page": "Página",
       "query": "Consulta"
     }
+  },
+  "seoHub": {
+    "title": "Rastreador de posiciones",
+    "subtitle": "Zerda rastrea la posición real de tus palabras clave en Google cada día",
+    "gate": {
+      "title": "Conecta tu proveedor de datos SEO",
+      "body": "El seguimiento de posiciones y la puntuación de contenido usan tu propia cuenta de DataForSEO. Añade tus credenciales en Ajustes - pago por uso, una fracción de céntimo por comprobación.",
+      "cta": "Abrir ajustes"
+    },
+    "addPlaceholder": "Añadir una palabra clave para rastrear...",
+    "add": "Rastrear",
+    "cap": "Hasta {{max}} palabras clave por proyecto",
+    "empty": "Aún no hay palabras clave rastreadas. Añade la primera arriba.",
+    "notRanked": "fuera del top 100",
+    "columns": {
+      "keyword": "Palabra clave",
+      "position": "Posición",
+      "delta7": "7d",
+      "delta30": "30d",
+      "url": "URL",
+      "features": "Funciones",
+      "checked": "Última comprobación"
+    },
+    "refresh": "Actualizar",
+    "remove": "Eliminar",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "tú"
+    },
+    "suggested": "Según tus datos de búsqueda:"
   },
   "images": {
     "title": "Estudio de imágenes",

@@ -9,6 +9,7 @@
     "publishing": "Veröffentlichung",
     "backlinks": "Backlinks",
     "analytics": "Analytik",
+    "seo": "SEO",
     "audit": "Audit",
     "brandVoice": "Markenstimme",
     "settings": "Einstellungen",
@@ -346,6 +347,36 @@
       "page": "Seite",
       "query": "Suchanfrage"
     }
+  },
+  "seoHub": {
+    "title": "Rank-Tracker",
+    "subtitle": "Zerda verfolgt täglich die echten Google-Positionen deiner Keywords",
+    "gate": {
+      "title": "Verbinde deinen SEO-Datenanbieter",
+      "body": "Rank-Tracking und Content-Bewertung laufen über dein eigenes DataForSEO-Konto. Füge deine Zugangsdaten in den Einstellungen hinzu - nutzungsbasiert, ein Bruchteil eines Cents pro Prüfung.",
+      "cta": "Einstellungen öffnen"
+    },
+    "addPlaceholder": "Ein Keyword zum Verfolgen hinzufügen...",
+    "add": "Verfolgen",
+    "cap": "Bis zu {{max}} Keywords pro Projekt",
+    "empty": "Noch keine verfolgten Keywords. Füge oben dein erstes hinzu.",
+    "notRanked": "nicht in Top 100",
+    "columns": {
+      "keyword": "Keyword",
+      "position": "Position",
+      "delta7": "7T",
+      "delta30": "30T",
+      "url": "URL",
+      "features": "Merkmale",
+      "checked": "Zuletzt geprüft"
+    },
+    "refresh": "Aktualisieren",
+    "remove": "Entfernen",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "du"
+    },
+    "suggested": "Aus deinen Suchdaten:"
   },
   "images": {
     "title": "Bildstudio",

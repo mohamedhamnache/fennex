@@ -9,6 +9,7 @@
     "publishing": "Publicação",
     "backlinks": "Backlinks",
     "analytics": "Análise",
+    "seo": "SEO",
     "audit": "Auditoria",
     "brandVoice": "Voz da marca",
     "settings": "Configurações",
@@ -346,6 +347,36 @@
       "page": "Página",
       "query": "Consulta"
     }
+  },
+  "seoHub": {
+    "title": "Rastreador de posições",
+    "subtitle": "O Zerda rastreia as posições reais das suas palavras-chave no Google todos os dias",
+    "gate": {
+      "title": "Conecte seu provedor de dados de SEO",
+      "body": "O rastreamento de posições e a pontuação de conteúdo usam sua própria conta DataForSEO. Adicione suas credenciais em Configurações - pagamento por uso, uma fração de centavo por verificação.",
+      "cta": "Abrir configurações"
+    },
+    "addPlaceholder": "Adicionar uma palavra-chave para rastrear...",
+    "add": "Rastrear",
+    "cap": "Até {{max}} palavras-chave por projeto",
+    "empty": "Ainda não há palavras-chave rastreadas. Adicione a primeira acima.",
+    "notRanked": "fora do top 100",
+    "columns": {
+      "keyword": "Palavra-chave",
+      "position": "Posição",
+      "delta7": "7d",
+      "delta30": "30d",
+      "url": "URL",
+      "features": "Recursos",
+      "checked": "Última verificação"
+    },
+    "refresh": "Atualizar",
+    "remove": "Remover",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "você"
+    },
+    "suggested": "Com base nos seus dados de busca:"
   },
   "images": {
     "title": "Estúdio de imagens",

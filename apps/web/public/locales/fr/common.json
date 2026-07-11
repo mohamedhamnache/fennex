@@ -9,6 +9,7 @@
     "publishing": "Publication",
     "backlinks": "Backlinks",
     "analytics": "Analytique",
+    "seo": "SEO",
     "audit": "Audit",
     "brandVoice": "Identité de marque",
     "settings": "Paramètres",
@@ -346,6 +347,36 @@
       "page": "Page",
       "query": "Requête"
     }
+  },
+  "seoHub": {
+    "title": "Suivi de classement",
+    "subtitle": "Zerda suit chaque jour la position réelle de vos mots-clés sur Google",
+    "gate": {
+      "title": "Connectez votre fournisseur de données SEO",
+      "body": "Le suivi de classement et la notation du contenu utilisent votre propre compte DataForSEO. Ajoutez vos identifiants dans les paramètres - paiement à l'usage, une fraction de centime par vérification.",
+      "cta": "Ouvrir les paramètres"
+    },
+    "addPlaceholder": "Ajouter un mot-clé à suivre...",
+    "add": "Suivre",
+    "cap": "Jusqu'à {{max}} mots-clés par projet",
+    "empty": "Aucun mot-clé suivi pour le moment. Ajoutez le premier ci-dessus.",
+    "notRanked": "hors top 100",
+    "columns": {
+      "keyword": "Mot-clé",
+      "position": "Position",
+      "delta7": "7j",
+      "delta30": "30j",
+      "url": "URL",
+      "features": "Fonctionnalités",
+      "checked": "Dernière vérification"
+    },
+    "refresh": "Actualiser",
+    "remove": "Retirer",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "vous"
+    },
+    "suggested": "D'après vos données de recherche :"
   },
   "images": {
     "title": "Studio d'images",
