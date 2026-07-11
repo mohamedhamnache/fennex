@@ -14,6 +14,8 @@ from app.core.database import Base
 from app.models.project import Project
 from app.models.analytics import GscConnection
 from app.models.api_key import APIKey  # noqa: F401
+from app.models.monitoring import Alert, MonitorSnapshot  # noqa: F401
+from app.models.seo_intel import TrackedKeyword, SerpSnapshot
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
 
@@ -110,3 +112,35 @@ async def test_get_seo_provider_for_org_uses_project(db_session):
     p = await _mk_project(db_session)
     assert p.domain == "pure-saveur.fr"
     assert await get_seo_provider_for_org(FAKE_ORG_ID, db_session) is None
+
+
+@pytest.mark.asyncio
+async def test_tracked_keyword_dedupe_unique_constraint(db_session):
+    p = await _mk_project(db_session)
+    k1 = TrackedKeyword(org_id=FAKE_ORG_ID, project_id=p.id, keyword="running shoes")
+    db_session.add(k1)
+    await db_session.commit()
+    k2 = TrackedKeyword(org_id=FAKE_ORG_ID, project_id=p.id, keyword="running shoes")
+    db_session.add(k2)
+    with pytest.raises(Exception):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_serp_snapshot_dedupe_unique_constraint(db_session):
+    import datetime
+    p = await _mk_project(db_session)
+    k = TrackedKeyword(org_id=FAKE_ORG_ID, project_id=p.id, keyword="running shoes")
+    db_session.add(k)
+    await db_session.commit()
+    await db_session.refresh(k)
+    d = datetime.date(2026, 7, 11)
+    s1 = SerpSnapshot(org_id=FAKE_ORG_ID, project_id=p.id, tracked_keyword_id=k.id, date=d, position=3.0)
+    db_session.add(s1)
+    await db_session.commit()
+    s2 = SerpSnapshot(org_id=FAKE_ORG_ID, project_id=p.id, tracked_keyword_id=k.id, date=d, position=5.0)
+    db_session.add(s2)
+    with pytest.raises(Exception):
+        await db_session.commit()
+    await db_session.rollback()
