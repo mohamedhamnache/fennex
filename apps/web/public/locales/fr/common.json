@@ -9,6 +9,7 @@
     "publishing": "Publication",
     "backlinks": "Backlinks",
     "analytics": "Analytique",
+    "seo": "SEO",
     "audit": "Audit",
     "brandVoice": "Identité de marque",
     "settings": "Paramètres",
@@ -107,6 +108,8 @@
     "kinds": {
       "ranking_drop": "Baisse de classement",
       "ranking_gain": "Hausse de classement",
+      "serp_drop": "Baisse dans les SERP",
+      "serp_gain": "Hausse dans les SERP",
       "competitor_change": "Changement concurrent",
       "market_shift": "Évolution du marché"
     },
@@ -343,6 +346,56 @@
       "article": "Article",
       "page": "Page",
       "query": "Requête"
+    }
+  },
+  "seoHub": {
+    "title": "Suivi de classement",
+    "subtitle": "Zerda suit chaque jour la position réelle de vos mots-clés sur Google",
+    "gate": {
+      "title": "Connectez votre fournisseur de données SEO",
+      "body": "Le suivi de classement et la notation du contenu utilisent votre propre compte DataForSEO. Ajoutez vos identifiants dans les paramètres - paiement à l'usage, une fraction de centime par vérification.",
+      "cta": "Ouvrir les paramètres"
+    },
+    "addPlaceholder": "Ajouter un mot-clé à suivre...",
+    "add": "Suivre",
+    "cap": "Jusqu'à {{max}} mots-clés par projet",
+    "empty": "Aucun mot-clé suivi pour le moment. Ajoutez le premier ci-dessus.",
+    "notRanked": "hors top 100",
+    "columns": {
+      "keyword": "Mot-clé",
+      "position": "Position",
+      "delta7": "7j",
+      "delta30": "30j",
+      "url": "URL",
+      "features": "Fonctionnalités",
+      "checked": "Dernière vérification"
+    },
+    "refresh": "Actualiser",
+    "remove": "Retirer",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "vous"
+    },
+    "suggested": "D'après vos données de recherche :",
+    "score": {
+      "title": "Optimiseur de contenu",
+      "subtitle": "Dune note votre contenu par rapport au top 10 réel",
+      "keyword": "Mot-clé cible",
+      "byUrl": "Par URL",
+      "byText": "Par texte",
+      "urlPlaceholder": "https://exemple.com/page",
+      "textPlaceholder": "Collez le texte de votre article...",
+      "analyze": "Analyser",
+      "rescore": "Renoter",
+      "of100": "/100",
+      "missing": "Manquants",
+      "underused": "Sous-utilisés",
+      "present": "Couverts",
+      "words": "{{count}} mots (objectif {{target}})",
+      "headings": "{{count}} titres (objectif {{target}})",
+      "questions": "Questions à traiter",
+      "brief": "Le brief de Dune",
+      "optimize": "Optimiser"
     }
   },
   "images": {
@@ -763,6 +816,15 @@
       "addKeyAction": "Ajouter la clé",
       "saveError": "Échec de l'enregistrement de la clé.",
       "saving": "Enregistrement…"
+    },
+    "seoData": {
+      "title": "Données SEO - DataForSEO",
+      "hint": "Alimente le suivi de positionnement et la notation de contenu. Facturation à l'usage avec votre propre compte DataForSEO.",
+      "login": "Identifiant",
+      "password": "Mot de passe",
+      "connect": "Connecter",
+      "connected": "Connecté",
+      "remove": "Supprimer"
     },
     "socialAccounts": {
       "title": "Comptes sociaux",

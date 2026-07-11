@@ -40,6 +40,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
+import { OptimizePanel } from "@/components/seo/OptimizePanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
 
@@ -809,6 +810,13 @@ function ArticleEditor({
               </div>
             </div>
           )}
+
+          {/* Optimize (Dune content score) */}
+          <OptimizePanel
+            projectId={projectId}
+            articleId={articleId}
+            targetKeyword={article.target_keyword}
+          />
 
           <div className="border-t border-border pt-4 mb-4">
             {/* Meta title */}

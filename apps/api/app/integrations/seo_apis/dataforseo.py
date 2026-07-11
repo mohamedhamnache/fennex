@@ -31,3 +31,19 @@ class DataForSEOProvider:
                     serp_features=item.get("serp_info", {}).get("serp_item_types", []),
                 ))
         return results
+
+    async def serp(self, keyword: str, language_code: str = "en", location_code: int = 2840) -> list[dict]:
+        """Live Google organic SERP. Returns the raw item list (rank, type, domain, url, title)."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{self.BASE_URL}/serp/google/organic/live/regular",
+                auth=self._auth,
+                json=[{"keyword": keyword, "language_code": language_code,
+                       "location_code": location_code, "depth": 100}],
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        try:
+            return data["tasks"][0]["result"][0]["items"] or []
+        except (KeyError, IndexError, TypeError):
+            return []

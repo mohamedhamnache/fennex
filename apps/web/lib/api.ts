@@ -2110,3 +2110,90 @@ export async function addWatchedCompetitor(
 export async function removeWatchedCompetitor(watchId: string): Promise<{ ok: boolean }> {
   return apiClient.delete<{ ok: boolean }>(`/monitoring/competitors/${watchId}`);
 }
+
+export interface TrackedKeywordRow {
+  id: string;
+  keyword: string;
+  position: number | null;
+  url: string | null;
+  features: string[];
+  last_checked: string | null;
+  delta_7d: number | null;
+  delta_30d: number | null;
+  spark: { date: string; position: number | null }[];
+}
+
+export interface KeywordHistory {
+  keyword: string;
+  points: { date: string; position: number | null }[];
+  top10: { rank: number; domain: string; url: string; title: string }[];
+  features: string[];
+  url: string | null;
+}
+
+export async function getSeoProviderStatus(
+  projectId: string,
+): Promise<{ connected: boolean; source: string | null }> {
+  return apiClient.get<{ connected: boolean; source: string | null }>(
+    `/seo/provider-status?project_id=${projectId}`,
+  );
+}
+export async function listTrackedKeywords(projectId: string): Promise<TrackedKeywordRow[]> {
+  return apiClient.get<TrackedKeywordRow[]>(`/seo/keywords?project_id=${projectId}`);
+}
+export async function addTrackedKeyword(projectId: string, keyword: string): Promise<TrackedKeywordRow> {
+  return apiClient.post<TrackedKeywordRow>("/seo/keywords", { project_id: projectId, keyword });
+}
+export async function removeTrackedKeyword(id: string): Promise<{ ok: boolean }> {
+  return apiClient.delete<{ ok: boolean }>(`/seo/keywords/${id}`);
+}
+export async function refreshTrackedKeyword(id: string): Promise<{ ok: boolean }> {
+  return apiClient.post<{ ok: boolean }>(`/seo/keywords/${id}/refresh`, {});
+}
+export async function getKeywordHistory(id: string, days?: number): Promise<KeywordHistory> {
+  const params = days != null ? `?days=${days}` : "";
+  return apiClient.get<KeywordHistory>(`/seo/keywords/${id}/history${params}`);
+}
+export async function getKeywordSuggestions(
+  projectId: string,
+): Promise<{ keyword: string; impressions: number }[]> {
+  return apiClient.get<{ keyword: string; impressions: number }[]>(
+    `/seo/suggestions?project_id=${projectId}`,
+  );
+}
+
+export interface ContentScoreTerm {
+  term: string;
+  status: "present" | "underused" | "missing";
+  count: number;
+  target: number;
+}
+
+export interface ContentScore {
+  score: number;
+  terms: ContentScoreTerm[];
+  structure: {
+    word_count: number;
+    target_words: number;
+    headings: number;
+    target_headings: number;
+  };
+  questions: string[];
+  brief: string | null;
+  serp_median_words: number;
+  pages_analyzed: number;
+}
+
+export async function scoreContent(
+  projectId: string,
+  keyword: string,
+  opts?: { articleId?: string; url?: string; text?: string },
+): Promise<ContentScore> {
+  return apiClient.post<ContentScore>("/seo/score", {
+    project_id: projectId,
+    keyword,
+    article_id: opts?.articleId,
+    url: opts?.url,
+    text: opts?.text,
+  });
+}

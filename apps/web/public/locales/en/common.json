@@ -9,6 +9,7 @@
     "publishing": "Publishing",
     "backlinks": "Backlinks",
     "analytics": "Analytics",
+    "seo": "SEO",
     "audit": "Audit",
     "brandVoice": "Brand Voice",
     "settings": "Settings",
@@ -184,6 +185,8 @@
     "kinds": {
       "ranking_drop": "Ranking drop",
       "ranking_gain": "Ranking gain",
+      "serp_drop": "SERP drop",
+      "serp_gain": "SERP gain",
       "competitor_change": "Competitor change",
       "market_shift": "Market shift"
     },
@@ -420,6 +423,56 @@
       "article": "Article",
       "page": "Page",
       "query": "Query"
+    }
+  },
+  "seoHub": {
+    "title": "Rank Tracker",
+    "subtitle": "Zerda tracks your keywords' real Google positions every day",
+    "gate": {
+      "title": "Connect your SEO data provider",
+      "body": "Rank tracking and content scoring run on your own DataForSEO account. Add your credentials in Settings - pay-per-use, a fraction of a cent per check.",
+      "cta": "Open Settings"
+    },
+    "addPlaceholder": "Add a keyword to track...",
+    "add": "Track",
+    "cap": "Up to {{max}} keywords per project",
+    "empty": "No tracked keywords yet. Add your first one above.",
+    "notRanked": "not in top 100",
+    "columns": {
+      "keyword": "Keyword",
+      "position": "Position",
+      "delta7": "7d",
+      "delta30": "30d",
+      "url": "URL",
+      "features": "Features",
+      "checked": "Last checked"
+    },
+    "refresh": "Refresh",
+    "remove": "Remove",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "you"
+    },
+    "suggested": "From your search data:",
+    "score": {
+      "title": "Content Optimizer",
+      "subtitle": "Dune scores your content against the live top 10",
+      "keyword": "Target keyword",
+      "byUrl": "By URL",
+      "byText": "By text",
+      "urlPlaceholder": "https://example.com/page",
+      "textPlaceholder": "Paste your article text...",
+      "analyze": "Analyze",
+      "rescore": "Re-score",
+      "of100": "/100",
+      "missing": "Missing",
+      "underused": "Underused",
+      "present": "Covered",
+      "words": "{{count}} words (target {{target}})",
+      "headings": "{{count}} headings (target {{target}})",
+      "questions": "Questions to answer",
+      "brief": "Dune's brief",
+      "optimize": "Optimize"
     }
   },
   "images": {
@@ -840,6 +893,15 @@
       "addKeyAction": "Add key",
       "saveError": "Failed to save key.",
       "saving": "Saving…"
+    },
+    "seoData": {
+      "title": "SEO data - DataForSEO",
+      "hint": "Powers rank tracking and content scoring. Pay-per-use with your own DataForSEO account.",
+      "login": "Login",
+      "password": "Password",
+      "connect": "Connect",
+      "connected": "Connected",
+      "remove": "Remove"
     },
     "socialAccounts": {
       "title": "Social Accounts",

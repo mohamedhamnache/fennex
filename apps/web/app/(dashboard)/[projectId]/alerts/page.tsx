@@ -13,12 +13,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { WatchlistCard } from "@/components/monitoring/WatchlistCard";
 import { cn } from "@/lib/cn";
 
-const KINDS = ["ranking_drop", "ranking_gain", "competitor_change", "market_shift"] as const;
+const KINDS = ["ranking_drop", "ranking_gain", "serp_drop", "serp_gain", "competitor_change", "market_shift"] as const;
 type Kind = (typeof KINDS)[number];
 
 const KIND_AGENT: Record<string, AgentId> = {
   ranking_drop: "zerda",
   ranking_gain: "zerda",
+  serp_drop: "zerda",
+  serp_gain: "zerda",
   competitor_change: "sable",
   market_shift: "oasis",
 };

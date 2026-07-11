@@ -14,6 +14,7 @@ from app.workers.tasks.crawl_tasks import crawl_website
 from app.workers.tasks.digest_tasks import send_weekly_digests
 from app.workers.tasks.keyword_tasks import run_keyword_research
 from app.workers.tasks.monitoring_tasks import run_competitor_monitor, run_market_monitor
+from app.workers.tasks.seo_tasks import run_rank_tracker
 
 
 async def startup(ctx):
@@ -46,6 +47,7 @@ class WorkerSettings:
         run_autopilot_planner,
         run_market_monitor,
         run_competitor_monitor,
+        run_rank_tracker,
     ]
     cron_jobs = [
         cron(sync_analytics_data, hour=6, minute=0, run_at_startup=False),
@@ -59,6 +61,8 @@ class WorkerSettings:
         # Sable competitor re-scans Tuesday.
         cron(run_market_monitor, weekday=0, hour=7, minute=0, run_at_startup=False),
         cron(run_competitor_monitor, weekday=1, hour=7, minute=0, run_at_startup=False),
+        # Zerda's daily SERP rank tracker, ahead of the 06:00 analytics sync
+        cron(run_rank_tracker, hour=5, minute=30, run_at_startup=False),
     ]
     on_startup = startup
     on_shutdown = shutdown

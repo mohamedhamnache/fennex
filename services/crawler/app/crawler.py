@@ -30,6 +30,7 @@ async def crawl(url: str) -> dict:
         "og_image": None,
         "has_viewport_meta": False,
         "error": None,
+        "text": None,
     }
 
     start = time.monotonic()
@@ -144,6 +145,11 @@ async def crawl(url: str) -> dict:
             except (json.JSONDecodeError, TypeError):
                 pass
         result["schema_types"] = schema_types
+
+        # Plain text (script/style/noscript stripped), truncated for downstream analysis
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+        result["text"] = soup.get_text(" ", strip=True)[:20000]
 
     except httpx.TimeoutException as exc:
         elapsed_ms = int((time.monotonic() - start) * 1000)

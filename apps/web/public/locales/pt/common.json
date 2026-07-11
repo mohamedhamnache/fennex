@@ -9,6 +9,7 @@
     "publishing": "Publicação",
     "backlinks": "Backlinks",
     "analytics": "Análise",
+    "seo": "SEO",
     "audit": "Auditoria",
     "brandVoice": "Voz da marca",
     "settings": "Configurações",
@@ -107,6 +108,8 @@
     "kinds": {
       "ranking_drop": "Queda de ranking",
       "ranking_gain": "Alta de ranking",
+      "serp_drop": "Queda no SERP",
+      "serp_gain": "Alta no SERP",
       "competitor_change": "Mudança da concorrência",
       "market_shift": "Mudança de mercado"
     },
@@ -343,6 +346,56 @@
       "article": "Artigo",
       "page": "Página",
       "query": "Consulta"
+    }
+  },
+  "seoHub": {
+    "title": "Rastreador de posições",
+    "subtitle": "O Zerda rastreia as posições reais das suas palavras-chave no Google todos os dias",
+    "gate": {
+      "title": "Conecte seu provedor de dados de SEO",
+      "body": "O rastreamento de posições e a pontuação de conteúdo usam sua própria conta DataForSEO. Adicione suas credenciais em Configurações - pagamento por uso, uma fração de centavo por verificação.",
+      "cta": "Abrir configurações"
+    },
+    "addPlaceholder": "Adicionar uma palavra-chave para rastrear...",
+    "add": "Rastrear",
+    "cap": "Até {{max}} palavras-chave por projeto",
+    "empty": "Ainda não há palavras-chave rastreadas. Adicione a primeira acima.",
+    "notRanked": "fora do top 100",
+    "columns": {
+      "keyword": "Palavra-chave",
+      "position": "Posição",
+      "delta7": "7d",
+      "delta30": "30d",
+      "url": "URL",
+      "features": "Recursos",
+      "checked": "Última verificação"
+    },
+    "refresh": "Atualizar",
+    "remove": "Remover",
+    "drawer": {
+      "top10": "Top 10",
+      "you": "você"
+    },
+    "suggested": "Com base nos seus dados de busca:",
+    "score": {
+      "title": "Otimizador de conteúdo",
+      "subtitle": "O Dune pontua seu conteúdo em relação ao top 10 real",
+      "keyword": "Palavra-chave alvo",
+      "byUrl": "Por URL",
+      "byText": "Por texto",
+      "urlPlaceholder": "https://exemplo.com/pagina",
+      "textPlaceholder": "Cole o texto do seu artigo...",
+      "analyze": "Analisar",
+      "rescore": "Repontuar",
+      "of100": "/100",
+      "missing": "Ausentes",
+      "underused": "Subutilizados",
+      "present": "Cobertos",
+      "words": "{{count}} palavras (meta {{target}})",
+      "headings": "{{count}} títulos (meta {{target}})",
+      "questions": "Perguntas a responder",
+      "brief": "O briefing do Dune",
+      "optimize": "Otimizar"
     }
   },
   "images": {
@@ -763,6 +816,15 @@
       "addKeyAction": "Adicionar chave",
       "saveError": "Falha ao salvar a chave.",
       "saving": "Salvando…"
+    },
+    "seoData": {
+      "title": "Dados de SEO - DataForSEO",
+      "hint": "Alimenta o rastreamento de rankings e a pontuação de conteúdo. Pague pelo uso com sua própria conta DataForSEO.",
+      "login": "Usuário",
+      "password": "Senha",
+      "connect": "Conectar",
+      "connected": "Conectado",
+      "remove": "Remover"
     },
     "socialAccounts": {
       "title": "Contas sociais",
