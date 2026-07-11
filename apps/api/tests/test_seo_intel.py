@@ -6,8 +6,11 @@ Strategy (mirrors test_monitoring.py):
 - Create only the SQLite-compatible tables this feature touches
 """
 import uuid
+from datetime import date, timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
@@ -144,3 +147,84 @@ async def test_serp_snapshot_dedupe_unique_constraint(db_session):
     with pytest.raises(Exception):
         await db_session.commit()
     await db_session.rollback()
+
+
+# ── Task 3: serp_service + rank_tracking_service ─────────────────────────────
+
+def _serp_items(project_domain_rank: int | None = 3, n: int = 12):
+    items = []
+    rank = 1
+    for i in range(1, n + 1):
+        domain = "pure-saveur.fr" if project_domain_rank == i else f"site{i}.com"
+        items.append({"type": "organic", "rank_absolute": rank,
+                      "domain": domain, "url": f"https://{domain}/p", "title": f"R{i}"})
+        rank += 1
+    items.append({"type": "people_also_ask", "rank_absolute": rank})
+    return items
+
+
+class _FakeProvider:
+    def __init__(self, items): self._items = items
+    async def serp(self, keyword, language_code="en", location_code=2840): return self._items
+
+
+@pytest.mark.asyncio
+async def test_fetch_serp_normalizes_and_matches_domain(db_session):
+    from app.services import serp_service
+    p = await _mk_project(db_session)  # ensure _mk_project sets domain="pure-saveur.fr"
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(3)))):
+        res = await serp_service.fetch_serp(p, "menu digital", db_session)
+    assert res["position"] == 3.0 and "pure-saveur.fr" in res["url"]
+    assert len(res["top10"]) == 10 and res["top10"][0]["rank"] == 1
+    assert "people_also_ask" in res["features"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_serp_not_ranked_and_no_provider(db_session):
+    from app.services import serp_service
+    p = await _mk_project(db_session)
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(None)))):
+        res = await serp_service.fetch_serp(p, "kw", db_session)
+    assert res["position"] is None and res["url"] is None
+    with patch.object(serp_service, "get_seo_provider_for_org", new=AsyncMock(return_value=None)):
+        assert await serp_service.fetch_serp(p, "kw", db_session) is None
+
+
+@pytest.mark.asyncio
+async def test_tracking_cap_duplicate_and_snapshot_idempotency(db_session):
+    from app.services import serp_service, rank_tracking_service as rts
+    p = await _mk_project(db_session)
+    for i in range(25):
+        await rts.add_keyword(p, f"kw {i}", db_session)
+    with pytest.raises(rts.CapReached):
+        await rts.add_keyword(p, "kw 26", db_session)
+    with pytest.raises(rts.DuplicateKeyword):
+        await rts.add_keyword(p, "kw 0", db_session)
+    tk = (await db_session.execute(select(TrackedKeyword).where(
+        TrackedKeyword.keyword == "kw 0"))).scalars().first()
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(2)))):
+        s1 = await rts.snapshot_keyword(p, tk, db_session)
+        s2 = await rts.snapshot_keyword(p, tk, db_session)  # same day -> None
+    assert s1 is not None and s1.position == 2.0 and s2 is None
+
+
+@pytest.mark.asyncio
+async def test_list_with_stats_deltas(db_session):
+    from app.services import rank_tracking_service as rts
+    p = await _mk_project(db_session)
+    tk = await rts.add_keyword(p, "menu digital", db_session)
+    today = date.today()
+    for days_ago, pos in [(30, 12.0), (7, 9.0), (0, 4.0)]:
+        db_session.add(SerpSnapshot(org_id=FAKE_ORG_ID, project_id=p.id,
+                                    tracked_keyword_id=tk.id, date=today - timedelta(days=days_ago),
+                                    position=pos, url="https://pure-saveur.fr/p", top10=[], features=[]))
+    await db_session.commit()
+    rows = await rts.list_with_stats(p.id, FAKE_ORG_ID, db_session)
+    row = rows[0]
+    assert row["position"] == 4.0
+    assert row["delta_7d"] == 5.0      # 9 -> 4 improvement
+    assert row["delta_30d"] == 8.0     # 12 -> 4
+    assert len(row["spark"]) >= 2
