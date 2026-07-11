@@ -453,7 +453,27 @@
       "top10": "Top 10",
       "you": "you"
     },
-    "suggested": "From your search data:"
+    "suggested": "From your search data:",
+    "score": {
+      "title": "Content Optimizer",
+      "subtitle": "Dune scores your content against the live top 10",
+      "keyword": "Target keyword",
+      "byUrl": "By URL",
+      "byText": "By text",
+      "urlPlaceholder": "https://example.com/page",
+      "textPlaceholder": "Paste your article text...",
+      "analyze": "Analyze",
+      "rescore": "Re-score",
+      "of100": "/100",
+      "missing": "Missing",
+      "underused": "Underused",
+      "present": "Covered",
+      "words": "{{count}} words (target {{target}})",
+      "headings": "{{count}} headings (target {{target}})",
+      "questions": "Questions to answer",
+      "brief": "Dune's brief",
+      "optimize": "Optimize"
+    }
   },
   "images": {
     "title": "Image Studio",

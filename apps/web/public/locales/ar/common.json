@@ -376,7 +376,27 @@
       "top10": "أفضل 10",
       "you": "أنت"
     },
-    "suggested": "من بيانات البحث الخاصة بك:"
+    "suggested": "من بيانات البحث الخاصة بك:",
+    "score": {
+      "title": "محسّن المحتوى",
+      "subtitle": "يقيّم دون محتواك مقابل أفضل 10 نتائج حقيقية",
+      "keyword": "الكلمة المفتاحية المستهدفة",
+      "byUrl": "عبر الرابط",
+      "byText": "عبر النص",
+      "urlPlaceholder": "https://example.com/page",
+      "textPlaceholder": "الصق نص مقالتك...",
+      "analyze": "تحليل",
+      "rescore": "إعادة التقييم",
+      "of100": "/100",
+      "missing": "مفقودة",
+      "underused": "قليلة الاستخدام",
+      "present": "مغطاة",
+      "words": "{{count}} كلمة (الهدف {{target}})",
+      "headings": "{{count}} عناوين (الهدف {{target}})",
+      "questions": "أسئلة يجب الإجابة عنها",
+      "brief": "ملخص دون",
+      "optimize": "تحسين"
+    }
   },
   "images": {
     "title": "استوديو الصور",

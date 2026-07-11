@@ -376,7 +376,27 @@
       "top10": "Top 10",
       "you": "du"
     },
-    "suggested": "Aus deinen Suchdaten:"
+    "suggested": "Aus deinen Suchdaten:",
+    "score": {
+      "title": "Content-Optimierer",
+      "subtitle": "Dune bewertet deinen Content gegen die echten Top 10",
+      "keyword": "Ziel-Keyword",
+      "byUrl": "Per URL",
+      "byText": "Per Text",
+      "urlPlaceholder": "https://beispiel.de/seite",
+      "textPlaceholder": "Artikeltext einfügen...",
+      "analyze": "Analysieren",
+      "rescore": "Neu bewerten",
+      "of100": "/100",
+      "missing": "Fehlend",
+      "underused": "Zu wenig genutzt",
+      "present": "Abgedeckt",
+      "words": "{{count}} Wörter (Ziel {{target}})",
+      "headings": "{{count}} Überschriften (Ziel {{target}})",
+      "questions": "Zu beantwortende Fragen",
+      "brief": "Dunes Briefing",
+      "optimize": "Optimieren"
+    }
   },
   "images": {
     "title": "Bildstudio",

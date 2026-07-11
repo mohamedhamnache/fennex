@@ -376,7 +376,27 @@
       "top10": "Top 10",
       "you": "vous"
     },
-    "suggested": "D'après vos données de recherche :"
+    "suggested": "D'après vos données de recherche :",
+    "score": {
+      "title": "Optimiseur de contenu",
+      "subtitle": "Dune note votre contenu par rapport au top 10 réel",
+      "keyword": "Mot-clé cible",
+      "byUrl": "Par URL",
+      "byText": "Par texte",
+      "urlPlaceholder": "https://exemple.com/page",
+      "textPlaceholder": "Collez le texte de votre article...",
+      "analyze": "Analyser",
+      "rescore": "Renoter",
+      "of100": "/100",
+      "missing": "Manquants",
+      "underused": "Sous-utilisés",
+      "present": "Couverts",
+      "words": "{{count}} mots (objectif {{target}})",
+      "headings": "{{count}} titres (objectif {{target}})",
+      "questions": "Questions à traiter",
+      "brief": "Le brief de Dune",
+      "optimize": "Optimiser"
+    }
   },
   "images": {
     "title": "Studio d'images",

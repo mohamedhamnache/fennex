@@ -10,6 +10,7 @@ import { ProviderGate } from "@/components/seo/ProviderGate";
 import { AddKeywordBar } from "@/components/seo/AddKeywordBar";
 import { RankTrackerTable } from "@/components/seo/RankTrackerTable";
 import { KeywordDrawer } from "@/components/seo/KeywordDrawer";
+import { ContentScoreCard } from "@/components/seo/ContentScoreCard";
 import { useToast } from "@/components/ui/Toast";
 
 export default function SeoHubPage({ params }: { params: { projectId: string } }) {
@@ -73,6 +74,8 @@ export default function SeoHubPage({ params }: { params: { projectId: string } }
               </div>
             )}
           </div>
+
+          <ContentScoreCard projectId={projectId} />
         </div>
       )}
     </div>

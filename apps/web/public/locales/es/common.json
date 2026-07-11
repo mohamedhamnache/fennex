@@ -376,7 +376,27 @@
       "top10": "Top 10",
       "you": "tú"
     },
-    "suggested": "Según tus datos de búsqueda:"
+    "suggested": "Según tus datos de búsqueda:",
+    "score": {
+      "title": "Optimizador de contenido",
+      "subtitle": "Dune puntúa tu contenido frente al top 10 real",
+      "keyword": "Palabra clave objetivo",
+      "byUrl": "Por URL",
+      "byText": "Por texto",
+      "urlPlaceholder": "https://ejemplo.com/pagina",
+      "textPlaceholder": "Pega el texto de tu artículo...",
+      "analyze": "Analizar",
+      "rescore": "Repuntuar",
+      "of100": "/100",
+      "missing": "Faltantes",
+      "underused": "Poco usados",
+      "present": "Cubiertos",
+      "words": "{{count}} palabras (objetivo {{target}})",
+      "headings": "{{count}} encabezados (objetivo {{target}})",
+      "questions": "Preguntas por responder",
+      "brief": "El resumen de Dune",
+      "optimize": "Optimizar"
+    }
   },
   "images": {
     "title": "Estudio de imágenes",
