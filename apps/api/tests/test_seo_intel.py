@@ -380,3 +380,46 @@ async def test_refresh_without_provider_returns_409_code(client, db_session, org
     with patch.object(serp_service, "get_seo_provider_for_org", new=AsyncMock(return_value=None)):
         r = await client.post(f"/api/v1/seo/keywords/{kid}/refresh")
     assert r.status_code == 409 and r.json()["detail"]["code"] == "no_seo_provider"
+
+
+# ── Task 7: content scoring vs live top-10 SERP ─────────────────────────────
+
+@pytest.mark.asyncio
+async def test_score_content_terms_and_structure(db_session):
+    from app.services import content_scoring_service as css
+    p = await _mk_project(db_session)
+    serp = {"position": None, "url": None, "features": [],
+            "top10": [{"rank": i, "domain": f"s{i}.com", "url": f"https://s{i}.com", "title": f"T{i}"} for i in range(1, 11)]}
+    corpus = ("menu digital restaurant qr code carte restaurant menu digital "
+              "prix menu digital exemple restaurant support") * 40  # ~ 4400 words total corpus
+    async def fake_crawl(url):
+        return {"text": corpus, "word_count": len(corpus.split()), "h2": ["A", "B", "C"], "title": "t"}
+    my_text = "menu digital pour votre restaurant " * 30  # mentions some terms, misses others
+    with patch.object(css, "fetch_serp", new=AsyncMock(return_value=serp)), \
+         patch.object(css, "_crawl_page", new=fake_crawl), \
+         patch.object(css, "call_llm", new=AsyncMock(return_value="Brief: add pricing section")):
+        res = await css.score_content(p, "menu digital", db_session, text=my_text)
+    assert 0 <= res["score"] <= 100
+    statuses = {t["term"]: t["status"] for t in res["terms"]}
+    assert "menu" in statuses and statuses.get("prix") in ("missing", "underused")
+    assert res["structure"]["target_words"] > 0 and res["pages_analyzed"] == 5
+    assert res["brief"] == "Brief: add pricing section"
+
+
+@pytest.mark.asyncio
+async def test_score_content_degrades_without_llm_and_partial_crawls(db_session):
+    from app.services import content_scoring_service as css
+    p = await _mk_project(db_session)
+    serp = {"position": None, "url": None, "features": [],
+            "top10": [{"rank": i, "domain": f"s{i}.com", "url": f"https://s{i}.com", "title": f"T{i}"} for i in range(1, 11)]}
+    calls = {"n": 0}
+    async def flaky_crawl(url):
+        calls["n"] += 1
+        if calls["n"] % 2 == 0:
+            raise RuntimeError("crawl fail")
+        return {"text": "menu digital " * 200, "word_count": 400, "h2": ["A"], "title": "t"}
+    with patch.object(css, "fetch_serp", new=AsyncMock(return_value=serp)), \
+         patch.object(css, "_crawl_page", new=flaky_crawl), \
+         patch.object(css, "call_llm", new=AsyncMock(side_effect=RuntimeError("no key"))):
+        res = await css.score_content(p, "menu digital", db_session, text="menu digital restaurant")
+    assert res["brief"] is None and res["pages_analyzed"] >= 1

@@ -2161,3 +2161,39 @@ export async function getKeywordSuggestions(
     `/seo/suggestions?project_id=${projectId}`,
   );
 }
+
+export interface ContentScoreTerm {
+  term: string;
+  status: "present" | "underused" | "missing";
+  count: number;
+  target: number;
+}
+
+export interface ContentScore {
+  score: number;
+  terms: ContentScoreTerm[];
+  structure: {
+    word_count: number;
+    target_words: number;
+    headings: number;
+    target_headings: number;
+  };
+  questions: string[];
+  brief: string | null;
+  serp_median_words: number;
+  pages_analyzed: number;
+}
+
+export async function scoreContent(
+  projectId: string,
+  keyword: string,
+  opts?: { articleId?: string; url?: string; text?: string },
+): Promise<ContentScore> {
+  return apiClient.post<ContentScore>("/seo/score", {
+    project_id: projectId,
+    keyword,
+    article_id: opts?.articleId,
+    url: opts?.url,
+    text: opts?.text,
+  });
+}

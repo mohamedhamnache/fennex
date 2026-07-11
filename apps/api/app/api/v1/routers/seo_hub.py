@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.project import Project
 from app.models.seo_intel import TrackedKeyword
-from app.services import analytics_service, rank_tracking_service as rts, serp_service
+from app.services import analytics_service, content_scoring_service as ccs, rank_tracking_service as rts, serp_service
 
 router = APIRouter()
 
@@ -111,3 +111,26 @@ async def keyword_suggestions(project_id: uuid.UUID, current_user: CurrentUser, 
         for q in top_queries if q.query not in tracked
     ]
     return suggestions[:10]
+
+
+class ScoreContentIn(BaseModel):
+    project_id: uuid.UUID
+    keyword: str
+    article_id: uuid.UUID | None = None
+    url: str | None = None
+    text: str | None = None
+
+
+@router.post("/score")
+async def score_content(body: ScoreContentIn, current_user: CurrentUser, db: DB):
+    project = await _assert_project(body.project_id, current_user.org_id, db)
+    if body.article_id is None and body.url is None and body.text is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                             "One of article_id, url, or text is required.")
+    try:
+        return await ccs.score_content(project, body.keyword, db,
+                                        article_id=body.article_id, url=body.url, text=body.text)
+    except ccs.NoProvider:
+        raise HTTPException(status.HTTP_409_CONFLICT, {"code": "no_seo_provider"})
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))

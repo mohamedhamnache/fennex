@@ -66,6 +66,7 @@ def test_crawl_basic():
     assert data["schema_types"] == ["WebPage"]
     assert data["images_without_alt"] == 1
     assert data["word_count"] > 0
+    assert data["text"] and "Hello world" in data["text"]
 
     # Internal link: /internal-page is on example.com
     assert any(link["href"] == "https://example.com/internal-page" for link in data["internal_links"])
