@@ -362,6 +362,29 @@ function AIKeysSection() {
     onError: () => error("Couldn't remove key"),
   });
 
+  const [showSeoForm, setShowSeoForm] = useState(false);
+  const [seoLogin, setSeoLogin] = useState("");
+  const [seoPassword, setSeoPassword] = useState("");
+  const [showSeoPassword, setShowSeoPassword] = useState(false);
+
+  const seoKey = keys.find((k: ApiKey) => k.provider === "dataforseo");
+
+  const addSeoMutation = useMutation({
+    mutationFn: () => createApiKey("dataforseo", `${seoLogin}:${seoPassword}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["api-keys"] });
+      setSeoLogin(""); setSeoPassword(""); setShowSeoForm(false);
+      success(t("settings.seoData.connected"));
+    },
+    onError: () => error("Couldn't save key", { message: "Check the value and try again." }),
+  });
+
+  const deleteSeoMutation = useMutation({
+    mutationFn: (id: string) => deleteApiKey(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["api-keys"] }); success("Key removed"); },
+    onError: () => error("Couldn't remove key"),
+  });
+
   return (
     <div>
       <SectionHeader
@@ -472,6 +495,77 @@ function AIKeysSection() {
           <Plus className="h-3.5 w-3.5" /> {t("settings.aiKeys.addKeyAction")}
         </PrimaryBtn>
       )}
+
+      {/* SEO data (DataForSEO) */}
+      <div className="mt-8">
+        <SectionHeader
+          title={t("settings.seoData.title")}
+          description={t("settings.seoData.hint")}
+        />
+        {seoKey ? (
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+                  <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                </span>
+                <span className="text-sm font-semibold text-primary">{t("settings.seoData.connected")}</span>
+                <span className="font-mono text-sm text-muted-foreground">{seoKey.masked_value}</span>
+              </div>
+              <button
+                onClick={() => deleteSeoMutation.mutate(seoKey.id)}
+                disabled={deleteSeoMutation.isPending}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                title={t("settings.seoData.remove")}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </Card>
+        ) : showSeoForm ? (
+          <Card className="p-5">
+            <div className="mb-3">
+              <Input
+                placeholder={t("settings.seoData.login")}
+                value={seoLogin}
+                onChange={setSeoLogin}
+              />
+            </div>
+            <div className="relative mb-3">
+              <Input
+                type={showSeoPassword ? "text" : "password"}
+                placeholder={t("settings.seoData.password")}
+                value={seoPassword}
+                onChange={setSeoPassword}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSeoPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showSeoPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {addSeoMutation.isError && <ErrorMsg>{t("settings.aiKeys.saveError")}</ErrorMsg>}
+            <div className="flex gap-2 mt-4">
+              <PrimaryBtn
+                onClick={() => addSeoMutation.mutate()}
+                disabled={!seoLogin.trim() || !seoPassword.trim() || addSeoMutation.isPending}
+              >
+                {addSeoMutation.isPending ? t("settings.aiKeys.saving") : t("settings.seoData.connect")}
+              </PrimaryBtn>
+              <GhostBtn onClick={() => { setShowSeoForm(false); setSeoLogin(""); setSeoPassword(""); }}>
+                {t("common.cancel")}
+              </GhostBtn>
+            </div>
+          </Card>
+        ) : (
+          <PrimaryBtn onClick={() => setShowSeoForm(true)}>
+            <Plus className="h-3.5 w-3.5" /> {t("settings.seoData.connect")}
+          </PrimaryBtn>
+        )}
+      </div>
     </div>
   );
 }

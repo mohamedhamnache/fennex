@@ -764,6 +764,15 @@
       "saveError": "Schlüssel konnte nicht gespeichert werden.",
       "saving": "Wird gespeichert…"
     },
+    "seoData": {
+      "title": "SEO-Daten - DataForSEO",
+      "hint": "Treibt Ranking-Tracking und Content-Bewertung an. Nutzungsbasierte Abrechnung mit deinem eigenen DataForSEO-Konto.",
+      "login": "Login",
+      "password": "Passwort",
+      "connect": "Verbinden",
+      "connected": "Verbunden",
+      "remove": "Entfernen"
+    },
     "socialAccounts": {
       "title": "Social-Konten",
       "subtitle": "Verbinde deine Social-Konten, um die direkte Veröffentlichung aus dem Social Studio zu aktivieren.",

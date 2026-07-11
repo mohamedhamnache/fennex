@@ -764,6 +764,15 @@
       "saveError": "Échec de l'enregistrement de la clé.",
       "saving": "Enregistrement…"
     },
+    "seoData": {
+      "title": "Données SEO - DataForSEO",
+      "hint": "Alimente le suivi de positionnement et la notation de contenu. Facturation à l'usage avec votre propre compte DataForSEO.",
+      "login": "Identifiant",
+      "password": "Mot de passe",
+      "connect": "Connecter",
+      "connected": "Connecté",
+      "remove": "Supprimer"
+    },
     "socialAccounts": {
       "title": "Comptes sociaux",
       "subtitle": "Connectez vos comptes sociaux pour activer la publication directe depuis le Studio social.",

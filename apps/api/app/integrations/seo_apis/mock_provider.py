@@ -89,3 +89,16 @@ class MockSEOProvider:
                 "linking_to_competitor": competitors[h % len(competitors)],
             })
         return results
+
+    async def serp(self, keyword: str, language_code: str = "en", location_code: int = 2840) -> list[dict]:
+        """Deterministic synthetic SERP — 10 organic items."""
+        return [
+            {
+                "type": "organic",
+                "rank_absolute": i,
+                "domain": f"site{i}.com",
+                "url": f"https://site{i}.com/page",
+                "title": f"Result {i} for {keyword}",
+            }
+            for i in range(1, 11)
+        ]

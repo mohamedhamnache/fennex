@@ -764,6 +764,15 @@
       "saveError": "Error al guardar la clave.",
       "saving": "Guardando…"
     },
+    "seoData": {
+      "title": "Datos SEO - DataForSEO",
+      "hint": "Impulsa el seguimiento de posiciones y la puntuación de contenido. Pago por uso con tu propia cuenta de DataForSEO.",
+      "login": "Usuario",
+      "password": "Contraseña",
+      "connect": "Conectar",
+      "connected": "Conectado",
+      "remove": "Eliminar"
+    },
     "socialAccounts": {
       "title": "Cuentas sociales",
       "subtitle": "Conecta tus cuentas sociales para habilitar la publicación directa desde el Estudio social.",

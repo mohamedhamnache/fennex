@@ -841,6 +841,15 @@
       "saveError": "Failed to save key.",
       "saving": "Saving…"
     },
+    "seoData": {
+      "title": "SEO data - DataForSEO",
+      "hint": "Powers rank tracking and content scoring. Pay-per-use with your own DataForSEO account.",
+      "login": "Login",
+      "password": "Password",
+      "connect": "Connect",
+      "connected": "Connected",
+      "remove": "Remove"
+    },
     "socialAccounts": {
       "title": "Social Accounts",
       "subtitle": "Connect your social accounts to enable direct publishing from the Social Studio.",
