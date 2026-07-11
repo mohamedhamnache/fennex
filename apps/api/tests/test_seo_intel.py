@@ -407,6 +407,18 @@ async def test_score_content_terms_and_structure(db_session):
 
 
 @pytest.mark.asyncio
+async def test_seo_score_endpoint_validation(client, db_session, org_and_project):
+    from app.services import content_scoring_service as css
+    p = await _mk_project(db_session)
+    r = await client.post("/api/v1/seo/score", json={"project_id": str(p.id), "keyword": "menu digital"})
+    assert r.status_code == 422
+    with patch.object(css, "fetch_serp", new=AsyncMock(return_value=None)):
+        r = await client.post("/api/v1/seo/score", json={
+            "project_id": str(p.id), "keyword": "menu digital", "text": "some content"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "no_seo_provider"
+
+
+@pytest.mark.asyncio
 async def test_score_content_degrades_without_llm_and_partial_crawls(db_session):
     from app.services import content_scoring_service as css
     p = await _mk_project(db_session)
