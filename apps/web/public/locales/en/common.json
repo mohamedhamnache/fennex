@@ -184,6 +184,8 @@
     "kinds": {
       "ranking_drop": "Ranking drop",
       "ranking_gain": "Ranking gain",
+      "serp_drop": "SERP drop",
+      "serp_gain": "SERP gain",
       "competitor_change": "Competitor change",
       "market_shift": "Market shift"
     },

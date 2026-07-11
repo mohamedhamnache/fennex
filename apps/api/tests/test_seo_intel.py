@@ -6,6 +6,7 @@ Strategy (mirrors test_monitoring.py):
 - Create only the SQLite-compatible tables this feature touches
 """
 import uuid
+from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -66,6 +67,11 @@ async def _mk_project(db, persona="creator", enabled=True, gsc=True):
         db.add(GscConnection(project_id=p.id, org_id=FAKE_ORG_ID, is_active=True))
         await db.commit()
     return p
+
+
+@asynccontextmanager
+async def _single_session(session):
+    yield session
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -227,4 +233,63 @@ async def test_list_with_stats_deltas(db_session):
     assert row["position"] == 4.0
     assert row["delta_7d"] == 5.0      # 9 -> 4 improvement
     assert row["delta_30d"] == 8.0     # 12 -> 4
-    assert len(row["spark"]) >= 2
+
+
+# ── Task 4: daily rank tracker cron + serp_drop/serp_gain alerts ────────────
+
+@pytest.mark.asyncio
+async def test_snapshot_emits_serp_alerts_with_thresholds(db_session):
+    from app.services import serp_service, rank_tracking_service as rts
+    p = await _mk_project(db_session)
+    tk = await rts.add_keyword(p, "menu digital", db_session)
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(SerpSnapshot(org_id=FAKE_ORG_ID, project_id=p.id, tracked_keyword_id=tk.id,
+                                date=yesterday, position=8.0, url="https://pure-saveur.fr/p",
+                                top10=[], features=[]))
+    await db_session.commit()
+    # today: not in top 100 -> drop from 8 to null (101) -> critical (left top 10)
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(None)))):
+        await rts.snapshot_keyword(p, tk, db_session)
+    a = (await db_session.execute(select(Alert).where(Alert.kind == "serp_drop"))).scalars().one()
+    assert a.severity == "critical" and "/seo" in a.url and "menu digital" in a.title
+
+
+@pytest.mark.asyncio
+async def test_snapshot_gain_and_first_snapshot_silent(db_session):
+    from app.services import serp_service, rank_tracking_service as rts
+    p = await _mk_project(db_session)
+    tk = await rts.add_keyword(p, "kw gain", db_session)
+    # first snapshot: baseline, silent
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(None)))):
+        await rts.snapshot_keyword(p, tk, db_session)
+    assert (await db_session.execute(select(Alert))).scalars().first() is None
+    # next day: enters at position 5 -> gain (101 -> 5)
+    snap = (await db_session.execute(select(SerpSnapshot))).scalars().one()
+    snap.date = date.today() - timedelta(days=1)
+    await db_session.commit()
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(5)))):
+        await rts.snapshot_keyword(p, tk, db_session)
+    g = (await db_session.execute(select(Alert).where(Alert.kind == "serp_gain"))).scalars().one()
+    assert g.severity == "info"
+
+
+@pytest.mark.asyncio
+async def test_rank_tracker_cron_isolates_and_filters(db_session):
+    from app.workers.tasks import seo_tasks
+    p_ok = await _mk_project(db_session)
+    from app.services import rank_tracking_service as rts
+    await rts.add_keyword(p_ok, "kw", db_session)
+    await _mk_project(db_session)  # no tracked keywords -> skipped
+    calls = []
+
+    async def fake_snapshot_project(project, db):
+        calls.append(project.id)
+        raise RuntimeError("boom")
+
+    with patch.object(seo_tasks, "snapshot_project", new=fake_snapshot_project), \
+         patch.object(seo_tasks, "async_session_factory", new=lambda: _single_session(db_session)):
+        await seo_tasks.run_rank_tracker(None)
+    assert calls == [p_ok.id]

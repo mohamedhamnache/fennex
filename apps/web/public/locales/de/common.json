@@ -107,6 +107,8 @@
     "kinds": {
       "ranking_drop": "Ranking-Abfall",
       "ranking_gain": "Ranking-Anstieg",
+      "serp_drop": "SERP-Abfall",
+      "serp_gain": "SERP-Anstieg",
       "competitor_change": "Wettbewerber-Änderung",
       "market_shift": "Marktverschiebung"
     },

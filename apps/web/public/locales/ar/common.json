@@ -107,6 +107,8 @@
     "kinds": {
       "ranking_drop": "انخفاض الترتيب",
       "ranking_gain": "ارتفاع الترتيب",
+      "serp_drop": "انخفاض في نتائج البحث",
+      "serp_gain": "ارتفاع في نتائج البحث",
       "competitor_change": "تغيّر لدى منافس",
       "market_shift": "تحوّل في السوق"
     },

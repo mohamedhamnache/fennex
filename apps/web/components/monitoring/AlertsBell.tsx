@@ -16,6 +16,8 @@ import { cn } from "@/lib/cn";
 const KIND_AGENT: Record<string, AgentId> = {
   ranking_drop: "zerda",
   ranking_gain: "zerda",
+  serp_drop: "zerda",
+  serp_gain: "zerda",
   competitor_change: "sable",
   market_shift: "oasis",
 };

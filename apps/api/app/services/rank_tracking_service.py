@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.seo_intel import SerpSnapshot, TrackedKeyword
 from app.services import serp_service
+from app.services.monitoring_service import _create_alert as create_monitor_alert, _iso_week
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,10 @@ def _pos(v: float | None) -> float:
     return v if v is not None else NOT_RANKED
 
 
+def _fmt_pos(v: float | None) -> str:
+    return f"{v:.1f}" if v is not None else "not in top 100"
+
+
 async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession) -> SerpSnapshot | None:
     today = date.today()
     existing = (await db.execute(select(SerpSnapshot).where(
@@ -70,7 +75,45 @@ async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession) -> Ser
     db.add(snap)
     await db.commit()
     await db.refresh(snap)
+
+    prev = (await db.execute(select(SerpSnapshot).where(
+        SerpSnapshot.tracked_keyword_id == tk.id, SerpSnapshot.date < today,
+    ).order_by(SerpSnapshot.date.desc()).limit(1))).scalars().first()
+    if prev is not None:
+        prev_pos = _pos(prev.position)
+        new_pos = _pos(snap.position)
+        delta = new_pos - prev_pos
+        wk = _iso_week()
+        if delta >= 3.0:
+            fell_out = prev_pos <= 10.0 < new_pos
+            await create_monitor_alert(
+                project.id, project.org_id, kind="serp_drop",
+                severity="critical" if fell_out else "warning",
+                title=f"SERP drop: '{tk.keyword}'",
+                detail=(f"Google position {_fmt_pos(prev.position)} -> {_fmt_pos(snap.position)} "
+                        f"({tk.language}/{tk.location_code})."),
+                url=f"/{project.id}/seo", dedupe_key=f"serp_drop:{tk.keyword}:{wk}", db=db)
+            await db.commit()
+        elif delta <= -3.0:
+            await create_monitor_alert(
+                project.id, project.org_id, kind="serp_gain", severity="info",
+                title=f"SERP gain: '{tk.keyword}'",
+                detail=f"Google position {_fmt_pos(prev.position)} -> {_fmt_pos(snap.position)}.",
+                url=f"/{project.id}/seo", dedupe_key=f"serp_gain:{tk.keyword}:{wk}", db=db)
+            await db.commit()
     return snap
+
+
+async def snapshot_project(project, db: AsyncSession) -> int:
+    tks = (await db.execute(select(TrackedKeyword).where(
+        TrackedKeyword.project_id == project.id, TrackedKeyword.is_active.is_(True),
+    ))).scalars().all()
+    count = 0
+    for tk in tks:
+        snap = await snapshot_keyword(project, tk, db)
+        if snap is not None:
+            count += 1
+    return count
 
 
 async def _snapshots_since(project_id, since: date, db) -> list[SerpSnapshot]:

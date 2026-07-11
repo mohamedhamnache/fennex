@@ -107,6 +107,8 @@
     "kinds": {
       "ranking_drop": "Queda de ranking",
       "ranking_gain": "Alta de ranking",
+      "serp_drop": "Queda no SERP",
+      "serp_gain": "Alta no SERP",
       "competitor_change": "Mudança da concorrência",
       "market_shift": "Mudança de mercado"
     },
