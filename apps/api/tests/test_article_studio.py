@@ -5,6 +5,7 @@ Strategy (mirrors test_seo_intel.py):
 - In-memory SQLite (aiosqlite) engine, own session factory
 - Create only the SQLite-compatible tables this feature touches
 """
+import types
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -107,3 +108,44 @@ async def test_chat_grounds_and_extracts_insertable(db_session):
     user_prompt = m.call_args.args[4]
     assert "Menu digital" in user_prompt            # grounded in the article
     assert user_prompt.count("user:") <= 8          # history capped
+
+
+# ── Task 2: checks_service (seo_checklist + ai_patterns) ────────────────────
+
+def test_seo_checklist_statuses():
+    from app.services.checks_service import seo_checklist
+    art = types.SimpleNamespace(
+        title="Menu digital restaurant: le guide",           # 32 chars -> pass
+        meta_description="Trop court",                        # fail
+        body_markdown=(
+            "Le menu digital change tout pour votre restaurant.\n\n"  # intro w/ kw -> pass
+            "## Pourquoi le menu digital\n\ncontenu " + ("mot " * 130) + "\n\n"  # long paragraph -> warn
+            "## Prix\n\nVoir [tarifs](https://x.fr) et [demo](https://y.fr).\n\n"
+            "![](https://img.fr/a.png)\n"                     # empty alt -> fail
+        ),
+    )
+    res = {c["id"]: c["status"] for c in seo_checklist(art, "menu digital")}
+    assert res["title_length"] == "pass" and res["kw_in_title"] == "pass"
+    assert res["meta_length"] == "fail"
+    assert res["kw_in_intro"] == "pass" and res["kw_in_heading"] == "pass"
+    assert res["headings_count"] == "fail"      # only 2 headings
+    assert res["links"] == "pass"
+    assert res["image_alts"] == "fail"
+    assert res["paragraph_length"] == "warn"
+    res2 = {c["id"]: c["status"] for c in seo_checklist(art, None)}
+    assert res2["kw_in_title"] == "warn"
+
+
+def test_ai_patterns_signals_and_score():
+    from app.services.checks_service import ai_patterns
+    robotic = ("This is a sentence with seven words here. " * 5 +
+               "This is another sentence counting seven words. " * 4 +
+               "Furthermore, it's important to note the value. ")
+    res = ai_patterns(robotic, "en")
+    ids = {s["id"] for s in res["signals"]}
+    assert "burstiness" in ids and "repeated_openers" in ids and "cliches" in ids
+    assert res["score"] <= 40
+    assert any("This" in f["reason"] or "cliche" in f["reason"].lower() for f in res["flagged"])
+    human = ("Short one. Then a much longer sentence that wanders through several ideas before landing. "
+             "Why? Because rhythm matters. People notice texture in writing, even when they cannot name it.")
+    assert ai_patterns(human, "en")["score"] >= 80
