@@ -1282,6 +1282,19 @@
     "search": "Artikel durchsuchen...",
     "readingTime": "{{min}} Min. Lesezeit",
     "words": "{{count}} Wörter",
-    "comingSoon": "Dieser Tab ist gleich startklar - schreib einfach weiter."
+    "comingSoon": "Dieser Tab ist gleich startklar - schreib einfach weiter.",
+    "selection": {
+      "rephrase": "Umformulieren",
+      "simplify": "Vereinfachen",
+      "expand": "Erweitern",
+      "shorten": "Kürzen",
+      "humanize": "Vermenschlichen",
+      "hint": "Wähle Text im Editor aus, um ihn umzuschreiben.",
+      "tooLong": "Die Auswahl ist zu lang (max. 6.000 Zeichen).",
+      "original": "Original",
+      "suggestion": "Dunes Vorschlag",
+      "replace": "Ersetzen",
+      "discard": "Verwerfen"
+    }
   }
 }

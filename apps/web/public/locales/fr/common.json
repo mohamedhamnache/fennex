@@ -1282,6 +1282,19 @@
     "search": "Rechercher des articles...",
     "readingTime": "{{min}} min de lecture",
     "words": "{{count}} mots",
-    "comingSoon": "Cet onglet s'activera bientôt - continuez à écrire."
+    "comingSoon": "Cet onglet s'activera bientôt - continuez à écrire.",
+    "selection": {
+      "rephrase": "Reformuler",
+      "simplify": "Simplifier",
+      "expand": "Développer",
+      "shorten": "Raccourcir",
+      "humanize": "Humaniser",
+      "hint": "Sélectionnez du texte dans l'éditeur pour le réécrire.",
+      "tooLong": "La sélection est trop longue (6 000 caractères max).",
+      "original": "Original",
+      "suggestion": "Suggestion de Dune",
+      "replace": "Remplacer",
+      "discard": "Ignorer"
+    }
   }
 }

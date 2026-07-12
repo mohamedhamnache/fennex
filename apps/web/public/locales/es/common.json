@@ -1282,6 +1282,19 @@
     "search": "Buscar artículos...",
     "readingTime": "{{min}} min de lectura",
     "words": "{{count}} palabras",
-    "comingSoon": "Esta pestaña se activará en un momento - sigue escribiendo."
+    "comingSoon": "Esta pestaña se activará en un momento - sigue escribiendo.",
+    "selection": {
+      "rephrase": "Reformular",
+      "simplify": "Simplificar",
+      "expand": "Ampliar",
+      "shorten": "Acortar",
+      "humanize": "Humanizar",
+      "hint": "Selecciona texto en el editor para reescribirlo.",
+      "tooLong": "La selección es demasiado larga (6000 caracteres máx.).",
+      "original": "Original",
+      "suggestion": "Sugerencia de Dune",
+      "replace": "Reemplazar",
+      "discard": "Descartar"
+    }
   }
 }

@@ -1359,6 +1359,19 @@
     "search": "Search articles...",
     "readingTime": "{{min}} min read",
     "words": "{{count}} words",
-    "comingSoon": "This tab lights up in a moment - keep writing."
+    "comingSoon": "This tab lights up in a moment - keep writing.",
+    "selection": {
+      "rephrase": "Rephrase",
+      "simplify": "Simplify",
+      "expand": "Expand",
+      "shorten": "Shorten",
+      "humanize": "Humanize",
+      "hint": "Select text in the editor to rewrite it.",
+      "tooLong": "Selection is too long (6,000 characters max).",
+      "original": "Original",
+      "suggestion": "Dune's suggestion",
+      "replace": "Replace",
+      "discard": "Discard"
+    }
   }
 }

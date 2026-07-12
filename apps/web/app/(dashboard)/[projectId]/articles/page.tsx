@@ -35,6 +35,7 @@ import { FENNEX_AGENTS } from "@/lib/agents";
 import { DocumentsRail } from "@/components/articles/studio/DocumentsRail";
 import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
+import { SelectionBar } from "@/components/articles/studio/SelectionBar";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
@@ -441,9 +442,11 @@ function ArticleEditor({
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized = useRef(false);
   const prevStatusRef = useRef<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { data: apiKeys = [] } = useQuery({
     queryKey: ["api-keys"],
@@ -519,6 +522,15 @@ function ArticleEditor({
     saveTimeoutRef.current = setTimeout(() => {
       updateMutation.mutate({ body_markdown: val });
     }, 2000);
+  }
+
+  function handleSelectionChange() {
+    const el = textareaRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd } = el;
+    setSelection(
+      selectionStart !== selectionEnd ? { start: selectionStart, end: selectionEnd } : null,
+    );
   }
 
   function handleSaveNow() {
@@ -679,6 +691,16 @@ function ArticleEditor({
         </button>
       </div>
 
+      {tab === "edit" && (
+        <SelectionBar
+          articleId={articleId}
+          selection={selection}
+          body={body}
+          onBodyChange={handleBodyChange}
+          onRestoreFocus={() => textareaRef.current?.focus()}
+        />
+      )}
+
       {/* Editor body */}
       <div className="flex min-h-0 flex-1 flex-col gap-0 px-5 py-4">
         {showImageSuggestions && (
@@ -689,8 +711,12 @@ function ArticleEditor({
 
         {tab === "edit" ? (
           <textarea
+            ref={textareaRef}
             value={body}
             onChange={(e) => handleBodyChange(e.target.value)}
+            onSelect={handleSelectionChange}
+            onKeyUp={handleSelectionChange}
+            onMouseUp={handleSelectionChange}
             className="w-full flex-1 resize-none bg-transparent text-sm font-mono leading-relaxed focus:outline-none text-foreground"
             placeholder={t("articles.editor.bodyPlaceholder")}
             style={{ lineHeight: 1.7 }}
