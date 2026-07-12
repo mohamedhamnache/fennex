@@ -157,18 +157,31 @@ def test_ai_patterns_signals_and_score():
 async def test_plagiarism_scan_matches_and_gate(db_session):
     from app.services import checks_service as cs
     p = await _mk_project(db_session)
-    body = ("# T\n\n" + "Une phrase distinctive contenant plusieurs mots relativement caracteristiques ensemble. " * 3
+    # "Une phrase ... test." is a genuine 12-word body sentence (10-20 word
+    # window) with no reliance on the heading gluing onto it — the heading
+    # line ("# Titre") must be stripped before sentence-splitting, not
+    # smuggled in as part of the sampled sentence.
+    body = ("# Titre\n\n"
+            + "Une phrase distinctive contenant plusieurs mots relativement caracteristiques assembles pour le test. " * 3
             + "Court. " * 5)
     art = await _mk_article(db_session, p, body=body)
 
     class Prov:
+        def __init__(self):
+            self.calls: list[str] = []
+
         async def serp(self, kw, language_code="en", location_code=2840):
+            self.calls.append(kw)
             return [{"type": "organic", "rank_absolute": 1, "domain": "copycat.com",
                      "url": "https://copycat.com/page", "title": "t"}]
-    with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=Prov())):
+    prov = Prov()
+    with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=prov)):
         res = await cs.plagiarism_scan(p, art, db_session)
     assert res["checked"] >= 1
     assert res["matches"] and res["matches"][0]["urls"] == ["https://copycat.com/page"]
+    # Regression: no sampled/queried sentence should ever contain heading
+    # markup — proves headings are stripped before sentence-splitting.
+    assert all("#" not in kw for kw in prov.calls)
 
     class OwnProv:
         async def serp(self, kw, language_code="en", location_code=2840):

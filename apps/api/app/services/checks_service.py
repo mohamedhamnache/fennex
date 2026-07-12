@@ -380,29 +380,34 @@ class NoProvider(Exception):
     """Raised when the org has no configured SEO/SERP provider."""
 
 
-_HEADING_LINE_RE = re.compile(r"^#{1,6} .*$")
-_LIST_ITEM_LINE_RE = re.compile(r"^\s*([-*+]|\d+[.)])\s+.*$")
+_STRUCTURE_LINE_RE = re.compile(
+    r"^(#{1,6} |\s*([-*+]|\d+[.)])\s+)"
+)
 
 
-def _is_heading_or_list_sentence(sentence: str) -> bool:
-    """True when the whole sentence IS a heading/list line (not merely
-    contains one) — e.g. a standalone "## Prix" split out with no
-    sentence-ending punctuation."""
-    return bool(_HEADING_LINE_RE.fullmatch(sentence) or _LIST_ITEM_LINE_RE.fullmatch(sentence))
+def _strip_structure_lines(body: str) -> str:
+    """Drop heading and list-item lines before sentence-splitting, so a
+    heading like "# T" (no terminal punctuation) can never glue onto the
+    following body sentence via the sentence splitter (which only splits
+    on [.!?]+\\s, not newlines)."""
+    kept = [
+        line for line in body.splitlines()
+        if not _STRUCTURE_LINE_RE.match(line)
+    ]
+    return " ".join(kept)
 
 
 def _plagiarism_candidate_sentences(body: str) -> list[str]:
     """Pick up to PLAGIARISM_MAX_SENTENCES_CHECKED distinctive sentences.
 
-    The body is split into sentences; sentences that are themselves a
-    heading or list line are dropped, and the rest are kept when they have
-    10-20 words; ranked by count of "distinctive" words (> 6 letters)
-    descending.
+    Heading and list-item lines are stripped from the body first (so they
+    can never glue onto an adjacent sentence), then the remainder is split
+    into sentences and kept when they have 10-20 words; ranked by count of
+    "distinctive" words (> 6 letters) descending.
     """
+    stripped_body = _strip_structure_lines(body)
     candidates: list[str] = []
-    for sentence in _split_sentences(body):
-        if _is_heading_or_list_sentence(sentence):
-            continue
+    for sentence in _split_sentences(stripped_body):
         word_count = _word_count(sentence)
         if PLAGIARISM_SENTENCE_MIN_WORDS <= word_count <= PLAGIARISM_SENTENCE_MAX_WORDS:
             candidates.append(sentence)
