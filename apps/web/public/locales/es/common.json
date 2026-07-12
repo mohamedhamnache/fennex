@@ -229,7 +229,8 @@
       "words": "palabras",
       "bodyPlaceholder": "Empieza a escribir en Markdown…",
       "metaTitlePlaceholder": "Título SEO…",
-      "metaDescPlaceholder": "Breve descripción de la página…"
+      "metaDescPlaceholder": "Breve descripción de la página…",
+      "imageSuggestions": "Ideas de imagen"
     },
     "newArticleModal": {
       "title": "Nuevo artículo",
@@ -1265,5 +1266,22 @@
         "Reiluminar desde arriba"
       ]
     }
+  },
+  "articleStudio": {
+    "dock": {
+      "title": "Dune - tu coescritor",
+      "tabs": {
+        "assistant": "Asistente",
+        "optimize": "Optimizar",
+        "checks": "Comprobaciones",
+        "meta": "Meta"
+      }
+    },
+    "emptyTitle": "Escribe algo que merezca posicionar",
+    "emptyBody": "Elige un artículo de la lista o empieza un borrador nuevo. Dune investiga, redacta y pule a tu lado.",
+    "search": "Buscar artículos...",
+    "readingTime": "{{min}} min de lectura",
+    "words": "{{count}} palabras",
+    "comingSoon": "Esta pestaña se activará en un momento - sigue escribiendo."
   }
 }

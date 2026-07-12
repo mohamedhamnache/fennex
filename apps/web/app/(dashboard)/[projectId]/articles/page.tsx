@@ -4,19 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
-  Plus,
-  MoreHorizontal,
   RefreshCw,
-  BookOpen,
   CheckCircle2,
-  XCircle,
-  ChevronRight,
+  Plus,
   Send,
   ExternalLink,
   Zap,
+  Image as ImageIcon,
 } from "lucide-react";
-import { FennecMascot } from "@fennex/ui";
 import { useProjectStore } from "@/lib/store";
 import {
   listArticles,
@@ -31,16 +26,16 @@ import {
   publishArticle,
   listApiKeys,
   type Article,
-  type ArticleStatus,
   type SEOScoreBreakdown,
   type PublishingConnection,
 } from "@/lib/api";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/cn";
+import { FENNEX_AGENTS } from "@/lib/agents";
+import { DocumentsRail } from "@/components/articles/studio/DocumentsRail";
+import { StatsBar } from "@/components/articles/studio/StatsBar";
+import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
-import { OptimizePanel } from "@/components/seo/OptimizePanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
 
@@ -100,116 +95,6 @@ function Spinner({ size = 16 }: { size?: number }) {
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
       />
     </svg>
-  );
-}
-
-// ─── Status badge ──────────────────────────────────────────────────────────
-
-const STATUS_TONE: Record<ArticleStatus, BadgeTone> = {
-  draft: "neutral",
-  generating: "warning",
-  ready: "info",
-  published: "success",
-  failed: "danger",
-};
-
-function StatusBadge({ status }: { status: ArticleStatus }) {
-  return <Badge tone={STATUS_TONE[status]} className="capitalize">{status}</Badge>;
-}
-
-// ─── SEO score chip ────────────────────────────────────────────────────────
-
-function seoColor(score: number | null): string {
-  if (score === null) return "text-muted-foreground";
-  if (score >= 80) return "text-emerald-500";
-  if (score >= 60) return "text-amber-500";
-  return "text-red-500";
-}
-
-// ─── ArticleCard ───────────────────────────────────────────────────────────
-
-function ArticleCard({
-  article,
-  onEdit,
-  onRegenerate,
-  onDelete,
-}: {
-  article: Article;
-  onEdit: () => void;
-  onRegenerate: () => void;
-  onDelete: () => void;
-}) {
-  const { t } = useTranslation();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    if (menuOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
-  return (
-    <div className="card-base p-5 flex items-start justify-between gap-4 hover:border-primary/30 transition-colors">
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground truncate">{article.title}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {[
-            article.target_keyword,
-            article.tone,
-            article.word_count > 0 ? `${article.word_count.toLocaleString()} ${t("articles.editor.words")}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <StatusBadge status={article.status} />
-          {article.seo_score !== null && (
-            <span className={`text-xs font-semibold tabular-nums ${seoColor(article.seo_score)}`}>
-              SEO {article.seo_score}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={onEdit}
-          className="btn-primary px-3 py-1.5 text-xs"
-        >
-          {t("articles.card.edit")}
-        </button>
-        <div ref={menuRef} className="relative">
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
-              <button
-                onClick={() => { setMenuOpen(false); onRegenerate(); }}
-                className="w-full px-4 py-2.5 text-sm text-left text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                {t("articles.card.regenerate")}
-              </button>
-              <button
-                onClick={() => { setMenuOpen(false); onDelete(); }}
-                className="w-full px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                {t("articles.card.delete")}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -525,11 +410,9 @@ function PublishModal({
 function ArticleEditor({
   articleId,
   projectId,
-  onBack,
 }: {
   articleId: string;
   projectId: string;
-  onBack: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -555,6 +438,7 @@ function ArticleEditor({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [revisionMsg, setRevisionMsg] = useState<string | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showImageSuggestions, setShowImageSuggestions] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -671,24 +555,17 @@ function ArticleEditor({
 
   if (isLoading || !article) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-1 items-center justify-center h-64">
         <Spinner size={28} />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Toolbar */}
+    <>
+    <div className="flex h-full flex-1 min-w-0 flex-col overflow-hidden">
+      {/* Title row */}
       <div className="flex items-center gap-3 border-b border-border px-5 py-3">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground lg:hidden"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          List
-        </button>
-        <ChevronRight className="hidden h-4 w-4 text-border lg:block" />
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -696,19 +573,6 @@ function ArticleEditor({
           className="flex-1 bg-transparent text-base font-semibold text-foreground focus:outline-none min-w-0"
           placeholder={t("articles.editor.articleTitle")}
         />
-        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-          {wordCount.toLocaleString()} {t("articles.editor.words")}
-        </span>
-        {saveState === "saving" && (
-          <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-            <Spinner size={12} /> {t("articles.editor.saving")}
-          </span>
-        )}
-        {saveState === "saved" && (
-          <span className="text-xs text-emerald-500 flex items-center gap-1 shrink-0">
-            <CheckCircle2 className="h-3.5 w-3.5" /> {t("articles.editor.saved")}
-          </span>
-        )}
         <button
           onClick={handleSaveNow}
           disabled={updateMutation.isPending}
@@ -716,237 +580,127 @@ function ArticleEditor({
         >
           {t("articles.editor.save")}
         </button>
-        {(article.status === "ready" || article.status === "published") && (
-          <button
-            onClick={() => setShowPublishModal(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors shrink-0"
-          >
-            <Send className="h-3.5 w-3.5" />
-            {t("articles.editor.publish")}
-          </button>
+      </div>
+
+      {/* Stats + relocated actions */}
+      <StatsBar
+        wordCount={wordCount}
+        seoScore={seoScore}
+        onRefetchSeo={() => refetchSeo()}
+        saveState={saveState}
+        canPublish={article.status === "ready" || article.status === "published"}
+        onSaveRevision={() => revisionMutation.mutate()}
+        isSavingRevision={revisionMutation.isPending}
+        onPublish={() => setShowPublishModal(true)}
+      />
+      {revisionMsg && (
+        <p className="px-5 pt-2 text-xs text-emerald-500">{revisionMsg}</p>
+      )}
+
+      {/* Canvas toolbar: Edit/Preview tabs + regenerate/model picker + image suggestions trigger */}
+      <div className="flex items-center gap-3 px-5 pt-4">
+        <div className="flex gap-0 border-b border-border flex-1">
+          {(["edit", "preview"] as const).map((tabKey) => (
+            <button
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === tabKey
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tabKey === "edit" ? t("articles.editor.edit") : t("articles.editor.preview")}
+            </button>
+          ))}
+        </div>
+
+        {connectedProviders.length > 0 && (
+          <div className="flex gap-1.5 shrink-0">
+            <select
+              value={selectedProvider}
+              onChange={(e) => {
+                setSelectedProvider(e.target.value);
+                setSelectedModel(
+                  e.target.value ? (PROVIDER_MODELS[e.target.value]?.models[0]?.id ?? "") : "",
+                );
+              }}
+              className="rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+            >
+              <option value="">Auto</option>
+              {connectedProviders.map((p) => (
+                <option key={p} value={p}>
+                  {PROVIDER_MODELS[p]?.label ?? p}
+                </option>
+              ))}
+            </select>
+            {selectedProvider && (
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+              >
+                {(PROVIDER_MODELS[selectedProvider]?.models ?? []).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         )}
+
+        <button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-60 shrink-0"
+        >
+          {generateMutation.isPending ? (
+            <>
+              <Spinner size={12} /> {t("articles.editor.regenerating")}
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-3.5 w-3.5" /> {t("articles.editor.regenerate")}
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={() => setShowImageSuggestions((v) => !v)}
+          className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+            showImageSuggestions
+              ? "border-primary/40 text-primary bg-primary/10"
+              : "border-border text-foreground hover:bg-accent"
+          }`}
+        >
+          <ImageIcon className="h-3.5 w-3.5" />
+          {t("articles.editor.imageSuggestions")}
+        </button>
       </div>
 
       {/* Editor body */}
-      <div className="flex min-h-0 flex-1 gap-0 px-5 py-4">
-        {/* Left: editor / preview */}
-        <div className="flex-1 flex flex-col min-w-0 pr-6">
-          {/* Tab bar */}
-          <div className="flex gap-0 border-b border-border mb-4">
-            {(["edit", "preview"] as const).map((tabKey) => (
-              <button
-                key={tabKey}
-                onClick={() => setTab(tabKey)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                  tab === tabKey
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tabKey === "edit" ? t("articles.editor.edit") : t("articles.editor.preview")}
-              </button>
-            ))}
-          </div>
-
-          {tab === "edit" ? (
-            <textarea
-              value={body}
-              onChange={(e) => handleBodyChange(e.target.value)}
-              className="w-full flex-1 resize-none bg-transparent text-sm font-mono leading-relaxed focus:outline-none text-foreground"
-              placeholder={t("articles.editor.bodyPlaceholder")}
-              style={{ lineHeight: 1.7 }}
-            />
-          ) : (
-            <div
-              className="flex-1 overflow-y-auto text-sm leading-relaxed space-y-3 text-foreground [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded"
-              dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
-            />
-          )}
-        </div>
-
-        {/* Right: SEO sidebar */}
-        <div className="w-72 shrink-0 border-l border-border pl-5 overflow-y-auto">
-          {/* Score */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("articles.editor.seoScore")}
-              </p>
-              <button
-                onClick={() => refetchSeo()}
-                className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-                title="Refresh score"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className={`text-4xl font-bold tabular-nums ${seoColor(seoScore)}`}>
-              {seoScore !== null ? seoScore : "—"}
-            </div>
-          </div>
-
-          {/* Breakdown */}
-          {Object.keys(breakdown).length > 0 && (
-            <div className="mb-5">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                {t("articles.editor.breakdown")}
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {Object.entries(breakdown).map(([key, val]) => (
-                  <div key={key} className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-foreground capitalize">
-                      {val > 0 ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 text-red-400" />
-                      )}
-                      {key.replace(/_/g, " ")}
-                    </span>
-                    <span className={`tabular-nums font-medium ${val > 0 ? "text-emerald-500" : "text-red-400"}`}>
-                      {val}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Optimize (Dune content score) */}
-          <OptimizePanel
-            projectId={projectId}
-            articleId={articleId}
-            targetKeyword={article.target_keyword}
-          />
-
-          <div className="border-t border-border pt-4 mb-4">
-            {/* Meta title */}
-            <div className="mb-3">
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                {t("articles.editor.metaTitle")}
-              </label>
-              <input
-                value={metaTitle}
-                onChange={(e) => setMetaTitle(e.target.value)}
-                onBlur={handleMetaTitleBlur}
-                placeholder={t("articles.editor.metaTitlePlaceholder")}
-                className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
-            </div>
-
-            {/* Meta description */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                {t("articles.editor.metaDescription")}
-                <span
-                  className={`ml-2 font-normal tabular-nums ${
-                    metaDesc.length >= 150 && metaDesc.length <= 160
-                      ? "text-emerald-500"
-                      : metaDesc.length > 160
-                      ? "text-red-400"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {metaDesc.length} / 160
-                </span>
-              </label>
-              <textarea
-                value={metaDesc}
-                onChange={(e) => setMetaDesc(e.target.value)}
-                onBlur={handleMetaDescBlur}
-                placeholder={t("articles.editor.metaDescPlaceholder")}
-                rows={3}
-                className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
-              />
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-4 flex flex-col gap-2">
-            {/* Model picker */}
-            {connectedProviders.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Model
-                </label>
-                <div className="flex gap-1.5">
-                  <select
-                    value={selectedProvider}
-                    onChange={(e) => {
-                      setSelectedProvider(e.target.value);
-                      setSelectedModel(
-                        e.target.value
-                          ? (PROVIDER_MODELS[e.target.value]?.models[0]?.id ?? "")
-                          : "",
-                      );
-                    }}
-                    className="flex-1 rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  >
-                    <option value="">Auto</option>
-                    {connectedProviders.map((p) => (
-                      <option key={p} value={p}>
-                        {PROVIDER_MODELS[p]?.label ?? p}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedProvider && (
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      className="flex-1 rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    >
-                      {(PROVIDER_MODELS[selectedProvider]?.models ?? []).map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Regenerate */}
-            <button
-              onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-60"
-            >
-              {generateMutation.isPending ? (
-                <>
-                  <Spinner size={12} /> {t("articles.editor.regenerating")}
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5" /> {t("articles.editor.regenerate")}
-                </>
-              )}
-            </button>
-
-            {/* Save revision */}
-            <button
-              onClick={() => revisionMutation.mutate()}
-              disabled={revisionMutation.isPending}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-60"
-            >
-              {revisionMutation.isPending ? (
-                <>
-                  <Spinner size={12} /> {t("articles.editor.saving")}
-                </>
-              ) : (
-                <>
-                  <BookOpen className="h-3.5 w-3.5" /> {t("articles.editor.saveRevision")}
-                </>
-              )}
-            </button>
-
-            {revisionMsg && (
-              <p className="text-xs text-emerald-500 text-center">{revisionMsg}</p>
-            )}
-          </div>
-
-          <div className="border-t border-border pt-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-0 px-5 py-4">
+        {showImageSuggestions && (
+          <div className="mb-4 rounded-xl border border-border p-3">
             <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
           </div>
-        </div>
+        )}
+
+        {tab === "edit" ? (
+          <textarea
+            value={body}
+            onChange={(e) => handleBodyChange(e.target.value)}
+            className="w-full flex-1 resize-none bg-transparent text-sm font-mono leading-relaxed focus:outline-none text-foreground"
+            placeholder={t("articles.editor.bodyPlaceholder")}
+            style={{ lineHeight: 1.7 }}
+          />
+        ) : (
+          <div
+            className="flex-1 overflow-y-auto text-sm leading-relaxed space-y-3 text-foreground [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded"
+            dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
+          />
+        )}
       </div>
 
       {showPublishModal && (
@@ -957,6 +711,20 @@ function ArticleEditor({
         />
       )}
     </div>
+
+    <DuneDock
+      projectId={projectId}
+      articleId={articleId}
+      targetKeyword={article.target_keyword}
+      metaTitle={metaTitle}
+      metaDesc={metaDesc}
+      onMetaTitleChange={setMetaTitle}
+      onMetaTitleBlur={handleMetaTitleBlur}
+      onMetaDescChange={setMetaDesc}
+      onMetaDescBlur={handleMetaDescBlur}
+      breakdown={breakdown}
+    />
+    </>
   );
 }
 
@@ -1011,6 +779,8 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
 
   const selectedArticle = articles.find((a) => a.id === selectedId) ?? null;
 
+  const dune = FENNEX_AGENTS.dune;
+
   return (
     <div className="flex h-[calc(100vh-108px)] flex-col gap-4 animate-fade-in">
       <PageHeader
@@ -1031,87 +801,41 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
       />
 
       <div className="flex min-h-0 flex-1 gap-4">
-        {/* ── List pane ── */}
-        <aside className={cn(
-          "glass flex w-full shrink-0 flex-col overflow-hidden lg:w-[340px]",
-          selectedId && "hidden lg:flex",
-        )}>
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-            <p className="text-sm font-semibold">{t("articles.allArticles")}</p>
-            <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-muted-foreground">{articles.length}</span>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {isLoading ? (
-              <div className="space-y-2 p-2">
-                {[...Array(5)].map((_, i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-white/[0.04]" />)}
-              </div>
-            ) : articles.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-                <FennecMascot />
-                <p className="text-sm font-medium">{t("articles.noArticles")}</p>
-                <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
-                  <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
-                </button>
-              </div>
-            ) : (
-              articles.map((a) => {
-                const isSel = a.id === selectedId;
-                return (
-                  <button
-                    key={a.id}
-                    onClick={() => setSelectedId(a.id)}
-                    className={cn(
-                      "group relative mb-1 flex w-full flex-col gap-1.5 rounded-xl px-3 py-2.5 text-left transition-colors",
-                      isSel ? "bg-primary/12" : "hover:bg-white/[0.04]",
-                    )}
-                  >
-                    {isSel && <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />}
-                    <p className={cn("line-clamp-1 text-sm font-medium", isSel ? "text-foreground" : "text-foreground/85")}>{a.title}</p>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={a.status} />
-                      {a.seo_score !== null && (
-                        <span className={`text-[11px] font-semibold tabular-nums ${seoColor(a.seo_score)}`}>SEO {a.seo_score}</span>
-                      )}
-                      <span className="ml-auto text-[11px] text-muted-foreground">
-                        {new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </aside>
+        <DocumentsRail
+          articles={articles}
+          isLoading={isLoading}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onNewArticle={() => setShowModal(true)}
+          onRegenerate={(id) => generateMutation.mutate(id)}
+          onDelete={(id) => {
+            deleteMutation.mutate(id);
+            if (id === selectedId) setSelectedId(null);
+          }}
+        />
 
-        {/* ── Editor pane ── */}
-        <section className={cn(
-          "glass min-w-0 flex-1 overflow-hidden",
-          !selectedId && "hidden lg:block",
-        )}>
-          {selectedArticle ? (
-            <ArticleEditor
-              key={selectedArticle.id}
-              articleId={selectedArticle.id}
-              projectId={projectId}
-              onBack={() => setSelectedId(null)}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary">
-                <Zap className="h-6 w-6 text-white" strokeWidth={1.9} />
-              </div>
-              <div>
-                <p className="text-base font-semibold">{t("articles.selectArticle")}</p>
-                <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
-                  {t("articles.selectArticleHint")}
-                </p>
-              </div>
-              <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
-                <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
-              </button>
+        {selectedArticle ? (
+          <ArticleEditor
+            key={selectedArticle.id}
+            articleId={selectedArticle.id}
+            projectId={projectId}
+          />
+        ) : (
+          <section className="glass flex min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-6 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary">
+              <dune.Icon className="h-6 w-6 text-white" strokeWidth={1.9} />
             </div>
-          )}
-        </section>
+            <div>
+              <p className="text-base font-semibold">{t("articleStudio.emptyTitle")}</p>
+              <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+                {t("articleStudio.emptyBody")}
+              </p>
+            </div>
+            <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
+              <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
+            </button>
+          </section>
+        )}
       </div>
 
       {showModal && (

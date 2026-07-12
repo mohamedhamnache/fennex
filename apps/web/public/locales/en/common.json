@@ -306,7 +306,8 @@
       "words": "words",
       "bodyPlaceholder": "Start writing in Markdown…",
       "metaTitlePlaceholder": "SEO title…",
-      "metaDescPlaceholder": "Brief page description…"
+      "metaDescPlaceholder": "Brief page description…",
+      "imageSuggestions": "Image ideas"
     },
     "newArticleModal": {
       "title": "New Article",
@@ -1342,5 +1343,22 @@
         "Relight from the top"
       ]
     }
+  },
+  "articleStudio": {
+    "dock": {
+      "title": "Dune - your co-writer",
+      "tabs": {
+        "assistant": "Assistant",
+        "optimize": "Optimize",
+        "checks": "Checks",
+        "meta": "Meta"
+      }
+    },
+    "emptyTitle": "Write something worth ranking",
+    "emptyBody": "Pick an article from the rail or start a new draft. Dune researches, drafts and polishes beside you.",
+    "search": "Search articles...",
+    "readingTime": "{{min}} min read",
+    "words": "{{count}} words",
+    "comingSoon": "This tab lights up in a moment - keep writing."
   }
 }

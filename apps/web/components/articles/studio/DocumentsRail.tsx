@@ -1,0 +1,190 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Plus, Search, MoreHorizontal, RefreshCw, XCircle } from "lucide-react";
+import { FennecMascot } from "@fennex/ui";
+import { cn } from "@/lib/cn";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import type { Article, ArticleStatus } from "@/lib/api";
+
+const STATUS_TONE: Record<ArticleStatus, BadgeTone> = {
+  draft: "neutral",
+  generating: "warning",
+  ready: "info",
+  published: "success",
+  failed: "danger",
+};
+
+function seoColor(score: number | null): string {
+  if (score === null) return "text-muted-foreground";
+  if (score >= 80) return "text-emerald-500";
+  if (score >= 60) return "text-amber-500";
+  return "text-red-500";
+}
+
+interface DocumentsRailProps {
+  articles: Article[];
+  isLoading: boolean;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onNewArticle: () => void;
+  onRegenerate: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+/**
+ * Left rail of the article studio: searchable document list. Reuses the
+ * existing status→tone map and SEO color scale from the article list/editor.
+ */
+export function DocumentsRail({
+  articles,
+  isLoading,
+  selectedId,
+  onSelect,
+  onNewArticle,
+  onRegenerate,
+  onDelete,
+}: DocumentsRailProps) {
+  const { t, i18n } = useTranslation();
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return articles;
+    return articles.filter((a) => a.title.toLowerCase().includes(q));
+  }, [articles, query]);
+
+  return (
+    <aside className="glass flex w-60 shrink-0 flex-col overflow-hidden">
+      <div className="flex flex-col gap-2 border-b border-white/[0.06] px-3 py-3">
+        <button
+          onClick={onNewArticle}
+          className="btn-primary flex items-center justify-center gap-1.5 px-3 py-2 text-xs"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {t("articles.newArticle")}
+        </button>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("articleStudio.search")}
+            className="w-full rounded-lg border border-border bg-input py-1.5 pl-8 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {isLoading ? (
+          <div className="space-y-2 p-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-lg bg-white/[0.04]" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 px-3 py-10 text-center">
+            <FennecMascot />
+            <p className="text-xs font-medium text-muted-foreground">{t("articles.noArticles")}</p>
+          </div>
+        ) : (
+          filtered.map((a) => {
+            const isSel = a.id === selectedId;
+            return (
+              <div
+                key={a.id}
+                className={cn(
+                  "group relative mb-1 flex w-full flex-col gap-1.5 rounded-xl px-3 py-2.5 text-left transition-colors",
+                  isSel ? "bg-primary/12" : "hover:bg-white/[0.04]",
+                )}
+              >
+                {isSel && (
+                  <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                )}
+                <button onClick={() => onSelect(a.id)} className="flex flex-col gap-1.5 text-left">
+                  <p className={cn("line-clamp-1 text-sm font-medium pr-5", isSel ? "text-foreground" : "text-foreground/85")}>
+                    {a.title}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={STATUS_TONE[a.status]} dot className="capitalize">
+                      {a.status}
+                    </Badge>
+                    {a.seo_score !== null && (
+                      <span className={`text-[11px] font-semibold tabular-nums ${seoColor(a.seo_score)}`}>
+                        SEO {a.seo_score}
+                      </span>
+                    )}
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      {new Date(a.created_at).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                </button>
+                <RowMenu
+                  onRegenerate={() => onRegenerate(a.id)}
+                  onDelete={() => onDelete(a.id)}
+                />
+              </div>
+            );
+          })
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function RowMenu({ onRegenerate, onDelete }: { onRegenerate: () => void; onDelete: () => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={menuRef} className="absolute right-1.5 top-1.5">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="rounded-lg p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+      >
+        <MoreHorizontal className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-7 z-20 w-36 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onRegenerate();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-foreground hover:bg-accent transition-colors"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {t("articles.card.regenerate")}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onDelete();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            {t("articles.card.delete")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

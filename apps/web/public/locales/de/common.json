@@ -229,7 +229,8 @@
       "words": "Wörter",
       "bodyPlaceholder": "Beginne in Markdown zu schreiben…",
       "metaTitlePlaceholder": "SEO-Titel…",
-      "metaDescPlaceholder": "Kurze Seitenbeschreibung…"
+      "metaDescPlaceholder": "Kurze Seitenbeschreibung…",
+      "imageSuggestions": "Bildideen"
     },
     "newArticleModal": {
       "title": "Neuer Artikel",
@@ -1265,5 +1266,22 @@
         "Von oben neu beleuchten"
       ]
     }
+  },
+  "articleStudio": {
+    "dock": {
+      "title": "Dune - dein Co-Autor",
+      "tabs": {
+        "assistant": "Assistent",
+        "optimize": "Optimieren",
+        "checks": "Prüfungen",
+        "meta": "Meta"
+      }
+    },
+    "emptyTitle": "Schreib etwas, das ein Ranking verdient",
+    "emptyBody": "Wähle einen Artikel aus der Liste oder starte einen neuen Entwurf. Dune recherchiert, schreibt und feilt an deiner Seite.",
+    "search": "Artikel durchsuchen...",
+    "readingTime": "{{min}} Min. Lesezeit",
+    "words": "{{count}} Wörter",
+    "comingSoon": "Dieser Tab ist gleich startklar - schreib einfach weiter."
   }
 }

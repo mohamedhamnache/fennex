@@ -229,7 +229,8 @@
       "words": "كلمة",
       "bodyPlaceholder": "ابدأ الكتابة بصيغة Markdown…",
       "metaTitlePlaceholder": "عنوان SEO…",
-      "metaDescPlaceholder": "وصف موجز للصفحة…"
+      "metaDescPlaceholder": "وصف موجز للصفحة…",
+      "imageSuggestions": "أفكار الصور"
     },
     "newArticleModal": {
       "title": "مقال جديد",
@@ -1265,5 +1266,22 @@
         "أعد الإضاءة من الأعلى"
       ]
     }
+  },
+  "articleStudio": {
+    "dock": {
+      "title": "دون - شريكك في الكتابة",
+      "tabs": {
+        "assistant": "المساعد",
+        "optimize": "التحسين",
+        "checks": "الفحوصات",
+        "meta": "البيانات الوصفية"
+      }
+    },
+    "emptyTitle": "اكتب شيئًا يستحق التصدر",
+    "emptyBody": "اختر مقالاً من القائمة أو ابدأ مسودة جديدة. دون يبحث ويكتب ويصقل إلى جانبك.",
+    "search": "البحث في المقالات...",
+    "readingTime": "{{min}} دقيقة قراءة",
+    "words": "{{count}} كلمة",
+    "comingSoon": "هذا التبويب سيصبح جاهزًا قريبًا - استمر في الكتابة."
   }
 }
