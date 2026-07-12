@@ -443,6 +443,7 @@ function ArticleEditor({
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<number | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized = useRef(false);
   const prevStatusRef = useRef<string | null>(null);
@@ -531,6 +532,7 @@ function ArticleEditor({
     setSelection(
       selectionStart !== selectionEnd ? { start: selectionStart, end: selectionEnd } : null,
     );
+    setCursorPosition(selectionEnd);
   }
 
   function handleSaveNow() {
@@ -749,6 +751,9 @@ function ArticleEditor({
       onMetaDescChange={setMetaDesc}
       onMetaDescBlur={handleMetaDescBlur}
       breakdown={breakdown}
+      body={body}
+      onBodyChange={handleBodyChange}
+      cursorPosition={cursorPosition}
     />
     </>
   );

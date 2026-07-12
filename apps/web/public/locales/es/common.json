@@ -1296,6 +1296,55 @@
       "replace": "Reemplazar",
       "discard": "Descartar",
       "stale": "El texto cambió desde esta sugerencia - vuelve a seleccionarlo e inténtalo de nuevo."
+    },
+    "checks": {
+      "run": "Ejecutar comprobaciones",
+      "aiScore": "Puntuación de patrones de IA",
+      "heuristic": "Estimación heurística, no un veredicto de detector - úsala como señal de escritura.",
+      "scan": "Analizar originalidad",
+      "checked": "{{count}} pasajes comprobados",
+      "original": "No se encontraron coincidencias - tu texto parece original.",
+      "stale": "Esa frase cambió desde esta sugerencia - vuelve a ejecutar las comprobaciones e inténtalo de nuevo.",
+      "humanize": "Humanizar",
+      "replace": "Reemplazar",
+      "discard": "Descartar",
+      "rules": {
+        "title_length": "Longitud del título",
+        "meta_length": "Longitud de la meta descripción",
+        "kw_in_title": "Palabra clave en el título",
+        "kw_in_intro": "Palabra clave en la introducción",
+        "kw_in_heading": "Palabra clave en un encabezado",
+        "kw_density": "Densidad de palabra clave",
+        "headings_count": "Número de encabezados",
+        "intro_length": "Longitud de la introducción",
+        "links": "Enlaces internos o externos",
+        "image_alts": "Texto alternativo de imágenes",
+        "paragraph_length": "Longitud de párrafo"
+      },
+      "gate": {
+        "title": "Conecta tu proveedor de datos SEO",
+        "body": "El análisis de plagio se ejecuta con tu propia cuenta de DataForSEO. Añade tus credenciales en Ajustes - pago por uso, una fracción de céntimo por comprobación.",
+        "cta": "Abrir Ajustes"
+      }
+    },
+    "assistant": {
+      "tagline": "Pídele a Dune un esquema, una introducción más potente, estadísticas de apoyo o cualquier otra cosa que necesite este artículo.",
+      "placeholder": "Pregúntale a Dune cualquier cosa sobre este artículo...",
+      "send": "Enviar",
+      "insert": "Insertar en el cursor",
+      "inserted": "Insertado en el artículo.",
+      "chips": {
+        "outline": "Sugerir un esquema",
+        "stats": "Buscar estadísticas de apoyo",
+        "intro": "Reescribir la introducción",
+        "listicle": "Convertirlo en una lista"
+      },
+      "prompts": {
+        "outline": "Sugiere un esquema claro para este artículo, con encabezados que refuercen su estructura.",
+        "stats": "Sugiere algunas estadísticas o datos de apoyo que pueda añadir para respaldar las afirmaciones de este artículo.",
+        "intro": "Reescribe la introducción para que enganche al lector más rápido y conecte con naturalidad con el resto del artículo.",
+        "listicle": "Reestructura los puntos clave de este artículo en formato de lista numerada."
+      }
     }
   }
 }

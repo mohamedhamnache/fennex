@@ -1373,6 +1373,55 @@
       "replace": "Replace",
       "discard": "Discard",
       "stale": "The text changed since this suggestion - reselect and try again."
+    },
+    "checks": {
+      "run": "Run checks",
+      "aiScore": "AI-pattern score",
+      "heuristic": "Heuristic estimate, not a detector verdict - use it as a writing signal.",
+      "scan": "Scan originality",
+      "checked": "{{count}} passages checked",
+      "original": "No matches found - your text looks original.",
+      "stale": "That sentence changed since this suggestion - rerun checks and try again.",
+      "humanize": "Humanize",
+      "replace": "Replace",
+      "discard": "Discard",
+      "rules": {
+        "title_length": "Title length",
+        "meta_length": "Meta description length",
+        "kw_in_title": "Keyword in title",
+        "kw_in_intro": "Keyword in intro",
+        "kw_in_heading": "Keyword in a heading",
+        "kw_density": "Keyword density",
+        "headings_count": "Heading count",
+        "intro_length": "Intro length",
+        "links": "Internal or external links",
+        "image_alts": "Image alt text",
+        "paragraph_length": "Paragraph length"
+      },
+      "gate": {
+        "title": "Connect your SEO data provider",
+        "body": "Plagiarism scanning runs on your own DataForSEO account. Add your credentials in Settings - pay-per-use, a fraction of a cent per check.",
+        "cta": "Open Settings"
+      }
+    },
+    "assistant": {
+      "tagline": "Ask Dune for an outline, a stronger intro, supporting stats, or anything else this article needs.",
+      "placeholder": "Ask Dune anything about this article...",
+      "send": "Send",
+      "insert": "Insert at cursor",
+      "inserted": "Inserted into the article.",
+      "chips": {
+        "outline": "Suggest an outline",
+        "stats": "Find supporting stats",
+        "intro": "Rewrite the intro",
+        "listicle": "Turn this into a listicle"
+      },
+      "prompts": {
+        "outline": "Suggest a clear outline for this article, with headings that would strengthen its structure.",
+        "stats": "Suggest a few supporting statistics or data points I could add to back up the claims in this article.",
+        "intro": "Rewrite the introduction so it hooks the reader faster and leads naturally into the rest of the article.",
+        "listicle": "Restructure the key points of this article into a numbered listicle format."
+      }
     }
   }
 }

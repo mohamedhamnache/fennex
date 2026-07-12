@@ -6,6 +6,8 @@ import { Sparkles, Wand2, ListChecks, Tags } from "lucide-react";
 import { FENNEX_AGENTS } from "@/lib/agents";
 import { OptimizePanel } from "@/components/seo/OptimizePanel";
 import { MetaTab } from "./MetaTab";
+import { ChecksTab } from "./ChecksTab";
+import { AssistantTab } from "./AssistantTab";
 
 type DockTab = "assistant" | "optimize" | "checks" | "meta";
 
@@ -27,6 +29,9 @@ interface DuneDockProps {
   onMetaDescChange: (val: string) => void;
   onMetaDescBlur: () => void;
   breakdown: Record<string, number>;
+  body: string;
+  onBodyChange: (val: string) => void;
+  cursorPosition: number | null;
 }
 
 /**
@@ -45,6 +50,9 @@ export function DuneDock({
   onMetaDescChange,
   onMetaDescBlur,
   breakdown,
+  body,
+  onBodyChange,
+  cursorPosition,
 }: DuneDockProps) {
   const { t } = useTranslation();
   const dune = FENNEX_AGENTS.dune;
@@ -87,8 +95,17 @@ export function DuneDock({
 
       {/* Tab content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {tab === "assistant" && <ComingSoonCard />}
-        {tab === "checks" && <ComingSoonCard />}
+        {tab === "assistant" && (
+          <AssistantTab
+            articleId={articleId}
+            body={body}
+            onBodyChange={onBodyChange}
+            cursorPosition={cursorPosition}
+          />
+        )}
+        {tab === "checks" && (
+          <ChecksTab articleId={articleId} body={body} onBodyChange={onBodyChange} />
+        )}
         {tab === "optimize" && (
           <OptimizePanel projectId={projectId} articleId={articleId} targetKeyword={targetKeyword} />
         )}
@@ -105,14 +122,5 @@ export function DuneDock({
         )}
       </div>
     </aside>
-  );
-}
-
-function ComingSoonCard() {
-  const { t } = useTranslation();
-  return (
-    <div className="card-base flex flex-col items-center gap-2 px-4 py-10 text-center">
-      <p className="text-sm text-muted-foreground">{t("articleStudio.comingSoon")}</p>
-    </div>
   );
 }

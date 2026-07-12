@@ -1296,6 +1296,55 @@
       "replace": "Ersetzen",
       "discard": "Verwerfen",
       "stale": "Der Text hat sich seit diesem Vorschlag geändert - erneut auswählen und wiederholen."
+    },
+    "checks": {
+      "run": "Prüfungen ausführen",
+      "aiScore": "KI-Muster-Score",
+      "heuristic": "Heuristische Schätzung, kein Detektor-Urteil - als Schreibsignal nutzen.",
+      "scan": "Originalität prüfen",
+      "checked": "{{count}} Passagen geprüft",
+      "original": "Keine Übereinstimmungen gefunden - dein Text wirkt originell.",
+      "stale": "Dieser Satz hat sich seit diesem Vorschlag geändert - Prüfungen erneut ausführen und wiederholen.",
+      "humanize": "Vermenschlichen",
+      "replace": "Ersetzen",
+      "discard": "Verwerfen",
+      "rules": {
+        "title_length": "Titellänge",
+        "meta_length": "Länge der Meta-Beschreibung",
+        "kw_in_title": "Keyword im Titel",
+        "kw_in_intro": "Keyword in der Einleitung",
+        "kw_in_heading": "Keyword in einer Überschrift",
+        "kw_density": "Keyword-Dichte",
+        "headings_count": "Anzahl der Überschriften",
+        "intro_length": "Länge der Einleitung",
+        "links": "Interne oder externe Links",
+        "image_alts": "Alt-Texte für Bilder",
+        "paragraph_length": "Absatzlänge"
+      },
+      "gate": {
+        "title": "Verbinde deinen SEO-Datenanbieter",
+        "body": "Die Plagiatsprüfung läuft über dein eigenes DataForSEO-Konto. Füge deine Zugangsdaten in den Einstellungen hinzu - Pay-per-Use, ein Bruchteil eines Cents pro Prüfung.",
+        "cta": "Einstellungen öffnen"
+      }
+    },
+    "assistant": {
+      "tagline": "Bitte Dune um eine Gliederung, eine stärkere Einleitung, unterstützende Statistiken oder alles andere, was dieser Artikel braucht.",
+      "placeholder": "Frag Dune irgendetwas zu diesem Artikel...",
+      "send": "Senden",
+      "insert": "An Cursor einfügen",
+      "inserted": "In den Artikel eingefügt.",
+      "chips": {
+        "outline": "Gliederung vorschlagen",
+        "stats": "Passende Statistiken finden",
+        "intro": "Einleitung umschreiben",
+        "listicle": "In eine Listicle-Form bringen"
+      },
+      "prompts": {
+        "outline": "Schlage eine klare Gliederung für diesen Artikel vor, mit Überschriften, die seine Struktur stärken würden.",
+        "stats": "Schlage einige unterstützende Statistiken oder Datenpunkte vor, die ich hinzufügen könnte, um die Aussagen in diesem Artikel zu untermauern.",
+        "intro": "Schreibe die Einleitung so um, dass sie die Leser schneller fesselt und natürlich in den Rest des Artikels überleitet.",
+        "listicle": "Strukturiere die wichtigsten Punkte dieses Artikels in eine nummerierte Listicle-Form um."
+      }
     }
   }
 }
