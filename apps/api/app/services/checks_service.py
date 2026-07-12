@@ -13,9 +13,20 @@ arithmetic over the strings passed in, so it is trivially unit-testable.
 """
 from __future__ import annotations
 
+import logging
 import re
 import statistics
 from typing import Optional
+
+from app.integrations.seo_apis import get_seo_provider_for_org
+from app.services.serp_service import (
+    _norm_domain,
+    _project_domain,
+    language_for_project,
+    location_for_project,
+)
+
+logger = logging.getLogger(__name__)
 
 # ── Regexes (shared parsing rules, per spec) ────────────────────────────────
 
@@ -354,3 +365,102 @@ def ai_patterns(text: str, lang: str) -> dict:
         "signals": signals,
         "flagged": deduped_flagged,
     }
+
+
+# ── plagiarism_scan ──────────────────────────────────────────────────────────
+
+PLAGIARISM_SENTENCE_MIN_WORDS = 10
+PLAGIARISM_SENTENCE_MAX_WORDS = 20
+PLAGIARISM_MAX_SENTENCES_CHECKED = 8
+PLAGIARISM_MAX_URLS_PER_MATCH = 3
+DISTINCTIVE_WORD_MIN_LETTERS = 6
+
+
+class NoProvider(Exception):
+    """Raised when the org has no configured SEO/SERP provider."""
+
+
+_HEADING_LINE_RE = re.compile(r"^#{1,6} .*$")
+_LIST_ITEM_LINE_RE = re.compile(r"^\s*([-*+]|\d+[.)])\s+.*$")
+
+
+def _is_heading_or_list_sentence(sentence: str) -> bool:
+    """True when the whole sentence IS a heading/list line (not merely
+    contains one) — e.g. a standalone "## Prix" split out with no
+    sentence-ending punctuation."""
+    return bool(_HEADING_LINE_RE.fullmatch(sentence) or _LIST_ITEM_LINE_RE.fullmatch(sentence))
+
+
+def _plagiarism_candidate_sentences(body: str) -> list[str]:
+    """Pick up to PLAGIARISM_MAX_SENTENCES_CHECKED distinctive sentences.
+
+    The body is split into sentences; sentences that are themselves a
+    heading or list line are dropped, and the rest are kept when they have
+    10-20 words; ranked by count of "distinctive" words (> 6 letters)
+    descending.
+    """
+    candidates: list[str] = []
+    for sentence in _split_sentences(body):
+        if _is_heading_or_list_sentence(sentence):
+            continue
+        word_count = _word_count(sentence)
+        if PLAGIARISM_SENTENCE_MIN_WORDS <= word_count <= PLAGIARISM_SENTENCE_MAX_WORDS:
+            candidates.append(sentence)
+
+    def distinctiveness(sentence: str) -> int:
+        return sum(1 for w in sentence.split() if len(w) > DISTINCTIVE_WORD_MIN_LETTERS)
+
+    candidates.sort(key=distinctiveness, reverse=True)
+    return candidates[:PLAGIARISM_MAX_SENTENCES_CHECKED]
+
+
+async def plagiarism_scan(project, article, db) -> dict:
+    """Scan an article's most distinctive sentences against live SERPs.
+
+    For each sampled sentence, query the quoted phrase and flag it as a
+    potential match when the SERP returns an organic result whose domain
+    differs from the project's own domain. `checked` only counts sentences
+    that were successfully queried (a SERP error for a sentence logs and
+    skips it, and it is not counted towards `checked`).
+    """
+    provider = await get_seo_provider_for_org(project.org_id, db)
+    if provider is None:
+        raise NoProvider("No SEO provider configured for this organization.")
+
+    body = getattr(article, "body_markdown", "") or ""
+    sentences = _plagiarism_candidate_sentences(body)
+
+    language_code = language_for_project(project)
+    location_code = location_for_project(project)
+    own_domain = _project_domain(project)
+
+    checked = 0
+    matches: list[dict] = []
+
+    for sentence in sentences:
+        try:
+            items = await provider.serp(
+                f'"{sentence}"', language_code=language_code, location_code=location_code
+            )
+        except Exception:
+            logger.exception("plagiarism_scan: SERP query failed for sentence, skipping.")
+            continue
+
+        checked += 1
+
+        urls: list[str] = []
+        for item in items or []:
+            if item.get("type") != "organic":
+                continue
+            if _norm_domain(item.get("domain", "")) == own_domain:
+                continue
+            url = item.get("url")
+            if url:
+                urls.append(url)
+            if len(urls) >= PLAGIARISM_MAX_URLS_PER_MATCH:
+                break
+
+        if urls:
+            matches.append({"sentence": sentence, "urls": urls})
+
+    return {"checked": checked, "matches": matches}

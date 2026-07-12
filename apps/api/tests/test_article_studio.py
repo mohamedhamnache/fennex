@@ -149,3 +149,35 @@ def test_ai_patterns_signals_and_score():
     human = ("Short one. Then a much longer sentence that wanders through several ideas before landing. "
              "Why? Because rhythm matters. People notice texture in writing, even when they cannot name it.")
     assert ai_patterns(human, "en")["score"] >= 80
+
+
+# ── Task 3: checks_service (plagiarism_scan) ────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_plagiarism_scan_matches_and_gate(db_session):
+    from app.services import checks_service as cs
+    p = await _mk_project(db_session)
+    body = ("# T\n\n" + "Une phrase distinctive contenant plusieurs mots relativement caracteristiques ensemble. " * 3
+            + "Court. " * 5)
+    art = await _mk_article(db_session, p, body=body)
+
+    class Prov:
+        async def serp(self, kw, language_code="en", location_code=2840):
+            return [{"type": "organic", "rank_absolute": 1, "domain": "copycat.com",
+                     "url": "https://copycat.com/page", "title": "t"}]
+    with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=Prov())):
+        res = await cs.plagiarism_scan(p, art, db_session)
+    assert res["checked"] >= 1
+    assert res["matches"] and res["matches"][0]["urls"] == ["https://copycat.com/page"]
+
+    class OwnProv:
+        async def serp(self, kw, language_code="en", location_code=2840):
+            return [{"type": "organic", "rank_absolute": 1, "domain": "pure-saveur.fr",
+                     "url": "https://pure-saveur.fr/x", "title": "t"}]
+    with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=OwnProv())):
+        res = await cs.plagiarism_scan(p, art, db_session)
+    assert res["matches"] == []                      # own domain doesn't count
+
+    with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=None)):
+        with pytest.raises(cs.NoProvider):
+            await cs.plagiarism_scan(p, art, db_session)
