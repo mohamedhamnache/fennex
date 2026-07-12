@@ -1294,7 +1294,8 @@
       "original": "Original",
       "suggestion": "Sugestão do Dune",
       "replace": "Substituir",
-      "discard": "Descartar"
+      "discard": "Descartar",
+      "stale": "O texto mudou desde essa sugestão - selecione novamente e tente de novo."
     }
   }
 }

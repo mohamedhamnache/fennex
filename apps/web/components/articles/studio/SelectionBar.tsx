@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Wand2 } from "lucide-react";
 import { transformText, type TransformMode } from "@/lib/api";
@@ -34,6 +34,8 @@ interface Suggestion {
   mode: TransformMode;
   original: string;
   text: string;
+  start: number;
+  end: number;
 }
 
 interface SelectionBarProps {
@@ -67,13 +69,32 @@ export function SelectionBar({
   const tooLong = selectedText.length > MAX_SELECTION_LENGTH;
   const disabled = !hasSelection || tooLong;
 
+  // Clear the pending suggestion when the user makes a genuinely new,
+  // non-empty selection (different range from the one the suggestion was
+  // captured against). Caret-only / empty selection changes must NOT clear
+  // the card — that's what fires right after Replace/Discard restores focus.
+  useEffect(() => {
+    if (!suggestion) return;
+    if (!selection) return;
+    if (selection.start !== suggestion.start || selection.end !== suggestion.end) {
+      setSuggestion(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection]);
+
   async function handleChipClick(mode: TransformMode) {
     if (disabled || !selection || loadingMode) return;
     setLoadingMode(mode);
     setSuggestion(null);
     try {
       const result = await transformText(articleId, mode, selectedText);
-      setSuggestion({ mode, original: selectedText, text: result.text });
+      setSuggestion({
+        mode,
+        original: selectedText,
+        text: result.text,
+        start: selection.start,
+        end: selection.end,
+      });
     } catch (e) {
       toastError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -82,9 +103,30 @@ export function SelectionBar({
   }
 
   function handleReplace() {
-    if (!suggestion || !selection) return;
-    const newBody = body.slice(0, selection.start) + suggestion.text + body.slice(selection.end);
-    onBodyChange(newBody);
+    if (!suggestion) return;
+    const { start, end, original, text } = suggestion;
+
+    if (body.slice(start, end) === original) {
+      onBodyChange(body.slice(0, start) + text + body.slice(end));
+      setSuggestion(null);
+      onRestoreFocus();
+      return;
+    }
+
+    // Body changed since the transform was requested — the snapshot range
+    // no longer matches. Fall back to replacing the first occurrence of the
+    // original text rather than splicing at now-stale indices.
+    const fallbackIndex = body.indexOf(original);
+    if (fallbackIndex !== -1) {
+      onBodyChange(
+        body.slice(0, fallbackIndex) + text + body.slice(fallbackIndex + original.length),
+      );
+      setSuggestion(null);
+      onRestoreFocus();
+      return;
+    }
+
+    toastError(t("articleStudio.selection.stale"));
     setSuggestion(null);
     onRestoreFocus();
   }

@@ -1371,7 +1371,8 @@
       "original": "Original",
       "suggestion": "Dune's suggestion",
       "replace": "Replace",
-      "discard": "Discard"
+      "discard": "Discard",
+      "stale": "The text changed since this suggestion - reselect and try again."
     }
   }
 }

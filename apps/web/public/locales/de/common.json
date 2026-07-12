@@ -1294,7 +1294,8 @@
       "original": "Original",
       "suggestion": "Dunes Vorschlag",
       "replace": "Ersetzen",
-      "discard": "Verwerfen"
+      "discard": "Verwerfen",
+      "stale": "Der Text hat sich seit diesem Vorschlag geändert - erneut auswählen und wiederholen."
     }
   }
 }
