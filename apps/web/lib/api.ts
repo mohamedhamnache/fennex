@@ -2197,3 +2197,51 @@ export async function scoreContent(
     text: opts?.text,
   });
 }
+
+// ── Article Studio ─────────────────────────────────────────────────────────
+
+export type TransformMode = "rephrase" | "simplify" | "expand" | "shorten" | "humanize";
+
+export interface SeoCheck {
+  id: string;
+  status: "pass" | "warn" | "fail";
+  detail: string;
+}
+
+export interface AiPatternReport {
+  score: number;
+  signals: { id: string; severity: string; detail: string }[];
+  flagged: { sentence: string; reason: string }[];
+}
+
+export interface PlagiarismReport {
+  checked: number;
+  matches: { sentence: string; urls: string[] }[];
+}
+
+export async function transformText(
+  articleId: string,
+  mode: TransformMode,
+  text: string,
+): Promise<{ text: string }> {
+  return apiClient.post<{ text: string }>(`/articles/${articleId}/transform`, { mode, text });
+}
+
+export async function duneChat(
+  articleId: string,
+  question: string,
+  history: { role: string; content: string }[],
+): Promise<{ answer: string; insertable: string | null }> {
+  return apiClient.post<{ answer: string; insertable: string | null }>(`/articles/${articleId}/chat`, {
+    question,
+    history,
+  });
+}
+
+export async function runArticleChecks(articleId: string): Promise<{ seo: SeoCheck[]; ai: AiPatternReport }> {
+  return apiClient.post<{ seo: SeoCheck[]; ai: AiPatternReport }>(`/articles/${articleId}/checks`, {});
+}
+
+export async function runPlagiarismScan(articleId: string): Promise<PlagiarismReport> {
+  return apiClient.post<PlagiarismReport>(`/articles/${articleId}/plagiarism`, {});
+}

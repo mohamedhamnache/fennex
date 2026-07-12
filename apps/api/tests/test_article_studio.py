@@ -10,13 +10,17 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
+from app.core.dependencies import get_current_user, get_db
+from app.main import app
 from app.models.project import Project
 from app.models.analytics import GscConnection
 from app.models.api_key import APIKey  # noqa: F401
 from app.models.article import Article
+from app.models.user import User, UserRole
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
 
@@ -30,6 +34,21 @@ SQLITE_COMPATIBLE_TABLES = [
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
+FAKE_USER_ID = uuid.uuid4()
+
+fake_user = User(
+    id=FAKE_USER_ID,
+    org_id=FAKE_ORG_ID,
+    email="test@fennex.ai",
+    hashed_password="hashed",
+    full_name="Test User",
+    role=UserRole.OWNER,
+    is_active=True,
+)
+
+
+async def override_get_current_user():
+    return fake_user
 
 
 @pytest.fixture(autouse=True)
@@ -50,6 +69,27 @@ async def setup_db():
 async def db_session():
     async with TestSessionLocal() as session:
         yield session
+
+
+async def override_get_db():
+    async with TestSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+@pytest.fixture
+async def client():
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -194,3 +234,89 @@ async def test_plagiarism_scan_matches_and_gate(db_session):
     with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=None)):
         with pytest.raises(cs.NoProvider):
             await cs.plagiarism_scan(p, art, db_session)
+
+
+# ── Task 4: /articles/{id}/{transform,chat,checks,plagiarism} router ───────
+
+@pytest.mark.asyncio
+async def test_transform_endpoint_200_400_404(client, db_session):
+    from app.services import writing_service as ws
+    p = await _mk_project(db_session)
+    art = await _mk_article(db_session, p)
+
+    with patch.object(ws, "get_org_llm_keys", new=AsyncMock(return_value={"anthropic": "k"})), \
+         patch.object(ws, "call_llm", new=AsyncMock(return_value="  Rewritten.  ")):
+        r = await client.post(f"/api/v1/articles/{art.id}/transform", json={"mode": "rephrase", "text": "hi"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"text": "Rewritten."}
+
+    r = await client.post(f"/api/v1/articles/{art.id}/transform", json={"mode": "bogus", "text": "hi"})
+    assert r.status_code == 400
+
+    r = await client.post(f"/api/v1/articles/{uuid.uuid4()}/transform", json={"mode": "rephrase", "text": "hi"})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_transform_endpoint_too_long_and_no_key(client, db_session):
+    from app.services import writing_service as ws
+    p = await _mk_project(db_session)
+    art = await _mk_article(db_session, p)
+
+    r = await client.post(f"/api/v1/articles/{art.id}/transform", json={"mode": "rephrase", "text": "x" * 6001})
+    assert r.status_code == 413
+
+    with patch.object(ws, "get_org_llm_keys", new=AsyncMock(return_value={})):
+        r = await client.post(f"/api/v1/articles/{art.id}/transform", json={"mode": "rephrase", "text": "hi"})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "No AI key configured. Add an Anthropic or OpenAI key in Settings."
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint(client, db_session):
+    from app.services import writing_service as ws
+    p = await _mk_project(db_session)
+    art = await _mk_article(db_session, p)
+
+    reply = "Sure.\n<draft>## Section\ncontent</draft>"
+    with patch.object(ws, "get_org_llm_keys", new=AsyncMock(return_value={"anthropic": "k"})), \
+         patch.object(ws, "call_llm", new=AsyncMock(return_value=reply)):
+        r = await client.post(f"/api/v1/articles/{art.id}/chat",
+                               json={"question": "Write it", "history": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["insertable"].startswith("## Section")
+    assert "<draft>" not in body["answer"]
+
+    r = await client.post(f"/api/v1/articles/{uuid.uuid4()}/chat", json={"question": "hi"})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_checks_endpoint_shape(client, db_session):
+    p = await _mk_project(db_session)
+    art = await _mk_article(db_session, p, body="# T\n\nIntro with menu digital.\n\n## H2\n\ncontent")
+
+    r = await client.post(f"/api/v1/articles/{art.id}/checks")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert isinstance(body["seo"], list) and len(body["seo"]) > 0
+    assert "score" in body["ai"] and "signals" in body["ai"] and "flagged" in body["ai"]
+
+    r = await client.post(f"/api/v1/articles/{uuid.uuid4()}/checks")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_plagiarism_endpoint_409_no_provider(client, db_session):
+    from app.services import checks_service as cs
+    p = await _mk_project(db_session)
+    art = await _mk_article(db_session, p)
+
+    with patch.object(cs, "get_seo_provider_for_org", new=AsyncMock(return_value=None)):
+        r = await client.post(f"/api/v1/articles/{art.id}/plagiarism")
+    assert r.status_code == 409
+    assert r.json()["detail"]["code"] == "no_seo_provider"
+
+    r = await client.post(f"/api/v1/articles/{uuid.uuid4()}/plagiarism")
+    assert r.status_code == 404
