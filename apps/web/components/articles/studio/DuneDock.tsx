@@ -33,6 +33,7 @@ interface DuneDockProps {
   body: string;
   onBodyChange: (val: string) => void;
   onInsert: (text: string) => void;
+  onApplyRevision: (markdown: string) => void;
   /** Mobile/narrow-viewport overlay state (ignored at `lg` and above, where the dock is always visible). */
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -62,6 +63,7 @@ export function DuneDock({
   body,
   onBodyChange,
   onInsert,
+  onApplyRevision,
   mobileOpen = false,
   onCloseMobile,
 }: DuneDockProps) {
@@ -125,7 +127,12 @@ export function DuneDock({
       {/* Tab content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "assistant" && (
-          <AssistantTab articleId={articleId} body={body} onInsert={onInsert} />
+          <AssistantTab
+            articleId={articleId}
+            body={body}
+            onInsert={onInsert}
+            onApplyRevision={onApplyRevision}
+          />
         )}
         {tab === "checks" && (
           <ChecksTab articleId={articleId} body={body} onBodyChange={onBodyChange} />

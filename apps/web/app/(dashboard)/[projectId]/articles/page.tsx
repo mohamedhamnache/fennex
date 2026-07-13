@@ -546,8 +546,9 @@ function ArticleEditor({
       updateArticle(articleId, patch),
     onSuccess: (updated) => {
       queryClient.setQueryData(["article", articleId], updated);
-      // Body/meta changes shift the SEO score; refresh the list so overview
-      // cards match the editor.
+      // Every edit shifts the SEO score: recompute it (editor chip + Meta tab)
+      // and refresh the overview cards so they match.
+      queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
@@ -588,8 +589,16 @@ function ArticleEditor({
   });
 
   function handleRestore(revisionBody: string) {
-    handleBodyChange(revisionBody);
+    // setMarkdown emits an update -> onChange -> handleBodyChange -> autosave.
+    richRef.current?.setMarkdown(revisionBody);
     success(t("articleStudio.restored"));
+  }
+
+  function handleApplyRevision(markdown: string) {
+    // Dune executed a whole-article edit: apply it (which autosaves and
+    // recomputes SEO), then flash the whole article to highlight the change.
+    richRef.current?.setMarkdown(markdown);
+    requestAnimationFrame(() => richRef.current?.flashAll());
   }
 
   function handleBodyChange(val: string) {
@@ -859,6 +868,7 @@ function ArticleEditor({
       body={body}
       onBodyChange={handleBodyChange}
       onInsert={(text) => richRef.current?.insertAtCursor(text)}
+      onApplyRevision={handleApplyRevision}
       mobileOpen={dockMobileOpen}
       onCloseMobile={onCloseDockMobile}
     />

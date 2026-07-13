@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Send, User, CornerDownLeft, ListTree, BarChart3, Sparkles, ListOrdered,
+  Send, User, CornerDownLeft, ListTree, BarChart3, Sparkles, ListOrdered, Wand2, Check,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -22,6 +22,8 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   insertable?: string | null;
+  revised?: string | null;
+  applied?: boolean;
 }
 
 function DuneAvatar({ size = 28 }: { size?: number }) {
@@ -57,6 +59,7 @@ interface AssistantTabProps {
   articleId: string;
   body: string;
   onInsert: (text: string) => void;
+  onApplyRevision: (markdown: string) => void;
 }
 
 /**
@@ -64,7 +67,7 @@ interface AssistantTabProps {
  * empty state with quick-start cards, richly styled message threads, and an
  * "insert at cursor" action on replies that carry draftable content.
  */
-export function AssistantTab({ articleId, body, onInsert }: AssistantTabProps) {
+export function AssistantTab({ articleId, body, onInsert, onApplyRevision }: AssistantTabProps) {
   const { t } = useTranslation();
   const { success: toastSuccess, error: toastError } = useToast();
   const dune = FENNEX_AGENTS.dune;
@@ -90,7 +93,7 @@ export function AssistantTab({ articleId, body, onInsert }: AssistantTabProps) {
       const result = await duneChat(articleId, trimmed, apiHistory, body);
       setHistory((prev) => [
         ...prev,
-        { role: "assistant", content: result.answer, insertable: result.insertable },
+        { role: "assistant", content: result.answer, insertable: result.insertable, revised: result.revised },
       ]);
     } catch (e) {
       toastError(e instanceof Error ? e.message : String(e));
@@ -110,6 +113,12 @@ export function AssistantTab({ articleId, body, onInsert }: AssistantTabProps) {
   function handleInsert(text: string) {
     onInsert(text);
     toastSuccess(t("articleStudio.assistant.inserted"));
+  }
+
+  function handleApply(index: number, markdown: string) {
+    onApplyRevision(markdown);
+    setHistory((prev) => prev.map((m, i) => (i === index ? { ...m, applied: true } : m)));
+    toastSuccess(t("articleStudio.assistant.applied"));
   }
 
   return (
@@ -188,13 +197,37 @@ export function AssistantTab({ articleId, body, onInsert }: AssistantTabProps) {
                     {msg.content}
                   </div>
                   {msg.role === "assistant" && msg.insertable && (
-                    <button
-                      onClick={() => handleInsert(msg.insertable as string)}
-                      className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
-                    >
-                      <CornerDownLeft className="h-3 w-3" />
-                      {t("articleStudio.assistant.insert")}
-                    </button>
+                    <div className="flex w-full max-w-[85%] flex-col gap-1.5 rounded-xl border border-primary/25 bg-primary/[0.04] p-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/80">
+                        {t("articleStudio.assistant.willInsert")}
+                      </p>
+                      <p className="line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
+                        {msg.insertable}
+                      </p>
+                      <button
+                        onClick={() => handleInsert(msg.insertable as string)}
+                        className="btn-primary flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px]"
+                      >
+                        <CornerDownLeft className="h-3 w-3" />
+                        {t("articleStudio.assistant.insert")}
+                      </button>
+                    </div>
+                  )}
+                  {msg.role === "assistant" && msg.revised && (
+                    msg.applied ? (
+                      <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-medium text-success">
+                        <Check className="h-3 w-3" />
+                        {t("articleStudio.assistant.applied")}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleApply(i, msg.revised as string)}
+                        className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-[11px]"
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        {t("articleStudio.assistant.apply")}
+                      </button>
+                    )
                   )}
                 </div>
               </div>

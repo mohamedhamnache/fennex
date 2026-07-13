@@ -2232,12 +2232,15 @@ export async function duneChat(
   question: string,
   history: { role: string; content: string }[],
   body?: string,
-): Promise<{ answer: string; insertable: string | null }> {
-  return apiClient.post<{ answer: string; insertable: string | null }>(`/articles/${articleId}/chat`, {
-    question,
-    history,
-    ...(body !== undefined ? { body } : {}),
-  });
+): Promise<{ answer: string; insertable: string | null; revised: string | null }> {
+  return apiClient.post<{ answer: string; insertable: string | null; revised: string | null }>(
+    `/articles/${articleId}/chat`,
+    {
+      question,
+      history,
+      ...(body !== undefined ? { body } : {}),
+    },
+  );
 }
 
 export interface ArticleRevision {

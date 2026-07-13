@@ -1433,7 +1433,10 @@
         "intro": "Rewrite the introduction so it hooks the reader faster and leads naturally into the rest of the article.",
         "listicle": "Restructure the key points of this article into a numbered listicle format."
       },
-      "starters": "Quick starts"
+      "starters": "Quick starts",
+      "apply": "Apply changes",
+      "applied": "Applied to the article",
+      "willInsert": "Dune will add"
     },
     "overview": {
       "heading": "Your articles",

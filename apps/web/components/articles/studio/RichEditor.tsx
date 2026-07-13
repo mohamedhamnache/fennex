@@ -19,6 +19,7 @@ export interface RichEditorHandle {
   getMarkdown: () => string;
   setMarkdown: (md: string) => void;
   insertAtCursor: (md: string) => void;
+  flashAll: () => void;
   focus: () => void;
 }
 
@@ -123,6 +124,12 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       editor.chain().focus().insertContent(md).run();
       const to = editor.state.selection.from;
       flash(Math.min(from, to), Math.max(from, to));
+      editor.commands.scrollIntoView();
+    },
+    flashAll: () => {
+      if (!editor) return;
+      const size = editor.state.doc.content.size;
+      if (size > 2) flash(1, size - 1);
     },
     focus: () => editor?.commands.focus(),
   }), [editor]);

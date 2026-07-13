@@ -1356,7 +1356,10 @@
         "intro": "Schreibe die Einleitung so um, dass sie die Leser schneller fesselt und natürlich in den Rest des Artikels überleitet.",
         "listicle": "Strukturiere die wichtigsten Punkte dieses Artikels in eine nummerierte Listicle-Form um."
       },
-      "starters": "Schnellstarts"
+      "starters": "Schnellstarts",
+      "apply": "Änderungen anwenden",
+      "applied": "Auf den Artikel angewendet",
+      "willInsert": "Dune fügt hinzu"
     },
     "overview": {
       "heading": "Deine Artikel",

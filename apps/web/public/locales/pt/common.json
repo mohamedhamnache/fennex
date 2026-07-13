@@ -1356,7 +1356,10 @@
         "intro": "Reescreva a introdução para prender o leitor mais rápido e conduzir naturalmente ao restante do artigo.",
         "listicle": "Reestruture os pontos principais deste artigo em formato de lista numerada."
       },
-      "starters": "Para começar"
+      "starters": "Para começar",
+      "apply": "Aplicar alterações",
+      "applied": "Aplicado ao artigo",
+      "willInsert": "Dune vai adicionar"
     },
     "overview": {
       "heading": "Seus artigos",
