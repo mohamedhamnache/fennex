@@ -1479,6 +1479,9 @@
       "empty": "No saved revisions yet. Save one to start a history.",
       "restore": "Restore",
       "note": "Revision"
-    }
+    },
+    "showChanges": "Show changes",
+    "hideChanges": "Hide changes",
+    "noChanges": "No changes to show."
   }
 }

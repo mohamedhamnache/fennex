@@ -1402,6 +1402,9 @@
       "empty": "Aucune révision enregistrée. Enregistrez-en une pour démarrer l'historique.",
       "restore": "Restaurer",
       "note": "Révision"
-    }
+    },
+    "showChanges": "Voir les modifications",
+    "hideChanges": "Masquer les modifications",
+    "noChanges": "Aucune modification à afficher."
   }
 }

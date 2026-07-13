@@ -315,6 +315,8 @@ input:focus, textarea:focus, select:focus {
 
 /* TipTap: transient flash decoration for Dune edits */
 .dune-flash { animation: editFlash 1.7s ease-out forwards; border-radius: 3px; padding: 0 1px; }
+/* TipTap: persistent "changed block" highlight, toggled by Show changes */
+.dune-changed { background-color: hsl(var(--primary) / 0.10); box-shadow: inset 2px 0 0 0 hsl(var(--primary) / 0.6); border-radius: 2px; padding: 0 1px; }
 
 /* TipTap: empty-doc placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {

@@ -1402,6 +1402,9 @@
       "empty": "Nenhuma revisão salva ainda. Salve uma para iniciar o histórico.",
       "restore": "Restaurar",
       "note": "Revisão"
-    }
+    },
+    "showChanges": "Ver alterações",
+    "hideChanges": "Ocultar alterações",
+    "noChanges": "Nenhuma alteração para mostrar."
   }
 }

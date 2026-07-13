@@ -14,6 +14,7 @@ import {
   Send,
   BookOpen,
   PenLine,
+  Eye,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -464,6 +465,8 @@ function ArticleEditor({
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [typing, setTyping] = useState(false);
+  const [preEditBody, setPreEditBody] = useState<string | null>(null);
+  const [showingChanges, setShowingChanges] = useState(false);
   const [revealCount, setRevealCount] = useState(0);
   const tokensRef = useRef<string[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -595,9 +598,23 @@ function ArticleEditor({
   }
 
   function handleApplyRevision(markdown: string) {
-    // Dune executed a whole-article edit. Apply it and flash ONLY the changed
-    // blocks (diff vs the current body); setContent autosaves + recomputes SEO.
+    // Dune executed a whole-article edit. Remember the pre-edit body (so the
+    // change can be reviewed later), apply it, and flash the changed blocks;
+    // setContent autosaves + recomputes SEO.
+    setPreEditBody(body);
+    setShowingChanges(false);
     richRef.current?.applyWithDiff(markdown, body);
+  }
+
+  function toggleChanges() {
+    if (showingChanges) {
+      richRef.current?.clearChanges();
+      setShowingChanges(false);
+    } else if (preEditBody !== null) {
+      const n = richRef.current?.highlightChanges(preEditBody) ?? 0;
+      if (n > 0) setShowingChanges(true);
+      else error(t("articleStudio.noChanges"));
+    }
   }
 
   function handleBodyChange(val: string) {
@@ -738,6 +755,22 @@ function ArticleEditor({
         {revisionMsg && <span className="text-xs text-emerald-500">{revisionMsg}</span>}
 
         <div className="ml-auto flex items-center gap-1.5">
+          {preEditBody !== null && (
+            <button
+              onClick={toggleChanges}
+              className={`flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                showingChanges
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-foreground hover:bg-accent"
+              }`}
+              title={showingChanges ? t("articleStudio.hideChanges") : t("articleStudio.showChanges")}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline">
+                {showingChanges ? t("articleStudio.hideChanges") : t("articleStudio.showChanges")}
+              </span>
+            </button>
+          )}
           {connectedProviders.length > 0 && (
             <>
               <select

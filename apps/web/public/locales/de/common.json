@@ -1402,6 +1402,9 @@
       "empty": "Noch keine Revisionen. Speichere eine, um den Verlauf zu starten.",
       "restore": "Wiederherstellen",
       "note": "Revision"
-    }
+    },
+    "showChanges": "Änderungen anzeigen",
+    "hideChanges": "Änderungen ausblenden",
+    "noChanges": "Keine Änderungen vorhanden."
   }
 }

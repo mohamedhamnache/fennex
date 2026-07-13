@@ -1402,6 +1402,9 @@
       "empty": "Aún no hay revisiones guardadas. Guarda una para iniciar el historial.",
       "restore": "Restaurar",
       "note": "Revisión"
-    }
+    },
+    "showChanges": "Ver cambios",
+    "hideChanges": "Ocultar cambios",
+    "noChanges": "No hay cambios para mostrar."
   }
 }

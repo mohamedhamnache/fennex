@@ -20,6 +20,8 @@ export interface RichEditorHandle {
   setMarkdown: (md: string) => void;
   insertAtCursor: (md: string) => void;
   applyWithDiff: (newMarkdown: string, oldMarkdown: string) => void;
+  highlightChanges: (oldMarkdown: string) => number;
+  clearChanges: () => void;
   focus: () => void;
 }
 
@@ -33,6 +35,25 @@ function normBlock(s: string): string {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+/** Ranges of block nodes in the editor whose text is new vs the old markdown. */
+function changedRanges(editor: Editor, oldMarkdown: string): { ranges: { from: number; to: number }[]; first: number } {
+  const oldBlocks = new Set(oldMarkdown.split(/\n{2,}/).map(normBlock).filter(Boolean));
+  const ranges: { from: number; to: number }[] = [];
+  let first = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isTextblock) {
+      const text = node.textContent.trim();
+      if (text && !oldBlocks.has(normBlock(text))) {
+        ranges.push({ from: pos + 1, to: pos + 1 + node.content.size });
+        if (first < 0) first = pos + 1;
+      }
+      return false;
+    }
+    return true;
+  });
+  return { ranges, first };
 }
 
 interface RichEditorProps {
@@ -140,33 +161,23 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
     },
     applyWithDiff: (newMarkdown: string, oldMarkdown: string) => {
       if (!editor) return;
-      const oldBlocks = new Set(
-        oldMarkdown.split(/\n{2,}/).map(normBlock).filter(Boolean),
-      );
       lastEmitted.current = newMarkdown;
       editor.commands.setContent(newMarkdown, true);
-      // Collect the inline ranges of block nodes whose text is new/changed.
-      const ranges: { from: number; to: number }[] = [];
-      let firstChanged = -1;
-      editor.state.doc.descendants((node, pos) => {
-        if (node.isTextblock) {
-          const text = node.textContent.trim();
-          if (text && !oldBlocks.has(normBlock(text))) {
-            ranges.push({ from: pos + 1, to: pos + 1 + node.content.size });
-            if (firstChanged < 0) firstChanged = pos + 1;
-          }
-          return false;
-        }
-        return true;
-      });
+      const { ranges, first } = changedRanges(editor, oldMarkdown);
       if (ranges.length) {
         editor.commands.flashRanges(ranges);
         window.setTimeout(() => editor?.commands.clearFlash(), FLASH_MS);
-        if (firstChanged >= 0) {
-          editor.chain().setTextSelection(firstChanged).scrollIntoView().run();
-        }
+        if (first >= 0) editor.chain().setTextSelection(first).scrollIntoView().run();
       }
     },
+    highlightChanges: (oldMarkdown: string) => {
+      if (!editor) return 0;
+      const { ranges, first } = changedRanges(editor, oldMarkdown);
+      editor.commands.setChangedRanges(ranges);
+      if (first >= 0) editor.chain().setTextSelection(first).scrollIntoView().run();
+      return ranges.length;
+    },
+    clearChanges: () => editor?.commands.clearChanged(),
     focus: () => editor?.commands.focus(),
   }), [editor]);
 

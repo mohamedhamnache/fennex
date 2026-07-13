@@ -3,9 +3,10 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 /**
- * Transient "flash" highlight for text Dune just wrote/rewrote. Implemented as
- * a ProseMirror decoration (view-only), so it never serializes into the stored
- * markdown. Call flashRange(from, to) then clearFlash() after the animation.
+ * Change highlighting for Dune edits, as ProseMirror decorations (view-only,
+ * never serialized into the stored markdown). Two independent layers:
+ * - flash: a transient wash on text Dune just wrote/rewrote (auto-cleared).
+ * - persist: a lasting highlight on changed blocks, toggled by "Show changes".
  */
 export const flashKey = new PluginKey("duneFlash");
 
@@ -21,8 +22,22 @@ declare module "@tiptap/core" {
       flashRange: (from: number, to: number) => ReturnType;
       flashRanges: (ranges: FlashRange[]) => ReturnType;
       clearFlash: () => ReturnType;
+      setChangedRanges: (ranges: FlashRange[]) => ReturnType;
+      clearChanged: () => ReturnType;
     };
   }
+}
+
+interface FlashState {
+  flash: DecorationSet;
+  persist: DecorationSet;
+}
+
+function decos(doc: import("@tiptap/pm/model").Node, ranges: FlashRange[], cls: string) {
+  return DecorationSet.create(
+    doc,
+    ranges.filter((r) => r.to > r.from).map((r) => Decoration.inline(r.from, r.to, { class: cls })),
+  );
 }
 
 export const FlashHighlight = Extension.create({
@@ -30,25 +45,28 @@ export const FlashHighlight = Extension.create({
 
   addProseMirrorPlugins() {
     return [
-      new Plugin({
+      new Plugin<FlashState>({
         key: flashKey,
         state: {
-          init: () => DecorationSet.empty,
+          init: () => ({ flash: DecorationSet.empty, persist: DecorationSet.empty }),
           apply(tr, old) {
+            let flash = old.flash.map(tr.mapping, tr.doc);
+            let persist = old.persist.map(tr.mapping, tr.doc);
             const meta = tr.getMeta(flashKey);
-            if (meta?.clear) return DecorationSet.empty;
-            if (meta?.ranges) {
-              const decos = (meta.ranges as FlashRange[])
-                .filter((r) => r.to > r.from)
-                .map((r) => Decoration.inline(r.from, r.to, { class: "dune-flash" }));
-              return DecorationSet.create(tr.doc, decos);
+            if (meta) {
+              if (meta.clearFlash) flash = DecorationSet.empty;
+              if (meta.flash) flash = decos(tr.doc, meta.flash, "dune-flash");
+              if (meta.clearPersist) persist = DecorationSet.empty;
+              if (meta.persist) persist = decos(tr.doc, meta.persist, "dune-changed");
             }
-            return old.map(tr.mapping, tr.doc);
+            return { flash, persist };
           },
         },
         props: {
           decorations(state) {
-            return flashKey.getState(state);
+            const s = flashKey.getState(state) as FlashState | undefined;
+            if (!s) return null;
+            return s.flash.add(state.doc, s.persist.find());
           },
         },
       }),
@@ -60,19 +78,31 @@ export const FlashHighlight = Extension.create({
       flashRange:
         (from: number, to: number) =>
         ({ tr, dispatch }) => {
-          if (dispatch) dispatch(tr.setMeta(flashKey, { ranges: [{ from, to }] }));
+          if (dispatch) dispatch(tr.setMeta(flashKey, { flash: [{ from, to }] }));
           return true;
         },
       flashRanges:
         (ranges: FlashRange[]) =>
         ({ tr, dispatch }) => {
-          if (dispatch) dispatch(tr.setMeta(flashKey, { ranges }));
+          if (dispatch) dispatch(tr.setMeta(flashKey, { flash: ranges }));
           return true;
         },
       clearFlash:
         () =>
         ({ tr, dispatch }) => {
-          if (dispatch) dispatch(tr.setMeta(flashKey, { clear: true }));
+          if (dispatch) dispatch(tr.setMeta(flashKey, { clearFlash: true }));
+          return true;
+        },
+      setChangedRanges:
+        (ranges: FlashRange[]) =>
+        ({ tr, dispatch }) => {
+          if (dispatch) dispatch(tr.setMeta(flashKey, { persist: ranges }));
+          return true;
+        },
+      clearChanged:
+        () =>
+        ({ tr, dispatch }) => {
+          if (dispatch) dispatch(tr.setMeta(flashKey, { clearPersist: true }));
           return true;
         },
     };
