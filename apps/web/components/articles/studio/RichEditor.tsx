@@ -173,7 +173,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
     highlightChanges: (oldMarkdown: string) => {
       if (!editor) return 0;
       const { ranges, first } = changedRanges(editor, oldMarkdown);
-      editor.commands.setChangedRanges(ranges);
+      editor.commands.setChangedRanges(ranges, t("articleStudio.changeTooltip"));
       if (first >= 0) editor.chain().setTextSelection(first).scrollIntoView().run();
       return ranges.length;
     },

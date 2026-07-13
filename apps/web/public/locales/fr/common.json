@@ -1359,7 +1359,8 @@
       "starters": "Pour démarrer",
       "apply": "Appliquer les modifications",
       "applied": "Appliqué à l'article",
-      "willInsert": "Dune ajoutera"
+      "willInsert": "Dune ajoutera",
+      "shrinkWarn": "Dune a renvoyé un article bien plus court que l'actuel. L'appliquer remplacera tout l'article. Continuer ?"
     },
     "overview": {
       "heading": "Vos articles",
@@ -1405,6 +1406,8 @@
     },
     "showChanges": "Voir les modifications",
     "hideChanges": "Masquer les modifications",
-    "noChanges": "Aucune modification à afficher."
+    "noChanges": "Aucune modification à afficher.",
+    "changeTooltip": "Modifié par Dune",
+    "reviewingChanges": "Révision des modifications de Dune · {{count}} surlignées"
   }
 }

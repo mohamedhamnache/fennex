@@ -22,7 +22,7 @@ declare module "@tiptap/core" {
       flashRange: (from: number, to: number) => ReturnType;
       flashRanges: (ranges: FlashRange[]) => ReturnType;
       clearFlash: () => ReturnType;
-      setChangedRanges: (ranges: FlashRange[]) => ReturnType;
+      setChangedRanges: (ranges: FlashRange[], title?: string) => ReturnType;
       clearChanged: () => ReturnType;
     };
   }
@@ -33,10 +33,11 @@ interface FlashState {
   persist: DecorationSet;
 }
 
-function decos(doc: import("@tiptap/pm/model").Node, ranges: FlashRange[], cls: string) {
+function decos(doc: import("@tiptap/pm/model").Node, ranges: FlashRange[], cls: string, title?: string) {
+  const attrs = title ? { class: cls, title } : { class: cls };
   return DecorationSet.create(
     doc,
-    ranges.filter((r) => r.to > r.from).map((r) => Decoration.inline(r.from, r.to, { class: cls })),
+    ranges.filter((r) => r.to > r.from).map((r) => Decoration.inline(r.from, r.to, attrs)),
   );
 }
 
@@ -57,7 +58,7 @@ export const FlashHighlight = Extension.create({
               if (meta.clearFlash) flash = DecorationSet.empty;
               if (meta.flash) flash = decos(tr.doc, meta.flash, "dune-flash");
               if (meta.clearPersist) persist = DecorationSet.empty;
-              if (meta.persist) persist = decos(tr.doc, meta.persist, "dune-changed");
+              if (meta.persist) persist = decos(tr.doc, meta.persist, "dune-changed", meta.persistTitle);
             }
             return { flash, persist };
           },
@@ -94,9 +95,9 @@ export const FlashHighlight = Extension.create({
           return true;
         },
       setChangedRanges:
-        (ranges: FlashRange[]) =>
+        (ranges: FlashRange[], title?: string) =>
         ({ tr, dispatch }) => {
-          if (dispatch) dispatch(tr.setMeta(flashKey, { persist: ranges }));
+          if (dispatch) dispatch(tr.setMeta(flashKey, { persist: ranges, persistTitle: title }));
           return true;
         },
       clearChanged:

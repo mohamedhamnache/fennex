@@ -1359,7 +1359,8 @@
       "starters": "Para empezar",
       "apply": "Aplicar cambios",
       "applied": "Aplicado al artículo",
-      "willInsert": "Dune añadirá"
+      "willInsert": "Dune añadirá",
+      "shrinkWarn": "Dune devolvió un artículo mucho más corto que el actual. Aplicarlo reemplazará todo el artículo. ¿Continuar?"
     },
     "overview": {
       "heading": "Tus artículos",
@@ -1405,6 +1406,8 @@
     },
     "showChanges": "Ver cambios",
     "hideChanges": "Ocultar cambios",
-    "noChanges": "No hay cambios para mostrar."
+    "noChanges": "No hay cambios para mostrar.",
+    "changeTooltip": "Modificado por Dune",
+    "reviewingChanges": "Revisando los cambios de Dune · {{count}} resaltados"
   }
 }

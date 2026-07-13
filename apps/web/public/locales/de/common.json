@@ -1359,7 +1359,8 @@
       "starters": "Schnellstarts",
       "apply": "Änderungen anwenden",
       "applied": "Auf den Artikel angewendet",
-      "willInsert": "Dune fügt hinzu"
+      "willInsert": "Dune fügt hinzu",
+      "shrinkWarn": "Dune hat einen viel kürzeren Artikel als den aktuellen geliefert. Das Anwenden ersetzt den gesamten Artikel. Fortfahren?"
     },
     "overview": {
       "heading": "Deine Artikel",
@@ -1405,6 +1406,8 @@
     },
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",
-    "noChanges": "Keine Änderungen vorhanden."
+    "noChanges": "Keine Änderungen vorhanden.",
+    "changeTooltip": "Von Dune geändert",
+    "reviewingChanges": "Dunes Änderungen prüfen · {{count}} hervorgehoben"
   }
 }

@@ -1436,7 +1436,8 @@
       "starters": "Quick starts",
       "apply": "Apply changes",
       "applied": "Applied to the article",
-      "willInsert": "Dune will add"
+      "willInsert": "Dune will add",
+      "shrinkWarn": "Dune returned a much shorter article than the current one. Applying it will replace the full article. Continue?"
     },
     "overview": {
       "heading": "Your articles",
@@ -1482,6 +1483,8 @@
     },
     "showChanges": "Show changes",
     "hideChanges": "Hide changes",
-    "noChanges": "No changes to show."
+    "noChanges": "No changes to show.",
+    "changeTooltip": "Changed by Dune",
+    "reviewingChanges": "Reviewing Dune's changes · {{count}} highlighted"
   }
 }

@@ -467,6 +467,7 @@ function ArticleEditor({
   const [typing, setTyping] = useState(false);
   const [preEditBody, setPreEditBody] = useState<string | null>(null);
   const [showingChanges, setShowingChanges] = useState(false);
+  const [changedCount, setChangedCount] = useState(0);
   const [revealCount, setRevealCount] = useState(0);
   const tokensRef = useRef<string[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -598,9 +599,15 @@ function ArticleEditor({
   }
 
   function handleApplyRevision(markdown: string) {
-    // Dune executed a whole-article edit. Remember the pre-edit body (so the
-    // change can be reviewed later), apply it, and flash the changed blocks;
-    // setContent autosaves + recomputes SEO.
+    // Guard against a fragment replacing the whole article: if Dune returned
+    // something far shorter than the current draft, confirm before applying.
+    const oldWords = body.trim().split(/\s+/).filter(Boolean).length;
+    const newWords = markdown.trim().split(/\s+/).filter(Boolean).length;
+    if (oldWords > 150 && newWords < oldWords * 0.5) {
+      if (!window.confirm(t("articleStudio.assistant.shrinkWarn"))) return;
+    }
+    // Remember the pre-edit body (so the change can be reviewed later), apply
+    // it, and flash the changed blocks; setContent autosaves + recomputes SEO.
     setPreEditBody(body);
     setShowingChanges(false);
     richRef.current?.applyWithDiff(markdown, body);
@@ -612,8 +619,12 @@ function ArticleEditor({
       setShowingChanges(false);
     } else if (preEditBody !== null) {
       const n = richRef.current?.highlightChanges(preEditBody) ?? 0;
-      if (n > 0) setShowingChanges(true);
-      else error(t("articleStudio.noChanges"));
+      if (n > 0) {
+        setChangedCount(n);
+        setShowingChanges(true);
+      } else {
+        error(t("articleStudio.noChanges"));
+      }
     }
   }
 
@@ -839,6 +850,22 @@ function ArticleEditor({
           <div className="mx-auto w-full max-w-3xl rounded-xl border border-border bg-card/40 p-3">
             <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
           </div>
+        </div>
+      )}
+
+      {/* Reviewing-changes banner */}
+      {showingChanges && (
+        <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/[0.06] px-5 py-2 animate-fade-in">
+          <Eye className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <p className="flex-1 text-xs font-medium text-primary">
+            {t("articleStudio.reviewingChanges", { count: changedCount })}
+          </p>
+          <button
+            onClick={toggleChanges}
+            className="rounded-lg border border-primary/30 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            {t("articleStudio.hideChanges")}
+          </button>
         </div>
       )}
 

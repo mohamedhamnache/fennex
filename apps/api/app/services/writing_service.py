@@ -68,12 +68,17 @@ async def chat(project, article, question: str, history: list[dict], db, live_bo
               "- If the user asks you to INSERT a specific new passage, wrap exactly that passage in "
               "<draft></draft> tags (markdown inside).\n"
               "- If the user asks you to CHANGE, OPTIMIZE, REWRITE, RESTRUCTURE, FIX or IMPROVE the article "
-              "itself (e.g. 'optimize the SEO of this article', 'make the intro stronger', 'add an FAQ'), you "
+              "itself (e.g. 'optimize the SEO of this article', 'rewrite the introduction', 'add an FAQ'), you "
               "MUST EXECUTE it: give a one- or two-sentence summary of what you changed, then output the "
-              "COMPLETE revised article in clean markdown wrapped in <article></article> tags. Apply your full "
-              "SEO skill set (intent, headings, keyword placement, structure, snippet answer, FAQ) and keep "
-              "everything that was already good. Never output <article> unless you are actually rewriting the "
-              "article. Keep the chat message itself short.")
+              "revised article in clean markdown wrapped in <article></article> tags.\n"
+              "  CRITICAL: the <article> block must ALWAYS contain the ENTIRE article - the full H1 and every "
+              "section from beginning to end. When the request targets ONE part (e.g. 'rewrite the "
+              "introduction', 'fix the second heading'), change ONLY that part and reproduce EVERY other "
+              "section EXACTLY as it already is, word for word. NEVER return only the changed section. NEVER "
+              "drop, summarize or shorten content the user did not ask you to remove. If you are unsure which "
+              "part to touch, change as little as possible.\n"
+              "Never output <article> unless you are actually rewriting the article. Keep the chat message "
+              "itself short.")
     convo = "".join(f"{t.get('role', 'user')}: {t.get('content', '')}\n" for t in (history or [])[-7:])
     user = (f"PROJECT: {project.name}" + (f"\nPROFILE: {profile}" if profile else "") +
             f"\nARTICLE: {article.title} (keyword: {article.target_keyword or '-'})\n"
