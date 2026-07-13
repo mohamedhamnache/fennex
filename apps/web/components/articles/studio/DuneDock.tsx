@@ -94,7 +94,7 @@ export function DuneDock({
         )}
       </div>
 
-      {/* Segmented tab control */}
+      {/* Segmented tab control — active tab expands to show its label */}
       <div className="px-3 pt-3">
         <div className="flex gap-1 rounded-xl border border-border bg-muted/40 p-1">
           {tabs.map((tabKey) => {
@@ -104,14 +104,18 @@ export function DuneDock({
               <button
                 key={tabKey}
                 onClick={() => setTab(tabKey)}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all ${
+                title={t(`articleStudio.dock.tabs.${tabKey}`)}
+                aria-label={t(`articleStudio.dock.tabs.${tabKey}`)}
+                className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-medium transition-all ${
                   active
-                    ? "bg-card text-primary shadow-sm ring-1 ring-primary/20"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "flex-1 bg-card px-2.5 text-primary shadow-sm ring-1 ring-primary/20"
+                    : "shrink-0 px-2 text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t(`articleStudio.dock.tabs.${tabKey}`)}</span>
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {active && (
+                  <span className="truncate">{t(`articleStudio.dock.tabs.${tabKey}`)}</span>
+                )}
               </button>
             );
           })}
