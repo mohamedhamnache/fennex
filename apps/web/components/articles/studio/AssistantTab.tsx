@@ -88,7 +88,7 @@ export function AssistantTab({ articleId, body, onBodyChange, cursorPosition }: 
     setHistory(nextHistory);
     try {
       const apiHistory = history.map((m) => ({ role: m.role, content: m.content }));
-      const result = await duneChat(articleId, trimmed, apiHistory);
+      const result = await duneChat(articleId, trimmed, apiHistory, body);
       setHistory((prev) => [
         ...prev,
         { role: "assistant", content: result.answer, insertable: result.insertable },

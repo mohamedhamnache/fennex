@@ -248,6 +248,33 @@ async def save_revision(
     return {"revision_id": str(revision.id), "created_at": revision.created_at.isoformat()}
 
 
+@router.get("/{article_id}/revisions")
+async def list_revisions(
+    article_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Revision history (newest first) for the studio's commit-style timeline."""
+    article = await _get_article_or_404(article_id, current_user.org_id, db)
+    result = await db.execute(
+        select(ArticleRevision)
+        .where(ArticleRevision.article_id == article.id)
+        .order_by(ArticleRevision.created_at.desc())
+        .limit(50)
+    )
+    revisions = result.scalars().all()
+    return [
+        {
+            "id": str(r.id),
+            "note": r.note,
+            "word_count": r.word_count,
+            "body_markdown": r.body_markdown,
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in revisions
+    ]
+
+
 @router.get("/{article_id}/seo-score")
 async def get_seo_score(
     article_id: uuid.UUID,

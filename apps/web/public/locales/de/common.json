@@ -1390,6 +1390,15 @@
       "signals": "Ranking-Signale",
       "metaTitleHint": "50–60 Zeichen sind ideal",
       "metaDescHint": "150–160 Zeichen sind ideal"
+    },
+    "writing": "Dune schreibt…",
+    "restored": "Revision wiederhergestellt.",
+    "revisions": {
+      "title": "Revisionen",
+      "current": "Aktueller Entwurf",
+      "empty": "Noch keine Revisionen. Speichere eine, um den Verlauf zu starten.",
+      "restore": "Wiederherstellen",
+      "note": "Revision"
     }
   }
 }

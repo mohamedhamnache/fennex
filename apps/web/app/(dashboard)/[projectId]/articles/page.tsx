@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Send,
   BookOpen,
+  PenLine,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -32,7 +33,7 @@ import {
   type PublishingConnection,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-import { DocumentsRail } from "@/components/articles/studio/DocumentsRail";
+import { RevisionsRail } from "@/components/articles/studio/RevisionsRail";
 import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { SelectionBar } from "@/components/articles/studio/SelectionBar";
@@ -417,16 +418,26 @@ function ArticleEditor({
   onShowDocuments,
   onShowAssistantPanel,
   onBackToOverview,
+  onNewArticle,
   dockMobileOpen,
   onCloseDockMobile,
+  railMobileOpen,
+  onCloseRailMobile,
+  animateOnLoad = false,
+  onAnimated,
 }: {
   articleId: string;
   projectId: string;
   onShowDocuments: () => void;
   onShowAssistantPanel: () => void;
   onBackToOverview: () => void;
+  onNewArticle: () => void;
   dockMobileOpen: boolean;
   onCloseDockMobile: () => void;
+  railMobileOpen: boolean;
+  onCloseRailMobile: () => void;
+  animateOnLoad?: boolean;
+  onAnimated?: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -458,8 +469,10 @@ function ArticleEditor({
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number | null>(null);
   const [highlight, setHighlight] = useState<{ start: number; end: number } | null>(null);
+  const [typing, setTyping] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialized = useRef(false);
   const prevStatusRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -478,22 +491,58 @@ function ArticleEditor({
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      if (typingTimerRef.current) clearInterval(typingTimerRef.current);
     };
   }, []);
 
+  // Reveal text into the editor with a typewriter effect (used when Dune
+  // finishes generating an article).
+  function playTypewriter(text: string) {
+    if (typingTimerRef.current) clearInterval(typingTimerRef.current);
+    initialized.current = true;
+    setTab("edit");
+    setHighlight(null);
+    setTyping(true);
+    setBody("");
+    const total = text.length;
+    const ticks = 55;
+    const step = Math.max(1, Math.ceil(total / ticks));
+    let i = 0;
+    typingTimerRef.current = setInterval(() => {
+      i += step;
+      if (i >= total) {
+        setBody(text);
+        setTyping(false);
+        if (typingTimerRef.current) clearInterval(typingTimerRef.current);
+        typingTimerRef.current = null;
+        return;
+      }
+      setBody(text.slice(0, i));
+      const el = textareaRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 45);
+  }
+
   useEffect(() => {
     if (!article) return;
-    if (prevStatusRef.current === "generating" && article.status !== "generating") {
-      initialized.current = false;
-    }
+    const justFinishedGenerating =
+      prevStatusRef.current === "generating" && article.status !== "generating";
     prevStatusRef.current = article.status;
-    if (!initialized.current) {
+
+    if (!initialized.current || justFinishedGenerating) {
       initialized.current = true;
-      setBody(article.body_markdown ?? "");
       setTitle(article.title);
       setMetaTitle(article.meta_title ?? "");
       setMetaDesc(article.meta_description ?? "");
+      const text = article.body_markdown ?? "";
+      if ((justFinishedGenerating || animateOnLoad) && text.length > 0) {
+        playTypewriter(text);
+        onAnimated?.();
+      } else {
+        setBody(text);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article]);
 
   const updateMutation = useMutation({
@@ -520,8 +569,13 @@ function ArticleEditor({
       ),
     onSuccess: (updated) => {
       queryClient.setQueryData(["article", articleId], updated);
-      setBody(updated.body_markdown ?? "");
+      if (updated.body_markdown) {
+        playTypewriter(updated.body_markdown);
+      } else {
+        setBody("");
+      }
       queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
+      queryClient.invalidateQueries({ queryKey: ["article-revisions", articleId] });
       success(t("articles.toast.regenerated"));
     },
     onError: () => error(t("articles.toast.regenerateError")),
@@ -530,11 +584,17 @@ function ArticleEditor({
   const revisionMutation = useMutation({
     mutationFn: () => saveRevision(articleId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["article-revisions", articleId] });
       setRevisionMsg(t("articles.toast.revisionSaved"));
       setTimeout(() => setRevisionMsg(null), 2500);
     },
     onError: () => error(t("articles.toast.revisionError")),
   });
+
+  function handleRestore(revisionBody: string) {
+    handleBodyChange(revisionBody);
+    success(t("articleStudio.restored"));
+  }
 
   function handleBodyChange(val: string, highlightRange?: { start: number; end: number }) {
     setBody(val);
@@ -646,6 +706,17 @@ function ArticleEditor({
 
   return (
     <>
+    <RevisionsRail
+      articleId={articleId}
+      currentWordCount={wordCount}
+      onBackToOverview={onBackToOverview}
+      onNewArticle={onNewArticle}
+      onSaveRevision={() => revisionMutation.mutate()}
+      isSavingRevision={revisionMutation.isPending}
+      onRestore={handleRestore}
+      mobileOpen={railMobileOpen}
+      onCloseMobile={onCloseRailMobile}
+    />
     <div className="glass flex h-full flex-1 min-w-0 flex-col overflow-hidden">
       {/* Title row */}
       <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
@@ -843,6 +914,7 @@ function ArticleEditor({
               <textarea
                 ref={textareaRef}
                 value={body}
+                readOnly={typing || article.status === "generating"}
                 onChange={(e) => handleBodyChange(e.target.value)}
                 onSelect={handleSelectionChange}
                 onKeyUp={handleSelectionChange}
@@ -854,6 +926,23 @@ function ArticleEditor({
                 className="absolute inset-0 h-full w-full resize-none overflow-auto border-0 bg-transparent p-0 text-[15px] leading-[1.8] text-foreground focus:outline-none"
                 placeholder={t("articles.editor.bodyPlaceholder")}
               />
+
+              {/* Dune-is-writing indicator */}
+              {(typing || article.status === "generating") && (
+                <div className="pointer-events-none absolute right-2 top-2 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card/90 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm backdrop-blur animate-fade-in">
+                  <PenLine className="h-3 w-3 animate-pulse-dot" /> {t("articleStudio.writing")}
+                </div>
+              )}
+
+              {/* Full generating state (before the first token lands) */}
+              {article.status === "generating" && !body && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary animate-pulse-dot">
+                    <PenLine className="h-6 w-6 text-white" strokeWidth={1.9} />
+                  </span>
+                  <p className="text-sm font-medium text-foreground">{t("articleStudio.writing")}</p>
+                </div>
+              )}
             </div>
           ) : (
             <div
@@ -905,6 +994,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   const { success, error } = useToast();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [animateId, setAnimateId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [railMobileOpen, setRailMobileOpen] = useState(false);
   const [dockMobileOpen, setDockMobileOpen] = useState(false);
@@ -943,6 +1033,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   function handleCreated(article: Article) {
     setShowModal(false);
     queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
+    setAnimateId(article.id);
     setSelectedId(article.id);
   }
 
@@ -952,22 +1043,6 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     <div className="flex h-[calc(100vh-88px)] flex-col animate-fade-in">
       {selectedArticle ? (
         <div className="flex min-h-0 flex-1 gap-4">
-          <DocumentsRail
-            articles={articles}
-            isLoading={isLoading}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onNewArticle={() => setShowModal(true)}
-            onBackToOverview={() => setSelectedId(null)}
-            onRegenerate={(id) => generateMutation.mutate(id)}
-            onDelete={(id) => {
-              deleteMutation.mutate(id);
-              if (id === selectedId) setSelectedId(null);
-            }}
-            mobileOpen={railMobileOpen}
-            onCloseMobile={() => setRailMobileOpen(false)}
-          />
-
           <ArticleEditor
             key={selectedArticle.id}
             articleId={selectedArticle.id}
@@ -975,8 +1050,13 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             onShowDocuments={() => setRailMobileOpen(true)}
             onShowAssistantPanel={() => setDockMobileOpen(true)}
             onBackToOverview={() => setSelectedId(null)}
+            onNewArticle={() => setShowModal(true)}
             dockMobileOpen={dockMobileOpen}
             onCloseDockMobile={() => setDockMobileOpen(false)}
+            railMobileOpen={railMobileOpen}
+            onCloseRailMobile={() => setRailMobileOpen(false)}
+            animateOnLoad={animateId === selectedArticle.id}
+            onAnimated={() => setAnimateId(null)}
           />
         </div>
       ) : (

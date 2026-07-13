@@ -1467,6 +1467,15 @@
       "signals": "Ranking signals",
       "metaTitleHint": "50–60 characters is ideal",
       "metaDescHint": "150–160 characters is ideal"
+    },
+    "writing": "Dune is writing…",
+    "restored": "Revision restored.",
+    "revisions": {
+      "title": "Revisions",
+      "current": "Current draft",
+      "empty": "No saved revisions yet. Save one to start a history.",
+      "restore": "Restore",
+      "note": "Revision"
     }
   }
 }

@@ -49,19 +49,23 @@ async def transform(project, mode: str, text: str, db) -> str:
 _DRAFT_RE = re.compile(r"<draft>(.*?)</draft>", re.S)
 
 
-async def chat(project, article, question: str, history: list[dict], db) -> dict:
+async def chat(project, article, question: str, history: list[dict], db, live_body: str | None = None) -> dict:
     keys = await get_org_llm_keys(project.org_id, db)
     pm = _pick(keys)
     if pm is None:
         raise RuntimeError("no_ai_key")
     from app.services.ai_analytics_service import project_profile
     profile = await project_profile(project.id, db)
-    excerpt = (article.body_markdown or "")[:3000]
+    # Prefer the live editor content (unsaved edits) when provided, so Dune
+    # always reasons about exactly what the writer is looking at.
+    source = live_body if live_body is not None else (article.body_markdown or "")
+    excerpt = source[:6000]
     system = (agent_persona("dune") +
               "You are the writing co-pilot inside the article studio. Converse naturally: "
               "answer questions, research angles from the provided data, and draft content on request. "
-              "When your reply contains text meant to be inserted into the article, wrap exactly that "
-              "text in <draft></draft> tags (markdown inside). Keep answers tight.")
+              "You can see the writer's current draft below - ground every answer in it and refer to "
+              "its actual sections. When your reply contains text meant to be inserted into the article, "
+              "wrap exactly that text in <draft></draft> tags (markdown inside). Keep answers tight.")
     convo = "".join(f"{t.get('role', 'user')}: {t.get('content', '')}\n" for t in (history or [])[-7:])
     user = (f"PROJECT: {project.name}" + (f"\nPROFILE: {profile}" if profile else "") +
             f"\nARTICLE: {article.title} (keyword: {article.target_keyword or '-'})\n"

@@ -2231,11 +2231,25 @@ export async function duneChat(
   articleId: string,
   question: string,
   history: { role: string; content: string }[],
+  body?: string,
 ): Promise<{ answer: string; insertable: string | null }> {
   return apiClient.post<{ answer: string; insertable: string | null }>(`/articles/${articleId}/chat`, {
     question,
     history,
+    ...(body !== undefined ? { body } : {}),
   });
+}
+
+export interface ArticleRevision {
+  id: string;
+  note: string | null;
+  word_count: number;
+  body_markdown: string;
+  created_at: string;
+}
+
+export async function listArticleRevisions(articleId: string): Promise<ArticleRevision[]> {
+  return apiClient.get<ArticleRevision[]>(`/articles/${articleId}/revisions`);
 }
 
 export async function runArticleChecks(articleId: string): Promise<{ seo: SeoCheck[]; ai: AiPatternReport }> {

@@ -1390,6 +1390,15 @@
       "signals": "Sinais de ranqueamento",
       "metaTitleHint": "50–60 caracteres é o ideal",
       "metaDescHint": "150–160 caracteres é o ideal"
+    },
+    "writing": "Dune está escrevendo…",
+    "restored": "Revisão restaurada.",
+    "revisions": {
+      "title": "Revisões",
+      "current": "Rascunho atual",
+      "empty": "Nenhuma revisão salva ainda. Salve uma para iniciar o histórico.",
+      "restore": "Restaurar",
+      "note": "Revisão"
     }
   }
 }

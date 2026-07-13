@@ -26,6 +26,7 @@ class TransformResponse(BaseModel):
 class ChatRequest(BaseModel):
     question: str
     history: list[dict] | None = None
+    body: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -72,7 +73,9 @@ async def transform_selection(article_id: uuid.UUID, body: TransformRequest, cur
 async def studio_chat(article_id: uuid.UUID, body: ChatRequest, current_user: CurrentUser, db: DB):
     article, project = await _load_article_and_project(article_id, current_user, db)
     try:
-        result = await writing_service.chat(project, article, body.question, body.history or [], db)
+        result = await writing_service.chat(
+            project, article, body.question, body.history or [], db, live_body=body.body
+        )
     except RuntimeError as e:
         if str(e) == "no_ai_key":
             raise HTTPException(status.HTTP_400_BAD_REQUEST, NO_AI_KEY_MESSAGE)
