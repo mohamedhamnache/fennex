@@ -62,7 +62,8 @@
     "viewAll": "Voir tout →",
     "previousPage": "← Précédent",
     "nextPage": "Suivant →",
-    "page": "Page {{n}}"
+    "page": "Page {{n}}",
+    "close": "Fermer"
   },
   "auth": {
     "welcomeBack": "Bon retour",
@@ -229,7 +230,8 @@
       "words": "mots",
       "bodyPlaceholder": "Commencez à écrire en Markdown…",
       "metaTitlePlaceholder": "Titre SEO…",
-      "metaDescPlaceholder": "Brève description de la page…"
+      "metaDescPlaceholder": "Brève description de la page…",
+      "imageSuggestions": "Idées d'images"
     },
     "newArticleModal": {
       "title": "Nouvel article",
@@ -1264,6 +1266,88 @@
         "Agrandir 2x",
         "Rééclairer depuis le haut"
       ]
+    }
+  },
+  "articleStudio": {
+    "dock": {
+      "title": "Dune - votre co-rédacteur",
+      "tabs": {
+        "assistant": "Assistant",
+        "optimize": "Optimiser",
+        "checks": "Vérifications",
+        "meta": "Méta"
+      }
+    },
+    "emptyTitle": "Écrivez quelque chose qui mérite d'être bien classé",
+    "emptyBody": "Choisissez un article dans la liste ou commencez un nouveau brouillon. Dune fait les recherches, rédige et peaufine à vos côtés.",
+    "search": "Rechercher des articles...",
+    "showDocuments": "Afficher les documents",
+    "showAssistantPanel": "Afficher le panneau assistant",
+    "confirmDelete": "Supprimer cet article ? Cette action est irréversible.",
+    "readingTime": "{{min}} min de lecture",
+    "words": "{{count}} mots",
+    "selection": {
+      "rephrase": "Reformuler",
+      "simplify": "Simplifier",
+      "expand": "Développer",
+      "shorten": "Raccourcir",
+      "humanize": "Humaniser",
+      "hint": "Sélectionnez du texte dans l'éditeur pour le réécrire.",
+      "tooLong": "La sélection est trop longue (6 000 caractères max).",
+      "original": "Original",
+      "suggestion": "Suggestion de Dune",
+      "replace": "Remplacer",
+      "discard": "Ignorer",
+      "stale": "Le texte a changé depuis cette suggestion - resélectionnez et réessayez."
+    },
+    "checks": {
+      "run": "Lancer les vérifications",
+      "aiScore": "Score de motifs IA",
+      "heuristic": "Estimation heuristique, pas un verdict de détecteur - à utiliser comme simple signal d'écriture.",
+      "scan": "Analyser l'originalité",
+      "checked": "{{count}} passages vérifiés",
+      "original": "Aucune correspondance trouvée - votre texte semble original.",
+      "stale": "Cette phrase a changé depuis cette suggestion - relancez les vérifications et réessayez.",
+      "humanize": "Humaniser",
+      "replace": "Remplacer",
+      "discard": "Ignorer",
+      "rules": {
+        "title_length": "Longueur du titre",
+        "meta_length": "Longueur de la méta-description",
+        "kw_in_title": "Mot-clé dans le titre",
+        "kw_in_intro": "Mot-clé dans l'introduction",
+        "kw_in_heading": "Mot-clé dans un intertitre",
+        "kw_density": "Densité du mot-clé",
+        "headings_count": "Nombre d'intertitres",
+        "intro_length": "Longueur de l'introduction",
+        "links": "Liens internes ou externes",
+        "image_alts": "Texte alternatif des images",
+        "paragraph_length": "Longueur des paragraphes"
+      },
+      "gate": {
+        "title": "Connectez votre fournisseur de données SEO",
+        "body": "La détection de plagiat fonctionne avec votre propre compte DataForSEO. Ajoutez vos identifiants dans les Paramètres - paiement à l'usage, une fraction de centime par vérification.",
+        "cta": "Ouvrir les Paramètres"
+      }
+    },
+    "assistant": {
+      "tagline": "Demandez à Dune un plan, une introduction plus percutante, des statistiques à l'appui, ou tout ce dont cet article a besoin.",
+      "placeholder": "Demandez n'importe quoi à Dune sur cet article...",
+      "send": "Envoyer",
+      "insert": "Insérer au curseur",
+      "inserted": "Inséré dans l'article.",
+      "chips": {
+        "outline": "Suggérer un plan",
+        "stats": "Trouver des statistiques à l'appui",
+        "intro": "Réécrire l'introduction",
+        "listicle": "Transformer en liste numérotée"
+      },
+      "prompts": {
+        "outline": "Suggère un plan clair pour cet article, avec des intertitres qui renforceraient sa structure.",
+        "stats": "Suggère quelques statistiques ou données à l'appui que je pourrais ajouter pour étayer les affirmations de cet article.",
+        "intro": "Réécris l'introduction pour qu'elle capte le lecteur plus vite et enchaîne naturellement avec le reste de l'article.",
+        "listicle": "Restructure les points clés de cet article sous forme de liste numérotée."
+      }
     }
   }
 }
