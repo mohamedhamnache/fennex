@@ -1357,6 +1357,21 @@
         "listicle": "Restructure les points clés de cet article sous forme de liste numérotée."
       },
       "starters": "Pour démarrer"
+    },
+    "overview": {
+      "heading": "Vos articles",
+      "total": "Total",
+      "drafts": "Brouillons",
+      "published": "Publiés",
+      "avgSeo": "SEO moyen",
+      "emptyHint": "Lancez votre premier brouillon et Dune l'écrira avec vous.",
+      "backToOverview": "Tous les articles",
+      "filters": {
+        "all": "Tous",
+        "draft": "Brouillon",
+        "ready": "Prêt",
+        "published": "Publié"
+      }
     }
   }
 }

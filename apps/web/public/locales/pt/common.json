@@ -1357,6 +1357,21 @@
         "listicle": "Reestruture os pontos principais deste artigo em formato de lista numerada."
       },
       "starters": "Para começar"
+    },
+    "overview": {
+      "heading": "Seus artigos",
+      "total": "Total",
+      "drafts": "Rascunhos",
+      "published": "Publicados",
+      "avgSeo": "SEO médio",
+      "emptyHint": "Comece seu primeiro rascunho e Dune o escreverá com você.",
+      "backToOverview": "Todos os artigos",
+      "filters": {
+        "all": "Todos",
+        "draft": "Rascunho",
+        "ready": "Pronto",
+        "published": "Publicado"
+      }
     }
   }
 }

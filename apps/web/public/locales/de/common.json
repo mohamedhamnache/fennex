@@ -1357,6 +1357,21 @@
         "listicle": "Strukturiere die wichtigsten Punkte dieses Artikels in eine nummerierte Listicle-Form um."
       },
       "starters": "Schnellstarts"
+    },
+    "overview": {
+      "heading": "Deine Artikel",
+      "total": "Gesamt",
+      "drafts": "Entwürfe",
+      "published": "Veröffentlicht",
+      "avgSeo": "Ø SEO",
+      "emptyHint": "Starte deinen ersten Entwurf und Dune schreibt ihn mit dir.",
+      "backToOverview": "Alle Artikel",
+      "filters": {
+        "all": "Alle",
+        "draft": "Entwurf",
+        "ready": "Bereit",
+        "published": "Veröffentlicht"
+      }
     }
   }
 }

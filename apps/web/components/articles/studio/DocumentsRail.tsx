@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Search, MoreHorizontal, RefreshCw, XCircle } from "lucide-react";
+import { Plus, Search, MoreHorizontal, RefreshCw, XCircle, ArrowLeft } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -15,6 +15,9 @@ const STATUS_TONE: Record<ArticleStatus, BadgeTone> = {
   published: "success",
   failed: "danger",
 };
+
+type RailFilter = "all" | "draft" | "ready" | "published";
+const RAIL_FILTERS: RailFilter[] = ["all", "draft", "ready", "published"];
 
 function seoColor(score: number | null): string {
   if (score === null) return "text-muted-foreground";
@@ -29,6 +32,7 @@ interface DocumentsRailProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onNewArticle: () => void;
+  onBackToOverview: () => void;
   onRegenerate: (id: string) => void;
   onDelete: (id: string) => void;
   /** Mobile/narrow-viewport overlay state (ignored at `lg` and above, where the rail is always visible). */
@@ -50,6 +54,7 @@ export function DocumentsRail({
   selectedId,
   onSelect,
   onNewArticle,
+  onBackToOverview,
   onRegenerate,
   onDelete,
   mobileOpen = false,
@@ -57,12 +62,16 @@ export function DocumentsRail({
 }: DocumentsRailProps) {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<RailFilter>("all");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return articles;
-    return articles.filter((a) => a.title.toLowerCase().includes(q));
-  }, [articles, query]);
+    return articles.filter((a) => {
+      if (filter !== "all" && a.status !== filter) return false;
+      if (q && !a.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [articles, query, filter]);
 
   function handleSelect(id: string) {
     onSelect(id);
@@ -72,13 +81,24 @@ export function DocumentsRail({
   const content = (
     <>
       <div className="flex flex-col gap-2 border-b border-white/[0.06] px-3 py-3">
-        <button
-          onClick={onNewArticle}
-          className="btn-primary flex items-center justify-center gap-1.5 px-3 py-2 text-xs"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t("articles.newArticle")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBackToOverview}
+            className="flex flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            {t("articleStudio.overview.backToOverview")}
+            <span className="ml-auto tabular-nums opacity-60">{articles.length}</span>
+          </button>
+          <button
+            onClick={onNewArticle}
+            className="btn-primary flex h-7 w-7 shrink-0 items-center justify-center"
+            aria-label={t("articles.newArticle")}
+            title={t("articles.newArticle")}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -87,6 +107,20 @@ export function DocumentsRail({
             placeholder={t("articleStudio.search")}
             className="w-full rounded-lg border border-border bg-input py-1.5 pl-8 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {RAIL_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                filter === f ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent",
+              )}
+            >
+              {t(`articleStudio.overview.filters.${f}`)}
+            </button>
+          ))}
         </div>
       </div>
 

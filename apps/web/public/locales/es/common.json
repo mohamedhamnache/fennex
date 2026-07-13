@@ -1357,6 +1357,21 @@
         "listicle": "Reestructura los puntos clave de este artículo en formato de lista numerada."
       },
       "starters": "Para empezar"
+    },
+    "overview": {
+      "heading": "Tus artículos",
+      "total": "Total",
+      "drafts": "Borradores",
+      "published": "Publicados",
+      "avgSeo": "SEO medio",
+      "emptyHint": "Empieza tu primer borrador y Dune lo escribirá contigo.",
+      "backToOverview": "Todos los artículos",
+      "filters": {
+        "all": "Todos",
+        "draft": "Borrador",
+        "ready": "Listo",
+        "published": "Publicado"
+      }
     }
   }
 }

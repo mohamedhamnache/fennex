@@ -6,13 +6,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   RefreshCw,
   CheckCircle2,
-  Plus,
-  Send,
   ExternalLink,
-  Zap,
   Image as ImageIcon,
   PanelLeft,
   PanelRight,
+  ArrowLeft,
+  Send,
+  BookOpen,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -31,13 +31,12 @@ import {
   type SEOScoreBreakdown,
   type PublishingConnection,
 } from "@/lib/api";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
-import { FENNEX_AGENTS } from "@/lib/agents";
 import { DocumentsRail } from "@/components/articles/studio/DocumentsRail";
 import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { SelectionBar } from "@/components/articles/studio/SelectionBar";
+import { ArticlesOverview } from "@/components/articles/studio/ArticlesOverview";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
@@ -415,6 +414,7 @@ function ArticleEditor({
   projectId,
   onShowDocuments,
   onShowAssistantPanel,
+  onBackToOverview,
   dockMobileOpen,
   onCloseDockMobile,
 }: {
@@ -422,6 +422,7 @@ function ArticleEditor({
   projectId: string;
   onShowDocuments: () => void;
   onShowAssistantPanel: () => void;
+  onBackToOverview: () => void;
   dockMobileOpen: boolean;
   onCloseDockMobile: () => void;
 }) {
@@ -617,6 +618,14 @@ function ArticleEditor({
       {/* Title row */}
       <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
         <button
+          onClick={onBackToOverview}
+          className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label={t("articleStudio.overview.backToOverview")}
+          title={t("articleStudio.overview.backToOverview")}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <button
           onClick={onShowDocuments}
           className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
           aria-label={t("articleStudio.showDocuments")}
@@ -639,41 +648,47 @@ function ArticleEditor({
         >
           <PanelRight className="h-4 w-4" />
         </button>
-        <button
-          onClick={handleSaveNow}
-          disabled={updateMutation.isPending}
-          className="btn-primary px-3 py-1.5 text-xs shrink-0 disabled:opacity-60"
-        >
-          {t("articles.editor.save")}
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            onClick={() => revisionMutation.mutate()}
+            disabled={revisionMutation.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+            title={t("articles.editor.saveRevision")}
+          >
+            {revisionMutation.isPending ? <Spinner size={12} /> : <BookOpen className="h-3.5 w-3.5" />}
+            <span className="hidden lg:inline">{t("articles.editor.saveRevision")}</span>
+          </button>
+          {(article.status === "ready" || article.status === "published") && (
+            <button
+              onClick={() => setShowPublishModal(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              title={t("articles.editor.publish")}
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">{t("articles.editor.publish")}</span>
+            </button>
+          )}
+          <button
+            onClick={handleSaveNow}
+            disabled={updateMutation.isPending}
+            className="btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+          >
+            {t("articles.editor.save")}
+          </button>
+        </div>
       </div>
 
-      {/* Stats + relocated actions */}
-      <StatsBar
-        wordCount={wordCount}
-        seoScore={seoScore}
-        onRefetchSeo={() => refetchSeo()}
-        saveState={saveState}
-        canPublish={article.status === "ready" || article.status === "published"}
-        onSaveRevision={() => revisionMutation.mutate()}
-        isSavingRevision={revisionMutation.isPending}
-        onPublish={() => setShowPublishModal(true)}
-      />
-      {revisionMsg && (
-        <p className="px-5 pt-2 text-xs text-emerald-500">{revisionMsg}</p>
-      )}
-
-      {/* Canvas toolbar: Edit/Preview tabs + regenerate/model picker + image suggestions trigger */}
-      <div className="flex items-center gap-3 px-5 pt-4">
-        <div className="flex gap-0 border-b border-border flex-1">
+      {/* Toolbar: Edit/Preview segmented + live stats + model / regenerate / images */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-5 py-2.5">
+        <div className="flex gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
           {(["edit", "preview"] as const).map((tabKey) => (
             <button
               key={tabKey}
               onClick={() => setTab(tabKey)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
                 tab === tabKey
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-card text-primary shadow-sm ring-1 ring-primary/20"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tabKey === "edit" ? t("articles.editor.edit") : t("articles.editor.preview")}
@@ -681,68 +696,76 @@ function ArticleEditor({
           ))}
         </div>
 
-        {connectedProviders.length > 0 && (
-          <div className="flex gap-1.5 shrink-0">
-            <select
-              value={selectedProvider}
-              onChange={(e) => {
-                setSelectedProvider(e.target.value);
-                setSelectedModel(
-                  e.target.value ? (PROVIDER_MODELS[e.target.value]?.models[0]?.id ?? "") : "",
-                );
-              }}
-              className="rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-            >
-              <option value="">Auto</option>
-              {connectedProviders.map((p) => (
-                <option key={p} value={p}>
-                  {PROVIDER_MODELS[p]?.label ?? p}
-                </option>
-              ))}
-            </select>
-            {selectedProvider && (
+        <StatsBar
+          wordCount={wordCount}
+          seoScore={seoScore}
+          onRefetchSeo={() => refetchSeo()}
+          saveState={saveState}
+        />
+
+        {revisionMsg && <span className="text-xs text-emerald-500">{revisionMsg}</span>}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {connectedProviders.length > 0 && (
+            <>
               <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                value={selectedProvider}
+                onChange={(e) => {
+                  setSelectedProvider(e.target.value);
+                  setSelectedModel(
+                    e.target.value ? (PROVIDER_MODELS[e.target.value]?.models[0]?.id ?? "") : "",
+                  );
+                }}
                 className="rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
               >
-                {(PROVIDER_MODELS[selectedProvider]?.models ?? []).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
+                <option value="">Auto</option>
+                {connectedProviders.map((p) => (
+                  <option key={p} value={p}>
+                    {PROVIDER_MODELS[p]?.label ?? p}
                   </option>
                 ))}
               </select>
-            )}
-          </div>
-        )}
-
-        <button
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-60 shrink-0"
-        >
-          {generateMutation.isPending ? (
-            <>
-              <Spinner size={12} /> {t("articles.editor.regenerating")}
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-3.5 w-3.5" /> {t("articles.editor.regenerate")}
+              {selectedProvider && (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="rounded-lg border border-border bg-input px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                >
+                  {(PROVIDER_MODELS[selectedProvider]?.models ?? []).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </>
           )}
-        </button>
 
-        <button
-          onClick={() => setShowImageSuggestions((v) => !v)}
-          className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
-            showImageSuggestions
-              ? "border-primary/40 text-primary bg-primary/10"
-              : "border-border text-foreground hover:bg-accent"
-          }`}
-        >
-          <ImageIcon className="h-3.5 w-3.5" />
-          {t("articles.editor.imageSuggestions")}
-        </button>
+          <button
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+            title={t("articles.editor.regenerate")}
+          >
+            {generateMutation.isPending ? <Spinner size={12} /> : <RefreshCw className="h-3.5 w-3.5" />}
+            <span className="hidden xl:inline">
+              {generateMutation.isPending ? t("articles.editor.regenerating") : t("articles.editor.regenerate")}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setShowImageSuggestions((v) => !v)}
+            className={`flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              showImageSuggestions
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border text-foreground hover:bg-accent"
+            }`}
+            title={t("articles.editor.imageSuggestions")}
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">{t("articles.editor.imageSuggestions")}</span>
+          </button>
+        </div>
       </div>
 
       {tab === "edit" && (
@@ -888,78 +911,50 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
 
   const selectedArticle = articles.find((a) => a.id === selectedId) ?? null;
 
-  const dune = FENNEX_AGENTS.dune;
-
   return (
-    <div className="flex h-[calc(100vh-108px)] flex-col gap-4 animate-fade-in">
-      <PageHeader
-        className="mb-0"
-        title={t("articles.title")}
-        icon={Zap}
-        breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("articles.title") }]}
-        description={t("articles.subtitle")}
-        actions={
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("articles.newArticle")}
-          </button>
-        }
-      />
+    <div className="flex h-[calc(100vh-88px)] flex-col animate-fade-in">
+      {selectedArticle ? (
+        <div className="flex min-h-0 flex-1 gap-4">
+          <DocumentsRail
+            articles={articles}
+            isLoading={isLoading}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onNewArticle={() => setShowModal(true)}
+            onBackToOverview={() => setSelectedId(null)}
+            onRegenerate={(id) => generateMutation.mutate(id)}
+            onDelete={(id) => {
+              deleteMutation.mutate(id);
+              if (id === selectedId) setSelectedId(null);
+            }}
+            mobileOpen={railMobileOpen}
+            onCloseMobile={() => setRailMobileOpen(false)}
+          />
 
-      <div className="flex min-h-0 flex-1 gap-4">
-        <DocumentsRail
-          articles={articles}
-          isLoading={isLoading}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onNewArticle={() => setShowModal(true)}
-          onRegenerate={(id) => generateMutation.mutate(id)}
-          onDelete={(id) => {
-            deleteMutation.mutate(id);
-            if (id === selectedId) setSelectedId(null);
-          }}
-          mobileOpen={railMobileOpen}
-          onCloseMobile={() => setRailMobileOpen(false)}
-        />
-
-        {selectedArticle ? (
           <ArticleEditor
             key={selectedArticle.id}
             articleId={selectedArticle.id}
             projectId={projectId}
             onShowDocuments={() => setRailMobileOpen(true)}
             onShowAssistantPanel={() => setDockMobileOpen(true)}
+            onBackToOverview={() => setSelectedId(null)}
             dockMobileOpen={dockMobileOpen}
             onCloseDockMobile={() => setDockMobileOpen(false)}
           />
-        ) : (
-          <section className="glass relative flex min-w-0 flex-1 flex-col items-center justify-center gap-5 overflow-hidden px-6 text-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 opacity-60"
-              style={{
-                background:
-                  "radial-gradient(600px 220px at 50% 0%, hsl(var(--primary) / 0.10), transparent 65%)",
-              }}
-            />
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand glow-primary">
-              <dune.Icon className="h-7 w-7 text-white" strokeWidth={1.9} />
-            </div>
-            <div className="relative">
-              <h2 className="font-display text-xl font-bold tracking-tight">{t("articleStudio.emptyTitle")}</h2>
-              <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
-                {t("articleStudio.emptyBody")}
-              </p>
-            </div>
-            <button onClick={() => setShowModal(true)} className="btn-primary relative flex items-center gap-2 px-5 py-2.5 text-xs">
-              <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
-            </button>
-          </section>
-        )}
-      </div>
+        </div>
+      ) : (
+        <ArticlesOverview
+          articles={articles}
+          isLoading={isLoading}
+          onOpen={setSelectedId}
+          onNewArticle={() => setShowModal(true)}
+          onRegenerate={(id) => generateMutation.mutate(id)}
+          onDelete={(id) => {
+            deleteMutation.mutate(id);
+            if (id === selectedId) setSelectedId(null);
+          }}
+        />
+      )}
 
       {showModal && (
         <NewArticleModal

@@ -1434,6 +1434,21 @@
         "listicle": "Restructure the key points of this article into a numbered listicle format."
       },
       "starters": "Quick starts"
+    },
+    "overview": {
+      "heading": "Your articles",
+      "total": "Total",
+      "drafts": "Drafts",
+      "published": "Published",
+      "avgSeo": "Avg SEO",
+      "emptyHint": "Start your first draft and Dune will write it beside you.",
+      "backToOverview": "All articles",
+      "filters": {
+        "all": "All",
+        "draft": "Draft",
+        "ready": "Ready",
+        "published": "Published"
+      }
     }
   }
 }
