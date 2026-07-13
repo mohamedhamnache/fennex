@@ -306,6 +306,13 @@ input:focus, textarea:focus, select:focus {
 .animate-typing-dot { animation: typingDot 1.2s ease-in-out infinite; }
 .animate-edit-flash { animation: editFlash 1.7s ease-out forwards; border-radius: 3px; }
 
+/* Gemini-style word reveal: each word fades + de-blurs + rises into place */
+@keyframes wordIn {
+  from { opacity: 0; filter: blur(6px); transform: translateY(0.25em); }
+  to   { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+.word-in { display: inline; animation: wordIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 /* TipTap: transient flash decoration for Dune edits */
 .dune-flash { animation: editFlash 1.7s ease-out forwards; border-radius: 3px; padding: 0 1px; }
 
@@ -552,5 +559,5 @@ input:focus, textarea:focus, select:focus {
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none !important; }
   .animate-fade-in, .animate-slide-up, .animate-scale-in, .animate-toast-in,
-  .edge-flow, .node-active, .animate-pulse-dot, .animate-msg-in, .animate-edit-flash { animation: none !important; }
+  .edge-flow, .node-active, .animate-pulse-dot, .animate-msg-in, .animate-edit-flash, .word-in { animation: none !important; }
 }

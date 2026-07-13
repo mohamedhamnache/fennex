@@ -43,13 +43,30 @@ def _build_system_prompt(brand_voice: BrandVoice | None, profile: str = "") -> s
     from app.agents.registry import agent_persona
     lines = [
         agent_persona("dune")
-        + "Write comprehensive, well-structured, "
-        "engaging articles that rank well in search engines and genuinely help readers."
+        + "You are an elite SEO content strategist and writer. You have mastered the skills that "
+        "make content rank and convert:\n"
+        "- SEARCH INTENT: you infer whether the query is informational, commercial, transactional or "
+        "navigational, and you satisfy that intent completely and directly.\n"
+        "- E-E-A-T: you demonstrate first-hand experience, expertise and trust with specific, concrete, "
+        "verifiable detail — never vague generalities.\n"
+        "- SEMANTIC SEO: you cover the topic and its related entities, subtopics and questions the way a "
+        "subject-matter expert would, so the page is topically complete.\n"
+        "- ON-PAGE CRAFT: keyword-rich but natural H1/H2/H3s, the primary keyword in the first 100 words, "
+        "keyword variations and synonyms (no stuffing), a concise 40-55 word answer near the top that can "
+        "win the featured snippet, scannable short paragraphs, lists and bolded key terms.\n"
+        "- COPYWRITING: a hook in the first sentence, active voice, varied sentence rhythm, and genuine "
+        "usefulness on every line.\n"
+        "QUALITY BAR: original and specific — no filler, no padding, no hedging. Never use AI cliches "
+        "('in today's fast-paced world', 'in the ever-evolving landscape', 'in conclusion', 'unlock', "
+        "'delve', 'it is important to note', 'game-changer'). Never invent statistics, studies, quotes or "
+        "facts; when you cite a figure it must be one a reader could plausibly verify, otherwise speak "
+        "qualitatively. Write for a human first and the algorithm second."
     ]
     if profile:
         lines.append(
-            f"About the site and author: {profile}. Write specifically for this audience "
-            "and context — reference their niche, products or services naturally where relevant."
+            f"About the site and author: {profile}. Write specifically for this audience and context — "
+            "reflect their niche, offers and point of view naturally, and match the sophistication of "
+            "someone who works in this field every day."
         )
     if brand_voice:
         if brand_voice.voice_prompt:
@@ -66,21 +83,34 @@ def _build_system_prompt(brand_voice: BrandVoice | None, profile: str = "") -> s
 def _build_user_prompt(article: Article) -> str:
     kw = article.target_keyword or article.title
     return (
-        f"Write a complete SEO-optimized article with these specifications:\n"
-        f"- Title: {article.title}\n"
-        f"- Target keyword: {kw}\n"
+        f"Write a best-in-class, SEO-optimized article that could rank on page one for its keyword.\n\n"
+        f"BRIEF\n"
+        f"- Working title: {article.title}\n"
+        f"- Primary keyword: {kw}\n"
         f"- Tone: {article.tone}\n"
-        f"- Target length: approximately {article.word_count_target} words\n\n"
-        f"Structure:\n"
-        f"- H1 title\n"
-        f"- Engaging introduction (mention the keyword naturally)\n"
-        f"- 5–7 H2 sections with detailed paragraphs\n"
-        f"- Conclusion\n\n"
-        f"Reply in this exact format (do not add anything before META_TITLE):\n\n"
-        f"META_TITLE: <SEO title, max 60 characters>\n"
-        f"META_DESCRIPTION: <SEO description, max 160 characters>\n\n"
+        f"- Target length: approximately {article.word_count_target} words (write to the depth the topic "
+        f"deserves, not filler to hit a number)\n\n"
+        f"BEFORE WRITING, think about: the dominant search intent behind \"{kw}\"; what a reader must walk "
+        f"away knowing; the subtopics, related entities and 'People Also Ask' questions a complete answer "
+        f"must cover; and the angle that makes this genuinely more useful than what already ranks.\n\n"
+        f"THE ARTICLE MUST INCLUDE\n"
+        f"1. An H1 that includes the primary keyword and a clear promise.\n"
+        f"2. An introduction that hooks in the first sentence, uses the primary keyword within the first "
+        f"100 words, and tells the reader exactly what they'll get.\n"
+        f"3. A concise, direct answer to the core query near the top (about 40-55 words) — snippet-ready.\n"
+        f"4. A logical body of H2 sections (with H3 subsections where useful) that fully cover the topic; "
+        f"use keyword variations and synonyms in headings naturally.\n"
+        f"5. Concrete specifics: examples, steps, comparisons, and qualitative evidence. Short paragraphs "
+        f"(2-4 sentences). Bulleted or numbered lists where they aid scanning. Bold the key terms.\n"
+        f"6. An FAQ section of 3-5 real long-tail questions with tight, useful answers.\n"
+        f"7. A conclusion with the key takeaways and a natural, non-pushy call to action.\n\n"
+        f"AVOID: keyword stuffing, generic fluff, filler transitions, invented data, and the banned "
+        f"cliches from your instructions.\n\n"
+        f"Reply in this EXACT format (nothing before META_TITLE):\n\n"
+        f"META_TITLE: <compelling SEO title, <=60 chars, primary keyword near the front>\n"
+        f"META_DESCRIPTION: <benefit-driven description, <=160 chars, includes the keyword and an implicit CTA>\n\n"
         f"---\n\n"
-        f"<full article in Markdown>"
+        f"<full article in clean Markdown: one H1 (#), H2 (##), H3 (###), lists, and **bold** for key terms>"
     )
 
 

@@ -464,6 +464,8 @@ function ArticleEditor({
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [typing, setTyping] = useState(false);
+  const [revealCount, setRevealCount] = useState(0);
+  const tokensRef = useRef<string[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const typewriterRef = useRef<HTMLDivElement | null>(null);
@@ -487,30 +489,34 @@ function ArticleEditor({
     };
   }, []);
 
-  // Reveal text with a typewriter effect (when Dune finishes generating). The
-  // reveal plays in a plain overlay; the rich editor takes over once it lands.
+  // Reveal text word-by-word (Gemini-style: each word fades + de-blurs in) when
+  // Dune finishes generating. Plays in a plain overlay; the rich editor takes
+  // over with the final content once the reveal lands.
   function playTypewriter(text: string) {
     if (typingTimerRef.current) clearInterval(typingTimerRef.current);
     initialized.current = true;
+    const tokens = text.match(/\S+\s*/g) ?? [];
+    tokensRef.current = tokens;
+    setRevealCount(0);
     setTyping(true);
     setBody("");
-    const total = text.length;
-    const ticks = 55;
-    const step = Math.max(1, Math.ceil(total / ticks));
+    const total = tokens.length;
+    const perTick = Math.max(1, Math.ceil(total / 90)); // ~90 steps -> ~2.7s
     let i = 0;
     typingTimerRef.current = setInterval(() => {
-      i += step;
+      i += perTick;
       if (i >= total) {
+        setRevealCount(total);
         setBody(text);
         setTyping(false);
         if (typingTimerRef.current) clearInterval(typingTimerRef.current);
         typingTimerRef.current = null;
         return;
       }
-      setBody(text.slice(0, i));
+      setRevealCount(i);
       const el = typewriterRef.current;
       if (el) el.scrollTop = el.scrollHeight;
-    }, 45);
+    }, 30);
   }
 
   useEffect(() => {
@@ -801,7 +807,9 @@ function ArticleEditor({
           /* Writing animation: plain reveal while Dune types the draft in */
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" ref={typewriterRef}>
             <div className="mx-auto w-full max-w-3xl whitespace-pre-wrap text-[15px] leading-[1.8] text-foreground">
-              {body}
+              {tokensRef.current.slice(0, revealCount).map((tok, i) => (
+                <span key={i} className="word-in">{tok}</span>
+              ))}
               <span className="ml-0.5 inline-block h-4 w-[2px] -translate-y-0.5 animate-pulse-dot bg-primary align-middle" />
             </div>
             <div className="pointer-events-none absolute right-4 top-3 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card/90 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm backdrop-blur animate-fade-in">
