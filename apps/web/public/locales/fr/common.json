@@ -1360,7 +1360,25 @@
       "apply": "Appliquer les modifications",
       "applied": "Appliqué à l'article",
       "willInsert": "Dune ajoutera",
-      "shrinkWarn": "Dune a renvoyé un article bien plus court que l'actuel. L'appliquer remplacera tout l'article. Continuer ?"
+      "shrinkWarn": "Dune a renvoyé un article bien plus court que l'actuel. L'appliquer remplacera tout l'article. Continuer ?",
+      "skillsTitle": "Compétences de Dune",
+      "metaSuggestion": "Suggestion de meta",
+      "applyMeta": "Appliquer les meta",
+      "metaApplied": "Meta appliquées",
+      "skills": {
+        "seo": "Passe SEO",
+        "fixChecks": "Corriger les problèmes",
+        "faq": "Ajouter une FAQ",
+        "intro": "Affûter l'intro",
+        "meta": "Rédiger les meta"
+      },
+      "skillPrompts": {
+        "seo": "Fais une passe SEO complète sur cet article : corrige les problèmes on-page de tes données, renforce les titres et le placement des mots-clés avec les vraies requêtes et les mots-clés suivis, et garde tout le bon contenu.",
+        "fixChecks": "Corrige directement dans l'article chaque problème on-page listé dans tes données, en changeant le moins possible ailleurs.",
+        "faq": "Ajoute une section FAQ avec 3 à 5 vraies questions longue traîne et des réponses utiles et concises. Ne change rien d'autre.",
+        "intro": "Réécris uniquement l'introduction pour accrocher plus vite : première phrase forte, mot-clé dans les 100 premiers mots, promesse claire. Garde toutes les autres sections identiques.",
+        "meta": "Rédige un meta title optimisé (60 caractères max) et une meta description (160 caractères max) pour cet article et applique-les."
+      }
     },
     "overview": {
       "heading": "Vos articles",
@@ -1408,6 +1426,10 @@
     "hideChanges": "Masquer les modifications",
     "noChanges": "Aucune modification à afficher.",
     "changeTooltip": "Modifié par Dune",
-    "reviewingChanges": "Révision des modifications de Dune · {{count}} surlignées"
+    "reviewingChanges": "Révision des modifications de Dune · {{count}} surlignées",
+    "outline": "Plan",
+    "outlineEmpty": "Ajoutez des titres pour construire le plan.",
+    "focus": "Mode focus",
+    "exitFocus": "Quitter le focus"
   }
 }

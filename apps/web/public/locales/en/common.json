@@ -1437,7 +1437,25 @@
       "apply": "Apply changes",
       "applied": "Applied to the article",
       "willInsert": "Dune will add",
-      "shrinkWarn": "Dune returned a much shorter article than the current one. Applying it will replace the full article. Continue?"
+      "shrinkWarn": "Dune returned a much shorter article than the current one. Applying it will replace the full article. Continue?",
+      "skillsTitle": "Dune skills",
+      "metaSuggestion": "Meta suggestion",
+      "applyMeta": "Apply meta",
+      "metaApplied": "Meta applied",
+      "skills": {
+        "seo": "SEO pass",
+        "fixChecks": "Fix issues",
+        "faq": "Add FAQ",
+        "intro": "Sharpen intro",
+        "meta": "Write meta"
+      },
+      "skillPrompts": {
+        "seo": "Run a full SEO pass on this article: fix the on-page issues in your data, strengthen headings and keyword placement using the real search queries and tracked keywords, and keep all good content intact.",
+        "fixChecks": "Fix every on-page issue listed in your data directly in the article, changing as little else as possible.",
+        "faq": "Add an FAQ section with 3-5 real long-tail questions and tight, useful answers. Keep the rest of the article unchanged.",
+        "intro": "Rewrite only the introduction so it hooks faster: strong first sentence, keyword in the first 100 words, clear promise. Keep every other section identical.",
+        "meta": "Write an optimized meta title (max 60 characters) and meta description (max 160 characters) for this article and set them."
+      }
     },
     "overview": {
       "heading": "Your articles",
@@ -1485,6 +1503,10 @@
     "hideChanges": "Hide changes",
     "noChanges": "No changes to show.",
     "changeTooltip": "Changed by Dune",
-    "reviewingChanges": "Reviewing Dune's changes · {{count}} highlighted"
+    "reviewingChanges": "Reviewing Dune's changes · {{count}} highlighted",
+    "outline": "Outline",
+    "outlineEmpty": "Add headings to build the outline.",
+    "focus": "Focus mode",
+    "exitFocus": "Exit focus"
   }
 }

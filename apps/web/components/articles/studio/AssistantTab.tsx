@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Send, User, CornerDownLeft, ListTree, BarChart3, Sparkles, ListOrdered, Wand2, Check,
+  Gauge, ShieldCheck, HelpCircle, Tags, Zap,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -18,12 +19,25 @@ const SUGGESTION_CHIPS: { id: "outline" | "stats" | "intro" | "listicle"; Icon: 
   { id: "listicle", Icon: ListOrdered },
 ];
 
+/** Dune's one-click agentic skills - each fires a crafted prompt that Dune
+ *  executes directly (revise / insert / set meta), grounded in real data. */
+const SKILLS: { id: "seo" | "fixChecks" | "faq" | "intro" | "meta"; Icon: LucideIcon }[] = [
+  { id: "seo", Icon: Gauge },
+  { id: "fixChecks", Icon: ShieldCheck },
+  { id: "faq", Icon: HelpCircle },
+  { id: "intro", Icon: Zap },
+  { id: "meta", Icon: Tags },
+];
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   insertable?: string | null;
   revised?: string | null;
+  metaTitle?: string | null;
+  metaDesc?: string | null;
   applied?: boolean;
+  appliedMeta?: boolean;
 }
 
 function DuneAvatar({ size = 28 }: { size?: number }) {
@@ -60,14 +74,15 @@ interface AssistantTabProps {
   body: string;
   onInsert: (text: string) => void;
   onApplyRevision: (markdown: string) => void;
+  onApplyMeta: (title: string | null, desc: string | null) => void;
 }
 
 /**
- * Dune's co-writer chat for the article studio dock. A warm identity-led
- * empty state with quick-start cards, richly styled message threads, and an
- * "insert at cursor" action on replies that carry draftable content.
+ * Dune's agentic co-writer chat: identity-led empty state, one-click skills
+ * (SEO pass, fix checks, FAQ, intro, meta) that Dune executes directly, and
+ * apply actions for revisions, insertables and meta suggestions.
  */
-export function AssistantTab({ articleId, body, onInsert, onApplyRevision }: AssistantTabProps) {
+export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApplyMeta }: AssistantTabProps) {
   const { t } = useTranslation();
   const { success: toastSuccess, error: toastError } = useToast();
   const dune = FENNEX_AGENTS.dune;
@@ -93,7 +108,14 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision }: Ass
       const result = await duneChat(articleId, trimmed, apiHistory, body);
       setHistory((prev) => [
         ...prev,
-        { role: "assistant", content: result.answer, insertable: result.insertable, revised: result.revised },
+        {
+          role: "assistant",
+          content: result.answer,
+          insertable: result.insertable,
+          revised: result.revised,
+          metaTitle: result.meta_title,
+          metaDesc: result.meta_description,
+        },
       ]);
     } catch (e) {
       toastError(e instanceof Error ? e.message : String(e));
@@ -119,6 +141,12 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision }: Ass
     onApplyRevision(markdown);
     setHistory((prev) => prev.map((m, i) => (i === index ? { ...m, applied: true } : m)));
     toastSuccess(t("articleStudio.assistant.applied"));
+  }
+
+  function handleApplyMeta(index: number, title: string | null, desc: string | null) {
+    onApplyMeta(title, desc);
+    setHistory((prev) => prev.map((m, i) => (i === index ? { ...m, appliedMeta: true } : m)));
+    toastSuccess(t("articleStudio.assistant.metaApplied"));
   }
 
   return (
@@ -229,6 +257,34 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision }: Ass
                       </button>
                     )
                   )}
+                  {msg.role === "assistant" && (msg.metaTitle || msg.metaDesc) && (
+                    <div className="flex w-full max-w-[85%] flex-col gap-1.5 rounded-xl border border-primary/25 bg-primary/[0.04] p-2.5">
+                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary/80">
+                        <Tags className="h-3 w-3" />
+                        {t("articleStudio.assistant.metaSuggestion")}
+                      </p>
+                      {msg.metaTitle && (
+                        <p className="text-[11px] leading-snug text-foreground">{msg.metaTitle}</p>
+                      )}
+                      {msg.metaDesc && (
+                        <p className="text-[11px] leading-snug text-muted-foreground">{msg.metaDesc}</p>
+                      )}
+                      {msg.appliedMeta ? (
+                        <span className="flex items-center gap-1.5 self-start rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-medium text-success">
+                          <Check className="h-3 w-3" />
+                          {t("articleStudio.assistant.metaApplied")}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleApplyMeta(i, msg.metaTitle ?? null, msg.metaDesc ?? null)}
+                          className="btn-primary flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px]"
+                        >
+                          <Check className="h-3 w-3" />
+                          {t("articleStudio.assistant.applyMeta")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -239,8 +295,30 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision }: Ass
         )}
       </div>
 
-      {/* ── Composer ── */}
+      {/* ── Skills row ── */}
       <div className="shrink-0 pt-3">
+        <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          {t("articleStudio.assistant.skillsTitle")}
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {SKILLS.map(({ id, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => submit(t(`articleStudio.assistant.skillPrompts.${id}`))}
+              disabled={pending}
+              title={t(`articleStudio.assistant.skills.${id}`)}
+              className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-medium text-primary transition-all hover:bg-primary/10 disabled:opacity-50"
+            >
+              <Icon className="h-3 w-3" strokeWidth={2} />
+              {t(`articleStudio.assistant.skills.${id}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Composer ── */}
+      <div className="shrink-0 pt-2.5">
         <div className="flex items-end gap-2 rounded-2xl border border-border bg-input p-1.5 transition-all focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
           <textarea
             value={input}

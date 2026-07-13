@@ -1360,7 +1360,25 @@
       "apply": "Aplicar alterações",
       "applied": "Aplicado ao artigo",
       "willInsert": "Dune vai adicionar",
-      "shrinkWarn": "Dune retornou um artigo muito mais curto que o atual. Aplicá-lo substituirá o artigo inteiro. Continuar?"
+      "shrinkWarn": "Dune retornou um artigo muito mais curto que o atual. Aplicá-lo substituirá o artigo inteiro. Continuar?",
+      "skillsTitle": "Habilidades do Dune",
+      "metaSuggestion": "Sugestão de meta",
+      "applyMeta": "Aplicar meta",
+      "metaApplied": "Meta aplicados",
+      "skills": {
+        "seo": "Passada SEO",
+        "fixChecks": "Corrigir problemas",
+        "faq": "Adicionar FAQ",
+        "intro": "Afiar a intro",
+        "meta": "Escrever meta"
+      },
+      "skillPrompts": {
+        "seo": "Faça uma passada SEO completa neste artigo: corrija os problemas on-page dos seus dados, reforce títulos e posicionamento de palavras-chave com as consultas reais e as palavras-chave rastreadas, e mantenha todo o bom conteúdo.",
+        "fixChecks": "Corrija diretamente no artigo cada problema on-page listado nos seus dados, mudando o mínimo possível.",
+        "faq": "Adicione uma seção FAQ com 3-5 perguntas reais de cauda longa e respostas úteis e concisas. Não mude mais nada.",
+        "intro": "Reescreva apenas a introdução para fisgar mais rápido: primeira frase forte, palavra-chave nas primeiras 100 palavras, promessa clara. Mantenha as demais seções idênticas.",
+        "meta": "Escreva um meta title otimizado (máx. 60 caracteres) e uma meta description (máx. 160 caracteres) para este artigo e aplique-os."
+      }
     },
     "overview": {
       "heading": "Seus artigos",
@@ -1408,6 +1426,10 @@
     "hideChanges": "Ocultar alterações",
     "noChanges": "Nenhuma alteração para mostrar.",
     "changeTooltip": "Alterado por Dune",
-    "reviewingChanges": "Revisando as alterações de Dune · {{count}} destacadas"
+    "reviewingChanges": "Revisando as alterações de Dune · {{count}} destacadas",
+    "outline": "Estrutura",
+    "outlineEmpty": "Adicione títulos para montar a estrutura.",
+    "focus": "Modo foco",
+    "exitFocus": "Sair do foco"
   }
 }

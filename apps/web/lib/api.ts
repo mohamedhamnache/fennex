@@ -2227,20 +2227,25 @@ export async function transformText(
   return apiClient.post<{ text: string }>(`/articles/${articleId}/transform`, { mode, text });
 }
 
+export interface DuneChatResult {
+  answer: string;
+  insertable: string | null;
+  revised: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+}
+
 export async function duneChat(
   articleId: string,
   question: string,
   history: { role: string; content: string }[],
   body?: string,
-): Promise<{ answer: string; insertable: string | null; revised: string | null }> {
-  return apiClient.post<{ answer: string; insertable: string | null; revised: string | null }>(
-    `/articles/${articleId}/chat`,
-    {
-      question,
-      history,
-      ...(body !== undefined ? { body } : {}),
-    },
-  );
+): Promise<DuneChatResult> {
+  return apiClient.post<DuneChatResult>(`/articles/${articleId}/chat`, {
+    question,
+    history,
+    ...(body !== undefined ? { body } : {}),
+  });
 }
 
 export interface ArticleRevision {

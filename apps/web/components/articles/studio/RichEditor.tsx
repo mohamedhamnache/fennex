@@ -22,6 +22,7 @@ export interface RichEditorHandle {
   applyWithDiff: (newMarkdown: string, oldMarkdown: string) => void;
   highlightChanges: (oldMarkdown: string) => number;
   clearChanges: () => void;
+  scrollToHeading: (index: number) => void;
   focus: () => void;
 }
 
@@ -178,6 +179,24 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       return ranges.length;
     },
     clearChanges: () => editor?.commands.clearChanged(),
+    scrollToHeading: (index: number) => {
+      if (!editor) return;
+      let n = -1;
+      let target = -1;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "heading") {
+          n += 1;
+          if (n === index) {
+            target = pos + 1;
+            return false;
+          }
+        }
+        return target < 0;
+      });
+      if (target >= 0) {
+        editor.chain().focus().setTextSelection(target).scrollIntoView().run();
+      }
+    },
     focus: () => editor?.commands.focus(),
   }), [editor]);
 

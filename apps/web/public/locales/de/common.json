@@ -1360,7 +1360,25 @@
       "apply": "Änderungen anwenden",
       "applied": "Auf den Artikel angewendet",
       "willInsert": "Dune fügt hinzu",
-      "shrinkWarn": "Dune hat einen viel kürzeren Artikel als den aktuellen geliefert. Das Anwenden ersetzt den gesamten Artikel. Fortfahren?"
+      "shrinkWarn": "Dune hat einen viel kürzeren Artikel als den aktuellen geliefert. Das Anwenden ersetzt den gesamten Artikel. Fortfahren?",
+      "skillsTitle": "Dunes Skills",
+      "metaSuggestion": "Meta-Vorschlag",
+      "applyMeta": "Meta übernehmen",
+      "metaApplied": "Meta übernommen",
+      "skills": {
+        "seo": "SEO-Durchlauf",
+        "fixChecks": "Probleme beheben",
+        "faq": "FAQ hinzufügen",
+        "intro": "Intro schärfen",
+        "meta": "Meta schreiben"
+      },
+      "skillPrompts": {
+        "seo": "Führe einen vollständigen SEO-Durchlauf durch: behebe die On-Page-Probleme aus deinen Daten, stärke Überschriften und Keyword-Platzierung mit den echten Suchanfragen und getrackten Keywords und erhalte alle guten Inhalte.",
+        "fixChecks": "Behebe jedes in deinen Daten gelistete On-Page-Problem direkt im Artikel und ändere sonst so wenig wie möglich.",
+        "faq": "Füge eine FAQ-Sektion mit 3-5 echten Long-Tail-Fragen und knappen, nützlichen Antworten hinzu. Lass den Rest unverändert.",
+        "intro": "Schreibe nur die Einleitung neu: starker erster Satz, Keyword in den ersten 100 Wörtern, klares Versprechen. Alle anderen Abschnitte bleiben identisch.",
+        "meta": "Schreibe einen optimierten Meta-Titel (max. 60 Zeichen) und eine Meta-Beschreibung (max. 160 Zeichen) und übernimm sie."
+      }
     },
     "overview": {
       "heading": "Deine Artikel",
@@ -1408,6 +1426,10 @@
     "hideChanges": "Änderungen ausblenden",
     "noChanges": "Keine Änderungen vorhanden.",
     "changeTooltip": "Von Dune geändert",
-    "reviewingChanges": "Dunes Änderungen prüfen · {{count}} hervorgehoben"
+    "reviewingChanges": "Dunes Änderungen prüfen · {{count}} hervorgehoben",
+    "outline": "Gliederung",
+    "outlineEmpty": "Füge Überschriften hinzu, um die Gliederung aufzubauen.",
+    "focus": "Fokusmodus",
+    "exitFocus": "Fokus verlassen"
   }
 }

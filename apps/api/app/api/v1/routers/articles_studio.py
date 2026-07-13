@@ -33,6 +33,8 @@ class ChatResponse(BaseModel):
     answer: str
     insertable: str | None
     revised: str | None = None
+    meta_title: str | None = None
+    meta_description: str | None = None
 
 
 async def _load_article_and_project(article_id: uuid.UUID, current_user: CurrentUser, db: DB) -> tuple[Article, Project]:

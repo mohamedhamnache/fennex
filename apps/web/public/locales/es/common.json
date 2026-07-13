@@ -1360,7 +1360,25 @@
       "apply": "Aplicar cambios",
       "applied": "Aplicado al artículo",
       "willInsert": "Dune añadirá",
-      "shrinkWarn": "Dune devolvió un artículo mucho más corto que el actual. Aplicarlo reemplazará todo el artículo. ¿Continuar?"
+      "shrinkWarn": "Dune devolvió un artículo mucho más corto que el actual. Aplicarlo reemplazará todo el artículo. ¿Continuar?",
+      "skillsTitle": "Habilidades de Dune",
+      "metaSuggestion": "Sugerencia de meta",
+      "applyMeta": "Aplicar meta",
+      "metaApplied": "Meta aplicados",
+      "skills": {
+        "seo": "Pase SEO",
+        "fixChecks": "Corregir problemas",
+        "faq": "Añadir FAQ",
+        "intro": "Afinar la intro",
+        "meta": "Escribir meta"
+      },
+      "skillPrompts": {
+        "seo": "Haz un pase SEO completo a este artículo: corrige los problemas on-page de tus datos, refuerza encabezados y colocación de palabras clave con las consultas reales y las palabras clave rastreadas, y conserva todo el buen contenido.",
+        "fixChecks": "Corrige directamente en el artículo cada problema on-page listado en tus datos, cambiando lo mínimo posible.",
+        "faq": "Añade una sección FAQ con 3-5 preguntas reales de cola larga y respuestas útiles y concisas. No cambies nada más.",
+        "intro": "Reescribe solo la introducción para enganchar más rápido: primera frase fuerte, palabra clave en las primeras 100 palabras, promesa clara. Mantén idénticas las demás secciones.",
+        "meta": "Escribe un meta title optimizado (máx. 60 caracteres) y una meta description (máx. 160 caracteres) para este artículo y aplícalos."
+      }
     },
     "overview": {
       "heading": "Tus artículos",
@@ -1408,6 +1426,10 @@
     "hideChanges": "Ocultar cambios",
     "noChanges": "No hay cambios para mostrar.",
     "changeTooltip": "Modificado por Dune",
-    "reviewingChanges": "Revisando los cambios de Dune · {{count}} resaltados"
+    "reviewingChanges": "Revisando los cambios de Dune · {{count}} resaltados",
+    "outline": "Esquema",
+    "outlineEmpty": "Añade encabezados para construir el esquema.",
+    "focus": "Modo enfoque",
+    "exitFocus": "Salir del enfoque"
   }
 }

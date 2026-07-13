@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,6 +15,9 @@ import {
   BookOpen,
   PenLine,
   Eye,
+  List,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -34,6 +37,7 @@ import {
   type PublishingConnection,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { RevisionsRail } from "@/components/articles/studio/RevisionsRail";
 import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
@@ -67,6 +71,14 @@ const PROVIDER_MODELS: Record<string, { label: string; models: { id: string; lab
       { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
     ],
   },
+};
+
+const STATUS_TONE: Record<string, BadgeTone> = {
+  draft: "neutral",
+  generating: "warning",
+  ready: "info",
+  published: "success",
+  failed: "danger",
 };
 
 const TONES = [
@@ -468,6 +480,8 @@ function ArticleEditor({
   const [preEditBody, setPreEditBody] = useState<string | null>(null);
   const [showingChanges, setShowingChanges] = useState(false);
   const [changedCount, setChangedCount] = useState(0);
+  const [focusMode, setFocusMode] = useState(false);
+  const [showOutline, setShowOutline] = useState(false);
   const [revealCount, setRevealCount] = useState(0);
   const tokensRef = useRef<string[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -613,6 +627,24 @@ function ArticleEditor({
     richRef.current?.applyWithDiff(markdown, body);
   }
 
+  function handleApplyMeta(title: string | null, desc: string | null) {
+    // Dune's SET METADATA skill: apply and persist immediately (save success
+    // recomputes the SEO score).
+    const patch: { meta_title?: string; meta_description?: string } = {};
+    if (title) {
+      setMetaTitle(title);
+      patch.meta_title = title;
+    }
+    if (desc) {
+      setMetaDesc(desc);
+      patch.meta_description = desc;
+    }
+    if (Object.keys(patch).length > 0) {
+      setSaveState("saving");
+      updateMutation.mutate(patch);
+    }
+  }
+
   function toggleChanges() {
     if (showingChanges) {
       richRef.current?.clearChanges();
@@ -666,6 +698,17 @@ function ArticleEditor({
     .split(/\s+/)
     .filter(Boolean).length;
 
+  // Document outline parsed from the markdown headings (level + text), used
+  // by the outline navigator to scroll the rich editor.
+  const outline = useMemo(() => {
+    const items: { level: number; text: string }[] = [];
+    for (const line of body.split("\n")) {
+      const m = /^(#{1,3})\s+(.+)/.exec(line.trim());
+      if (m) items.push({ level: m[1].length, text: m[2].replace(/[*_`]/g, "").trim() });
+    }
+    return items;
+  }, [body]);
+
   const seoScore = seoData?.score ?? article?.seo_score ?? null;
   const breakdown = seoData?.breakdown ?? {};
 
@@ -679,17 +722,19 @@ function ArticleEditor({
 
   return (
     <>
-    <RevisionsRail
-      articleId={articleId}
-      currentWordCount={wordCount}
-      onBackToOverview={onBackToOverview}
-      onNewArticle={onNewArticle}
-      onSaveRevision={() => revisionMutation.mutate()}
-      isSavingRevision={revisionMutation.isPending}
-      onRestore={handleRestore}
-      mobileOpen={railMobileOpen}
-      onCloseMobile={onCloseRailMobile}
-    />
+    {!focusMode && (
+      <RevisionsRail
+        articleId={articleId}
+        currentWordCount={wordCount}
+        onBackToOverview={onBackToOverview}
+        onNewArticle={onNewArticle}
+        onSaveRevision={() => revisionMutation.mutate()}
+        isSavingRevision={revisionMutation.isPending}
+        onRestore={handleRestore}
+        mobileOpen={railMobileOpen}
+        onCloseMobile={onCloseRailMobile}
+      />
+    )}
     <div className="glass flex h-full flex-1 min-w-0 flex-col overflow-hidden">
       {/* Title row */}
       <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
@@ -716,6 +761,34 @@ function ArticleEditor({
           className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-foreground focus:outline-none"
           placeholder={t("articles.editor.articleTitle")}
         />
+        <Badge tone={STATUS_TONE[article.status] ?? "neutral"} dot className="hidden capitalize sm:inline-flex">
+          {article.status}
+        </Badge>
+        {article.target_keyword && (
+          <span className="hidden max-w-[160px] truncate rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground xl:inline-block">
+            {article.target_keyword}
+          </span>
+        )}
+        <button
+          onClick={() => setShowOutline((v) => !v)}
+          className={`hidden shrink-0 rounded-lg p-1.5 transition-colors lg:block ${
+            showOutline ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          }`}
+          aria-label={t("articleStudio.outline")}
+          title={t("articleStudio.outline")}
+        >
+          <List className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => setFocusMode((v) => !v)}
+          className={`hidden shrink-0 rounded-lg p-1.5 transition-colors lg:block ${
+            focusMode ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          }`}
+          aria-label={focusMode ? t("articleStudio.exitFocus") : t("articleStudio.focus")}
+          title={focusMode ? t("articleStudio.exitFocus") : t("articleStudio.focus")}
+        >
+          {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
         <button
           onClick={onShowAssistantPanel}
           className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
@@ -893,13 +966,38 @@ function ArticleEditor({
             )}
           </div>
         ) : (
-          <RichEditor
-            ref={richRef}
-            articleId={articleId}
-            value={body}
-            editable
-            onChange={handleBodyChange}
-          />
+          <div className="flex min-h-0 flex-1">
+            {/* Outline navigator */}
+            {showOutline && (
+              <nav className="hidden w-52 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border px-3 py-4 animate-fade-in lg:flex">
+                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {t("articleStudio.outline")}
+                </p>
+                {outline.length === 0 ? (
+                  <p className="px-2 text-[11px] text-muted-foreground">{t("articleStudio.outlineEmpty")}</p>
+                ) : (
+                  outline.map((h, i) => (
+                    <button
+                      key={`${i}-${h.text}`}
+                      onClick={() => richRef.current?.scrollToHeading(i)}
+                      className="truncate rounded-lg px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      style={{ paddingLeft: `${8 + (h.level - 1) * 10}px` }}
+                      title={h.text}
+                    >
+                      {h.text}
+                    </button>
+                  ))
+                )}
+              </nav>
+            )}
+            <RichEditor
+              ref={richRef}
+              articleId={articleId}
+              value={body}
+              editable
+              onChange={handleBodyChange}
+            />
+          </div>
         )}
       </div>
 
@@ -912,25 +1010,28 @@ function ArticleEditor({
       )}
     </div>
 
-    <DuneDock
-      projectId={projectId}
-      articleId={articleId}
-      articleTitle={title}
-      targetKeyword={article.target_keyword}
-      metaTitle={metaTitle}
-      metaDesc={metaDesc}
-      onMetaTitleChange={setMetaTitle}
-      onMetaTitleBlur={handleMetaTitleBlur}
-      onMetaDescChange={setMetaDesc}
-      onMetaDescBlur={handleMetaDescBlur}
-      breakdown={breakdown}
-      body={body}
-      onBodyChange={handleBodyChange}
-      onInsert={(text) => richRef.current?.insertAtCursor(text)}
-      onApplyRevision={handleApplyRevision}
-      mobileOpen={dockMobileOpen}
-      onCloseMobile={onCloseDockMobile}
-    />
+    {!focusMode && (
+      <DuneDock
+        projectId={projectId}
+        articleId={articleId}
+        articleTitle={title}
+        targetKeyword={article.target_keyword}
+        metaTitle={metaTitle}
+        metaDesc={metaDesc}
+        onMetaTitleChange={setMetaTitle}
+        onMetaTitleBlur={handleMetaTitleBlur}
+        onMetaDescChange={setMetaDesc}
+        onMetaDescBlur={handleMetaDescBlur}
+        breakdown={breakdown}
+        body={body}
+        onBodyChange={handleBodyChange}
+        onInsert={(text) => richRef.current?.insertAtCursor(text)}
+        onApplyRevision={handleApplyRevision}
+        onApplyMeta={handleApplyMeta}
+        mobileOpen={dockMobileOpen}
+        onCloseMobile={onCloseDockMobile}
+      />
+    )}
     </>
   );
 }

@@ -34,6 +34,7 @@ interface DuneDockProps {
   onBodyChange: (val: string) => void;
   onInsert: (text: string) => void;
   onApplyRevision: (markdown: string) => void;
+  onApplyMeta: (title: string | null, desc: string | null) => void;
   /** Mobile/narrow-viewport overlay state (ignored at `lg` and above, where the dock is always visible). */
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -64,6 +65,7 @@ export function DuneDock({
   onBodyChange,
   onInsert,
   onApplyRevision,
+  onApplyMeta,
   mobileOpen = false,
   onCloseMobile,
 }: DuneDockProps) {
@@ -132,6 +134,7 @@ export function DuneDock({
             body={body}
             onInsert={onInsert}
             onApplyRevision={onApplyRevision}
+            onApplyMeta={onApplyMeta}
           />
         )}
         {tab === "checks" && (
