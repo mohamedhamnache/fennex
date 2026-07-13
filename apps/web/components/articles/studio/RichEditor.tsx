@@ -2,7 +2,7 @@
 
 import { forwardRef, useImperativeHandle, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useEditor, EditorContent, BubbleMenu, type Editor } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -69,6 +69,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
   const { error: toastError } = useToast();
   const lastEmitted = useRef<string>(value);
   const [rewriting, setRewriting] = useState<TransformMode | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
 
   const editor = useEditor({
     editable,
@@ -86,6 +87,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       lastEmitted.current = md;
       onChange(md);
     },
+    onSelectionUpdate: ({ editor }) => setHasSelection(!editor.state.selection.empty),
     immediatelyRender: false,
   });
 
@@ -188,31 +190,34 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
         </div>
       )}
 
-      {/* Bubble menu — Dune rewrites on selection */}
+      {/* Dune rewrite bar — always visible; acts on the current selection */}
       {editable && (
-        <BubbleMenu
-          editor={editor}
-          tippyOptions={{ duration: 120, maxWidth: "none" }}
-          shouldShow={({ state }) => !state.selection.empty}
-        >
-          <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-lg animate-scale-in">
-            <span className="flex items-center gap-1 pl-1.5 pr-1 text-[11px] font-medium text-muted-foreground">
-              <Wand2 className="h-3 w-3 text-primary" /> Dune
-            </span>
-            {REWRITE_MODES.map((mode) => (
-              <button
-                key={mode}
-                onClick={() => rewrite(mode)}
-                disabled={!!rewriting}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
-                  mode === "humanize" ? "text-primary hover:bg-primary/10" : "text-foreground hover:bg-accent"
-                }`}
-              >
-                {rewriting === mode ? "…" : t(`articleStudio.selection.${mode}`)}
-              </button>
-            ))}
-          </div>
-        </BubbleMenu>
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 py-1.5">
+          <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <Wand2 className="h-3.5 w-3.5 text-primary" /> Dune
+          </span>
+          {REWRITE_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => rewrite(mode)}
+              disabled={!hasSelection || !!rewriting}
+              title={hasSelection ? undefined : t("articleStudio.selection.hint")}
+              className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                mode === "humanize"
+                  ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                  : "border-border text-foreground hover:border-primary/30 hover:bg-accent"
+              }`}
+            >
+              {rewriting === mode && <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />}
+              {t(`articleStudio.selection.${mode}`)}
+            </button>
+          ))}
+          {!hasSelection && (
+            <span className="text-[11px] text-muted-foreground">{t("articleStudio.selection.hint")}</span>
+          )}
+        </div>
       )}
 
       {/* Editor surface */}
