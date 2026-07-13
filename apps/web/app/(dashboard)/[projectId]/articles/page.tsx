@@ -36,11 +36,9 @@ import { useToast } from "@/components/ui/Toast";
 import { RevisionsRail } from "@/components/articles/studio/RevisionsRail";
 import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
-import { SelectionBar } from "@/components/articles/studio/SelectionBar";
 import { ArticlesOverview } from "@/components/articles/studio/ArticlesOverview";
-import { FormatToolbar } from "@/components/articles/studio/FormatToolbar";
+import { RichEditor, type RichEditorHandle } from "@/components/articles/studio/RichEditor";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
-import { applyFormat, type MdAction } from "@/lib/markdown-edit";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
 
@@ -455,7 +453,6 @@ function ArticleEditor({
     enabled: !!articleId && (article?.status === "ready" || article?.status === "published"),
   });
 
-  const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [body, setBody] = useState<string>("");
   const [title, setTitle] = useState<string>("");
   const [metaTitle, setMetaTitle] = useState<string>("");
@@ -466,17 +463,13 @@ function ArticleEditor({
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
-  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
-  const [cursorPosition, setCursorPosition] = useState<number | null>(null);
-  const [highlight, setHighlight] = useState<{ start: number; end: number } | null>(null);
   const [typing, setTyping] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typewriterRef = useRef<HTMLDivElement | null>(null);
   const initialized = useRef(false);
   const prevStatusRef = useRef<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const backdropRef = useRef<HTMLDivElement | null>(null);
+  const richRef = useRef<RichEditorHandle | null>(null);
 
   const { data: apiKeys = [] } = useQuery({
     queryKey: ["api-keys"],
@@ -490,18 +483,15 @@ function ArticleEditor({
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
       if (typingTimerRef.current) clearInterval(typingTimerRef.current);
     };
   }, []);
 
-  // Reveal text into the editor with a typewriter effect (used when Dune
-  // finishes generating an article).
+  // Reveal text with a typewriter effect (when Dune finishes generating). The
+  // reveal plays in a plain overlay; the rich editor takes over once it lands.
   function playTypewriter(text: string) {
     if (typingTimerRef.current) clearInterval(typingTimerRef.current);
     initialized.current = true;
-    setTab("edit");
-    setHighlight(null);
     setTyping(true);
     setBody("");
     const total = text.length;
@@ -518,7 +508,7 @@ function ArticleEditor({
         return;
       }
       setBody(text.slice(0, i));
-      const el = textareaRef.current;
+      const el = typewriterRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }, 45);
   }
@@ -596,72 +586,13 @@ function ArticleEditor({
     success(t("articleStudio.restored"));
   }
 
-  function handleBodyChange(val: string, highlightRange?: { start: number; end: number }) {
+  function handleBodyChange(val: string) {
     setBody(val);
     setSaveState("saving");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       updateMutation.mutate({ body_markdown: val });
     }, 2000);
-
-    if (highlightRange) {
-      // A Dune-driven edit (rewrite / humanize / insert): flash the new text.
-      setTab("edit");
-      setHighlight(highlightRange);
-      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
-      highlightTimeoutRef.current = setTimeout(() => setHighlight(null), 1800);
-      requestAnimationFrame(() => {
-        const el = textareaRef.current;
-        if (!el) return;
-        el.focus();
-        // Collapse the caret to the end of the change; the flash marks the range.
-        el.setSelectionRange(highlightRange.end, highlightRange.end);
-        // pull the changed range into view
-        const ratio = highlightRange.start / Math.max(val.length, 1);
-        el.scrollTop = Math.max(0, ratio * el.scrollHeight - el.clientHeight / 2);
-        if (backdropRef.current) backdropRef.current.scrollTop = el.scrollTop;
-      });
-    } else {
-      // Manual typing invalidates any pending highlight range.
-      setHighlight(null);
-    }
-  }
-
-  function handleSelectionChange() {
-    const el = textareaRef.current;
-    if (!el) return;
-    const { selectionStart, selectionEnd } = el;
-    setSelection(
-      selectionStart !== selectionEnd ? { start: selectionStart, end: selectionEnd } : null,
-    );
-    setCursorPosition(selectionEnd);
-  }
-
-  function applyFormatting(action: MdAction) {
-    const el = textareaRef.current;
-    if (!el) return;
-    const r = applyFormat(body, el.selectionStart, el.selectionEnd, action);
-    setBody(r.value);
-    setSaveState("saving");
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => updateMutation.mutate({ body_markdown: r.value }), 2000);
-    setHighlight({ start: r.selStart, end: r.selEnd });
-    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
-    highlightTimeoutRef.current = setTimeout(() => setHighlight(null), 1800);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(r.selStart, r.selEnd);
-    });
-  }
-
-  function handleEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (!(e.metaKey || e.ctrlKey)) return;
-    const key = e.key.toLowerCase();
-    const map: Record<string, MdAction> = { b: "bold", i: "italic", k: "link" };
-    if (map[key]) {
-      e.preventDefault();
-      applyFormatting(map[key]);
-    }
   }
 
   function handleSaveNow() {
@@ -781,24 +712,8 @@ function ArticleEditor({
         </div>
       </div>
 
-      {/* Toolbar: Edit/Preview segmented + live stats + model / regenerate / images */}
+      {/* Toolbar: live stats + model / regenerate / images */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-5 py-2.5">
-        <div className="flex gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
-          {(["edit", "preview"] as const).map((tabKey) => (
-            <button
-              key={tabKey}
-              onClick={() => setTab(tabKey)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
-                tab === tabKey
-                  ? "bg-card text-primary shadow-sm ring-1 ring-primary/20"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tabKey === "edit" ? t("articles.editor.edit") : t("articles.editor.preview")}
-            </button>
-          ))}
-        </div>
-
         <StatsBar
           wordCount={wordCount}
           seoScore={seoScore}
@@ -871,86 +786,45 @@ function ArticleEditor({
         </div>
       </div>
 
-      {tab === "edit" && (
-        <>
-          <FormatToolbar onFormat={applyFormatting} />
-          <SelectionBar
-            articleId={articleId}
-            selection={selection}
-            body={body}
-            onBodyChange={handleBodyChange}
-            onRestoreFocus={() => textareaRef.current?.focus()}
-          />
-        </>
+      {/* Image suggestions (toggle) */}
+      {showImageSuggestions && (
+        <div className="border-b border-border px-5 py-3">
+          <div className="mx-auto w-full max-w-3xl rounded-xl border border-border bg-card/40 p-3">
+            <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
+          </div>
+        </div>
       )}
 
       {/* Editor body */}
-      <div className="flex min-h-0 flex-1 flex-col px-5 py-6">
-        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
-          {showImageSuggestions && (
-            <div className="mb-5 rounded-xl border border-border bg-card/40 p-3">
-              <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {typing || article.status === "generating" ? (
+          /* Writing animation: plain reveal while Dune types the draft in */
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" ref={typewriterRef}>
+            <div className="mx-auto w-full max-w-3xl whitespace-pre-wrap text-[15px] leading-[1.8] text-foreground">
+              {body}
+              <span className="ml-0.5 inline-block h-4 w-[2px] -translate-y-0.5 animate-pulse-dot bg-primary align-middle" />
             </div>
-          )}
-
-          {tab === "edit" ? (
-            <div className="relative min-h-0 flex-1">
-              {/* Highlight backdrop: mirrors the text; only the changed range paints a fading flash. */}
-              <div
-                ref={backdropRef}
-                aria-hidden
-                className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words border-0 p-0 text-[15px] leading-[1.8] text-transparent"
-              >
-                {highlight && (
-                  <>
-                    {body.slice(0, highlight.start)}
-                    <mark className="animate-edit-flash bg-transparent text-transparent">
-                      {body.slice(highlight.start, highlight.end)}
-                    </mark>
-                    {body.slice(highlight.end)}
-                  </>
-                )}
+            <div className="pointer-events-none absolute right-4 top-3 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card/90 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm backdrop-blur animate-fade-in">
+              <PenLine className="h-3 w-3 animate-pulse-dot" /> {t("articleStudio.writing")}
+            </div>
+            {article.status === "generating" && !body && (
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary animate-pulse-dot">
+                  <PenLine className="h-6 w-6 text-white" strokeWidth={1.9} />
+                </span>
+                <p className="text-sm font-medium text-foreground">{t("articleStudio.writing")}</p>
               </div>
-              <textarea
-                ref={textareaRef}
-                value={body}
-                readOnly={typing || article.status === "generating"}
-                onChange={(e) => handleBodyChange(e.target.value)}
-                onSelect={handleSelectionChange}
-                onKeyUp={handleSelectionChange}
-                onMouseUp={handleSelectionChange}
-                onKeyDown={handleEditorKeyDown}
-                onScroll={(e) => {
-                  if (backdropRef.current) backdropRef.current.scrollTop = e.currentTarget.scrollTop;
-                }}
-                className="absolute inset-0 h-full w-full resize-none overflow-auto border-0 bg-transparent p-0 text-[15px] leading-[1.8] text-foreground focus:outline-none"
-                placeholder={t("articles.editor.bodyPlaceholder")}
-              />
-
-              {/* Dune-is-writing indicator */}
-              {(typing || article.status === "generating") && (
-                <div className="pointer-events-none absolute right-2 top-2 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card/90 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm backdrop-blur animate-fade-in">
-                  <PenLine className="h-3 w-3 animate-pulse-dot" /> {t("articleStudio.writing")}
-                </div>
-              )}
-
-              {/* Full generating state (before the first token lands) */}
-              {article.status === "generating" && !body && (
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary animate-pulse-dot">
-                    <PenLine className="h-6 w-6 text-white" strokeWidth={1.9} />
-                  </span>
-                  <p className="text-sm font-medium text-foreground">{t("articleStudio.writing")}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-[1.8] space-y-3 text-foreground animate-fade-in [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:text-muted-foreground [&_p]:leading-[1.8] [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1.5 [&_li]:text-muted-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_img]:rounded-xl [&_img]:my-4"
-              dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
-            />
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <RichEditor
+            ref={richRef}
+            articleId={articleId}
+            value={body}
+            editable
+            onChange={handleBodyChange}
+          />
+        )}
       </div>
 
       {showPublishModal && (
@@ -976,7 +850,7 @@ function ArticleEditor({
       breakdown={breakdown}
       body={body}
       onBodyChange={handleBodyChange}
-      cursorPosition={cursorPosition}
+      onInsert={(text) => richRef.current?.insertAtCursor(text)}
       mobileOpen={dockMobileOpen}
       onCloseMobile={onCloseDockMobile}
     />

@@ -56,8 +56,7 @@ function TypingIndicator() {
 interface AssistantTabProps {
   articleId: string;
   body: string;
-  onBodyChange: (val: string, highlight?: { start: number; end: number }) => void;
-  cursorPosition: number | null;
+  onInsert: (text: string) => void;
 }
 
 /**
@@ -65,7 +64,7 @@ interface AssistantTabProps {
  * empty state with quick-start cards, richly styled message threads, and an
  * "insert at cursor" action on replies that carry draftable content.
  */
-export function AssistantTab({ articleId, body, onBodyChange, cursorPosition }: AssistantTabProps) {
+export function AssistantTab({ articleId, body, onInsert }: AssistantTabProps) {
   const { t } = useTranslation();
   const { success: toastSuccess, error: toastError } = useToast();
   const dune = FENNEX_AGENTS.dune;
@@ -109,14 +108,7 @@ export function AssistantTab({ articleId, body, onBodyChange, cursorPosition }: 
   }
 
   function handleInsert(text: string) {
-    if (cursorPosition != null && cursorPosition >= 0 && cursorPosition <= body.length) {
-      onBodyChange(body.slice(0, cursorPosition) + text + body.slice(cursorPosition), {
-        start: cursorPosition,
-        end: cursorPosition + text.length,
-      });
-    } else {
-      onBodyChange(body + text, { start: body.length, end: body.length + text.length });
-    }
+    onInsert(text);
     toastSuccess(t("articleStudio.assistant.inserted"));
   }
 

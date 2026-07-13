@@ -31,8 +31,8 @@ interface DuneDockProps {
   onMetaDescBlur: () => void;
   breakdown: Record<string, number>;
   body: string;
-  onBodyChange: (val: string, highlight?: { start: number; end: number }) => void;
-  cursorPosition: number | null;
+  onBodyChange: (val: string) => void;
+  onInsert: (text: string) => void;
   /** Mobile/narrow-viewport overlay state (ignored at `lg` and above, where the dock is always visible). */
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -61,7 +61,7 @@ export function DuneDock({
   breakdown,
   body,
   onBodyChange,
-  cursorPosition,
+  onInsert,
   mobileOpen = false,
   onCloseMobile,
 }: DuneDockProps) {
@@ -125,12 +125,7 @@ export function DuneDock({
       {/* Tab content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "assistant" && (
-          <AssistantTab
-            articleId={articleId}
-            body={body}
-            onBodyChange={onBodyChange}
-            cursorPosition={cursorPosition}
-          />
+          <AssistantTab articleId={articleId} body={body} onInsert={onInsert} />
         )}
         {tab === "checks" && (
           <ChecksTab articleId={articleId} body={body} onBodyChange={onBodyChange} />

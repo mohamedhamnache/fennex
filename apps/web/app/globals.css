@@ -306,6 +306,20 @@ input:focus, textarea:focus, select:focus {
 .animate-typing-dot { animation: typingDot 1.2s ease-in-out infinite; }
 .animate-edit-flash { animation: editFlash 1.7s ease-out forwards; border-radius: 3px; }
 
+/* TipTap: transient flash decoration for Dune edits */
+.dune-flash { animation: editFlash 1.7s ease-out forwards; border-radius: 3px; padding: 0 1px; }
+
+/* TipTap: empty-doc placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+  float: left;
+}
+.ProseMirror { min-height: 100%; }
+.ProseMirror:focus { outline: none; }
+
 /* ── Shimmer skeleton ── */
 .skeleton {
   background: linear-gradient(90deg,
