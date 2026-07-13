@@ -31,11 +31,18 @@ interface DocumentsRailProps {
   onNewArticle: () => void;
   onRegenerate: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Mobile/narrow-viewport overlay state (ignored at `lg` and above, where the rail is always visible). */
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 /**
  * Left rail of the article studio: searchable document list. Reuses the
  * existing status→tone map and SEO color scale from the article list/editor.
+ *
+ * Below `lg`, the rail is hidden by default and only rendered as a fixed
+ * overlay (with backdrop) when `mobileOpen` is true, toggled from a button in
+ * the canvas header. At `lg` and above it renders as the static column.
  */
 export function DocumentsRail({
   articles,
@@ -45,6 +52,8 @@ export function DocumentsRail({
   onNewArticle,
   onRegenerate,
   onDelete,
+  mobileOpen = false,
+  onCloseMobile,
 }: DocumentsRailProps) {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState("");
@@ -55,8 +64,13 @@ export function DocumentsRail({
     return articles.filter((a) => a.title.toLowerCase().includes(q));
   }, [articles, query]);
 
-  return (
-    <aside className="glass flex w-60 shrink-0 flex-col overflow-hidden">
+  function handleSelect(id: string) {
+    onSelect(id);
+    onCloseMobile?.();
+  }
+
+  const content = (
+    <>
       <div className="flex flex-col gap-2 border-b border-white/[0.06] px-3 py-3">
         <button
           onClick={onNewArticle}
@@ -102,7 +116,7 @@ export function DocumentsRail({
                 {isSel && (
                   <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
                 )}
-                <button onClick={() => onSelect(a.id)} className="flex flex-col gap-1.5 text-left">
+                <button onClick={() => handleSelect(a.id)} className="flex flex-col gap-1.5 text-left">
                   <p className={cn("line-clamp-1 text-sm font-medium pr-5", isSel ? "text-foreground" : "text-foreground/85")}>
                     {a.title}
                   </p>
@@ -129,7 +143,29 @@ export function DocumentsRail({
           })
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop: static column, always visible at lg+ */}
+      <aside className="glass hidden w-60 shrink-0 flex-col overflow-hidden lg:flex">
+        {content}
+      </aside>
+
+      {/* Mobile/narrow: overlay drawer, shown only when toggled open */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 flex lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+            onClick={onCloseMobile}
+          />
+          <aside className="glass animate-scale-in relative z-10 flex h-full w-72 max-w-[85vw] origin-left flex-col overflow-hidden">
+            {content}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -176,7 +212,9 @@ function RowMenu({ onRegenerate, onDelete }: { onRegenerate: () => void; onDelet
             onClick={(e) => {
               e.stopPropagation();
               setOpen(false);
-              onDelete();
+              if (window.confirm(t("articleStudio.confirmDelete"))) {
+                onDelete();
+              }
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-destructive hover:bg-destructive/10 transition-colors"
           >

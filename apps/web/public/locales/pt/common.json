@@ -62,7 +62,8 @@
     "viewAll": "Ver tudo →",
     "previousPage": "← Anterior",
     "nextPage": "Próximo →",
-    "page": "Página {{n}}"
+    "page": "Página {{n}}",
+    "close": "Fechar"
   },
   "auth": {
     "welcomeBack": "Bem-vindo de volta",
@@ -1280,6 +1281,9 @@
     "emptyTitle": "Escreva algo que mereça rankear",
     "emptyBody": "Escolha um artigo na lista ou comece um novo rascunho. O Dune pesquisa, redige e aprimora ao seu lado.",
     "search": "Pesquisar artigos...",
+    "showDocuments": "Mostrar documentos",
+    "showAssistantPanel": "Mostrar painel do assistente",
+    "confirmDelete": "Excluir este artigo? Esta ação não pode ser desfeita.",
     "readingTime": "{{min}} min de leitura",
     "words": "{{count}} palavras",
     "comingSoon": "Esta aba fica pronta em instantes - continue escrevendo.",

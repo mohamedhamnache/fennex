@@ -62,7 +62,8 @@
     "viewAll": "Alle anzeigen →",
     "previousPage": "← Zurück",
     "nextPage": "Weiter →",
-    "page": "Seite {{n}}"
+    "page": "Seite {{n}}",
+    "close": "Schließen"
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",
@@ -1280,6 +1281,9 @@
     "emptyTitle": "Schreib etwas, das ein Ranking verdient",
     "emptyBody": "Wähle einen Artikel aus der Liste oder starte einen neuen Entwurf. Dune recherchiert, schreibt und feilt an deiner Seite.",
     "search": "Artikel durchsuchen...",
+    "showDocuments": "Dokumente anzeigen",
+    "showAssistantPanel": "Assistent-Panel anzeigen",
+    "confirmDelete": "Diesen Artikel löschen? Dies kann nicht rückgängig gemacht werden.",
     "readingTime": "{{min}} Min. Lesezeit",
     "words": "{{count}} Wörter",
     "comingSoon": "Dieser Tab ist gleich startklar - schreib einfach weiter.",

@@ -139,7 +139,8 @@
     "viewAll": "View all →",
     "previousPage": "← Previous",
     "nextPage": "Next →",
-    "page": "Page {{n}}"
+    "page": "Page {{n}}",
+    "close": "Close"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -1357,6 +1358,9 @@
     "emptyTitle": "Write something worth ranking",
     "emptyBody": "Pick an article from the rail or start a new draft. Dune researches, drafts and polishes beside you.",
     "search": "Search articles...",
+    "showDocuments": "Show documents",
+    "showAssistantPanel": "Show assistant panel",
+    "confirmDelete": "Delete this article? This can't be undone.",
     "readingTime": "{{min}} min read",
     "words": "{{count}} words",
     "comingSoon": "This tab lights up in a moment - keep writing.",

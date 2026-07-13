@@ -57,7 +57,7 @@ export function StatsBar({
   onPublish,
 }: StatsBarProps) {
   const { t } = useTranslation();
-  const readingMinutes = wordCount > 0 ? Math.ceil(wordCount / 200) : 0;
+  const readingMinutes = Math.ceil(wordCount / 200);
 
   return (
     <div className="flex items-center gap-3 border-b border-border px-5 py-2.5 text-xs">

@@ -11,6 +11,8 @@ import {
   ExternalLink,
   Zap,
   Image as ImageIcon,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -411,9 +413,17 @@ function PublishModal({
 function ArticleEditor({
   articleId,
   projectId,
+  onShowDocuments,
+  onShowAssistantPanel,
+  dockMobileOpen,
+  onCloseDockMobile,
 }: {
   articleId: string;
   projectId: string;
+  onShowDocuments: () => void;
+  onShowAssistantPanel: () => void;
+  dockMobileOpen: boolean;
+  onCloseDockMobile: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -580,6 +590,14 @@ function ArticleEditor({
     <div className="flex h-full flex-1 min-w-0 flex-col overflow-hidden">
       {/* Title row */}
       <div className="flex items-center gap-3 border-b border-border px-5 py-3">
+        <button
+          onClick={onShowDocuments}
+          className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
+          aria-label={t("articleStudio.showDocuments")}
+          title={t("articleStudio.showDocuments")}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -587,6 +605,14 @@ function ArticleEditor({
           className="flex-1 bg-transparent text-base font-semibold text-foreground focus:outline-none min-w-0"
           placeholder={t("articles.editor.articleTitle")}
         />
+        <button
+          onClick={onShowAssistantPanel}
+          className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
+          aria-label={t("articleStudio.showAssistantPanel")}
+          title={t("articleStudio.showAssistantPanel")}
+        >
+          <PanelRight className="h-4 w-4" />
+        </button>
         <button
           onClick={handleSaveNow}
           disabled={updateMutation.isPending}
@@ -754,6 +780,8 @@ function ArticleEditor({
       body={body}
       onBodyChange={handleBodyChange}
       cursorPosition={cursorPosition}
+      mobileOpen={dockMobileOpen}
+      onCloseMobile={onCloseDockMobile}
     />
     </>
   );
@@ -770,6 +798,8 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [railMobileOpen, setRailMobileOpen] = useState(false);
+  const [dockMobileOpen, setDockMobileOpen] = useState(false);
 
   useEffect(() => {
     setCurrentProject(projectId);
@@ -843,6 +873,8 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             deleteMutation.mutate(id);
             if (id === selectedId) setSelectedId(null);
           }}
+          mobileOpen={railMobileOpen}
+          onCloseMobile={() => setRailMobileOpen(false)}
         />
 
         {selectedArticle ? (
@@ -850,6 +882,10 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             key={selectedArticle.id}
             articleId={selectedArticle.id}
             projectId={projectId}
+            onShowDocuments={() => setRailMobileOpen(true)}
+            onShowAssistantPanel={() => setDockMobileOpen(true)}
+            dockMobileOpen={dockMobileOpen}
+            onCloseDockMobile={() => setDockMobileOpen(false)}
           />
         ) : (
           <section className="glass flex min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-6 text-center">
