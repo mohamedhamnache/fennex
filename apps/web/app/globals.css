@@ -292,12 +292,19 @@ input:focus, textarea:focus, select:focus {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
+/* Highlight flash for text Dune just wrote/replaced in the editor */
+@keyframes editFlash {
+  0%   { background-color: hsl(var(--primary) / 0.32); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.18); }
+  70%  { background-color: hsl(var(--primary) / 0.22); box-shadow: 0 0 0 2px hsl(var(--primary) / 0); }
+  100% { background-color: hsl(var(--primary) / 0); box-shadow: 0 0 0 2px hsl(var(--primary) / 0); }
+}
 
 .animate-fade-in    { animation: fadeIn 0.2s ease-out both; }
 .animate-slide-up   { animation: slideUp 0.25s ease-out both; }
 .animate-pulse-dot  { animation: pulse 2s ease-in-out infinite; }
 .animate-msg-in     { animation: msgSlideIn 0.2s ease-out both; }
 .animate-typing-dot { animation: typingDot 1.2s ease-in-out infinite; }
+.animate-edit-flash { animation: editFlash 1.7s ease-out forwards; border-radius: 3px; }
 
 /* ── Shimmer skeleton ── */
 .skeleton {
@@ -531,5 +538,5 @@ input:focus, textarea:focus, select:focus {
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none !important; }
   .animate-fade-in, .animate-slide-up, .animate-scale-in, .animate-toast-in,
-  .edge-flow, .node-active, .animate-pulse-dot, .animate-msg-in { animation: none !important; }
+  .edge-flow, .node-active, .animate-pulse-dot, .animate-msg-in, .animate-edit-flash { animation: none !important; }
 }

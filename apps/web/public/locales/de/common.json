@@ -172,7 +172,9 @@
       "avgCtr": "Durchschn. CTR",
       "avgPosition": "Durchschn. Position",
       "published": "Veröffentlicht"
-    }
+    },
+    "yourPack": "Dein Pack",
+    "yourPackSub": "Sieben Spezialisten, ein Arbeitsbereich"
   },
   "overview": {
     "title": "Übersicht",

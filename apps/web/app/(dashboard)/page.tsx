@@ -19,6 +19,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { AutopilotCard } from "@/components/autopilot/AutopilotCard";
+import { FENNEX_AGENTS, type AgentId } from "@/lib/agents";
 
 function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -202,6 +203,68 @@ function QuickActionsTile({ projectId }: { projectId: string }) {
   );
 }
 
+// ─── Your Pack strip ───────────────────────────────────────────────────────────
+
+const PACK_GRADIENT: Record<AgentId, string> = {
+  zerda: "from-indigo-500 to-violet-500",
+  sirocco: "from-violet-500 to-fuchsia-500",
+  dune: "from-blue-500 to-indigo-500",
+  mirage: "from-fuchsia-500 to-pink-500",
+  sable: "from-slate-600 to-indigo-600",
+  oasis: "from-emerald-500 to-teal-500",
+  nomad: "from-amber-500 to-orange-500",
+};
+
+// Each agent's primary surface (routes verified to exist).
+const PACK_ROUTE: Record<AgentId, string> = {
+  zerda: "analytics",
+  sirocco: "campaigns",
+  dune: "articles",
+  mirage: "images",
+  sable: "content",
+  oasis: "agents",
+  nomad: "backlinks",
+};
+
+const PACK_ORDER: AgentId[] = ["dune", "zerda", "sirocco", "mirage", "sable", "oasis", "nomad"];
+
+function PackStrip({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="glass p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="h-3.5 w-3.5" strokeWidth={2} />
+            </span>
+            {t("dashboard.yourPack")}
+          </h2>
+          <p className="mt-1 pl-8 text-xs text-muted-foreground">{t("dashboard.yourPackSub")}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {PACK_ORDER.map((id) => {
+          const agent = FENNEX_AGENTS[id];
+          return (
+            <Link
+              key={id}
+              href={`/${projectId}/${PACK_ROUTE[id]}`}
+              className="group flex flex-col items-center gap-2 rounded-xl border border-white/[0.05] bg-white/[0.02] px-2 py-3.5 text-center transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white/[0.04]"
+            >
+              <span className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-sm transition-transform group-hover:scale-105 ${PACK_GRADIENT[id]}`}>
+                <agent.Icon className="h-5 w-5" strokeWidth={1.9} />
+              </span>
+              <span className="text-xs font-semibold text-foreground">{agent.name}</span>
+              <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground">{agent.role}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -292,6 +355,9 @@ export default function DashboardPage() {
         <StatCard label={t("dashboard.stats.published")} tone="primary" icon={FileText}
           value={String(publishedCount)} href={projectId ? `/${projectId}/articles` : undefined} />
       </div>
+
+      {/* Your Pack */}
+      {projectId && <PackStrip projectId={projectId} />}
 
       {/* Activity + quick actions */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -42,7 +42,7 @@ interface SelectionBarProps {
   articleId: string;
   selection: { start: number; end: number } | null;
   body: string;
-  onBodyChange: (val: string) => void;
+  onBodyChange: (val: string, highlight?: { start: number; end: number }) => void;
   onRestoreFocus: () => void;
 }
 
@@ -107,7 +107,7 @@ export function SelectionBar({
     const { start, end, original, text } = suggestion;
 
     if (body.slice(start, end) === original) {
-      onBodyChange(body.slice(0, start) + text + body.slice(end));
+      onBodyChange(body.slice(0, start) + text + body.slice(end), { start, end: start + text.length });
       setSuggestion(null);
       onRestoreFocus();
       return;
@@ -120,6 +120,7 @@ export function SelectionBar({
     if (fallbackIndex !== -1) {
       onBodyChange(
         body.slice(0, fallbackIndex) + text + body.slice(fallbackIndex + original.length),
+        { start: fallbackIndex, end: fallbackIndex + text.length },
       );
       setSuggestion(null);
       onRestoreFocus();

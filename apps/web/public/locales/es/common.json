@@ -172,7 +172,9 @@
       "avgCtr": "CTR promedio",
       "avgPosition": "Posición promedio",
       "published": "Publicados"
-    }
+    },
+    "yourPack": "Tu Pack",
+    "yourPackSub": "Siete especialistas, un solo espacio"
   },
   "overview": {
     "title": "Resumen",

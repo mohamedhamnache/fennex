@@ -30,7 +30,7 @@ interface DuneDockProps {
   onMetaDescBlur: () => void;
   breakdown: Record<string, number>;
   body: string;
-  onBodyChange: (val: string) => void;
+  onBodyChange: (val: string, highlight?: { start: number; end: number }) => void;
   cursorPosition: number | null;
   /** Mobile/narrow-viewport overlay state (ignored at `lg` and above, where the dock is always visible). */
   mobileOpen?: boolean;

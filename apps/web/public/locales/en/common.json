@@ -249,7 +249,9 @@
       "avgCtr": "Avg CTR",
       "avgPosition": "Avg Position",
       "published": "Published"
-    }
+    },
+    "yourPack": "Your Pack",
+    "yourPackSub": "Seven specialists, one workspace"
   },
   "overview": {
     "title": "Project Overview",

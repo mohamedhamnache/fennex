@@ -454,10 +454,13 @@ function ArticleEditor({
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number | null>(null);
+  const [highlight, setHighlight] = useState<{ start: number; end: number } | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized = useRef(false);
   const prevStatusRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const backdropRef = useRef<HTMLDivElement | null>(null);
 
   const { data: apiKeys = [] } = useQuery({
     queryKey: ["api-keys"],
@@ -471,6 +474,7 @@ function ArticleEditor({
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
     };
   }, []);
 
@@ -526,13 +530,35 @@ function ArticleEditor({
     onError: () => error(t("articles.toast.revisionError")),
   });
 
-  function handleBodyChange(val: string) {
+  function handleBodyChange(val: string, highlightRange?: { start: number; end: number }) {
     setBody(val);
     setSaveState("saving");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       updateMutation.mutate({ body_markdown: val });
     }, 2000);
+
+    if (highlightRange) {
+      // A Dune-driven edit (rewrite / humanize / insert): flash the new text.
+      setTab("edit");
+      setHighlight(highlightRange);
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = setTimeout(() => setHighlight(null), 1800);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        // Collapse the caret to the end of the change; the flash marks the range.
+        el.setSelectionRange(highlightRange.end, highlightRange.end);
+        // pull the changed range into view
+        const ratio = highlightRange.start / Math.max(val.length, 1);
+        el.scrollTop = Math.max(0, ratio * el.scrollHeight - el.clientHeight / 2);
+        if (backdropRef.current) backdropRef.current.scrollTop = el.scrollTop;
+      });
+    } else {
+      // Manual typing invalidates any pending highlight range.
+      setHighlight(null);
+    }
   }
 
   function handleSelectionChange() {
@@ -730,8 +756,8 @@ function ArticleEditor({
       )}
 
       {/* Editor body */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col px-5 py-6">
+        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
           {showImageSuggestions && (
             <div className="mb-5 rounded-xl border border-border bg-card/40 p-3">
               <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
@@ -739,19 +765,40 @@ function ArticleEditor({
           )}
 
           {tab === "edit" ? (
-            <textarea
-              ref={textareaRef}
-              value={body}
-              onChange={(e) => handleBodyChange(e.target.value)}
-              onSelect={handleSelectionChange}
-              onKeyUp={handleSelectionChange}
-              onMouseUp={handleSelectionChange}
-              className="w-full flex-1 resize-none bg-transparent text-[15px] leading-[1.8] text-foreground focus:outline-none"
-              placeholder={t("articles.editor.bodyPlaceholder")}
-            />
+            <div className="relative min-h-0 flex-1">
+              {/* Highlight backdrop: mirrors the text; only the changed range paints a fading flash. */}
+              <div
+                ref={backdropRef}
+                aria-hidden
+                className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words border-0 p-0 text-[15px] leading-[1.8] text-transparent"
+              >
+                {highlight && (
+                  <>
+                    {body.slice(0, highlight.start)}
+                    <mark className="animate-edit-flash bg-transparent text-transparent">
+                      {body.slice(highlight.start, highlight.end)}
+                    </mark>
+                    {body.slice(highlight.end)}
+                  </>
+                )}
+              </div>
+              <textarea
+                ref={textareaRef}
+                value={body}
+                onChange={(e) => handleBodyChange(e.target.value)}
+                onSelect={handleSelectionChange}
+                onKeyUp={handleSelectionChange}
+                onMouseUp={handleSelectionChange}
+                onScroll={(e) => {
+                  if (backdropRef.current) backdropRef.current.scrollTop = e.currentTarget.scrollTop;
+                }}
+                className="absolute inset-0 h-full w-full resize-none overflow-auto border-0 bg-transparent p-0 text-[15px] leading-[1.8] text-foreground focus:outline-none"
+                placeholder={t("articles.editor.bodyPlaceholder")}
+              />
+            </div>
           ) : (
             <div
-              className="flex-1 text-[15px] leading-[1.8] space-y-3 text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:text-muted-foreground [&_p]:leading-[1.8] [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1.5 [&_li]:text-muted-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_img]:rounded-xl [&_img]:my-4"
+              className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-[1.8] space-y-3 text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:text-muted-foreground [&_p]:leading-[1.8] [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1.5 [&_li]:text-muted-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_img]:rounded-xl [&_img]:my-4"
               dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
             />
           )}

@@ -172,7 +172,9 @@
       "avgCtr": "متوسط النسبة",
       "avgPosition": "متوسط الترتيب",
       "published": "منشور"
-    }
+    },
+    "yourPack": "Pack الخاص بك",
+    "yourPackSub": "سبعة مختصين، مساحة عمل واحدة"
   },
   "overview": {
     "title": "نظرة عامة",

@@ -64,7 +64,7 @@ interface HumanizeState {
 interface ChecksTabProps {
   articleId: string;
   body: string;
-  onBodyChange: (val: string) => void;
+  onBodyChange: (val: string, highlight?: { start: number; end: number }) => void;
 }
 
 /**
@@ -142,7 +142,11 @@ export function ChecksTab({ articleId, body, onBodyChange }: ChecksTabProps) {
       });
       return;
     }
-    onBodyChange(body.replace(state.sentence, state.suggestion));
+    const idx = body.indexOf(state.sentence);
+    onBodyChange(
+      body.replace(state.sentence, state.suggestion),
+      idx === -1 ? undefined : { start: idx, end: idx + state.suggestion.length },
+    );
     setHumanized((prev) => {
       const next = { ...prev };
       delete next[sentence];
