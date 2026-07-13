@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
 from app.models.project import Project
+from app.services.article_service import compute_seo_score
 
 router = APIRouter()
 
@@ -161,6 +162,13 @@ async def update_article(
     if "body_markdown" in update_data and update_data["body_markdown"]:
         article.word_count = len(update_data["body_markdown"].split())
 
+    # Keep the stored SEO score in sync with the live on-page score so the
+    # overview cards match what the editor shows.
+    score, _ = compute_seo_score(
+        article.title, article.body_markdown, article.target_keyword, article.meta_description
+    )
+    article.seo_score = score
+
     await db.flush()
     await db.refresh(article)
     await db.commit()
@@ -248,68 +256,13 @@ async def get_seo_score(
 ):
     article = await _get_article_or_404(article_id, current_user.org_id, db)
 
-    body = article.body_markdown or ""
-    kw = (article.target_keyword or "").lower().strip()
-    title_lower = article.title.lower()
+    score, breakdown = compute_seo_score(
+        article.title, article.body_markdown, article.target_keyword, article.meta_description
+    )
 
-    breakdown = {}
-    score = 0.0
+    # Persist so the list/overview cards reflect the same score as the editor.
+    if article.seo_score != score:
+        article.seo_score = score
+        await db.commit()
 
-    # keyword in title: +20
-    if kw and kw in title_lower:
-        breakdown["keyword_in_title"] = 20
-        score += 20
-    else:
-        breakdown["keyword_in_title"] = 0
-
-    # keyword in first paragraph: +15
-    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
-    first_para = paragraphs[0].lower() if paragraphs else ""
-    if kw and kw in first_para:
-        breakdown["keyword_in_first_paragraph"] = 15
-        score += 15
-    else:
-        breakdown["keyword_in_first_paragraph"] = 0
-
-    # keyword density 0.5-2.5%: +15 (else partial)
-    words = body.split()
-    total_words = len(words)
-    if kw and total_words > 0:
-        kw_count = body.lower().count(kw)
-        density = (kw_count / total_words) * 100
-        if 0.5 <= density <= 2.5:
-            breakdown["keyword_density"] = 15
-            score += 15
-        elif density > 0:
-            breakdown["keyword_density"] = 7
-            score += 7
-        else:
-            breakdown["keyword_density"] = 0
-    else:
-        breakdown["keyword_density"] = 0
-
-    # word_count >= 1000: +15, >= 1500: +20
-    if total_words >= 1500:
-        breakdown["word_count"] = 20
-        score += 20
-    elif total_words >= 1000:
-        breakdown["word_count"] = 15
-        score += 15
-    else:
-        breakdown["word_count"] = 0
-
-    # has H2 headings: +15
-    if "## " in body:
-        breakdown["has_h2_headings"] = 15
-        score += 15
-    else:
-        breakdown["has_h2_headings"] = 0
-
-    # meta_description present: +15
-    if article.meta_description:
-        breakdown["meta_description"] = 15
-        score += 15
-    else:
-        breakdown["meta_description"] = 0
-
-    return {"score": round(score, 1), "breakdown": breakdown}
+    return {"score": score, "breakdown": breakdown}

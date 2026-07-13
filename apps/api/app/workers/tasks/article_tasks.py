@@ -6,7 +6,7 @@ from app.agents.llm_router import LLMProvider, LLMRouter, TaskType
 from app.core.database import async_session_factory
 from app.models.article import Article, ArticleRevision, ArticleStatus
 from app.models.brand_voice import BrandVoice
-from app.services.article_service import _deterministic_seo_score, _markdown_to_html
+from app.services.article_service import compute_seo_score, _markdown_to_html
 from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 
 
@@ -156,7 +156,6 @@ async def generate_article_task(
     parsed = _parse_llm_response(raw, article_title)
     body_html = _markdown_to_html(parsed["body_markdown"])
     word_count = len(parsed["body_markdown"].split())
-    seo_score = _deterministic_seo_score(article_title)
 
     async with async_session_factory() as db:
         art = await db.get(Article, article_id_uuid)
@@ -167,6 +166,9 @@ async def generate_article_task(
         art.meta_title = parsed["meta_title"]
         art.meta_description = parsed["meta_description"]
         art.word_count = word_count
+        seo_score, _ = compute_seo_score(
+            article_title, parsed["body_markdown"], art.target_keyword, parsed["meta_description"]
+        )
         art.seo_score = seo_score
         art.status = ArticleStatus.ready
         art.error = None

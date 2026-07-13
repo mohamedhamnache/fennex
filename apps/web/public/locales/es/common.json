@@ -1372,6 +1372,24 @@
         "ready": "Listo",
         "published": "Publicado"
       }
+    },
+    "format": {
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "code": "Código",
+      "link": "Enlace",
+      "h2": "Encabezado 2",
+      "h3": "Encabezado 3",
+      "quote": "Cita",
+      "ul": "Lista con viñetas",
+      "ol": "Lista numerada"
+    },
+    "meta": {
+      "serpPreview": "Vista previa de búsqueda",
+      "seoScoreLabel": "Puntuación SEO",
+      "signals": "Señales de posicionamiento",
+      "metaTitleHint": "50–60 caracteres es lo ideal",
+      "metaDescHint": "150–160 caracteres es lo ideal"
     }
   }
 }

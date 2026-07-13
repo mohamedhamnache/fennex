@@ -21,6 +21,7 @@ const TAB_ICONS: Record<DockTab, typeof Sparkles> = {
 interface DuneDockProps {
   projectId: string;
   articleId: string;
+  articleTitle: string;
   targetKeyword: string | null;
   metaTitle: string;
   metaDesc: string;
@@ -49,6 +50,7 @@ interface DuneDockProps {
 export function DuneDock({
   projectId,
   articleId,
+  articleTitle,
   targetKeyword,
   metaTitle,
   metaDesc,
@@ -134,6 +136,8 @@ export function DuneDock({
         )}
         {tab === "meta" && (
           <MetaTab
+            articleTitle={articleTitle}
+            targetKeyword={targetKeyword}
             metaTitle={metaTitle}
             metaDesc={metaDesc}
             onMetaTitleChange={onMetaTitleChange}

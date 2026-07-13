@@ -1372,6 +1372,24 @@
         "ready": "Prêt",
         "published": "Publié"
       }
+    },
+    "format": {
+      "bold": "Gras",
+      "italic": "Italique",
+      "code": "Code",
+      "link": "Lien",
+      "h2": "Titre 2",
+      "h3": "Titre 3",
+      "quote": "Citation",
+      "ul": "Liste à puces",
+      "ol": "Liste numérotée"
+    },
+    "meta": {
+      "serpPreview": "Aperçu de recherche",
+      "seoScoreLabel": "Score SEO",
+      "signals": "Signaux de classement",
+      "metaTitleHint": "50 à 60 caractères, c'est idéal",
+      "metaDescHint": "150 à 160 caractères, c'est idéal"
     }
   }
 }

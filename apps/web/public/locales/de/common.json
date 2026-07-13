@@ -1372,6 +1372,24 @@
         "ready": "Bereit",
         "published": "Veröffentlicht"
       }
+    },
+    "format": {
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "code": "Code",
+      "link": "Link",
+      "h2": "Überschrift 2",
+      "h3": "Überschrift 3",
+      "quote": "Zitat",
+      "ul": "Aufzählung",
+      "ol": "Nummerierte Liste"
+    },
+    "meta": {
+      "serpPreview": "Suchvorschau",
+      "seoScoreLabel": "SEO-Score",
+      "signals": "Ranking-Signale",
+      "metaTitleHint": "50–60 Zeichen sind ideal",
+      "metaDescHint": "150–160 Zeichen sind ideal"
     }
   }
 }

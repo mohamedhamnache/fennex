@@ -61,6 +61,82 @@ def _deterministic_seo_score(title: str) -> float:
     return round(62.0 + (h % 2600) / 100.0, 1)
 
 
+def compute_seo_score(
+    title: str,
+    body_markdown: str | None,
+    target_keyword: str | None,
+    meta_description: str | None,
+) -> tuple[float, dict[str, int]]:
+    """Real on-page SEO score (0-100) + per-signal breakdown.
+
+    Single source of truth shared by the /seo-score endpoint, article updates
+    and generation so the score shown on cards always matches the editor.
+    """
+    body = body_markdown or ""
+    kw = (target_keyword or "").lower().strip()
+    title_lower = (title or "").lower()
+    breakdown: dict[str, int] = {}
+    score = 0.0
+
+    # keyword in title: +20
+    if kw and kw in title_lower:
+        breakdown["keyword_in_title"] = 20
+        score += 20
+    else:
+        breakdown["keyword_in_title"] = 0
+
+    # keyword in first paragraph: +15
+    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
+    first_para = paragraphs[0].lower() if paragraphs else ""
+    if kw and kw in first_para:
+        breakdown["keyword_in_first_paragraph"] = 15
+        score += 15
+    else:
+        breakdown["keyword_in_first_paragraph"] = 0
+
+    # keyword density 0.5-2.5%: +15 (partial +7)
+    words = body.split()
+    total_words = len(words)
+    if kw and total_words > 0:
+        density = (body.lower().count(kw) / total_words) * 100
+        if 0.5 <= density <= 2.5:
+            breakdown["keyword_density"] = 15
+            score += 15
+        elif density > 0:
+            breakdown["keyword_density"] = 7
+            score += 7
+        else:
+            breakdown["keyword_density"] = 0
+    else:
+        breakdown["keyword_density"] = 0
+
+    # word count >= 1500: +20, >= 1000: +15
+    if total_words >= 1500:
+        breakdown["word_count"] = 20
+        score += 20
+    elif total_words >= 1000:
+        breakdown["word_count"] = 15
+        score += 15
+    else:
+        breakdown["word_count"] = 0
+
+    # has H2 headings: +15
+    if "## " in body:
+        breakdown["has_h2_headings"] = 15
+        score += 15
+    else:
+        breakdown["has_h2_headings"] = 0
+
+    # meta description present: +15
+    if meta_description:
+        breakdown["meta_description"] = 15
+        score += 15
+    else:
+        breakdown["meta_description"] = 0
+
+    return round(score, 1), breakdown
+
+
 def generate_article_mock(
     title: str,
     keyword: str | None,
@@ -232,7 +308,7 @@ def generate_article_mock(
     intro_plain = re.sub(r"\*\*?(.+?)\*\*?", r"\1", intro)
     meta_description = f"Learn everything about {kw}. {intro_plain[:150]}..."
 
-    seo_score = _deterministic_seo_score(title)
+    seo_score, _ = compute_seo_score(title, body_markdown, kw, meta_description)
 
     outline = {"sections": outline_sections}
 

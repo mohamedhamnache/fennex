@@ -9,6 +9,7 @@ import {
 import { FennecMascot } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { ProgressRing } from "@/components/ui/ProgressRing";
 import { FENNEX_AGENTS } from "@/lib/agents";
 import type { Article, ArticleStatus } from "@/lib/api";
 
@@ -214,8 +215,11 @@ function ArticleCard({
   return (
     <div
       onClick={onOpen}
-      className="glass-hover group relative flex cursor-pointer flex-col gap-3 rounded-2xl border border-white/[0.05] p-4"
+      className="glass-hover group relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-white/[0.05] p-4"
     >
+      {/* top accent */}
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 gradient-brand opacity-0 transition-opacity group-hover:opacity-100" />
+
       <div className="flex items-start justify-between gap-2">
         <Badge tone={STATUS_TONE[article.status]} dot className="capitalize">
           {article.status}
@@ -252,22 +256,28 @@ function ArticleCard({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <p className="line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-          {article.title}
-        </p>
-        {article.target_keyword && (
-          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{article.target_keyword}</p>
+      <div className="flex min-h-0 flex-1 items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
+            {article.title}
+          </p>
+          {article.target_keyword && (
+            <span className="mt-2 inline-block max-w-full truncate rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+              {article.target_keyword}
+            </span>
+          )}
+        </div>
+        {article.seo_score !== null && (
+          <ProgressRing value={article.seo_score} size={44} stroke={4}>
+            <span className={`text-[11px] font-bold tabular-nums ${seoColor(article.seo_score)}`}>
+              {article.seo_score}
+            </span>
+          </ProgressRing>
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-2.5">
-        <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
-          <span>{new Date(article.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
-          {article.seo_score !== null && (
-            <span className={`font-semibold tabular-nums ${seoColor(article.seo_score)}`}>SEO {article.seo_score}</span>
-          )}
-        </div>
+      <div className="flex items-center justify-between border-t border-border pt-2.5 text-[11px] text-muted-foreground">
+        <span>{new Date(article.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
       </div>
     </div>

@@ -1449,6 +1449,24 @@
         "ready": "Ready",
         "published": "Published"
       }
+    },
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "code": "Code",
+      "link": "Link",
+      "h2": "Heading 2",
+      "h3": "Heading 3",
+      "quote": "Quote",
+      "ul": "Bullet list",
+      "ol": "Numbered list"
+    },
+    "meta": {
+      "serpPreview": "Search preview",
+      "seoScoreLabel": "SEO score",
+      "signals": "Ranking signals",
+      "metaTitleHint": "50–60 characters is ideal",
+      "metaDescHint": "150–160 characters is ideal"
     }
   }
 }

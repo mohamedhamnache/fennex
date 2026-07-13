@@ -1372,6 +1372,24 @@
         "ready": "Pronto",
         "published": "Publicado"
       }
+    },
+    "format": {
+      "bold": "Negrito",
+      "italic": "Itálico",
+      "code": "Código",
+      "link": "Link",
+      "h2": "Título 2",
+      "h3": "Título 3",
+      "quote": "Citação",
+      "ul": "Lista com marcadores",
+      "ol": "Lista numerada"
+    },
+    "meta": {
+      "serpPreview": "Prévia de busca",
+      "seoScoreLabel": "Pontuação SEO",
+      "signals": "Sinais de ranqueamento",
+      "metaTitleHint": "50–60 caracteres é o ideal",
+      "metaDescHint": "150–160 caracteres é o ideal"
     }
   }
 }

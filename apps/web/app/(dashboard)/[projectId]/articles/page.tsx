@@ -37,7 +37,9 @@ import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { SelectionBar } from "@/components/articles/studio/SelectionBar";
 import { ArticlesOverview } from "@/components/articles/studio/ArticlesOverview";
+import { FormatToolbar } from "@/components/articles/studio/FormatToolbar";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
+import { applyFormat, type MdAction } from "@/lib/markdown-edit";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
 
@@ -499,6 +501,9 @@ function ArticleEditor({
       updateArticle(articleId, patch),
     onSuccess: (updated) => {
       queryClient.setQueryData(["article", articleId], updated);
+      // Body/meta changes shift the SEO score; refresh the list so overview
+      // cards match the editor.
+      queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
     },
@@ -570,6 +575,33 @@ function ArticleEditor({
       selectionStart !== selectionEnd ? { start: selectionStart, end: selectionEnd } : null,
     );
     setCursorPosition(selectionEnd);
+  }
+
+  function applyFormatting(action: MdAction) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const r = applyFormat(body, el.selectionStart, el.selectionEnd, action);
+    setBody(r.value);
+    setSaveState("saving");
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => updateMutation.mutate({ body_markdown: r.value }), 2000);
+    setHighlight({ start: r.selStart, end: r.selEnd });
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = setTimeout(() => setHighlight(null), 1800);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(r.selStart, r.selEnd);
+    });
+  }
+
+  function handleEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    const key = e.key.toLowerCase();
+    const map: Record<string, MdAction> = { b: "bold", i: "italic", k: "link" };
+    if (map[key]) {
+      e.preventDefault();
+      applyFormatting(map[key]);
+    }
   }
 
   function handleSaveNow() {
@@ -769,13 +801,16 @@ function ArticleEditor({
       </div>
 
       {tab === "edit" && (
-        <SelectionBar
-          articleId={articleId}
-          selection={selection}
-          body={body}
-          onBodyChange={handleBodyChange}
-          onRestoreFocus={() => textareaRef.current?.focus()}
-        />
+        <>
+          <FormatToolbar onFormat={applyFormatting} />
+          <SelectionBar
+            articleId={articleId}
+            selection={selection}
+            body={body}
+            onBodyChange={handleBodyChange}
+            onRestoreFocus={() => textareaRef.current?.focus()}
+          />
+        </>
       )}
 
       {/* Editor body */}
@@ -812,6 +847,7 @@ function ArticleEditor({
                 onSelect={handleSelectionChange}
                 onKeyUp={handleSelectionChange}
                 onMouseUp={handleSelectionChange}
+                onKeyDown={handleEditorKeyDown}
                 onScroll={(e) => {
                   if (backdropRef.current) backdropRef.current.scrollTop = e.currentTarget.scrollTop;
                 }}
@@ -821,7 +857,7 @@ function ArticleEditor({
             </div>
           ) : (
             <div
-              className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-[1.8] space-y-3 text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:text-muted-foreground [&_p]:leading-[1.8] [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1.5 [&_li]:text-muted-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_img]:rounded-xl [&_img]:my-4"
+              className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-[1.8] space-y-3 text-foreground animate-fade-in [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:text-muted-foreground [&_p]:leading-[1.8] [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1.5 [&_li]:text-muted-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_img]:rounded-xl [&_img]:my-4"
               dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
             />
           )}
@@ -840,6 +876,7 @@ function ArticleEditor({
     <DuneDock
       projectId={projectId}
       articleId={articleId}
+      articleTitle={title}
       targetKeyword={article.target_keyword}
       metaTitle={metaTitle}
       metaDesc={metaDesc}
