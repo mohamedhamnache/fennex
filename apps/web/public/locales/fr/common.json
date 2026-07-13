@@ -1286,7 +1286,6 @@
     "confirmDelete": "Supprimer cet article ? Cette action est irréversible.",
     "readingTime": "{{min}} min de lecture",
     "words": "{{count}} mots",
-    "comingSoon": "Cet onglet s'activera bientôt - continuez à écrire.",
     "selection": {
       "rephrase": "Reformuler",
       "simplify": "Simplifier",

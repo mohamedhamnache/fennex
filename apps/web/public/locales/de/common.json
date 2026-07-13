@@ -1286,7 +1286,6 @@
     "confirmDelete": "Diesen Artikel löschen? Dies kann nicht rückgängig gemacht werden.",
     "readingTime": "{{min}} Min. Lesezeit",
     "words": "{{count}} Wörter",
-    "comingSoon": "Dieser Tab ist gleich startklar - schreib einfach weiter.",
     "selection": {
       "rephrase": "Umformulieren",
       "simplify": "Vereinfachen",

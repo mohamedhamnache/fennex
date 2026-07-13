@@ -1286,7 +1286,6 @@
     "confirmDelete": "Excluir este artigo? Esta ação não pode ser desfeita.",
     "readingTime": "{{min}} min de leitura",
     "words": "{{count}} palavras",
-    "comingSoon": "Esta aba fica pronta em instantes - continue escrevendo.",
     "selection": {
       "rephrase": "Reformular",
       "simplify": "Simplificar",

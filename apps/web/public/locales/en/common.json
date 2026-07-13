@@ -1363,7 +1363,6 @@
     "confirmDelete": "Delete this article? This can't be undone.",
     "readingTime": "{{min}} min read",
     "words": "{{count}} words",
-    "comingSoon": "This tab lights up in a moment - keep writing.",
     "selection": {
       "rephrase": "Rephrase",
       "simplify": "Simplify",

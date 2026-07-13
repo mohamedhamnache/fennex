@@ -1286,7 +1286,6 @@
     "confirmDelete": "¿Eliminar este artículo? Esta acción no se puede deshacer.",
     "readingTime": "{{min}} min de lectura",
     "words": "{{count}} palabras",
-    "comingSoon": "Esta pestaña se activará en un momento - sigue escribiendo.",
     "selection": {
       "rephrase": "Reformular",
       "simplify": "Simplificar",

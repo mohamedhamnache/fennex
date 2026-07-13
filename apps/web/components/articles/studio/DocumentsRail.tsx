@@ -38,7 +38,7 @@ interface DocumentsRailProps {
 
 /**
  * Left rail of the article studio: searchable document list. Reuses the
- * existing status→tone map and SEO color scale from the article list/editor.
+ * existing status->tone map and SEO color scale from the article list/editor.
  *
  * Below `lg`, the rail is hidden by default and only rendered as a fixed
  * overlay (with backdrop) when `mobileOpen` is true, toggled from a button in

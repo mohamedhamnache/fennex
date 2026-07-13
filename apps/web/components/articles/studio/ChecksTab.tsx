@@ -16,20 +16,6 @@ import {
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { useToast } from "@/components/ui/Toast";
 
-const SEO_RULE_IDS = [
-  "title_length",
-  "meta_length",
-  "kw_in_title",
-  "kw_in_intro",
-  "kw_in_heading",
-  "kw_density",
-  "headings_count",
-  "intro_length",
-  "links",
-  "image_alts",
-  "paragraph_length",
-] as const;
-
 function Spinner({ size = 14 }: { size?: number }) {
   return (
     <svg
