@@ -1353,7 +1353,8 @@
         "optimize": "Optimize",
         "checks": "Checks",
         "meta": "Meta"
-      }
+      },
+      "subtitle": "Researches, drafts and polishes with you"
     },
     "emptyTitle": "Write something worth ranking",
     "emptyBody": "Pick an article from the rail or start a new draft. Dune researches, drafts and polishes beside you.",
@@ -1405,7 +1406,12 @@
         "title": "Connect your SEO data provider",
         "body": "Plagiarism scanning runs on your own DataForSEO account. Add your credentials in Settings - pay-per-use, a fraction of a cent per check.",
         "cta": "Open Settings"
-      }
+      },
+      "runHint": "On-page SEO, AI patterns and originality in one pass.",
+      "seoTitle": "On-page SEO",
+      "aiTitle": "AI-pattern score",
+      "plagiarismTitle": "Originality",
+      "passing": "{{count}} of {{total}} passing"
     },
     "assistant": {
       "tagline": "Ask Dune for an outline, a stronger intro, supporting stats, or anything else this article needs.",
@@ -1424,7 +1430,8 @@
         "stats": "Suggest a few supporting statistics or data points I could add to back up the claims in this article.",
         "intro": "Rewrite the introduction so it hooks the reader faster and leads naturally into the rest of the article.",
         "listicle": "Restructure the key points of this article into a numbered listicle format."
-      }
+      },
+      "starters": "Quick starts"
     }
   }
 }

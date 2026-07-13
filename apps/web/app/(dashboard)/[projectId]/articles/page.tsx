@@ -587,9 +587,9 @@ function ArticleEditor({
 
   return (
     <>
-    <div className="flex h-full flex-1 min-w-0 flex-col overflow-hidden">
+    <div className="glass flex h-full flex-1 min-w-0 flex-col overflow-hidden">
       {/* Title row */}
-      <div className="flex items-center gap-3 border-b border-border px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
         <button
           onClick={onShowDocuments}
           className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
@@ -602,7 +602,7 @@ function ArticleEditor({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
-          className="flex-1 bg-transparent text-base font-semibold text-foreground focus:outline-none min-w-0"
+          className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-foreground focus:outline-none"
           placeholder={t("articles.editor.articleTitle")}
         />
         <button
@@ -730,31 +730,32 @@ function ArticleEditor({
       )}
 
       {/* Editor body */}
-      <div className="flex min-h-0 flex-1 flex-col gap-0 px-5 py-4">
-        {showImageSuggestions && (
-          <div className="mb-4 rounded-xl border border-border p-3">
-            <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
-          </div>
-        )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-6">
+        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
+          {showImageSuggestions && (
+            <div className="mb-5 rounded-xl border border-border bg-card/40 p-3">
+              <ImageSuggestionsPanel articleId={articleId} projectId={projectId} />
+            </div>
+          )}
 
-        {tab === "edit" ? (
-          <textarea
-            ref={textareaRef}
-            value={body}
-            onChange={(e) => handleBodyChange(e.target.value)}
-            onSelect={handleSelectionChange}
-            onKeyUp={handleSelectionChange}
-            onMouseUp={handleSelectionChange}
-            className="w-full flex-1 resize-none bg-transparent text-sm font-mono leading-relaxed focus:outline-none text-foreground"
-            placeholder={t("articles.editor.bodyPlaceholder")}
-            style={{ lineHeight: 1.7 }}
-          />
-        ) : (
-          <div
-            className="flex-1 overflow-y-auto text-sm leading-relaxed space-y-3 text-foreground [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded"
-            dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
-          />
-        )}
+          {tab === "edit" ? (
+            <textarea
+              ref={textareaRef}
+              value={body}
+              onChange={(e) => handleBodyChange(e.target.value)}
+              onSelect={handleSelectionChange}
+              onKeyUp={handleSelectionChange}
+              onMouseUp={handleSelectionChange}
+              className="w-full flex-1 resize-none bg-transparent text-[15px] leading-[1.8] text-foreground focus:outline-none"
+              placeholder={t("articles.editor.bodyPlaceholder")}
+            />
+          ) : (
+            <div
+              className="flex-1 text-[15px] leading-[1.8] space-y-3 text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 [&_p]:text-muted-foreground [&_p]:leading-[1.8] [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1.5 [&_li]:text-muted-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_img]:rounded-xl [&_img]:my-4"
+              dangerouslySetInnerHTML={{ __html: article.body_html ?? "<p class='text-muted-foreground text-sm'>No preview available yet.</p>" }}
+            />
+          )}
+        </div>
       </div>
 
       {showPublishModal && (
@@ -888,17 +889,25 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             onCloseDockMobile={() => setDockMobileOpen(false)}
           />
         ) : (
-          <section className="glass flex min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-6 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary">
-              <dune.Icon className="h-6 w-6 text-white" strokeWidth={1.9} />
+          <section className="glass relative flex min-w-0 flex-1 flex-col items-center justify-center gap-5 overflow-hidden px-6 text-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-60"
+              style={{
+                background:
+                  "radial-gradient(600px 220px at 50% 0%, hsl(var(--primary) / 0.10), transparent 65%)",
+              }}
+            />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand glow-primary">
+              <dune.Icon className="h-7 w-7 text-white" strokeWidth={1.9} />
             </div>
-            <div>
-              <p className="text-base font-semibold">{t("articleStudio.emptyTitle")}</p>
-              <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+            <div className="relative">
+              <h2 className="font-display text-xl font-bold tracking-tight">{t("articleStudio.emptyTitle")}</h2>
+              <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
                 {t("articleStudio.emptyBody")}
               </p>
             </div>
-            <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 px-4 py-2 text-xs">
+            <button onClick={() => setShowModal(true)} className="btn-primary relative flex items-center gap-2 px-5 py-2.5 text-xs">
               <Plus className="h-3.5 w-3.5" /> {t("articles.newArticle")}
             </button>
           </section>

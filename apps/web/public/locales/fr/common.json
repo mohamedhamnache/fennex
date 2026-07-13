@@ -1276,7 +1276,8 @@
         "optimize": "Optimiser",
         "checks": "Vérifications",
         "meta": "Méta"
-      }
+      },
+      "subtitle": "Recherche, rédige et peaufine avec vous"
     },
     "emptyTitle": "Écrivez quelque chose qui mérite d'être bien classé",
     "emptyBody": "Choisissez un article dans la liste ou commencez un nouveau brouillon. Dune fait les recherches, rédige et peaufine à vos côtés.",
@@ -1328,7 +1329,12 @@
         "title": "Connectez votre fournisseur de données SEO",
         "body": "La détection de plagiat fonctionne avec votre propre compte DataForSEO. Ajoutez vos identifiants dans les Paramètres - paiement à l'usage, une fraction de centime par vérification.",
         "cta": "Ouvrir les Paramètres"
-      }
+      },
+      "runHint": "SEO on-page, tics d'IA et originalité en une passe.",
+      "seoTitle": "SEO on-page",
+      "aiTitle": "Score de style IA",
+      "plagiarismTitle": "Originalité",
+      "passing": "{{count}} sur {{total}} validés"
     },
     "assistant": {
       "tagline": "Demandez à Dune un plan, une introduction plus percutante, des statistiques à l'appui, ou tout ce dont cet article a besoin.",
@@ -1347,7 +1353,8 @@
         "stats": "Suggère quelques statistiques ou données à l'appui que je pourrais ajouter pour étayer les affirmations de cet article.",
         "intro": "Réécris l'introduction pour qu'elle capte le lecteur plus vite et enchaîne naturellement avec le reste de l'article.",
         "listicle": "Restructure les points clés de cet article sous forme de liste numérotée."
-      }
+      },
+      "starters": "Pour démarrer"
     }
   }
 }

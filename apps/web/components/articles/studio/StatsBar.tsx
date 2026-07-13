@@ -60,30 +60,33 @@ export function StatsBar({
   const readingMinutes = Math.ceil(wordCount / 200);
 
   return (
-    <div className="flex items-center gap-3 border-b border-border px-5 py-2.5 text-xs">
-      <span className="text-muted-foreground tabular-nums">
+    <div className="flex items-center gap-2 border-b border-border px-5 py-2.5 text-xs">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums">
         {t("articleStudio.words", { count: wordCount })}
       </span>
-      <span className="text-border">·</span>
-      <span className="text-muted-foreground tabular-nums">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums">
         {t("articleStudio.readingTime", { min: readingMinutes })}
       </span>
 
       {seoScore !== null && (
-        <>
-          <span className="text-border">·</span>
-          <span className={`font-semibold tabular-nums ${seoColor(seoScore)}`}>
-            SEO {seoScore}
-          </span>
-        </>
+        <button
+          onClick={onRefetchSeo}
+          title={t("articles.editor.seoScore")}
+          className="group inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 transition-colors hover:bg-muted"
+        >
+          <span className={`font-semibold tabular-nums ${seoColor(seoScore)}`}>SEO {seoScore}</span>
+          <RefreshCw className="h-3 w-3 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
+        </button>
       )}
-      <button
-        onClick={onRefetchSeo}
-        className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-        title={t("articles.editor.seoScore")}
-      >
-        <RefreshCw className="h-3.5 w-3.5" />
-      </button>
+      {seoScore === null && (
+        <button
+          onClick={onRefetchSeo}
+          title={t("articles.editor.seoScore")}
+          className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted"
+        >
+          SEO <RefreshCw className="h-3 w-3" />
+        </button>
+      )}
 
       <span className="flex-1" />
 

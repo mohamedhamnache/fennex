@@ -137,57 +137,61 @@ export function SelectionBar({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border px-5 py-2.5">
+    <div className="flex flex-col gap-2.5 border-b border-border px-5 py-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <Wand2 className="h-3.5 w-3.5 text-primary" />
+          Dune
+        </span>
         {MODES.map((mode) => (
           <button
             key={mode}
             onClick={() => handleChipClick(mode)}
             disabled={disabled || !!loadingMode}
             title={disabled ? (tooLong ? t("articleStudio.selection.tooLong") : t("articleStudio.selection.hint")) : undefined}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
               mode === "humanize"
-                ? "border-primary/40 text-primary hover:bg-primary/10"
-                : "border-border text-foreground hover:bg-accent"
+                ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                : "border-border text-foreground hover:border-primary/30 hover:bg-accent"
             }`}
           >
-            {loadingMode === mode ? <Spinner size={12} /> : <Wand2 className="h-3 w-3" />}
+            {loadingMode === mode ? <Spinner size={12} /> : null}
             {t(`articleStudio.selection.${mode}`)}
           </button>
         ))}
 
         {disabled && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             {tooLong ? t("articleStudio.selection.tooLong") : t("articleStudio.selection.hint")}
           </span>
         )}
       </div>
 
       {suggestion && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-3">
-          <div className="flex flex-col gap-1.5 rounded-lg bg-muted/60 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("articleStudio.selection.original")}
-            </p>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{suggestion.original}</p>
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/[0.03] p-3 animate-scale-in">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5 rounded-lg bg-muted/60 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("articleStudio.selection.original")}
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{suggestion.original}</p>
+            </div>
+            <div className="flex flex-col gap-1.5 rounded-lg border border-primary/40 bg-card p-3 shadow-sm">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                <Wand2 className="h-3 w-3" />
+                {t("articleStudio.selection.suggestion")}
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-foreground">{suggestion.text}</p>
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5 rounded-lg border border-primary/40 bg-card p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-              {t("articleStudio.selection.suggestion")}
-            </p>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{suggestion.text}</p>
-          </div>
-          <div className="col-span-2 flex justify-end gap-2">
+          <div className="flex justify-end gap-2">
             <button
               onClick={handleDiscard}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               {t("articleStudio.selection.discard")}
             </button>
-            <button
-              onClick={handleReplace}
-              className="btn-primary px-3 py-1.5 text-xs"
-            >
+            <button onClick={handleReplace} className="btn-primary px-4 py-1.5 text-xs">
               {t("articleStudio.selection.replace")}
             </button>
           </div>

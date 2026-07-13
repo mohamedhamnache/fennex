@@ -1276,7 +1276,8 @@
         "optimize": "Optimieren",
         "checks": "Prüfungen",
         "meta": "Meta"
-      }
+      },
+      "subtitle": "Recherchiert, schreibt und poliert mit dir"
     },
     "emptyTitle": "Schreib etwas, das ein Ranking verdient",
     "emptyBody": "Wähle einen Artikel aus der Liste oder starte einen neuen Entwurf. Dune recherchiert, schreibt und feilt an deiner Seite.",
@@ -1328,7 +1329,12 @@
         "title": "Verbinde deinen SEO-Datenanbieter",
         "body": "Die Plagiatsprüfung läuft über dein eigenes DataForSEO-Konto. Füge deine Zugangsdaten in den Einstellungen hinzu - Pay-per-Use, ein Bruchteil eines Cents pro Prüfung.",
         "cta": "Einstellungen öffnen"
-      }
+      },
+      "runHint": "On-Page-SEO, KI-Muster und Originalität in einem Durchgang.",
+      "seoTitle": "On-Page-SEO",
+      "aiTitle": "KI-Muster-Score",
+      "plagiarismTitle": "Originalität",
+      "passing": "{{count}} von {{total}} bestanden"
     },
     "assistant": {
       "tagline": "Bitte Dune um eine Gliederung, eine stärkere Einleitung, unterstützende Statistiken oder alles andere, was dieser Artikel braucht.",
@@ -1347,7 +1353,8 @@
         "stats": "Schlage einige unterstützende Statistiken oder Datenpunkte vor, die ich hinzufügen könnte, um die Aussagen in diesem Artikel zu untermauern.",
         "intro": "Schreibe die Einleitung so um, dass sie die Leser schneller fesselt und natürlich in den Rest des Artikels überleitet.",
         "listicle": "Strukturiere die wichtigsten Punkte dieses Artikels in eine nummerierte Listicle-Form um."
-      }
+      },
+      "starters": "Schnellstarts"
     }
   }
 }

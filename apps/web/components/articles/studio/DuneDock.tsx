@@ -71,14 +71,16 @@ export function DuneDock({
 
   const content = (
     <>
-      {/* Header */}
-      <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-brand glow-primary shrink-0">
+      {/* Header — Dune identity */}
+      <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5">
+        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl gradient-brand glow-primary">
           <dune.Icon className="h-4 w-4 text-white" strokeWidth={1.9} />
+          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-card" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">{dune.name}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{t("articleStudio.dock.subtitle")}</p>
         </div>
-        <p className="flex-1 text-sm font-semibold text-foreground truncate">
-          {t("articleStudio.dock.title")}
-        </p>
         {onCloseMobile && (
           <button
             onClick={onCloseMobile}
@@ -90,25 +92,28 @@ export function DuneDock({
         )}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-white/[0.06] px-2">
-        {tabs.map((tabKey) => {
-          const Icon = TAB_ICONS[tabKey];
-          return (
-            <button
-              key={tabKey}
-              onClick={() => setTab(tabKey)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
-                tab === tabKey
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {t(`articleStudio.dock.tabs.${tabKey}`)}
-            </button>
-          );
-        })}
+      {/* Segmented tab control */}
+      <div className="px-3 pt-3">
+        <div className="flex gap-1 rounded-xl border border-border bg-muted/40 p-1">
+          {tabs.map((tabKey) => {
+            const Icon = TAB_ICONS[tabKey];
+            const active = tab === tabKey;
+            return (
+              <button
+                key={tabKey}
+                onClick={() => setTab(tabKey)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all ${
+                  active
+                    ? "bg-card text-primary shadow-sm ring-1 ring-primary/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t(`articleStudio.dock.tabs.${tabKey}`)}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab content */}

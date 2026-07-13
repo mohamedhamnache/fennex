@@ -180,7 +180,12 @@ function QuickActionsTile({ projectId }: { projectId: string }) {
   ];
   return (
     <div className="glass p-5">
-      <h2 className="mb-3 text-sm font-semibold">{t("dashboard.quickActions")}</h2>
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Sparkles className="h-3.5 w-3.5" strokeWidth={2} />
+        </span>
+        {t("dashboard.quickActions")}
+      </h2>
       <div className="space-y-1.5">
         {actions.map((a) => (
           <Link key={a.label} href={a.href}
@@ -292,9 +297,17 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="glass overflow-hidden lg:col-span-2">
           <div className="flex items-center justify-between px-5 py-4">
-            <h2 className="text-sm font-semibold">{t("dashboard.recentArticles")}</h2>
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <FileText className="h-3.5 w-3.5" strokeWidth={2} />
+              </span>
+              {t("dashboard.recentArticles")}
+            </h2>
             {projectId && (
-              <Link href={`/${projectId}/articles`} className="text-xs text-muted-foreground transition-colors hover:text-foreground">{t("common.viewAll")}</Link>
+              <Link href={`/${projectId}/articles`} className="group inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                {t("common.viewAll")}
+                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              </Link>
             )}
           </div>
           {recentArticles.length === 0 ? (
@@ -306,20 +319,25 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <tbody>
-                {recentArticles.map((a: Article) => (
-                  <tr key={a.id} className="border-t border-white/[0.05] transition-colors hover:bg-white/[0.03]">
-                    <td className="px-5 py-3">
-                      <Link href={projectId ? `/${projectId}/articles` : "#"} className="line-clamp-1 font-medium hover:underline">{a.title}</Link>
-                      {a.target_keyword && <p className="mt-0.5 truncate text-xs text-muted-foreground">{a.target_keyword}</p>}
-                    </td>
-                    <td className="px-5 py-3 text-right"><Badge tone={ARTICLE_TONE[a.status] ?? "neutral"}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</Badge></td>
-                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs text-muted-foreground">{fmtDate(a.created_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="flex flex-col">
+              {recentArticles.map((a: Article) => (
+                <Link
+                  key={a.id}
+                  href={projectId ? `/${projectId}/articles` : "#"}
+                  className="group flex items-center gap-3 border-t border-white/[0.05] px-5 py-3 transition-colors hover:bg-white/[0.03]"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FileText className="h-4 w-4" strokeWidth={1.9} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-1 text-sm font-medium transition-colors group-hover:text-primary">{a.title}</p>
+                    {a.target_keyword && <p className="mt-0.5 truncate text-xs text-muted-foreground">{a.target_keyword}</p>}
+                  </div>
+                  <Badge tone={ARTICLE_TONE[a.status] ?? "neutral"}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</Badge>
+                  <span className="hidden whitespace-nowrap text-xs text-muted-foreground sm:block">{fmtDate(a.created_at)}</span>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
 
