@@ -595,10 +595,9 @@ function ArticleEditor({
   }
 
   function handleApplyRevision(markdown: string) {
-    // Dune executed a whole-article edit: apply it (which autosaves and
-    // recomputes SEO), then flash the whole article to highlight the change.
-    richRef.current?.setMarkdown(markdown);
-    requestAnimationFrame(() => richRef.current?.flashAll());
+    // Dune executed a whole-article edit. Apply it and flash ONLY the changed
+    // blocks (diff vs the current body); setContent autosaves + recomputes SEO.
+    richRef.current?.applyWithDiff(markdown, body);
   }
 
   function handleBodyChange(val: string) {

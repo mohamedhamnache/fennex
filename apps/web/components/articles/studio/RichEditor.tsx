@@ -19,8 +19,20 @@ export interface RichEditorHandle {
   getMarkdown: () => string;
   setMarkdown: (md: string) => void;
   insertAtCursor: (md: string) => void;
-  flashAll: () => void;
+  applyWithDiff: (newMarkdown: string, oldMarkdown: string) => void;
   focus: () => void;
+}
+
+/** Normalize a block of text for diffing: strip markdown syntax + collapse ws. */
+function normBlock(s: string): string {
+  return s
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // links -> text
+    .replace(/[*_`#>~]/g, "")
+    .replace(/^\s*[-+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 interface RichEditorProps {
@@ -126,10 +138,34 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       flash(Math.min(from, to), Math.max(from, to));
       editor.commands.scrollIntoView();
     },
-    flashAll: () => {
+    applyWithDiff: (newMarkdown: string, oldMarkdown: string) => {
       if (!editor) return;
-      const size = editor.state.doc.content.size;
-      if (size > 2) flash(1, size - 1);
+      const oldBlocks = new Set(
+        oldMarkdown.split(/\n{2,}/).map(normBlock).filter(Boolean),
+      );
+      lastEmitted.current = newMarkdown;
+      editor.commands.setContent(newMarkdown, true);
+      // Collect the inline ranges of block nodes whose text is new/changed.
+      const ranges: { from: number; to: number }[] = [];
+      let firstChanged = -1;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.isTextblock) {
+          const text = node.textContent.trim();
+          if (text && !oldBlocks.has(normBlock(text))) {
+            ranges.push({ from: pos + 1, to: pos + 1 + node.content.size });
+            if (firstChanged < 0) firstChanged = pos + 1;
+          }
+          return false;
+        }
+        return true;
+      });
+      if (ranges.length) {
+        editor.commands.flashRanges(ranges);
+        window.setTimeout(() => editor?.commands.clearFlash(), FLASH_MS);
+        if (firstChanged >= 0) {
+          editor.chain().setTextSelection(firstChanged).scrollIntoView().run();
+        }
+      }
     },
     focus: () => editor?.commands.focus(),
   }), [editor]);

@@ -9,11 +9,17 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
  */
 export const flashKey = new PluginKey("duneFlash");
 
+export interface FlashRange {
+  from: number;
+  to: number;
+}
+
 declare module "@tiptap/core" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Commands<ReturnType> {
     duneFlash: {
       flashRange: (from: number, to: number) => ReturnType;
+      flashRanges: (ranges: FlashRange[]) => ReturnType;
       clearFlash: () => ReturnType;
     };
   }
@@ -31,9 +37,11 @@ export const FlashHighlight = Extension.create({
           apply(tr, old) {
             const meta = tr.getMeta(flashKey);
             if (meta?.clear) return DecorationSet.empty;
-            if (meta) {
-              const deco = Decoration.inline(meta.from, meta.to, { class: "dune-flash" });
-              return DecorationSet.create(tr.doc, [deco]);
+            if (meta?.ranges) {
+              const decos = (meta.ranges as FlashRange[])
+                .filter((r) => r.to > r.from)
+                .map((r) => Decoration.inline(r.from, r.to, { class: "dune-flash" }));
+              return DecorationSet.create(tr.doc, decos);
             }
             return old.map(tr.mapping, tr.doc);
           },
@@ -52,7 +60,13 @@ export const FlashHighlight = Extension.create({
       flashRange:
         (from: number, to: number) =>
         ({ tr, dispatch }) => {
-          if (dispatch) dispatch(tr.setMeta(flashKey, { from, to }));
+          if (dispatch) dispatch(tr.setMeta(flashKey, { ranges: [{ from, to }] }));
+          return true;
+        },
+      flashRanges:
+        (ranges: FlashRange[]) =>
+        ({ tr, dispatch }) => {
+          if (dispatch) dispatch(tr.setMeta(flashKey, { ranges }));
           return true;
         },
       clearFlash:

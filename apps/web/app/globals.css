@@ -294,8 +294,8 @@ input:focus, textarea:focus, select:focus {
 }
 /* Highlight flash for text Dune just wrote/replaced in the editor */
 @keyframes editFlash {
-  0%   { background-color: hsl(var(--primary) / 0.32); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.18); }
-  70%  { background-color: hsl(var(--primary) / 0.22); box-shadow: 0 0 0 2px hsl(var(--primary) / 0); }
+  0%   { background-color: hsl(var(--primary) / 0.42); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.22); }
+  60%  { background-color: hsl(var(--primary) / 0.28); box-shadow: 0 0 0 2px hsl(var(--primary) / 0); }
   100% { background-color: hsl(var(--primary) / 0); box-shadow: 0 0 0 2px hsl(var(--primary) / 0); }
 }
 
