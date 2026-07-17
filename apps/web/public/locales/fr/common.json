@@ -1422,7 +1422,8 @@
       "empty": "Aucune révision enregistrée. Enregistrez-en une pour démarrer l'historique.",
       "restore": "Restaurer",
       "note": "Révision",
-      "compare": "Comparer"
+      "compare": "Comparer",
+      "auto": "Instantané Dune"
     },
     "showChanges": "Voir les modifications",
     "hideChanges": "Masquer les modifications",
@@ -1432,6 +1433,15 @@
     "outline": "Plan",
     "outlineEmpty": "Ajoutez des titres pour construire le plan.",
     "focus": "Mode focus",
-    "exitFocus": "Quitter le focus"
+    "exitFocus": "Quitter le focus",
+    "goal": "Objectif : {{count}} mots",
+    "export": {
+      "title": "Exporter",
+      "copyMd": "Copier en Markdown",
+      "copyHtml": "Copier en HTML",
+      "downloadMd": "Télécharger .md",
+      "downloadHtml": "Télécharger .html",
+      "copied": "Copié dans le presse-papiers."
+    }
   }
 }

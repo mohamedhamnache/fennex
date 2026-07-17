@@ -1422,7 +1422,8 @@
       "empty": "Aún no hay revisiones guardadas. Guarda una para iniciar el historial.",
       "restore": "Restaurar",
       "note": "Revisión",
-      "compare": "Comparar"
+      "compare": "Comparar",
+      "auto": "Instantánea de Dune"
     },
     "showChanges": "Ver cambios",
     "hideChanges": "Ocultar cambios",
@@ -1432,6 +1433,15 @@
     "outline": "Esquema",
     "outlineEmpty": "Añade encabezados para construir el esquema.",
     "focus": "Modo enfoque",
-    "exitFocus": "Salir del enfoque"
+    "exitFocus": "Salir del enfoque",
+    "goal": "Objetivo: {{count}} palabras",
+    "export": {
+      "title": "Exportar",
+      "copyMd": "Copiar como Markdown",
+      "copyHtml": "Copiar como HTML",
+      "downloadMd": "Descargar .md",
+      "downloadHtml": "Descargar .html",
+      "copied": "Copiado al portapapeles."
+    }
   }
 }

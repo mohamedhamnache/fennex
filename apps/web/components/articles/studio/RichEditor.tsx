@@ -17,6 +17,7 @@ import { FlashHighlight } from "./editor/flash-highlight";
 
 export interface RichEditorHandle {
   getMarkdown: () => string;
+  getHTML: () => string;
   setMarkdown: (md: string) => void;
   insertAtCursor: (md: string) => void;
   applyWithDiff: (newMarkdown: string, oldMarkdown: string) => void;
@@ -314,6 +315,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
 
   useImperativeHandle(ref, () => ({
     getMarkdown: () => editor?.storage.markdown.getMarkdown() ?? "",
+    getHTML: () => editor?.getHTML() ?? "",
     setMarkdown: (md: string) => {
       if (!editor) return;
       lastEmitted.current = md;

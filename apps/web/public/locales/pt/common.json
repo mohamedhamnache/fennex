@@ -1422,7 +1422,8 @@
       "empty": "Nenhuma revisão salva ainda. Salve uma para iniciar o histórico.",
       "restore": "Restaurar",
       "note": "Revisão",
-      "compare": "Comparar"
+      "compare": "Comparar",
+      "auto": "Snapshot do Dune"
     },
     "showChanges": "Ver alterações",
     "hideChanges": "Ocultar alterações",
@@ -1432,6 +1433,15 @@
     "outline": "Estrutura",
     "outlineEmpty": "Adicione títulos para montar a estrutura.",
     "focus": "Modo foco",
-    "exitFocus": "Sair do foco"
+    "exitFocus": "Sair do foco",
+    "goal": "Meta: {{count}} palavras",
+    "export": {
+      "title": "Exportar",
+      "copyMd": "Copiar como Markdown",
+      "copyHtml": "Copiar como HTML",
+      "downloadMd": "Baixar .md",
+      "downloadHtml": "Baixar .html",
+      "copied": "Copiado para a área de transferência."
+    }
   }
 }

@@ -1422,7 +1422,8 @@
       "empty": "لا توجد نسخ محفوظة بعد. احفظ واحدة لبدء السجل.",
       "restore": "استعادة",
       "note": "نسخة",
-      "compare": "مقارنة"
+      "compare": "مقارنة",
+      "auto": "لقطة Dune"
     },
     "showChanges": "إظهار التغييرات",
     "hideChanges": "إخفاء التغييرات",
@@ -1432,6 +1433,15 @@
     "outline": "المخطط",
     "outlineEmpty": "أضف عناوين لبناء المخطط.",
     "focus": "وضع التركيز",
-    "exitFocus": "الخروج من التركيز"
+    "exitFocus": "الخروج من التركيز",
+    "goal": "الهدف: {{count}} كلمة",
+    "export": {
+      "title": "تصدير",
+      "copyMd": "نسخ كـ Markdown",
+      "copyHtml": "نسخ كـ HTML",
+      "downloadMd": "تنزيل .md",
+      "downloadHtml": "تنزيل .html",
+      "copied": "نُسخ إلى الحافظة."
+    }
   }
 }

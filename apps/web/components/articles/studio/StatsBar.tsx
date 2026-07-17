@@ -32,6 +32,7 @@ function seoColor(score: number | null): string {
 
 interface StatsBarProps {
   wordCount: number;
+  wordTarget?: number | null;
   seoScore: number | null;
   onRefetchSeo: () => void;
   saveState: "idle" | "saving" | "saved";
@@ -42,14 +43,26 @@ interface StatsBarProps {
  * time, SEO score chip, and the autosave state. Actions (revision / publish /
  * save) live in the editor header.
  */
-export function StatsBar({ wordCount, seoScore, onRefetchSeo, saveState }: StatsBarProps) {
+export function StatsBar({ wordCount, wordTarget, seoScore, onRefetchSeo, saveState }: StatsBarProps) {
   const { t } = useTranslation();
   const readingMinutes = Math.ceil(wordCount / 200);
+  const goalPct = wordTarget ? Math.min(100, Math.round((wordCount / wordTarget) * 100)) : null;
 
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="inline-flex items-center rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums">
-        {t("articleStudio.words", { count: wordCount })}
+      <span
+        className="inline-flex flex-col gap-0.5 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums"
+        title={wordTarget ? t("articleStudio.goal", { count: wordTarget }) : undefined}
+      >
+        <span>{t("articleStudio.words", { count: wordCount })}</span>
+        {goalPct !== null && (
+          <span className="h-0.5 w-full overflow-hidden rounded-full bg-muted">
+            <span
+              className={`block h-full rounded-full transition-all ${goalPct >= 100 ? "bg-success" : "gradient-brand"}`}
+              style={{ width: `${goalPct}%` }}
+            />
+          </span>
+        )}
       </span>
       <span className="hidden items-center rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums sm:inline-flex">
         {t("articleStudio.readingTime", { min: readingMinutes })}

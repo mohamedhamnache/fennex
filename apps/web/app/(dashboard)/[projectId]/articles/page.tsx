@@ -18,6 +18,8 @@ import {
   List,
   Maximize2,
   Minimize2,
+  Download,
+  Copy,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -112,6 +114,29 @@ function Spinner({ size = 16 }: { size?: number }) {
       />
     </svg>
   );
+}
+
+// ─── Export helpers ────────────────────────────────────────────────────────
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .slice(0, 60) || "article"
+  );
+}
+
+function downloadFile(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ─── New Article Modal ─────────────────────────────────────────────────────
@@ -482,6 +507,7 @@ function ArticleEditor({
   const [changedCount, setChangedCount] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [revealCount, setRevealCount] = useState(0);
   const tokensRef = useRef<string[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -633,6 +659,11 @@ function ArticleEditor({
     if (oldWords > 150 && newWords < oldWords * 0.5) {
       if (!window.confirm(t("articleStudio.assistant.shrinkWarn"))) return;
     }
+    // Safety net: snapshot the pre-apply state as an automatic revision so the
+    // edit is always one Restore away.
+    saveRevision(articleId, "auto:dune-apply")
+      .then(() => queryClient.invalidateQueries({ queryKey: ["article-revisions", articleId] }))
+      .catch(() => undefined);
     // Remember the pre-edit body (so the change can be reviewed later), apply
     // it, and flash the changed blocks; setContent autosaves + recomputes SEO.
     setPreEditBody(body);
@@ -812,6 +843,78 @@ function ArticleEditor({
           <PanelRight className="h-4 w-4" />
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
+          <div className="relative">
+            <button
+              onClick={() => setShowExport((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                showExport
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-foreground hover:bg-accent"
+              }`}
+              title={t("articleStudio.export.title")}
+              aria-label={t("articleStudio.export.title")}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
+            {showExport && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowExport(false)} />
+                <div className="popover absolute right-0 top-9 z-20 w-52 overflow-hidden rounded-xl p-1 animate-scale-in">
+                  {(
+                    [
+                      {
+                        id: "copyMd",
+                        Icon: Copy,
+                        run: async () => {
+                          await navigator.clipboard.writeText(body);
+                          success(t("articleStudio.export.copied"));
+                        },
+                      },
+                      {
+                        id: "copyHtml",
+                        Icon: Copy,
+                        run: async () => {
+                          await navigator.clipboard.writeText(richRef.current?.getHTML() ?? "");
+                          success(t("articleStudio.export.copied"));
+                        },
+                      },
+                      {
+                        id: "downloadMd",
+                        Icon: Download,
+                        run: () => downloadFile(`${slugify(title)}.md`, body, "text/markdown"),
+                      },
+                      {
+                        id: "downloadHtml",
+                        Icon: Download,
+                        run: () =>
+                          downloadFile(
+                            `${slugify(title)}.html`,
+                            richRef.current?.getHTML() ?? "",
+                            "text/html",
+                          ),
+                      },
+                    ] as const
+                  ).map(({ id, Icon, run }) => (
+                    <button
+                      key={id}
+                      onClick={async () => {
+                        setShowExport(false);
+                        try {
+                          await run();
+                        } catch {
+                          error(t("articles.toast.saveError"));
+                        }
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent"
+                    >
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t(`articleStudio.export.${id}`)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <button
             onClick={() => revisionMutation.mutate()}
             disabled={revisionMutation.isPending}
@@ -845,6 +948,7 @@ function ArticleEditor({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-5 py-2.5">
         <StatsBar
           wordCount={wordCount}
+          wordTarget={article.word_count_target}
           seoScore={seoScore}
           onRefetchSeo={() => refetchSeo()}
           saveState={saveState}

@@ -1499,7 +1499,8 @@
       "empty": "No saved revisions yet. Save one to start a history.",
       "restore": "Restore",
       "note": "Revision",
-      "compare": "Compare"
+      "compare": "Compare",
+      "auto": "Dune snapshot"
     },
     "showChanges": "Show changes",
     "hideChanges": "Hide changes",
@@ -1509,6 +1510,15 @@
     "outline": "Outline",
     "outlineEmpty": "Add headings to build the outline.",
     "focus": "Focus mode",
-    "exitFocus": "Exit focus"
+    "exitFocus": "Exit focus",
+    "goal": "Goal: {{count}} words",
+    "export": {
+      "title": "Export",
+      "copyMd": "Copy as Markdown",
+      "copyHtml": "Copy as HTML",
+      "downloadMd": "Download .md",
+      "downloadHtml": "Download .html",
+      "copied": "Copied to clipboard."
+    }
   }
 }

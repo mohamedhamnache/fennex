@@ -1422,7 +1422,8 @@
       "empty": "Noch keine Revisionen. Speichere eine, um den Verlauf zu starten.",
       "restore": "Wiederherstellen",
       "note": "Revision",
-      "compare": "Vergleichen"
+      "compare": "Vergleichen",
+      "auto": "Dune-Snapshot"
     },
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",
@@ -1432,6 +1433,15 @@
     "outline": "Gliederung",
     "outlineEmpty": "Füge Überschriften hinzu, um die Gliederung aufzubauen.",
     "focus": "Fokusmodus",
-    "exitFocus": "Fokus verlassen"
+    "exitFocus": "Fokus verlassen",
+    "goal": "Ziel: {{count}} Wörter",
+    "export": {
+      "title": "Exportieren",
+      "copyMd": "Als Markdown kopieren",
+      "copyHtml": "Als HTML kopieren",
+      "downloadMd": ".md herunterladen",
+      "downloadHtml": ".html herunterladen",
+      "copied": "In die Zwischenablage kopiert."
+    }
   }
 }
