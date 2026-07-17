@@ -126,8 +126,8 @@ export function DuneDock({
         </div>
       </div>
 
-      {/* Tab content */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      {/* Tab content (remounts per tab with a fade) */}
+      <div key={tab} className="min-h-0 flex-1 overflow-y-auto p-4 animate-fade-in">
         {tab === "assistant" && (
           <AssistantTab
             articleId={articleId}

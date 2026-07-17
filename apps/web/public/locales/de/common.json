@@ -1404,7 +1404,8 @@
       "h3": "Überschrift 3",
       "quote": "Zitat",
       "ul": "Aufzählung",
-      "ol": "Nummerierte Liste"
+      "ol": "Nummerierte Liste",
+      "divider": "Trennlinie"
     },
     "meta": {
       "serpPreview": "Suchvorschau",

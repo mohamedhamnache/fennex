@@ -1404,7 +1404,8 @@
       "h3": "Título 3",
       "quote": "Citação",
       "ul": "Lista com marcadores",
-      "ol": "Lista numerada"
+      "ol": "Lista numerada",
+      "divider": "Divisor"
     },
     "meta": {
       "serpPreview": "Prévia de busca",

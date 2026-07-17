@@ -1404,7 +1404,8 @@
       "h3": "Titre 3",
       "quote": "Citation",
       "ul": "Liste à puces",
-      "ol": "Liste numérotée"
+      "ol": "Liste numérotée",
+      "divider": "Séparateur"
     },
     "meta": {
       "serpPreview": "Aperçu de recherche",

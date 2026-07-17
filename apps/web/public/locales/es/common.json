@@ -1404,7 +1404,8 @@
       "h3": "Encabezado 3",
       "quote": "Cita",
       "ul": "Lista con viñetas",
-      "ol": "Lista numerada"
+      "ol": "Lista numerada",
+      "divider": "Separador"
     },
     "meta": {
       "serpPreview": "Vista previa de búsqueda",

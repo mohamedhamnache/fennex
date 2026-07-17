@@ -8,7 +8,7 @@ import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
 import {
-  Bold, Italic, Code, Link2, Heading2, Heading3, Quote, List, ListOrdered, Wand2,
+  Bold, Italic, Code, Link2, Heading2, Heading3, Quote, List, ListOrdered, Wand2, Minus,
   type LucideIcon,
 } from "lucide-react";
 import { transformText, type TransformMode } from "@/lib/api";
@@ -78,6 +78,24 @@ const TOOLBAR: { action: string; Icon: LucideIcon; run: (e: Editor) => void; act
   { action: "quote", Icon: Quote, run: (e) => e.chain().focus().toggleBlockquote().run(), active: (e) => e.isActive("blockquote") },
 ];
 
+/** Slash-command menu items: type "/" at the start of an empty line. */
+const SLASH_ITEMS: { id: string; Icon: LucideIcon; run: (e: Editor) => void }[] = [
+  { id: "h2", Icon: Heading2, run: (e) => e.chain().focus().setHeading({ level: 2 }).run() },
+  { id: "h3", Icon: Heading3, run: (e) => e.chain().focus().setHeading({ level: 3 }).run() },
+  { id: "ul", Icon: List, run: (e) => e.chain().focus().toggleBulletList().run() },
+  { id: "ol", Icon: ListOrdered, run: (e) => e.chain().focus().toggleOrderedList().run() },
+  { id: "quote", Icon: Quote, run: (e) => e.chain().focus().toggleBlockquote().run() },
+  { id: "divider", Icon: Minus, run: (e) => e.chain().focus().setHorizontalRule().run() },
+];
+
+interface SlashState {
+  x: number;
+  y: number;
+  query: string;
+  index: number;
+  anchor: number;
+}
+
 const PROSE_CLASS =
   "prose-editor min-h-full text-[15px] leading-[1.8] text-foreground focus:outline-none " +
   "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 " +
@@ -105,6 +123,10 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
   const lastEmitted = useRef<string>(value);
   const [rewriting, setRewriting] = useState<TransformMode | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
+  const [slash, setSlash] = useState<SlashState | null>(null);
+  const slashRef = useRef<SlashState | null>(null);
+  slashRef.current = slash;
+  const filteredRef = useRef(SLASH_ITEMS);
 
   const editor = useEditor({
     editable,
@@ -116,15 +138,69 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       FlashHighlight,
     ],
     content: value,
-    editorProps: { attributes: { class: PROSE_CLASS } },
+    editorProps: {
+      attributes: { class: PROSE_CLASS },
+      handleKeyDown: (view, event) => {
+        const s = slashRef.current;
+        if (s) {
+          const items = filteredRef.current;
+          if (event.key === "ArrowDown" && items.length) {
+            setSlash({ ...s, index: (s.index + 1) % items.length });
+            return true;
+          }
+          if (event.key === "ArrowUp" && items.length) {
+            setSlash({ ...s, index: (s.index - 1 + items.length) % items.length });
+            return true;
+          }
+          if (event.key === "Enter" && items.length) {
+            executeSlash(items[Math.min(s.index, items.length - 1)]);
+            return true;
+          }
+          if (event.key === "Escape") {
+            setSlash(null);
+            return true;
+          }
+        }
+        if (event.key === "/" && !s) {
+          const { $from, empty } = view.state.selection;
+          if (empty && $from.parent.isTextblock && $from.parent.textContent === "") {
+            const coords = view.coordsAtPos($from.pos);
+            setSlash({ x: coords.left, y: coords.bottom + 6, query: "", index: 0, anchor: $from.pos });
+          }
+        }
+        return false;
+      },
+    },
     onUpdate: ({ editor }) => {
       const md = editor.storage.markdown.getMarkdown();
       lastEmitted.current = md;
       onChange(md);
+      // Track the slash query (text typed after "/") while the menu is open.
+      const s = slashRef.current;
+      if (s) {
+        const head = editor.state.selection.from;
+        if (head <= s.anchor) {
+          setSlash(null);
+        } else {
+          const text = editor.state.doc.textBetween(s.anchor, head, "\n");
+          if (!text.startsWith("/")) setSlash(null);
+          else setSlash({ ...s, query: text.slice(1), index: 0 });
+        }
+      }
     },
     onSelectionUpdate: ({ editor }) => setHasSelection(!editor.state.selection.empty),
+    onBlur: () => setSlash(null),
     immediatelyRender: false,
   });
+
+  function executeSlash(item: (typeof SLASH_ITEMS)[number]) {
+    const s = slashRef.current;
+    if (!s || !editor) return;
+    const head = editor.state.selection.from;
+    editor.chain().focus().deleteRange({ from: s.anchor, to: head }).run();
+    item.run(editor);
+    setSlash(null);
+  }
 
   // External value changes (restore, generation typewriter) — re-render doc.
   useEffect(() => {
@@ -220,6 +296,14 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
 
   if (!editor) return null;
 
+  const q = (slash?.query ?? "").toLowerCase();
+  const slashFiltered = q
+    ? SLASH_ITEMS.filter(
+        (it) => it.id.includes(q) || t(`articleStudio.format.${it.id}`).toLowerCase().includes(q),
+      )
+    : SLASH_ITEMS;
+  filteredRef.current = slashFiltered;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Formatting toolbar */}
@@ -294,11 +378,38 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       )}
 
       {/* Editor surface */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" onScroll={() => setSlash(null)}>
         <div className="mx-auto w-full max-w-3xl">
           <EditorContent editor={editor} />
         </div>
       </div>
+
+      {/* Slash-command menu */}
+      {slash && slashFiltered.length > 0 && (
+        <div
+          className="popover fixed z-50 w-52 overflow-hidden rounded-xl p-1 animate-scale-in"
+          style={{ left: slash.x, top: slash.y }}
+        >
+          {slashFiltered.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => executeSlash(item)}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
+                i === Math.min(slash.index, slashFiltered.length - 1)
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground hover:bg-accent"
+              }`}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/60">
+                <item.Icon className="h-3.5 w-3.5" strokeWidth={2} />
+              </span>
+              {t(`articleStudio.format.${item.id}`)}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
