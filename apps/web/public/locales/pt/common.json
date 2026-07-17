@@ -1421,7 +1421,8 @@
       "current": "Rascunho atual",
       "empty": "Nenhuma revisão salva ainda. Salve uma para iniciar o histórico.",
       "restore": "Restaurar",
-      "note": "Revisão"
+      "note": "Revisão",
+      "compare": "Comparar"
     },
     "showChanges": "Ver alterações",
     "hideChanges": "Ocultar alterações",

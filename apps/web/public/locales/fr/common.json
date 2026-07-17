@@ -1421,7 +1421,8 @@
       "current": "Brouillon actuel",
       "empty": "Aucune révision enregistrée. Enregistrez-en une pour démarrer l'historique.",
       "restore": "Restaurer",
-      "note": "Révision"
+      "note": "Révision",
+      "compare": "Comparer"
     },
     "showChanges": "Voir les modifications",
     "hideChanges": "Masquer les modifications",

@@ -165,8 +165,26 @@ async def generate_article_task(
         except Exception:
             profile = ""
 
+        # Ground in real search data (GSC queries + tracked keywords) so the
+        # brief targets demand the site actually has - checks are skipped since
+        # there is no draft to lint yet.
+        grounding = ""
+        try:
+            from app.models.project import Project
+            from app.services.writing_service import _seo_grounding
+            project = await db.get(Project, article.project_id)
+            if project is not None:
+                grounding = await _seo_grounding(project, article, None, db, include_checks=False)
+        except Exception:
+            grounding = ""
+
         system_prompt = _build_system_prompt(brand_voice, profile)
         user_prompt = _build_user_prompt(article)
+        if grounding:
+            user_prompt += (
+                "\n\nREAL SEARCH DATA for this site - weave these naturally into headings, copy and the "
+                "FAQ where they fit the topic (never stuff):\n" + grounding
+            )
         article_title = article.title
         article_locale = await project_locale(article.project_id, db)
 

@@ -1498,7 +1498,8 @@
       "current": "Current draft",
       "empty": "No saved revisions yet. Save one to start a history.",
       "restore": "Restore",
-      "note": "Revision"
+      "note": "Revision",
+      "compare": "Compare"
     },
     "showChanges": "Show changes",
     "hideChanges": "Hide changes",

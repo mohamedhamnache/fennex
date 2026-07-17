@@ -38,17 +38,108 @@ function normBlock(s: string): string {
     .toLowerCase();
 }
 
-/** Ranges of block nodes in the editor whose text is new vs the old markdown. */
+/** Tokenize into words with their char offsets in the source string. */
+function wordTokens(s: string): { w: string; start: number; end: number }[] {
+  const out: { w: string; start: number; end: number }[] = [];
+  const re = /\S+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) out.push({ w: m[0].toLowerCase(), start: m.index, end: m.index + m[0].length });
+  return out;
+}
+
+/** Char ranges of words in `text` that are NOT part of an LCS with `oldText`. */
+function changedWordRanges(text: string, oldText: string): { start: number; end: number }[] {
+  const a = wordTokens(text);
+  const b = wordTokens(oldText).map((t) => t.w);
+  if (a.length === 0) return [];
+  if (a.length * b.length > 40000) {
+    // Guard against O(n*m) blowup on huge blocks - fall back to whole block.
+    return [{ start: 0, end: text.length }];
+  }
+  // LCS table between new words (a) and old words (b).
+  const n = a.length;
+  const m2 = b.length;
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m2 + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m2 - 1; j >= 0; j--) {
+      dp[i][j] = a[i].w === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const keep = new Array(n).fill(false);
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m2) {
+    if (a[i].w === b[j]) {
+      keep[i] = true;
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+    else j++;
+  }
+  // Merge consecutive changed words into ranges.
+  const ranges: { start: number; end: number }[] = [];
+  for (let k = 0; k < n; k++) {
+    if (keep[k]) continue;
+    const last = ranges[ranges.length - 1];
+    if (last && a[k].start - last.end <= 1) last.end = a[k].end;
+    else ranges.push({ start: a[k].start, end: a[k].end });
+  }
+  return ranges;
+}
+
+/** Word-set similarity used to pair a changed block with its old version. */
+function similarity(aText: string, bText: string): number {
+  const a = new Set(aText.split(/\s+/).filter(Boolean));
+  const bWords = bText.split(/\s+/).filter(Boolean);
+  if (a.size === 0 || bWords.length === 0) return 0;
+  let common = 0;
+  const b = new Set(bWords);
+  a.forEach((w) => {
+    if (b.has(w)) common++;
+  });
+  return common / Math.max(a.size, b.size);
+}
+
+/**
+ * Ranges in the editor that differ from the old markdown. Block-level diff
+ * first; for a changed block that clearly evolved from an old one (word-set
+ * similarity), narrow down to the changed WORDS inside it.
+ */
 function changedRanges(editor: Editor, oldMarkdown: string): { ranges: { from: number; to: number }[]; first: number } {
-  const oldBlocks = new Set(oldMarkdown.split(/\n{2,}/).map(normBlock).filter(Boolean));
+  const oldRaw = oldMarkdown.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+  const oldNorm = oldRaw.map(normBlock);
+  const oldSet = new Set(oldNorm);
   const ranges: { from: number; to: number }[] = [];
   let first = -1;
   editor.state.doc.descendants((node, pos) => {
     if (node.isTextblock) {
       const text = node.textContent.trim();
-      if (text && !oldBlocks.has(normBlock(text))) {
-        ranges.push({ from: pos + 1, to: pos + 1 + node.content.size });
-        if (first < 0) first = pos + 1;
+      if (text && !oldSet.has(normBlock(text))) {
+        const base = pos + 1;
+        // Find the most similar old block; if it's close enough, word-diff it.
+        let bestIdx = -1;
+        let bestScore = 0;
+        const norm = normBlock(text);
+        for (let k = 0; k < oldNorm.length; k++) {
+          const s = similarity(norm, oldNorm[k]);
+          if (s > bestScore) {
+            bestScore = s;
+            bestIdx = k;
+          }
+        }
+        const inner = node.textContent;
+        if (bestIdx >= 0 && bestScore >= 0.4) {
+          // Compare against the markdown-stripped old block so syntax like
+          // ** or ## never counts as a word change.
+          const wordRanges = changedWordRanges(inner, oldNorm[bestIdx]);
+          for (const r of wordRanges) {
+            ranges.push({ from: base + r.start, to: base + r.end });
+            if (first < 0) first = base + r.start;
+          }
+        } else {
+          ranges.push({ from: base, to: base + node.content.size });
+          if (first < 0) first = base;
+        }
       }
       return false;
     }

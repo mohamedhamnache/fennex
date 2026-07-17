@@ -612,6 +612,19 @@ function ArticleEditor({
     success(t("articleStudio.restored"));
   }
 
+  function handleCompareRevision(revisionBody: string) {
+    // Highlight everything in the current draft that differs from that
+    // revision; the revision becomes the diff base for the Show changes toggle.
+    const n = richRef.current?.highlightChanges(revisionBody) ?? 0;
+    if (n > 0) {
+      setPreEditBody(revisionBody);
+      setChangedCount(n);
+      setShowingChanges(true);
+    } else {
+      error(t("articleStudio.noChanges"));
+    }
+  }
+
   function handleApplyRevision(markdown: string) {
     // Guard against a fragment replacing the whole article: if Dune returned
     // something far shorter than the current draft, confirm before applying.
@@ -731,6 +744,7 @@ function ArticleEditor({
         onSaveRevision={() => revisionMutation.mutate()}
         isSavingRevision={revisionMutation.isPending}
         onRestore={handleRestore}
+        onCompare={handleCompareRevision}
         mobileOpen={railMobileOpen}
         onCloseMobile={onCloseRailMobile}
       />

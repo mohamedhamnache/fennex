@@ -52,30 +52,31 @@ _META_T_RE = re.compile(r"<meta_title>(.*?)</meta_title>", re.S)
 _META_D_RE = re.compile(r"<meta_description>(.*?)</meta_description>", re.S)
 
 
-async def _seo_grounding(project, article, live_body: str | None, db) -> str:
+async def _seo_grounding(project, article, live_body: str | None, db, include_checks: bool = True) -> str:
     """Real data Dune grounds its SEO skills in: deterministic on-page issues,
     the site's actual GSC queries, and the keywords tracked in the SEO hub.
     Every source is optional - failures degrade to an empty section."""
     parts: list[str] = []
-    try:
-        from app.services import checks_service
-        probe = article
-        if live_body is not None:
-            import types
-            probe = types.SimpleNamespace(
-                title=article.title,
-                meta_description=article.meta_description,
-                body_markdown=live_body,
-            )
-        issues = [
-            f"- {c['id']}: {c['detail']}"
-            for c in checks_service.seo_checklist(probe, article.target_keyword)
-            if c["status"] != "pass"
-        ][:8]
-        if issues:
-            parts.append("ON-PAGE ISSUES (deterministic checker):\n" + "\n".join(issues))
-    except Exception:
-        logger.warning("chat grounding: checks failed", exc_info=True)
+    if include_checks:
+        try:
+            from app.services import checks_service
+            probe = article
+            if live_body is not None:
+                import types
+                probe = types.SimpleNamespace(
+                    title=article.title,
+                    meta_description=article.meta_description,
+                    body_markdown=live_body,
+                )
+            issues = [
+                f"- {c['id']}: {c['detail']}"
+                for c in checks_service.seo_checklist(probe, article.target_keyword)
+                if c["status"] != "pass"
+            ][:8]
+            if issues:
+                parts.append("ON-PAGE ISSUES (deterministic checker):\n" + "\n".join(issues))
+        except Exception:
+            logger.warning("chat grounding: checks failed", exc_info=True)
     try:
         from app.services.analytics_service import get_top_queries
         queries = await get_top_queries(project.id, project.org_id, db)

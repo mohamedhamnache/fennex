@@ -1421,7 +1421,8 @@
       "current": "Aktueller Entwurf",
       "empty": "Noch keine Revisionen. Speichere eine, um den Verlauf zu starten.",
       "restore": "Wiederherstellen",
-      "note": "Revision"
+      "note": "Revision",
+      "compare": "Vergleichen"
     },
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",

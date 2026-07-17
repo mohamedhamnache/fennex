@@ -88,9 +88,26 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
   const dune = FENNEX_AGENTS.dune;
 
   const [input, setInput] = useState("");
-  const [history, setHistory] = useState<ChatMessage[]>([]);
+  // Conversation survives tab switches and reloads (per article, per browser tab).
+  const storageKey = `dune-chat-${articleId}`;
+  const [history, setHistory] = useState<ChatMessage[]>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.sessionStorage.getItem(storageKey) : null;
+      return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [pending, setPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(history.slice(-40)));
+    } catch {
+      // storage full/unavailable - the chat just won't persist
+    }
+  }, [history, storageKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

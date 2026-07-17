@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, GitCommitHorizontal, History, RotateCcw } from "lucide-react";
+import { ArrowLeft, Plus, GitCommitHorizontal, History, RotateCcw, Eye } from "lucide-react";
 import { listArticleRevisions } from "@/lib/api";
 
 interface RevisionsRailProps {
@@ -13,6 +13,7 @@ interface RevisionsRailProps {
   onSaveRevision: () => void;
   isSavingRevision: boolean;
   onRestore: (body: string) => void;
+  onCompare: (body: string) => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -41,6 +42,7 @@ export function RevisionsRail({
   onSaveRevision,
   isSavingRevision,
   onRestore,
+  onCompare,
   mobileOpen = false,
   onCloseMobile,
 }: RevisionsRailProps) {
@@ -122,14 +124,24 @@ export function RevisionsRail({
                     <p className="truncate text-xs font-medium text-foreground">
                       {r.note || t("articleStudio.revisions.note")}
                     </p>
-                    <button
-                      onClick={() => onRestore(r.body_markdown)}
-                      className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground opacity-0 transition-all hover:bg-primary/10 hover:text-primary group-hover:opacity-100"
-                      title={t("articleStudio.revisions.restore")}
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      {t("articleStudio.revisions.restore")}
-                    </button>
+                    <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={() => onCompare(r.body_markdown)}
+                        className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                        title={t("articleStudio.revisions.compare")}
+                      >
+                        <Eye className="h-3 w-3" />
+                        {t("articleStudio.revisions.compare")}
+                      </button>
+                      <button
+                        onClick={() => onRestore(r.body_markdown)}
+                        className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                        title={t("articleStudio.revisions.restore")}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        {t("articleStudio.revisions.restore")}
+                      </button>
+                    </span>
                   </div>
                   <p className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums">
                     <span>{relTime(r.created_at, i18n.language)}</span>
