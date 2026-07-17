@@ -1354,7 +1354,8 @@
         "assistant": "Assistant",
         "optimize": "Optimize",
         "checks": "Checks",
-        "meta": "Meta"
+        "meta": "Meta",
+        "links": "Links"
       },
       "subtitle": "Researches, drafts and polishes with you"
     },
@@ -1519,6 +1520,14 @@
       "downloadMd": "Download .md",
       "downloadHtml": "Download .html",
       "copied": "Copied to clipboard."
+    },
+    "links": {
+      "hint": "Dune scans this draft for phrases matching your other published articles and suggests real internal links.",
+      "find": "Find link opportunities",
+      "empty": "No opportunities found. Publish more articles or mention their topics in this draft.",
+      "add": "Add link",
+      "added": "Link added",
+      "stale": "That phrase is no longer in the draft - rescan."
     }
   }
 }

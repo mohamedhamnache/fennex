@@ -2,19 +2,21 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Sparkles, Wand2, ListChecks, Tags, X } from "lucide-react";
+import { Sparkles, Wand2, ListChecks, Tags, Link2, X } from "lucide-react";
 import { FENNEX_AGENTS } from "@/lib/agents";
 import { OptimizePanel } from "@/components/seo/OptimizePanel";
 import { MetaTab } from "./MetaTab";
 import { ChecksTab } from "./ChecksTab";
+import { LinksTab } from "./LinksTab";
 import { AssistantTab } from "./AssistantTab";
 
-type DockTab = "assistant" | "optimize" | "checks" | "meta";
+type DockTab = "assistant" | "optimize" | "checks" | "links" | "meta";
 
 const TAB_ICONS: Record<DockTab, typeof Sparkles> = {
   assistant: Sparkles,
   optimize: Wand2,
   checks: ListChecks,
+  links: Link2,
   meta: Tags,
 };
 
@@ -73,7 +75,7 @@ export function DuneDock({
   const dune = FENNEX_AGENTS.dune;
   const [tab, setTab] = useState<DockTab>("assistant");
 
-  const tabs: DockTab[] = ["assistant", "optimize", "checks", "meta"];
+  const tabs: DockTab[] = ["assistant", "optimize", "checks", "links", "meta"];
 
   const content = (
     <>
@@ -136,6 +138,9 @@ export function DuneDock({
             onApplyRevision={onApplyRevision}
             onApplyMeta={onApplyMeta}
           />
+        )}
+        {tab === "links" && (
+          <LinksTab articleId={articleId} body={body} onBodyChange={onBodyChange} />
         )}
         {tab === "checks" && (
           <ChecksTab articleId={articleId} body={body} onBodyChange={onBodyChange} />

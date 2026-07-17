@@ -469,3 +469,73 @@ async def plagiarism_scan(project, article, db) -> dict:
             matches.append({"sentence": sentence, "urls": urls})
 
     return {"checked": checked, "matches": matches}
+
+
+# ── Internal linking assistant ────────────────────────────────────────────────
+
+_MD_LINK_RE = re.compile(r"\[[^\]]*\]\([^)]*\)")
+
+
+async def internal_link_suggestions(project, article, live_body, db) -> list[dict]:
+    """Real internal-link opportunities: other articles of the project that
+    have a LIVE published URL and whose target keyword (or title) appears in
+    this draft outside any existing markdown link. Deterministic - no LLM."""
+    from sqlalchemy import select
+
+    from app.models.article import Article
+    from app.models.publishing import PublishJob, PublishJobStatus
+
+    body = live_body if live_body is not None else (article.body_markdown or "")
+    if not body.strip():
+        return []
+
+    result = await db.execute(
+        select(Article.id, Article.title, Article.target_keyword, PublishJob.published_url)
+        .join(PublishJob, PublishJob.article_id == Article.id)
+        .where(
+            Article.project_id == project.id,
+            Article.id != article.id,
+            PublishJob.status == PublishJobStatus.done,
+            PublishJob.published_url.is_not(None),
+        )
+        .order_by(PublishJob.created_at.desc())
+    )
+
+    link_spans = [(m.start(), m.end()) for m in _MD_LINK_RE.finditer(body)]
+    lower = body.lower()
+    seen: set = set()
+    out: list[dict] = []
+    for aid, title, kw, url in result.all():
+        if aid in seen:
+            continue
+        for phrase in [p for p in (kw, title) if p]:
+            needle = phrase.lower().strip()
+            if len(needle) < 4:
+                continue
+            search_from = 0
+            found = -1
+            while True:
+                i = lower.find(needle, search_from)
+                if i < 0:
+                    break
+                if not any(s <= i < e for s, e in link_spans):
+                    found = i
+                    break
+                search_from = i + 1
+            if found >= 0:
+                exact = body[found : found + len(needle)]
+                snippet = body[max(0, found - 40) : found + len(needle) + 40].replace("\n", " ").strip()
+                out.append(
+                    {
+                        "article_id": str(aid),
+                        "title": title,
+                        "url": url,
+                        "phrase": exact,
+                        "snippet": snippet,
+                    }
+                )
+                seen.add(aid)
+                break
+        if len(out) >= 10:
+            break
+    return out

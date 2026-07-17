@@ -2311,6 +2311,24 @@ export async function generateArticleStream(
   );
 }
 
+export interface InternalLinkSuggestion {
+  article_id: string;
+  title: string;
+  url: string;
+  phrase: string;
+  snippet: string;
+}
+
+export async function findInternalLinks(
+  articleId: string,
+  body: string,
+): Promise<{ suggestions: InternalLinkSuggestion[] }> {
+  return apiClient.post<{ suggestions: InternalLinkSuggestion[] }>(
+    `/articles/${articleId}/links`,
+    { body },
+  );
+}
+
 export interface DuneChatResult {
   answer: string;
   insertable: string | null;

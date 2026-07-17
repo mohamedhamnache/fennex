@@ -1277,7 +1277,8 @@
         "assistant": "Assistent",
         "optimize": "Optimieren",
         "checks": "Prüfungen",
-        "meta": "Meta"
+        "meta": "Meta",
+        "links": "Links"
       },
       "subtitle": "Recherchiert, schreibt und poliert mit dir"
     },
@@ -1442,6 +1443,14 @@
       "downloadMd": ".md herunterladen",
       "downloadHtml": ".html herunterladen",
       "copied": "In die Zwischenablage kopiert."
+    },
+    "links": {
+      "hint": "Dune durchsucht diesen Entwurf nach Phrasen, die zu deinen anderen veröffentlichten Artikeln passen, und schlägt echte interne Links vor.",
+      "find": "Link-Chancen finden",
+      "empty": "Keine Chancen gefunden. Veröffentliche mehr Artikel oder erwähne ihre Themen in diesem Entwurf.",
+      "add": "Link hinzufügen",
+      "added": "Link hinzugefügt",
+      "stale": "Diese Phrase ist nicht mehr im Entwurf - erneut scannen."
     }
   }
 }

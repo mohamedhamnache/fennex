@@ -1277,7 +1277,8 @@
         "assistant": "Asistente",
         "optimize": "Optimizar",
         "checks": "Comprobaciones",
-        "meta": "Meta"
+        "meta": "Meta",
+        "links": "Enlaces"
       },
       "subtitle": "Investiga, redacta y pule contigo"
     },
@@ -1442,6 +1443,14 @@
       "downloadMd": "Descargar .md",
       "downloadHtml": "Descargar .html",
       "copied": "Copiado al portapapeles."
+    },
+    "links": {
+      "hint": "Dune analiza este borrador en busca de frases que coincidan con tus otros artículos publicados y sugiere enlaces internos reales.",
+      "find": "Buscar oportunidades",
+      "empty": "No se encontraron oportunidades. Publica más artículos o menciona sus temas en este borrador.",
+      "add": "Añadir enlace",
+      "added": "Enlace añadido",
+      "stale": "Esa frase ya no está en el borrador - vuelve a analizar."
     }
   }
 }

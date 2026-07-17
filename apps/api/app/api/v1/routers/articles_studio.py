@@ -262,6 +262,19 @@ async def studio_checks(article_id: uuid.UUID, current_user: CurrentUser, db: DB
     return {"seo": seo, "ai": ai}
 
 
+class LinksRequest(BaseModel):
+    body: str | None = None
+
+
+@router.post("/{article_id}/links")
+async def studio_internal_links(article_id: uuid.UUID, body: LinksRequest, current_user: CurrentUser, db: DB):
+    """Deterministic internal-link opportunities against the project's
+    published articles (live URLs only - never fabricated)."""
+    article, project = await _load_article_and_project(article_id, current_user, db)
+    suggestions = await checks_service.internal_link_suggestions(project, article, body.body, db)
+    return {"suggestions": suggestions}
+
+
 @router.post("/{article_id}/plagiarism")
 async def studio_plagiarism(article_id: uuid.UUID, current_user: CurrentUser, db: DB):
     article, project = await _load_article_and_project(article_id, current_user, db)

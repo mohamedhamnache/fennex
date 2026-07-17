@@ -1277,7 +1277,8 @@
         "assistant": "Assistente",
         "optimize": "Otimizar",
         "checks": "Verificações",
-        "meta": "Meta"
+        "meta": "Meta",
+        "links": "Links"
       },
       "subtitle": "Pesquisa, escreve e aprimora com você"
     },
@@ -1442,6 +1443,14 @@
       "downloadMd": "Baixar .md",
       "downloadHtml": "Baixar .html",
       "copied": "Copiado para a área de transferência."
+    },
+    "links": {
+      "hint": "Dune analisa este rascunho em busca de frases que correspondam aos seus outros artigos publicados e sugere links internos reais.",
+      "find": "Encontrar oportunidades",
+      "empty": "Nenhuma oportunidade encontrada. Publique mais artigos ou mencione seus temas neste rascunho.",
+      "add": "Adicionar link",
+      "added": "Link adicionado",
+      "stale": "Essa frase não está mais no rascunho - analise novamente."
     }
   }
 }

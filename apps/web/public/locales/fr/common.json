@@ -1277,7 +1277,8 @@
         "assistant": "Assistant",
         "optimize": "Optimiser",
         "checks": "Vérifications",
-        "meta": "Méta"
+        "meta": "Méta",
+        "links": "Liens"
       },
       "subtitle": "Recherche, rédige et peaufine avec vous"
     },
@@ -1442,6 +1443,14 @@
       "downloadMd": "Télécharger .md",
       "downloadHtml": "Télécharger .html",
       "copied": "Copié dans le presse-papiers."
+    },
+    "links": {
+      "hint": "Dune analyse ce brouillon pour trouver des phrases correspondant à vos autres articles publiés et suggère de vrais liens internes.",
+      "find": "Trouver des opportunités",
+      "empty": "Aucune opportunité trouvée. Publiez plus d'articles ou mentionnez leurs sujets dans ce brouillon.",
+      "add": "Ajouter le lien",
+      "added": "Lien ajouté",
+      "stale": "Cette phrase n'est plus dans le brouillon - relancez l'analyse."
     }
   }
 }
