@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { duneChat } from "@/lib/api";
+import { duneChatStream } from "@/lib/api";
 import { FENNEX_AGENTS } from "@/lib/agents";
 import { useToast } from "@/components/ui/Toast";
 
@@ -113,30 +113,59 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, pending]);
 
+  /** Visible portion of a streaming reply: hide skill tags (<article>, <draft>,
+   *  <meta_*>) and any trailing partial tag so raw markup never flashes. */
+  function visibleStream(raw: string): string {
+    const tags = ["<article", "<draft", "<meta_title", "<meta_description"];
+    let cut = raw.length;
+    for (const tag of tags) {
+      const i = raw.indexOf(tag);
+      if (i >= 0 && i < cut) cut = i;
+    }
+    let visible = raw.slice(0, cut);
+    const lastLt = visible.lastIndexOf("<");
+    if (lastLt >= 0 && !visible.slice(lastLt).includes(">")) visible = visible.slice(0, lastLt);
+    return visible.trimStart();
+  }
+
   async function submit(question: string) {
     const trimmed = question.trim();
     if (!trimmed || pending) return;
     setPending(true);
     setInput("");
-    const nextHistory: ChatMessage[] = [...history, { role: "user", content: trimmed }];
-    setHistory(nextHistory);
+    const apiHistory = history.map((m) => ({ role: m.role, content: m.content }));
+    setHistory((prev) => [
+      ...prev,
+      { role: "user", content: trimmed },
+      { role: "assistant", content: "" },
+    ]);
+    let raw = "";
     try {
-      const apiHistory = history.map((m) => ({ role: m.role, content: m.content }));
-      const result = await duneChat(articleId, trimmed, apiHistory, body);
-      setHistory((prev) => [
-        ...prev,
-        {
+      const result = await duneChatStream(articleId, trimmed, apiHistory, body, (chunk) => {
+        raw += chunk;
+        const visible = visibleStream(raw);
+        setHistory((prev) => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+          if (last?.role === "assistant") copy[copy.length - 1] = { ...last, content: visible };
+          return copy;
+        });
+      });
+      setHistory((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = {
           role: "assistant",
           content: result.answer,
           insertable: result.insertable,
           revised: result.revised,
           metaTitle: result.meta_title,
           metaDesc: result.meta_description,
-        },
-      ]);
+        };
+        return copy;
+      });
     } catch (e) {
       toastError(e instanceof Error ? e.message : String(e));
-      setHistory((prev) => prev.slice(0, -1));
+      setHistory((prev) => prev.slice(0, -2));
     } finally {
       setPending(false);
     }
@@ -215,7 +244,18 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
         ) : (
           /* ── Message thread ── */
           <div className="flex flex-col gap-4">
-            {history.map((msg, i) => (
+            {history.map((msg, i) => {
+              if (
+                msg.role === "assistant" &&
+                !msg.content &&
+                !msg.insertable &&
+                !msg.revised &&
+                !msg.metaTitle &&
+                !msg.metaDesc
+              ) {
+                return null; // streaming placeholder before the first token
+              }
+              return (
               <div
                 key={i}
                 className={cn(
@@ -304,9 +344,10 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
 
-            {pending && <TypingIndicator />}
+            {pending && !history[history.length - 1]?.content && <TypingIndicator />}
             <div ref={bottomRef} />
           </div>
         )}

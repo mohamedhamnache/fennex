@@ -2227,6 +2227,90 @@ export async function transformText(
   return apiClient.post<{ text: string }>(`/articles/${articleId}/transform`, { mode, text });
 }
 
+/**
+ * POST to an SSE endpoint and stream text chunks via onChunk; resolves with
+ * the final structured payload ({"done": true, "result": ...} frame).
+ */
+async function streamRequest<T>(
+  path: string,
+  body: unknown,
+  onChunk: (text: string) => void,
+): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/api/v1${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok || !res.body) {
+    let message = res.statusText;
+    try {
+      const data = await res.json();
+      message = typeof data.detail === "string" ? data.detail : message;
+    } catch {
+      // non-JSON error body
+    }
+    throw new ApiError(res.status, message);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let final: T | null = null;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const frames = buf.split("\n\n");
+    buf = frames.pop() ?? "";
+    for (const frame of frames) {
+      const line = frame.trim();
+      if (!line.startsWith("data:")) continue;
+      const payload = JSON.parse(line.slice(5));
+      if (payload.error) throw new ApiError(500, payload.error);
+      if (payload.d) onChunk(payload.d as string);
+      if (payload.done) final = payload.result as T;
+    }
+  }
+  if (final === null) throw new ApiError(500, "Stream ended unexpectedly");
+  return final;
+}
+
+export async function duneChatStream(
+  articleId: string,
+  question: string,
+  history: { role: string; content: string }[],
+  body: string,
+  onChunk: (text: string) => void,
+): Promise<DuneChatResult> {
+  return streamRequest<DuneChatResult>(
+    `/articles/${articleId}/chat/stream`,
+    { question, history, body },
+    onChunk,
+  );
+}
+
+export interface GenerateStreamResult {
+  body_markdown: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  word_count: number;
+  seo_score: number;
+}
+
+export async function generateArticleStream(
+  articleId: string,
+  opts: { provider?: string; model?: string } | undefined,
+  onChunk: (text: string) => void,
+): Promise<GenerateStreamResult> {
+  return streamRequest<GenerateStreamResult>(
+    `/articles/${articleId}/generate/stream`,
+    opts ?? {},
+    onChunk,
+  );
+}
+
 export interface DuneChatResult {
   answer: string;
   insertable: string | null;

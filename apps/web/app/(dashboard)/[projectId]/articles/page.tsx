@@ -29,6 +29,7 @@ import {
   updateArticle,
   deleteArticle,
   generateArticle,
+  generateArticleStream,
   saveRevision,
   getArticleSeoScore,
   listPublishingConnections,
@@ -172,8 +173,8 @@ function NewArticleModal({
         tone,
         word_count_target: wordCount,
       });
-      const generated = await generateArticle(article.id);
-      onCreated(generated);
+      // Open the editor immediately - Dune streams the article in live there.
+      onCreated(article);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setPhase("form");
@@ -459,8 +460,8 @@ function ArticleEditor({
   onCloseDockMobile,
   railMobileOpen,
   onCloseRailMobile,
-  animateOnLoad = false,
-  onAnimated,
+  streamOnLoad = false,
+  onStreamStarted,
 }: {
   articleId: string;
   projectId: string;
@@ -472,8 +473,8 @@ function ArticleEditor({
   onCloseDockMobile: () => void;
   railMobileOpen: boolean;
   onCloseRailMobile: () => void;
-  animateOnLoad?: boolean;
-  onAnimated?: () => void;
+  streamOnLoad?: boolean;
+  onStreamStarted?: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -508,8 +509,7 @@ function ArticleEditor({
   const [focusMode, setFocusMode] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
   const [showExport, setShowExport] = useState(false);
-  const [revealCount, setRevealCount] = useState(0);
-  const tokensRef = useRef<string[]>([]);
+  const [generating, setGenerating] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const typewriterRef = useRef<HTMLDivElement | null>(null);
@@ -539,29 +539,72 @@ function ArticleEditor({
   function playTypewriter(text: string) {
     if (typingTimerRef.current) clearInterval(typingTimerRef.current);
     initialized.current = true;
-    const tokens = text.match(/\S+\s*/g) ?? [];
-    tokensRef.current = tokens;
-    setRevealCount(0);
     setTyping(true);
     setBody("");
+    const tokens = text.match(/\S+\s*/g) ?? [];
     const total = tokens.length;
     const perTick = Math.max(1, Math.ceil(total / 90)); // ~90 steps -> ~2.7s
     let i = 0;
     typingTimerRef.current = setInterval(() => {
       i += perTick;
       if (i >= total) {
-        setRevealCount(total);
         setBody(text);
         setTyping(false);
         if (typingTimerRef.current) clearInterval(typingTimerRef.current);
         typingTimerRef.current = null;
         return;
       }
-      setRevealCount(i);
+      setBody(tokens.slice(0, i).join(""));
       const el = typewriterRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }, 30);
   }
+
+  // TRUE token streaming: Dune writes the article live into the overlay, then
+  // the final parsed result (persisted server-side) lands in the rich editor.
+  async function runStreamingGeneration() {
+    if (generating) return;
+    setGenerating(true);
+    initialized.current = true;
+    if (typingTimerRef.current) clearInterval(typingTimerRef.current);
+    setTyping(false);
+    setBody("");
+    try {
+      const result = await generateArticleStream(
+        articleId,
+        selectedProvider && selectedModel
+          ? { provider: selectedProvider, model: selectedModel }
+          : undefined,
+        (chunk) => {
+          setBody((prev) => prev + chunk);
+          const el = typewriterRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        },
+      );
+      setBody(result.body_markdown);
+      setMetaTitle(result.meta_title ?? "");
+      setMetaDesc(result.meta_description ?? "");
+      queryClient.invalidateQueries({ queryKey: ["article", articleId] });
+      queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
+      queryClient.invalidateQueries({ queryKey: ["article-revisions", articleId] });
+      queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
+      success(t("articles.toast.regenerated"));
+    } catch (e) {
+      error(e instanceof Error ? e.message : String(e));
+      queryClient.invalidateQueries({ queryKey: ["article", articleId] });
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  // A freshly created article streams in as soon as the editor opens.
+  useEffect(() => {
+    if (streamOnLoad) {
+      onStreamStarted?.();
+      runStreamingGeneration();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!article) return;
@@ -575,9 +618,9 @@ function ArticleEditor({
       setMetaTitle(article.meta_title ?? "");
       setMetaDesc(article.meta_description ?? "");
       const text = article.body_markdown ?? "";
-      if ((justFinishedGenerating || animateOnLoad) && text.length > 0) {
+      if (justFinishedGenerating && text.length > 0) {
+        // Worker-generated (campaigns / overview regenerate): replay the reveal.
         playTypewriter(text);
-        onAnimated?.();
       } else {
         setBody(text);
       }
@@ -598,28 +641,6 @@ function ArticleEditor({
       setTimeout(() => setSaveState("idle"), 2000);
     },
     onError: () => { setSaveState("idle"); error(t("articles.toast.saveError")); },
-  });
-
-  const generateMutation = useMutation({
-    mutationFn: () =>
-      generateArticle(
-        articleId,
-        selectedProvider && selectedModel
-          ? { provider: selectedProvider, model: selectedModel }
-          : undefined,
-      ),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(["article", articleId], updated);
-      if (updated.body_markdown) {
-        playTypewriter(updated.body_markdown);
-      } else {
-        setBody("");
-      }
-      queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
-      queryClient.invalidateQueries({ queryKey: ["article-revisions", articleId] });
-      success(t("articles.toast.regenerated"));
-    },
-    onError: () => error(t("articles.toast.regenerateError")),
   });
 
   const revisionMutation = useMutation({
@@ -1009,14 +1030,14 @@ function ArticleEditor({
           )}
 
           <button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
+            onClick={runStreamingGeneration}
+            disabled={generating}
             className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             title={t("articles.editor.regenerate")}
           >
-            {generateMutation.isPending ? <Spinner size={12} /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {generating ? <Spinner size={12} /> : <RefreshCw className="h-3.5 w-3.5" />}
             <span className="hidden xl:inline">
-              {generateMutation.isPending ? t("articles.editor.regenerating") : t("articles.editor.regenerate")}
+              {generating ? t("articles.editor.regenerating") : t("articles.editor.regenerate")}
             </span>
           </button>
 
@@ -1062,11 +1083,11 @@ function ArticleEditor({
 
       {/* Editor body */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {typing || article.status === "generating" ? (
-          /* Writing animation: plain reveal while Dune types the draft in */
+        {typing || generating || article.status === "generating" ? (
+          /* Live writing surface: real streamed tokens (or the replay reveal) */
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" ref={typewriterRef}>
             <div className="mx-auto w-full max-w-3xl whitespace-pre-wrap text-[15px] leading-[1.8] text-foreground">
-              {tokensRef.current.slice(0, revealCount).map((tok, i) => (
+              {(body.match(/\S+\s*/g) ?? []).map((tok, i) => (
                 <span key={i} className="word-in">{tok}</span>
               ))}
               <span className="ml-0.5 inline-block h-4 w-[2px] -translate-y-0.5 animate-pulse-dot bg-primary align-middle" />
@@ -1074,7 +1095,7 @@ function ArticleEditor({
             <div className="pointer-events-none absolute right-4 top-3 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card/90 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm backdrop-blur animate-fade-in">
               <PenLine className="h-3 w-3 animate-pulse-dot" /> {t("articleStudio.writing")}
             </div>
-            {article.status === "generating" && !body && (
+            {(generating || article.status === "generating") && !body && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary animate-pulse-dot">
                   <PenLine className="h-6 w-6 text-white" strokeWidth={1.9} />
@@ -1164,7 +1185,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   const { success, error } = useToast();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [animateId, setAnimateId] = useState<string | null>(null);
+  const [streamId, setStreamId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [railMobileOpen, setRailMobileOpen] = useState(false);
   const [dockMobileOpen, setDockMobileOpen] = useState(false);
@@ -1203,7 +1224,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   function handleCreated(article: Article) {
     setShowModal(false);
     queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
-    setAnimateId(article.id);
+    setStreamId(article.id);
     setSelectedId(article.id);
   }
 
@@ -1225,8 +1246,8 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             onCloseDockMobile={() => setDockMobileOpen(false)}
             railMobileOpen={railMobileOpen}
             onCloseRailMobile={() => setRailMobileOpen(false)}
-            animateOnLoad={animateId === selectedArticle.id}
-            onAnimated={() => setAnimateId(null)}
+            streamOnLoad={streamId === selectedArticle.id}
+            onStreamStarted={() => setStreamId(null)}
           />
         </div>
       ) : (

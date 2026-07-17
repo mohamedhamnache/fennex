@@ -93,6 +93,51 @@ async def _call_anthropic(model: str, api_key: str, system_prompt: str, user_pro
     return message.content[0].text
 
 
+async def stream_llm(
+    provider: str,
+    model: str,
+    api_key: str,
+    system_prompt: str,
+    user_prompt: str,
+    locale: str | None = "en",
+):
+    """Stream the provider's response as text chunks (async generator).
+
+    Anthropic and OpenAI stream token deltas; Google degrades to a single
+    chunk (its REST streaming needs a different wire format).
+    """
+    system_prompt = system_prompt + language_directive(locale)
+    if provider == "anthropic":
+        client = AsyncAnthropic(api_key=api_key)
+        async with client.messages.stream(
+            model=model,
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        ) as stream:
+            async for text in stream.text_stream:
+                yield text
+    elif provider == "openai":
+        client = AsyncOpenAI(api_key=api_key)
+        response = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=4096,
+            stream=True,
+        )
+        async for chunk in response:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                yield delta
+    elif provider == "google":
+        yield await _call_google(model, api_key, system_prompt, user_prompt)
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+
 async def _call_openai(model: str, api_key: str, system_prompt: str, user_prompt: str) -> str:
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(

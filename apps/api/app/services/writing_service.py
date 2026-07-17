@@ -101,7 +101,9 @@ async def _seo_grounding(project, article, live_body: str | None, db, include_ch
     return "\n\n".join(parts)
 
 
-async def chat(project, article, question: str, history: list[dict], db, live_body: str | None = None) -> dict:
+async def _prepare_chat(project, article, question: str, history: list[dict], db, live_body: str | None):
+    """Resolve provider + build the full chat prompt. Returns
+    (provider, model, api_key, system, user, locale)."""
     keys = await get_org_llm_keys(project.org_id, db)
     pm = _pick(keys)
     if pm is None:
@@ -138,7 +140,31 @@ async def chat(project, article, question: str, history: list[dict], db, live_bo
             f"\nARTICLE: {article.title} (keyword: {article.target_keyword or '-'})" +
             (f"\n\nDATA:\n{grounding}" if grounding else "") +
             f"\n\nCURRENT ARTICLE (markdown):\n{excerpt}\n\n{convo}user: {question.strip()}")
-    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(project.id, db))
+    return pm[0], pm[1], keys[pm[0]], system, user, await project_locale(project.id, db)
+
+
+async def chat(project, article, question: str, history: list[dict], db, live_body: str | None = None) -> dict:
+    provider, model, key, system, user, locale = await _prepare_chat(
+        project, article, question, history, db, live_body
+    )
+    raw = await call_llm(provider, model, key, system, user, locale=locale)
+    return parse_chat_response(raw)
+
+
+async def chat_stream(project, article, question: str, history: list[dict], db, live_body: str | None = None):
+    """Async generator yielding raw text chunks of Dune's reply. The caller
+    accumulates and runs parse_chat_response() on the full text at the end.
+    All DB work happens up-front, so the stream itself needs no session."""
+    provider, model, key, system, user, locale = await _prepare_chat(
+        project, article, question, history, db, live_body
+    )
+    from app.services.llm_service import stream_llm
+    async for chunk in stream_llm(provider, model, key, system, user, locale=locale):
+        yield chunk
+
+
+def parse_chat_response(raw: str) -> dict:
+    """Extract Dune's structured skill outputs from a raw chat response."""
     am = _ARTICLE_RE.search(raw)
     revised = am.group(1).strip() if am else None
     rest = _ARTICLE_RE.sub("", raw)
