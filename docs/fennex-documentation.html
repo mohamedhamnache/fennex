@@ -168,6 +168,23 @@
   .code pre::-webkit-scrollbar{height:8px}.code pre::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:99px}
   .tok-c{color:var(--tok-c)}.tok-k{color:var(--tok-k)}.tok-s{color:var(--tok-s)}.tok-o{color:var(--tok-o)}
 
+
+  /* Comparison table */
+  .cmp-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:14px;margin:20px 0;box-shadow:0 10px 30px var(--shadow)}
+  .cmp{width:100%;border-collapse:collapse;font-size:14.5px;min-width:920px}
+  .cmp th,.cmp td{padding:13px 14px;text-align:center;border-top:1px solid var(--border)}
+  .cmp thead th{background:var(--panel-2);font-size:12.5px;font-weight:750;text-transform:none;letter-spacing:.01em;color:var(--fg);border-top:0}
+  .cmp tbody td:first-child,.cmp thead th:first-child{text-align:left;font-weight:600;color:var(--fg);min-width:230px;position:sticky;left:0;background:var(--bg)}
+  .cmp tbody tr:hover td{background:var(--panel-2)}
+  .cmp tbody tr:hover td:first-child{background:var(--panel-2)}
+  .cmp .fx{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.05))}
+  .cmp thead .fx{background:linear-gradient(180deg,rgba(139,92,246,.3),rgba(139,92,246,.14));color:var(--fg)}
+  .cmp .fx b{color:var(--brand-2)} html[data-theme="dark"] .cmp .fx b{color:#c4b5fd}
+  .ci{display:inline-flex;width:20px;height:20px} .ci svg{width:20px;height:20px}
+  .ci.yes{color:#10b981}.ci.par{color:#f59e0b}.ci.no{color:var(--muted-2);opacity:.6}
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:6px 0 2px;font-size:13.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+
   /* Callouts */
   .note{border-radius:13px;padding:15px 18px;margin:18px 0;font-size:15px;border:1px solid;display:flex;gap:12px;max-width:80ch}
   .note .b{font-weight:800}
@@ -250,6 +267,7 @@
       <span class="grp">Product</span>
       <a href="#pack">The Fennex Pack</a>
       <a href="#features">Features</a>
+      <a href="#compare">How it compares</a>
       <a href="#technologies">Technologies</a>
       <span class="grp">Run &amp; deploy</span>
       <a href="#local">Local development</a>
@@ -455,11 +473,70 @@ fennex/
       </div>
     </section>
 
+    <!-- COMPARISON -->
+    <section id="compare">
+      <div class="col">
+        <p class="eyebrow">Positioning</p>
+        <h2><span class="n">05</span> How Fennex compares</h2>
+        <p class="sub">Most tools own one lane &mdash; Jasper writes, Surfer optimizes on-page, Semrush tracks SEO data. Fennex brings research, writing, optimization, imagery, publishing and rank tracking into one agentic workflow.</p>
+      </div>
+
+      <div class="legend col">
+        <span><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Full support</span>
+        <span><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span> Partial / limited</span>
+        <span><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span> Not offered</span>
+      </div>
+
+      <div class="cmp-wrap full">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th class="fx"><b>Fennex</b></th>
+              <th>Jasper</th>
+              <th>Surfer&nbsp;SEO</th>
+              <th>Frase</th>
+              <th>Semrush</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr><td>AI long-form article generation</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td></tr>
+        <tr><td>Agentic edits &mdash; executes, not just suggests</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td></tr>
+        <tr><td>Real-time token streaming in the editor</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td></tr>
+        <tr><td>Live on-page SEO scoring</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td></tr>
+        <tr><td>Keyword research</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td></tr>
+        <tr><td>Daily SERP rank tracking</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td></tr>
+        <tr><td>Technical / site audit</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td></tr>
+        <tr><td>Competitor analysis</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td></tr>
+        <tr><td>Backlink tracking</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td></tr>
+        <tr><td>Image generation &amp; editing</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td></tr>
+        <tr><td>Social content &amp; calendar</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td></tr>
+        <tr><td>Direct WordPress / CMS publishing</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td></tr>
+        <tr><td>Internal linking assistant</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td></tr>
+        <tr><td>Grounded in your real Search Console data</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td></tr>
+        <tr><td>Multi-agent specialists (a team, not one bot)</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td></tr>
+        <tr><td>Bring-your-own AI keys</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td></tr>
+        <tr><td>Self-hostable, open architecture</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td><td><span class="ci no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span></td></tr>
+        <tr><td>Multi-language UI (6 incl. RTL)</td><td class="fx"><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span></td><td><span class="ci yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></td></tr>
+        </tbody>
+        </table>
+      </div>
+
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span><span class="b">Fair reading:</span> dedicated SEO suites like Semrush and Ahrefs still lead on the <em>depth</em> of raw keyword, backlink and rank data, and Jasper has a mature marketing-copy template library. Fennex's edge is <b>breadth + agentic AI + real-data grounding in a single workflow</b> &mdash; and an AI agent team that does the work end to end. Capabilities of third-party products evolve; this table reflects their typical, publicly-described feature sets.</span></div>
+
+      <h3 class="col">When Fennex is the right choice</h3>
+      <div class="col grid g3">
+        <div class="card"><h4>You want one workflow</h4><p>Research &rarr; write &rarr; optimize &rarr; illustrate &rarr; publish &rarr; track, without juggling five subscriptions and copy-pasting between them.</p></div>
+        <div class="card"><h4>You want AI that acts</h4><p>An agent team that executes edits, applies changes and grounds output in your real data &mdash; not a prompt box that returns a blob of text.</p></div>
+        <div class="card"><h4>You want control</h4><p>Bring your own AI keys, run it on your own infrastructure, and see transparent, deterministic scoring instead of black-box metrics.</p></div>
+      </div>
+    </section>
+
     <!-- TECHNOLOGIES -->
     <section id="technologies">
       <div class="col">
         <p class="eyebrow">The stack</p>
-        <h2><span class="n">05</span> Technologies</h2>
+        <h2><span class="n">06</span> Technologies</h2>
         <p class="sub">Modern, typed and async end to end.</p>
       </div>
 
@@ -502,7 +579,7 @@ fennex/
     <section id="local">
       <div class="col">
         <p class="eyebrow">Get running</p>
-        <h2><span class="n">06</span> Local development</h2>
+        <h2><span class="n">07</span> Local development</h2>
         <p class="sub">The full stack runs in Docker in a couple of commands.</p>
       </div>
 
@@ -540,7 +617,7 @@ docker compose exec web npx tsc --noEmit</pre></div>
     <section id="deploy-vercel">
       <div class="col">
         <p class="eyebrow">Go live · path A</p>
-        <h2><span class="n">07</span> Deploy · Vercel + Supabase</h2>
+        <h2><span class="n">08</span> Deploy · Vercel + Supabase</h2>
         <p class="sub">The fastest path to production. Vercel hosts the frontend, Supabase provides Postgres, and a container host runs the Python API + worker.</p>
       </div>
 
@@ -580,7 +657,7 @@ NEXTAUTH_URL        = https://your-app.vercel.app</pre></div>
     <section id="deploy-aws">
       <div class="col">
         <p class="eyebrow">Go live · path B</p>
-        <h2><span class="n">08</span> Deploy · AWS</h2>
+        <h2><span class="n">09</span> Deploy · AWS</h2>
         <p class="sub">A fully-managed, scalable deployment on AWS using containers.</p>
       </div>
 
@@ -635,7 +712,7 @@ docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest<
     <section id="env">
       <div class="col">
         <p class="eyebrow">Configuration</p>
-        <h2><span class="n">09</span> Environment reference</h2>
+        <h2><span class="n">10</span> Environment reference</h2>
         <p class="sub">Core variables. AI provider keys are added per-organization inside the app (encrypted), not as global env.</p>
       </div>
       <table class="tbl col">
