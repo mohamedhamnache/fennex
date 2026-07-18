@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, RefreshCw } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 function Spinner({ size = 12 }: { size?: number }) {
   return (
@@ -34,7 +34,6 @@ interface StatsBarProps {
   wordCount: number;
   wordTarget?: number | null;
   seoScore: number | null;
-  onRefetchSeo: () => void;
   saveState: "idle" | "saving" | "saved";
 }
 
@@ -43,7 +42,7 @@ interface StatsBarProps {
  * time, SEO score chip, and the autosave state. Actions (revision / publish /
  * save) live in the editor header.
  */
-export function StatsBar({ wordCount, wordTarget, seoScore, onRefetchSeo, saveState }: StatsBarProps) {
+export function StatsBar({ wordCount, wordTarget, seoScore, saveState }: StatsBarProps) {
   const { t } = useTranslation();
   const readingMinutes = Math.ceil(wordCount / 200);
   const goalPct = wordTarget ? Math.min(100, Math.round((wordCount / wordTarget) * 100)) : null;
@@ -68,18 +67,16 @@ export function StatsBar({ wordCount, wordTarget, seoScore, onRefetchSeo, saveSt
         {t("articleStudio.readingTime", { min: readingMinutes })}
       </span>
 
-      <button
-        onClick={onRefetchSeo}
+      <span
         title={t("articles.editor.seoScore")}
-        className="group inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 transition-colors hover:bg-muted"
+        className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 transition-colors"
       >
         {seoScore !== null ? (
           <span className={`font-semibold tabular-nums ${seoColor(seoScore)}`}>SEO {seoScore}</span>
         ) : (
           <span className="text-muted-foreground">SEO</span>
         )}
-        <RefreshCw className="h-3 w-3 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
-      </button>
+      </span>
 
       {saveState === "saving" && (
         <span className="flex items-center gap-1 text-muted-foreground">

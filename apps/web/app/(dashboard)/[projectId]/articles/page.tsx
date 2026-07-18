@@ -31,12 +31,10 @@ import {
   generateArticle,
   generateArticleStream,
   saveRevision,
-  getArticleSeoScore,
   listPublishingConnections,
   publishArticle,
   listApiKeys,
   type Article,
-  type SEOScoreBreakdown,
   type PublishingConnection,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -46,6 +44,7 @@ import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { ArticlesOverview } from "@/components/articles/studio/ArticlesOverview";
 import { RichEditor, type RichEditorHandle } from "@/components/articles/studio/RichEditor";
+import { computeSeoScore } from "@/lib/seo-score";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
@@ -526,12 +525,6 @@ function ArticleEditor({
     refetchInterval: (query) => query.state.data?.status === "generating" ? 3000 : false,
   });
 
-  const { data: seoData, refetch: refetchSeo } = useQuery<SEOScoreBreakdown>({
-    queryKey: ["article-seo", articleId],
-    queryFn: () => getArticleSeoScore(articleId),
-    enabled: !!articleId && (article?.status === "ready" || article?.status === "published"),
-  });
-
   const [body, setBody] = useState<string>("");
   const [title, setTitle] = useState<string>("");
   const [metaTitle, setMetaTitle] = useState<string>("");
@@ -633,7 +626,6 @@ function ArticleEditor({
       setMetaTitle(result.meta_title ?? "");
       setMetaDesc(result.meta_description ?? "");
       queryClient.invalidateQueries({ queryKey: ["article", articleId] });
-      queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
       queryClient.invalidateQueries({ queryKey: ["article-revisions", articleId] });
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
       success(t("articles.toast.regenerated"));
@@ -684,7 +676,6 @@ function ArticleEditor({
       queryClient.setQueryData(["article", articleId], updated);
       // Every edit shifts the SEO score: recompute it (editor chip + Meta tab)
       // and refresh the overview cards so they match.
-      queryClient.invalidateQueries({ queryKey: ["article-seo", articleId] });
       queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);
@@ -823,8 +814,12 @@ function ArticleEditor({
     return items;
   }, [body]);
 
-  const seoScore = seoData?.score ?? article?.seo_score ?? null;
-  const breakdown = seoData?.breakdown ?? {};
+  // Live SEO score + ranking signals: recomputed instantly on every change
+  // (body/title/meta/keyword) with the exact backend formula - no round-trip.
+  const { score: seoScore, breakdown } = useMemo(
+    () => computeSeoScore(title, body, article?.target_keyword ?? null, metaDesc),
+    [title, body, metaDesc, article?.target_keyword],
+  );
 
   if (isLoading || !article) {
     return (
@@ -1020,7 +1015,6 @@ function ArticleEditor({
           wordCount={wordCount}
           wordTarget={article.word_count_target}
           seoScore={seoScore}
-          onRefetchSeo={() => refetchSeo()}
           saveState={saveState}
         />
 
