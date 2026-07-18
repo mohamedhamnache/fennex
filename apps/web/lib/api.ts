@@ -2301,7 +2301,7 @@ export interface GenerateStreamResult {
 
 export async function generateArticleStream(
   articleId: string,
-  opts: { provider?: string; model?: string } | undefined,
+  opts: { provider?: string; model?: string; template?: string } | undefined,
   onChunk: (text: string) => void,
 ): Promise<GenerateStreamResult> {
   return streamRequest<GenerateStreamResult>(

@@ -1451,6 +1451,15 @@
       "add": "Añadir enlace",
       "added": "Enlace añadido",
       "stale": "Esa frase ya no está en el borrador - vuelve a analizar."
+    },
+    "templates": {
+      "label": "Plantilla",
+      "none": "Libre",
+      "howto": "Guía paso a paso",
+      "listicle": "Listicle",
+      "comparison": "Comparativa",
+      "roundup": "Recopilación",
+      "casestudy": "Caso de estudio"
     }
   }
 }

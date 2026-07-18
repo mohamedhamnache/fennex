@@ -1451,6 +1451,15 @@
       "add": "Link hinzufügen",
       "added": "Link hinzugefügt",
       "stale": "Diese Phrase ist nicht mehr im Entwurf - erneut scannen."
+    },
+    "templates": {
+      "label": "Vorlage",
+      "none": "Frei",
+      "howto": "How-to-Guide",
+      "listicle": "Listicle",
+      "comparison": "Vergleich",
+      "roundup": "Roundup",
+      "casestudy": "Fallstudie"
     }
   }
 }

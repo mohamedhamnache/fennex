@@ -1451,6 +1451,15 @@
       "add": "Ajouter le lien",
       "added": "Lien ajouté",
       "stale": "Cette phrase n'est plus dans le brouillon - relancez l'analyse."
+    },
+    "templates": {
+      "label": "Modèle",
+      "none": "Libre",
+      "howto": "Guide pas à pas",
+      "listicle": "Listicle",
+      "comparison": "Comparatif",
+      "roundup": "Sélection",
+      "casestudy": "Étude de cas"
     }
   }
 }

@@ -95,6 +95,10 @@ const TONES = [
 
 const WORD_COUNTS = [800, 1200, 1500, 2000, 2500] as const;
 
+/** Content-template ids shared with the backend's TEMPLATE_BRIEFS. */
+const TEMPLATES = ["howto", "listicle", "comparison", "roundup", "casestudy"] as const;
+type TemplateId = (typeof TEMPLATES)[number];
+
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
 function Spinner({ size = 16 }: { size?: number }) {
@@ -149,13 +153,14 @@ function NewArticleModal({
 }: {
   projectId: string;
   onClose: () => void;
-  onCreated: (article: Article) => void;
+  onCreated: (article: Article, template: TemplateId | null) => void;
 }) {
   const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState<string>("professional");
   const [wordCount, setWordCount] = useState<number>(1200);
+  const [template, setTemplate] = useState<TemplateId | null>(null);
   const [phase, setPhase] = useState<"form" | "generating">("form");
   const [error, setError] = useState<string | null>(null);
 
@@ -174,7 +179,7 @@ function NewArticleModal({
         word_count_target: wordCount,
       });
       // Open the editor immediately - Dune streams the article in live there.
-      onCreated(article);
+      onCreated(article, template);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setPhase("form");
@@ -247,6 +252,39 @@ function NewArticleModal({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                {t("articleStudio.templates.label")}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTemplate(null)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    template === null
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                >
+                  {t("articleStudio.templates.none")}
+                </button>
+                {TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl}
+                    type="button"
+                    onClick={() => setTemplate(tpl)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      template === tpl
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    {t(`articleStudio.templates.${tpl}`)}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -461,6 +499,7 @@ function ArticleEditor({
   railMobileOpen,
   onCloseRailMobile,
   streamOnLoad = false,
+  streamTemplate = null,
   onStreamStarted,
 }: {
   articleId: string;
@@ -474,6 +513,7 @@ function ArticleEditor({
   railMobileOpen: boolean;
   onCloseRailMobile: () => void;
   streamOnLoad?: boolean;
+  streamTemplate?: TemplateId | null;
   onStreamStarted?: () => void;
 }) {
   const { t } = useTranslation();
@@ -562,7 +602,7 @@ function ArticleEditor({
 
   // TRUE token streaming: Dune writes the article live into the overlay, then
   // the final parsed result (persisted server-side) lands in the rich editor.
-  async function runStreamingGeneration() {
+  async function runStreamingGeneration(template?: TemplateId | null) {
     if (generating) return;
     setGenerating(true);
     initialized.current = true;
@@ -572,9 +612,12 @@ function ArticleEditor({
     try {
       const result = await generateArticleStream(
         articleId,
-        selectedProvider && selectedModel
-          ? { provider: selectedProvider, model: selectedModel }
-          : undefined,
+        {
+          ...(selectedProvider && selectedModel
+            ? { provider: selectedProvider, model: selectedModel }
+            : {}),
+          ...(template ? { template } : {}),
+        },
         (chunk) => {
           setBody((prev) => prev + chunk);
           const el = typewriterRef.current;
@@ -601,7 +644,7 @@ function ArticleEditor({
   useEffect(() => {
     if (streamOnLoad) {
       onStreamStarted?.();
-      runStreamingGeneration();
+      runStreamingGeneration(streamTemplate);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1030,7 +1073,7 @@ function ArticleEditor({
           )}
 
           <button
-            onClick={runStreamingGeneration}
+            onClick={() => runStreamingGeneration()}
             disabled={generating}
             className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             title={t("articles.editor.regenerate")}
@@ -1186,6 +1229,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [streamId, setStreamId] = useState<string | null>(null);
+  const [streamTemplate, setStreamTemplate] = useState<TemplateId | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [railMobileOpen, setRailMobileOpen] = useState(false);
   const [dockMobileOpen, setDockMobileOpen] = useState(false);
@@ -1221,9 +1265,10 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     onError: () => error(t("articles.toast.regenerateError")),
   });
 
-  function handleCreated(article: Article) {
+  function handleCreated(article: Article, template: TemplateId | null) {
     setShowModal(false);
     queryClient.invalidateQueries({ queryKey: ["articles", projectId] });
+    setStreamTemplate(template);
     setStreamId(article.id);
     setSelectedId(article.id);
   }
@@ -1247,6 +1292,7 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
             railMobileOpen={railMobileOpen}
             onCloseRailMobile={() => setRailMobileOpen(false)}
             streamOnLoad={streamId === selectedArticle.id}
+            streamTemplate={streamTemplate}
             onStreamStarted={() => setStreamId(null)}
           />
         </div>

@@ -135,6 +135,7 @@ async def studio_chat_stream(article_id: uuid.UUID, body: ChatRequest, current_u
 class GenerateStreamRequest(BaseModel):
     provider: str | None = None
     model: str | None = None
+    template: str | None = None
 
 
 @router.post("/{article_id}/generate/stream")
@@ -189,7 +190,7 @@ async def studio_generate_stream(
         grounding = ""
 
     system_prompt = _build_system_prompt(brand_voice, profile)
-    user_prompt = _build_user_prompt(article)
+    user_prompt = _build_user_prompt(article, template=body.template)
     if grounding:
         user_prompt += (
             "\n\nREAL SEARCH DATA for this site - weave these naturally into headings, copy and the "

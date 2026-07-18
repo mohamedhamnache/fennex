@@ -1451,6 +1451,15 @@
       "add": "Adicionar link",
       "added": "Link adicionado",
       "stale": "Essa frase não está mais no rascunho - analise novamente."
+    },
+    "templates": {
+      "label": "Modelo",
+      "none": "Livre",
+      "howto": "Guia passo a passo",
+      "listicle": "Listicle",
+      "comparison": "Comparativo",
+      "roundup": "Seleção",
+      "casestudy": "Estudo de caso"
     }
   }
 }

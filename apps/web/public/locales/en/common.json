@@ -1528,6 +1528,15 @@
       "add": "Add link",
       "added": "Link added",
       "stale": "That phrase is no longer in the draft - rescan."
+    },
+    "templates": {
+      "label": "Template",
+      "none": "Free-form",
+      "howto": "How-to guide",
+      "listicle": "Listicle",
+      "comparison": "Comparison",
+      "roundup": "Roundup",
+      "casestudy": "Case study"
     }
   }
 }

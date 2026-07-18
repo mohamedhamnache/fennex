@@ -80,8 +80,37 @@ def _build_system_prompt(brand_voice: BrandVoice | None, profile: str = "") -> s
     return "\n".join(lines)
 
 
-def _build_user_prompt(article: Article) -> str:
+# Structural blueprints for the content-template picker. Keys are stable ids
+# shared with the frontend; values are appended to the generation brief.
+TEMPLATE_BRIEFS: dict[str, str] = {
+    "howto": (
+        "Structure the article as a step-by-step HOW-TO GUIDE: a short prerequisites section, "
+        "numbered steps as H2s (H3s for sub-steps), a common-mistakes section, and a final checklist."
+    ),
+    "listicle": (
+        "Structure the article as a LISTICLE: a numbered H2 for each item with a punchy opener, "
+        "a quick at-a-glance summary list near the top, and consistent depth per item."
+    ),
+    "comparison": (
+        "Structure the article as a COMPARISON (X vs Y): criteria-based H2 sections, a markdown "
+        "comparison table near the top, honest pros and cons for each side, and a clear verdict "
+        "section explaining who should pick which."
+    ),
+    "roundup": (
+        "Structure the article as a ROUNDUP of picks or tools: a top-picks summary at the start, "
+        "one H2 per pick with pros and cons lists, and a final buying-guide style section on how "
+        "to choose."
+    ),
+    "casestudy": (
+        "Structure the article as a CASE STUDY: background, the challenge, the approach taken, "
+        "the results (concrete and qualitative - never invent numbers), and lessons learned."
+    ),
+}
+
+
+def _build_user_prompt(article: Article, template: str | None = None) -> str:
     kw = article.target_keyword or article.title
+    template_brief = TEMPLATE_BRIEFS.get(template or "")
     return (
         f"Write a best-in-class, SEO-optimized article that could rank on page one for its keyword.\n\n"
         f"BRIEF\n"
@@ -90,6 +119,8 @@ def _build_user_prompt(article: Article) -> str:
         f"- Tone: {article.tone}\n"
         f"- Target length: approximately {article.word_count_target} words (write to the depth the topic "
         f"deserves, not filler to hit a number)\n\n"
+        + (f"TEMPLATE\n{template_brief}\n\n" if template_brief else "")
+        +
         f"BEFORE WRITING, think about: the dominant search intent behind \"{kw}\"; what a reader must walk "
         f"away knowing; the subtopics, related entities and 'People Also Ask' questions a complete answer "
         f"must cover; and the angle that makes this genuinely more useful than what already ranks.\n\n"
