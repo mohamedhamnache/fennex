@@ -1421,7 +1421,9 @@
         "word_count": "Número de palavras",
         "has_h2_headings": "Títulos H2",
         "meta_description": "Meta descrição"
-      }
+      },
+      "keyword": "Palavra-chave alvo",
+      "keywordHint": "A frase para a qual você quer ranquear (ex.: \"cardápio digital restaurante\"). Ela determina a pontuação SEO."
     },
     "writing": "Dune está escrevendo…",
     "restored": "Revisão restaurada.",
@@ -1469,6 +1471,7 @@
       "roundup": "Seleção",
       "casestudy": "Estudo de caso"
     },
-    "polishing": "Aprimorando para SEO…"
+    "polishing": "Aprimorando para SEO…",
+    "keywordPlaceholder": "Palavra-chave alvo…"
   }
 }

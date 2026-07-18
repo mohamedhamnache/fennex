@@ -1421,7 +1421,9 @@
         "word_count": "Nombre de mots",
         "has_h2_headings": "Titres H2",
         "meta_description": "Méta description"
-      }
+      },
+      "keyword": "Mot-clé cible",
+      "keywordHint": "L'expression que vous voulez positionner (ex. « menu digital restaurant »). Elle détermine le score SEO."
     },
     "writing": "Dune écrit…",
     "restored": "Révision restaurée.",
@@ -1469,6 +1471,7 @@
       "roundup": "Sélection",
       "casestudy": "Étude de cas"
     },
-    "polishing": "Optimisation SEO…"
+    "polishing": "Optimisation SEO…",
+    "keywordPlaceholder": "Mot-clé cible…"
   }
 }

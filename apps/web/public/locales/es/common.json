@@ -1421,7 +1421,9 @@
         "word_count": "Número de palabras",
         "has_h2_headings": "Encabezados H2",
         "meta_description": "Meta descripción"
-      }
+      },
+      "keyword": "Palabra clave objetivo",
+      "keywordHint": "La frase para la que quieres posicionar (p. ej. «menú digital restaurante»). Determina la puntuación SEO."
     },
     "writing": "Dune está escribiendo…",
     "restored": "Revisión restaurada.",
@@ -1469,6 +1471,7 @@
       "roundup": "Recopilación",
       "casestudy": "Caso de estudio"
     },
-    "polishing": "Puliendo para SEO…"
+    "polishing": "Puliendo para SEO…",
+    "keywordPlaceholder": "Palabra clave objetivo…"
   }
 }

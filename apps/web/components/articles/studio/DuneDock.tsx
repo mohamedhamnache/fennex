@@ -25,6 +25,8 @@ interface DuneDockProps {
   articleId: string;
   articleTitle: string;
   targetKeyword: string | null;
+  onKeywordChange: (val: string) => void;
+  onKeywordBlur: () => void;
   metaTitle: string;
   metaDesc: string;
   onMetaTitleChange: (val: string) => void;
@@ -56,6 +58,8 @@ export function DuneDock({
   articleId,
   articleTitle,
   targetKeyword,
+  onKeywordChange,
+  onKeywordBlur,
   metaTitle,
   metaDesc,
   onMetaTitleChange,
@@ -152,6 +156,8 @@ export function DuneDock({
           <MetaTab
             articleTitle={articleTitle}
             targetKeyword={targetKeyword}
+            onKeywordChange={onKeywordChange}
+            onKeywordBlur={onKeywordBlur}
             metaTitle={metaTitle}
             metaDesc={metaDesc}
             onMetaTitleChange={onMetaTitleChange}

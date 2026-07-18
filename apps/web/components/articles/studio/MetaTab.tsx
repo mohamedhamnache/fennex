@@ -7,6 +7,8 @@ import { ProgressRing } from "@/components/ui/ProgressRing";
 interface MetaTabProps {
   articleTitle: string;
   targetKeyword: string | null;
+  onKeywordChange: (val: string) => void;
+  onKeywordBlur: () => void;
   metaTitle: string;
   metaDesc: string;
   onMetaTitleChange: (val: string) => void;
@@ -43,6 +45,8 @@ function Meter({ len, min, max }: { len: number; min: number; max: number }) {
 export function MetaTab({
   articleTitle,
   targetKeyword,
+  onKeywordChange,
+  onKeywordBlur,
   metaTitle,
   metaDesc,
   onMetaTitleChange,
@@ -61,6 +65,19 @@ export function MetaTab({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Target keyword - drives the whole SEO score */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-foreground">{t("articleStudio.meta.keyword")}</label>
+        <input
+          value={targetKeyword ?? ""}
+          onChange={(e) => onKeywordChange(e.target.value)}
+          onBlur={onKeywordBlur}
+          placeholder={t("articleStudio.keywordPlaceholder")}
+          className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+        />
+        <p className="text-[10px] text-muted-foreground">{t("articleStudio.meta.keywordHint")}</p>
+      </div>
+
       {/* SEO score */}
       {entries.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card/40 p-3">

@@ -1498,7 +1498,9 @@
         "word_count": "Word count",
         "has_h2_headings": "H2 headings",
         "meta_description": "Meta description"
-      }
+      },
+      "keyword": "Target keyword",
+      "keywordHint": "The phrase you want to rank for (e.g. \"digital restaurant menu\"). It drives the SEO score."
     },
     "writing": "Dune is writing…",
     "restored": "Revision restored.",
@@ -1546,6 +1548,7 @@
       "roundup": "Roundup",
       "casestudy": "Case study"
     },
-    "polishing": "Polishing for SEO…"
+    "polishing": "Polishing for SEO…",
+    "keywordPlaceholder": "Target keyword…"
   }
 }

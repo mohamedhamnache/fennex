@@ -1421,7 +1421,9 @@
         "word_count": "Wortanzahl",
         "has_h2_headings": "H2-Überschriften",
         "meta_description": "Meta-Beschreibung"
-      }
+      },
+      "keyword": "Ziel-Keyword",
+      "keywordHint": "Die Phrase, für die du ranken willst (z. B. „digitale Restaurantkarte“). Sie bestimmt den SEO-Score."
     },
     "writing": "Dune schreibt…",
     "restored": "Revision wiederhergestellt.",
@@ -1469,6 +1471,7 @@
       "roundup": "Roundup",
       "casestudy": "Fallstudie"
     },
-    "polishing": "SEO-Feinschliff…"
+    "polishing": "SEO-Feinschliff…",
+    "keywordPlaceholder": "Ziel-Keyword…"
   }
 }

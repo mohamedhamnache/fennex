@@ -233,9 +233,10 @@ function NewArticleModal({
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder={t("articles.newArticleModal.keywordPlaceholder")}
+                placeholder={t("articleStudio.keywordPlaceholder")}
                 className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
+              <p className="mt-1 text-xs text-muted-foreground">{t("articleStudio.meta.keywordHint")}</p>
             </div>
 
             <div>
@@ -527,6 +528,7 @@ function ArticleEditor({
 
   const [body, setBody] = useState<string>("");
   const [title, setTitle] = useState<string>("");
+  const [keyword, setKeyword] = useState<string>("");
   const [metaTitle, setMetaTitle] = useState<string>("");
   const [metaDesc, setMetaDesc] = useState<string>("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -656,6 +658,7 @@ function ArticleEditor({
     if (!initialized.current || justFinishedGenerating) {
       initialized.current = true;
       setTitle(article.title);
+      setKeyword(article.target_keyword ?? "");
       setMetaTitle(article.meta_title ?? "");
       setMetaDesc(article.meta_description ?? "");
       const text = article.body_markdown ?? "";
@@ -798,6 +801,13 @@ function ArticleEditor({
     }
   }
 
+  function handleKeywordBlur() {
+    const next = keyword.trim();
+    if (next !== (article?.target_keyword ?? "")) {
+      updateMutation.mutate({ target_keyword: next || null });
+    }
+  }
+
   const wordCount = body
     .trim()
     .split(/\s+/)
@@ -817,8 +827,8 @@ function ArticleEditor({
   // Live SEO score + ranking signals: recomputed instantly on every change
   // (body/title/meta/keyword) with the exact backend formula - no round-trip.
   const { score: seoScore, breakdown } = useMemo(
-    () => computeSeoScore(title, body, article?.target_keyword ?? null, metaDesc),
-    [title, body, metaDesc, article?.target_keyword],
+    () => computeSeoScore(title, body, keyword || null, metaDesc),
+    [title, body, metaDesc, keyword],
   );
 
   if (isLoading || !article) {
@@ -874,11 +884,18 @@ function ArticleEditor({
         <Badge tone={STATUS_TONE[article.status] ?? "neutral"} dot className="hidden capitalize sm:inline-flex">
           {article.status}
         </Badge>
-        {article.target_keyword && (
-          <span className="hidden max-w-[160px] truncate rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground xl:inline-block">
-            {article.target_keyword}
-          </span>
-        )}
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onBlur={handleKeywordBlur}
+          placeholder={t("articleStudio.keywordPlaceholder")}
+          title={t("articles.editor.metaTitle")}
+          className={`hidden w-40 rounded-full border px-2.5 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-primary/50 xl:inline-block ${
+            keyword.trim()
+              ? "border-primary/30 bg-primary/5 text-primary"
+              : "border-dashed border-border bg-transparent text-muted-foreground"
+          }`}
+        />
         <button
           onClick={() => setShowOutline((v) => !v)}
           className={`hidden shrink-0 rounded-lg p-1.5 transition-colors lg:block ${
@@ -1198,7 +1215,9 @@ function ArticleEditor({
         projectId={projectId}
         articleId={articleId}
         articleTitle={title}
-        targetKeyword={article.target_keyword}
+        targetKeyword={keyword}
+        onKeywordChange={setKeyword}
+        onKeywordBlur={handleKeywordBlur}
         metaTitle={metaTitle}
         metaDesc={metaDesc}
         onMetaTitleChange={setMetaTitle}
