@@ -1,179 +1,235 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Fennex — Documentation</title>
 <style>
+  /* ---------- Themes ---------- */
   :root{
-    --bg:#0b0f1a; --bg-2:#0e1424; --panel:rgba(255,255,255,.03); --panel-2:rgba(255,255,255,.05);
-    --border:rgba(255,255,255,.09); --border-2:rgba(255,255,255,.14);
-    --fg:#e8ebf3; --muted:#93a0bd; --muted-2:#6b7794;
-    --brand-1:#6366f1; --brand-2:#8b5cf6; --brand-3:#d946ef;
-    --primary:#8b5cf6; --code-bg:#0a0e18; --ok:#34d399; --warn:#fbbf24;
-    --radius:16px; --sidebar:280px;
+    --brand-1:#6366f1; --brand-2:#8b5cf6; --brand-3:#d946ef; --primary:#8b5cf6;
     --grad:linear-gradient(135deg,#6366f1 0%,#8b5cf6 52%,#d946ef 100%);
+    --radius:16px; --sidebar:300px; --maxw:1180px;
+    /* code block is dark in both themes */
+    --code-bg:#0b1020; --code-fg:#d7deee; --code-border:rgba(255,255,255,.09);
+    --tok-c:#7c88a8; --tok-k:#c4b5fd; --tok-s:#7dd3fc; --tok-o:#f9a8d4;
   }
+  html[data-theme="dark"]{
+    --bg:#0a0e18; --fg:#eef1f8; --muted:#a2adc6; --muted-2:#6f7b98;
+    --panel:rgba(255,255,255,.035); --panel-2:rgba(255,255,255,.06);
+    --border:rgba(255,255,255,.10); --border-2:rgba(255,255,255,.17);
+    --card:rgba(255,255,255,.03); --side-bg:rgba(8,11,19,.72); --shadow:rgba(0,0,0,.4);
+    --heroA:rgba(139,92,246,.12); --heroB:rgba(255,255,255,.02);
+    --inline:#e9d5ff;
+  }
+  html[data-theme="light"]{
+    --bg:#f5f6fb; --fg:#141a2b; --muted:#54607e; --muted-2:#8a95b0;
+    --panel:#ffffff; --panel-2:#f0f2f9;
+    --border:rgba(20,26,43,.10); --border-2:rgba(20,26,43,.18);
+    --card:#ffffff; --side-bg:rgba(255,255,255,.85); --shadow:rgba(30,40,80,.12);
+    --heroA:rgba(139,92,246,.14); --heroB:rgba(255,255,255,.5);
+    --inline:#6d28d9;
+  }
+
   *{box-sizing:border-box}
   html{scroll-behavior:smooth; scroll-padding-top:24px}
   body{
     margin:0; background:var(--bg); color:var(--fg);
-    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
+    font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; transition:background .25s, color .25s;
   }
   body::before{
     content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
     background:
-      radial-gradient(900px 500px at 15% -8%, rgba(99,102,241,.16), transparent 60%),
-      radial-gradient(800px 500px at 100% 0%, rgba(217,70,239,.10), transparent 55%),
-      radial-gradient(700px 600px at 50% 120%, rgba(139,92,246,.10), transparent 60%);
+      radial-gradient(1100px 600px at 12% -8%, rgba(99,102,241,.16), transparent 60%),
+      radial-gradient(900px 560px at 100% 0%, rgba(217,70,239,.10), transparent 55%),
+      radial-gradient(800px 700px at 50% 120%, rgba(139,92,246,.09), transparent 60%);
   }
-  a{color:#c4b5fd; text-decoration:none} a:hover{text-decoration:underline}
-  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.86em}
-  :not(pre)>code{background:var(--panel-2); border:1px solid var(--border); padding:.1em .4em; border-radius:6px; color:#e9d5ff}
+  html[data-theme="light"] body::before{opacity:.6}
+  a{color:var(--brand-2); text-decoration:none; font-weight:500} a:hover{text-decoration:underline}
+  html[data-theme="dark"] a{color:#c4b5fd}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em}
+  :not(pre)>code{background:var(--panel-2); border:1px solid var(--border); padding:.12em .45em; border-radius:6px; color:var(--inline)}
 
-  /* Layout */
-  .wrap{display:grid; grid-template-columns:var(--sidebar) 1fr; max-width:1400px; margin:0 auto}
+  /* Reading progress */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:80;background:var(--grad);transition:width .1s linear}
+
+  /* ---------- Layout (full screen) ---------- */
+  .wrap{display:grid; grid-template-columns:var(--sidebar) 1fr; width:100%}
   aside{
     position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
-    border-right:1px solid var(--border); padding:26px 18px 40px; background:rgba(9,12,20,.55); backdrop-filter:blur(8px);
+    border-right:1px solid var(--border); padding:24px 18px 40px; background:var(--side-bg); backdrop-filter:blur(10px);
   }
   aside::-webkit-scrollbar{width:6px} aside::-webkit-scrollbar-thumb{background:var(--border-2); border-radius:99px}
-  main{padding:56px min(6vw,72px) 120px; min-width:0}
+  main{padding:60px clamp(28px,5vw,90px) 140px; min-width:0}
+  .col{max-width:var(--maxw)}          /* keeps prose readable on huge screens */
+  .full{max-width:none}                /* let big grids/diagrams breathe */
 
-  /* Sidebar */
-  .brand{display:flex; align-items:center; gap:11px; margin-bottom:6px}
-  .brand .logo{width:38px;height:38px;border-radius:11px;background:var(--grad);display:grid;place-items:center;
+  /* ---------- Sidebar ---------- */
+  .brand{display:flex; align-items:center; gap:12px}
+  .brand .logo{width:40px;height:40px;border-radius:12px;background:var(--grad);display:grid;place-items:center;
     box-shadow:0 6px 22px rgba(139,92,246,.45); flex:none}
-  .brand .logo svg{width:20px;height:20px}
-  .brand b{font-size:17px; letter-spacing:.2px}
-  .brand small{display:block;color:var(--muted-2);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
-  .toc{margin-top:26px; display:flex; flex-direction:column; gap:2px}
-  .toc .grp{color:var(--muted-2); font-size:10.5px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; margin:18px 10px 6px}
+  .brand .logo svg{width:21px;height:21px}
+  .brand b{font-size:18px; letter-spacing:.2px}
+  .brand small{display:block;color:var(--muted-2);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase}
+  .theme-btn{margin-top:16px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--panel-2);border:1px solid var(--border);color:var(--fg);border-radius:11px;padding:9px;
+    font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .theme-btn:hover{border-color:var(--border-2)}
+  .theme-btn svg{width:16px;height:16px}
+  .toc{margin-top:22px; display:flex; flex-direction:column; gap:2px}
+  .toc .grp{color:var(--muted-2); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; margin:18px 10px 6px}
   .toc a{
-    color:var(--muted); padding:7px 11px; border-radius:9px; font-size:13.5px; font-weight:500;
+    color:var(--muted); padding:8px 12px; border-radius:9px; font-size:14.5px; font-weight:500;
     display:flex; align-items:center; gap:9px; border-left:2px solid transparent; transition:.15s;
   }
   .toc a:hover{background:var(--panel-2); color:var(--fg); text-decoration:none}
-  .toc a.active{background:rgba(139,92,246,.13); color:#ddd6fe; border-left-color:var(--primary)}
+  .toc a.active{background:rgba(139,92,246,.15); color:var(--brand-2); border-left-color:var(--primary); font-weight:600}
+  html[data-theme="dark"] .toc a.active{color:#ddd6fe}
 
-  /* Hero */
-  .hero{position:relative; border:1px solid var(--border); border-radius:22px; overflow:hidden;
-    background:linear-gradient(180deg,rgba(139,92,246,.10),rgba(255,255,255,.02)); padding:44px 40px; margin-bottom:44px}
-  .hero:before{content:"";position:absolute;inset:0;background:radial-gradient(600px 220px at 20% -20%,rgba(139,92,246,.25),transparent 60%);opacity:.8}
+  /* ---------- Hero ---------- */
+  .hero{position:relative; border:1px solid var(--border); border-radius:24px; overflow:hidden;
+    background:linear-gradient(180deg,var(--heroA),var(--heroB)); padding:52px 46px; margin-bottom:52px; box-shadow:0 20px 60px var(--shadow)}
+  .hero:before{content:"";position:absolute;inset:0;background:radial-gradient(680px 260px at 18% -25%,rgba(139,92,246,.28),transparent 60%);opacity:.85}
   .hero .in{position:relative}
-  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#ddd6fe;
-    background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.3);padding:5px 12px;border-radius:99px}
-  h1{font-size:clamp(30px,5vw,46px); line-height:1.08; letter-spacing:-.02em; margin:18px 0 12px; font-weight:800}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--brand-2);
+    background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.32);padding:6px 14px;border-radius:99px}
+  html[data-theme="dark"] .pill{color:#ddd6fe}
+  h1{font-size:clamp(36px,5.4vw,58px); line-height:1.05; letter-spacing:-.025em; margin:20px 0 14px; font-weight:850}
   .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .lede{color:var(--muted); font-size:17px; max-width:70ch}
-  .hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
-  .hero-meta span{font-size:12.5px;color:var(--muted);background:var(--panel);border:1px solid var(--border);padding:6px 12px;border-radius:10px}
+  .lede{color:var(--muted); font-size:20px; line-height:1.6; max-width:64ch}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .hero-meta span{font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--border);padding:7px 13px;border-radius:11px}
 
-  section{margin:0 0 60px; scroll-margin-top:24px}
-  h2{font-size:27px; letter-spacing:-.01em; margin:0 0 6px; font-weight:750; display:flex; align-items:center; gap:12px}
-  h2 .n{width:30px;height:30px;border-radius:9px;background:var(--panel-2);border:1px solid var(--border);display:grid;place-items:center;
-    font-size:14px;color:#c4b5fd;flex:none}
-  .sub{color:var(--muted-2); margin:0 0 24px; font-size:14.5px}
-  h3{font-size:18px; margin:32px 0 10px; font-weight:650}
-  h4{font-size:14px;margin:20px 0 8px;font-weight:650;color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em}
-  p{color:#c7cfe0}
-  ul,ol{color:#c7cfe0;padding-left:22px} li{margin:5px 0}
-  hr{border:0;border-top:1px solid var(--border);margin:40px 0}
+  section{margin:0 0 74px; scroll-margin-top:24px}
+  h2{font-size:33px; letter-spacing:-.015em; margin:0 0 8px; font-weight:800; display:flex; align-items:center; gap:14px}
+  h2 .n{width:34px;height:34px;border-radius:10px;background:var(--panel-2);border:1px solid var(--border);display:grid;place-items:center;
+    font-size:15px;color:var(--brand-2);flex:none;font-weight:800}
+  html[data-theme="dark"] h2 .n{color:#c4b5fd}
+  .sub{color:var(--muted-2); margin:0 0 28px; font-size:16.5px; max-width:70ch}
+  h3{font-size:22px; margin:40px 0 12px; font-weight:750; letter-spacing:-.01em}
+  h4{font-size:13.5px;margin:24px 0 10px;font-weight:750;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+  p{color:var(--fg);opacity:.92; max-width:72ch}
+  ul,ol{color:var(--fg);opacity:.92;padding-left:24px} li{margin:7px 0}
+  strong,b{font-weight:700}
+  hr{border:0;border-top:1px solid var(--border);margin:44px 0}
+  .eyebrow{font-size:13px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--brand-2);margin-bottom:6px}
+  html[data-theme="dark"] .eyebrow{color:#c4b5fd}
 
-  /* Cards */
-  .grid{display:grid;gap:16px}
+  /* ---------- Cards ---------- */
+  .grid{display:grid;gap:18px}
   .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:.2s}
-  .card:hover{border-color:var(--border-2);transform:translateY(-2px);box-shadow:0 14px 40px rgba(0,0,0,.3)}
-  .card .ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;margin-bottom:12px;font-size:18px}
-  .card h4{margin:0 0 6px;color:var(--fg);text-transform:none;letter-spacing:0;font-size:15.5px}
-  .card p{margin:0;color:var(--muted);font-size:13.5px}
-  .tint-1{background:rgba(99,102,241,.14);color:#a5b4fc}.tint-2{background:rgba(139,92,246,.14);color:#c4b5fd}
-  .tint-3{background:rgba(217,70,239,.14);color:#f0abfc}.tint-4{background:rgba(52,211,153,.14);color:#6ee7b7}
-  .tint-5{background:rgba(251,191,36,.14);color:#fcd34d}.tint-6{background:rgba(56,189,248,.14);color:#7dd3fc}
-  .tint-7{background:rgba(244,114,182,.14);color:#f9a8d4}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;transition:.2s}
+  .card:hover{border-color:var(--border-2);transform:translateY(-3px);box-shadow:0 16px 44px var(--shadow)}
+  .card .ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;margin-bottom:14px;font-size:20px}
+  .card h4{margin:0 0 7px;color:var(--fg);text-transform:none;letter-spacing:0;font-size:17px;opacity:1}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .tint-1{background:rgba(99,102,241,.14);color:#818cf8}.tint-2{background:rgba(139,92,246,.14);color:#a78bfa}
+  .tint-3{background:rgba(217,70,239,.14);color:#e879f9}.tint-4{background:rgba(16,185,129,.14);color:#34d399}
+  .tint-5{background:rgba(245,158,11,.14);color:#f59e0b}.tint-6{background:rgba(56,189,248,.14);color:#38bdf8}
+  .card .ic svg{width:22px;height:22px}
+  /* flat inline icons */
+  .h3ic{width:22px;height:22px;vertical-align:-4px;margin-right:9px;color:var(--brand-2)}
+  html[data-theme="dark"] .h3ic{color:#a78bfa}
+  .pill .d{width:8px;height:8px;border-radius:99px;background:currentColor;display:inline-block}
+  .note svg{width:19px;height:19px;flex:none;margin-top:2px;color:var(--brand-2)}
+  .note.warn svg{color:#d97706} .note.ok svg{color:#059669}
+  html[data-theme="dark"] .note svg{color:#a78bfa} html[data-theme="dark"] .note.warn svg{color:#fbbf24} html[data-theme="dark"] .note.ok svg{color:#34d399}
+
+  /* value props */
+  .vp{display:flex;gap:16px;align-items:flex-start}
+  .vp .num{font-size:14px;font-weight:800;color:#fff;background:var(--grad);width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;box-shadow:0 5px 16px rgba(139,92,246,.4)}
+  .vp h4{margin:3px 0 6px;font-size:18px;text-transform:none;letter-spacing:0;color:var(--fg)}
+  .vp p{margin:0;color:var(--muted);font-size:15px}
 
   /* Agent cards */
-  .agent{display:flex;gap:13px;align-items:flex-start}
-  .agent .av{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;flex:none;font-weight:700;font-size:15px}
-  .agent b{font-size:15px}.agent .role{font-size:11.5px;color:var(--muted-2);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-  .agent p{font-size:13px;color:var(--muted);margin:5px 0 0}
+  .agent{display:flex;gap:14px;align-items:flex-start}
+  .agent .av{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;color:#fff;flex:none;font-weight:800;font-size:16px}
+  .agent b{font-size:16.5px}.agent .role{font-size:12px;color:var(--muted-2);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .agent p{font-size:14px;color:var(--muted);margin:6px 0 0}
+
+  /* Persona */
+  .persona{border-left:3px solid var(--primary);padding:6px 0 6px 18px}
+  .persona b{font-size:16px}.persona p{color:var(--muted);font-size:14.5px;margin:4px 0 0}
 
   /* Tech chips */
-  .chips{display:flex;flex-wrap:wrap;gap:9px}
-  .chip{font-size:13px;font-weight:500;color:#dbe1ef;background:var(--panel-2);border:1px solid var(--border);
-    padding:7px 13px;border-radius:10px;display:inline-flex;align-items:center;gap:7px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{font-size:14px;font-weight:500;color:var(--fg);background:var(--panel-2);border:1px solid var(--border);
+    padding:8px 14px;border-radius:11px;display:inline-flex;align-items:center;gap:8px}
   .chip .dot{width:7px;height:7px;border-radius:99px;background:var(--primary)}
 
-  /* Code */
-  .code{position:relative;margin:16px 0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--code-bg)}
-  .code .bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);
-    background:rgba(255,255,255,.02)}
-  .code .bar span{font-size:11.5px;color:var(--muted-2);font-family:monospace;letter-spacing:.03em}
-  .code .cp{cursor:pointer;font-size:11px;color:var(--muted);background:var(--panel-2);border:1px solid var(--border);
-    border-radius:7px;padding:4px 9px;transition:.15s}
-  .code .cp:hover{color:#fff;border-color:var(--border-2)}
-  .code pre{margin:0;padding:16px 16px;overflow-x:auto;font-size:12.8px;line-height:1.7;color:#d7deee}
-  .code pre::-webkit-scrollbar{height:8px}.code pre::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:99px}
-  .tok-c{color:#6b7794}.tok-k{color:#c4b5fd}.tok-s{color:#7dd3fc}.tok-o{color:#f9a8d4}
+  /* Code (always dark) */
+  .code{position:relative;margin:18px 0;border:1px solid var(--code-border);border-radius:13px;overflow:hidden;background:var(--code-bg);box-shadow:0 10px 30px var(--shadow)}
+  .code .bar{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+  .code .bar span{font-size:12px;color:#8a95b0;font-family:monospace;letter-spacing:.03em}
+  .code .cp{cursor:pointer;font-size:11.5px;color:#aab4cd;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:4px 10px;transition:.15s}
+  .code .cp:hover{color:#fff;border-color:rgba(255,255,255,.25)}
+  .code pre{margin:0;padding:16px;overflow-x:auto;font-size:13.5px;line-height:1.75;color:var(--code-fg)}
+  .code pre::-webkit-scrollbar{height:8px}.code pre::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:99px}
+  .tok-c{color:var(--tok-c)}.tok-k{color:var(--tok-k)}.tok-s{color:var(--tok-s)}.tok-o{color:var(--tok-o)}
 
   /* Callouts */
-  .note{border-radius:12px;padding:14px 16px;margin:16px 0;font-size:14px;border:1px solid;display:flex;gap:11px}
-  .note .b{font-weight:700}
-  .note.info{background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.3);color:#c7d2fe}
-  .note.warn{background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.3);color:#fde68a}
-  .note.ok{background:rgba(52,211,153,.07);border-color:rgba(52,211,153,.3);color:#a7f3d0}
+  .note{border-radius:13px;padding:15px 18px;margin:18px 0;font-size:15px;border:1px solid;display:flex;gap:12px;max-width:80ch}
+  .note .b{font-weight:800}
+  .note.info{background:rgba(99,102,241,.09);border-color:rgba(99,102,241,.32);color:var(--fg)}
+  .note.warn{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.35);color:var(--fg)}
+  .note.ok{background:rgba(16,185,129,.10);border-color:rgba(16,185,129,.35);color:var(--fg)}
 
   /* Steps */
-  .steps{counter-reset:s;list-style:none;padding:0;margin:22px 0}
-  .steps>li{position:relative;padding:0 0 26px 46px;border-left:1.5px dashed var(--border);margin-left:15px}
-  .steps>li:last-child{border-left-color:transparent}
-  .steps>li:before{counter-increment:s;content:counter(s);position:absolute;left:-16px;top:-3px;width:31px;height:31px;border-radius:50%;
-    background:var(--grad);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center;box-shadow:0 4px 14px rgba(139,92,246,.4)}
-  .steps>li h4{margin:2px 0 6px;color:var(--fg);text-transform:none;letter-spacing:0;font-size:15px}
-  .steps>li p{margin:0;color:var(--muted);font-size:13.5px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:26px 0}
+  .steps>li{position:relative;padding:0 0 30px 48px;border-left:1.5px dashed var(--border);margin-left:16px}
+  .steps>li:last-child{border-left-color:transparent;padding-bottom:0}
+  .steps>li:before{counter-increment:s;content:counter(s);position:absolute;left:-17px;top:-4px;width:33px;height:33px;border-radius:50%;
+    background:var(--grad);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center;box-shadow:0 4px 14px rgba(139,92,246,.4)}
+  .steps>li h4{margin:2px 0 7px;color:var(--fg);text-transform:none;letter-spacing:0;font-size:17px}
+  .steps>li p{margin:0;color:var(--muted);font-size:15px}
 
   /* Table */
-  .tbl{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
-  .tbl th{background:rgba(255,255,255,.03);text-align:left;padding:11px 14px;color:#cbd5e1;font-weight:650;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--border);color:#c7cfe0;vertical-align:top}
-  .tbl tr:hover td{background:rgba(255,255,255,.02)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:14.5px;border:1px solid var(--border);border-radius:13px;overflow:hidden}
+  .tbl th{background:var(--panel-2);text-align:left;padding:12px 15px;color:var(--fg);font-weight:750;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+  .tbl td{padding:12px 15px;border-top:1px solid var(--border);color:var(--fg);opacity:.92;vertical-align:top}
+  .tbl tr:hover td{background:var(--panel-2)}
   .tbl td code{white-space:nowrap}
 
   /* Architecture diagram */
-  .diagram{border:1px solid var(--border);border-radius:16px;padding:26px;background:var(--panel);margin:18px 0;overflow-x:auto}
-  .layer{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:0 0 8px}
-  .node{min-width:130px;text-align:center;border-radius:12px;padding:12px 14px;font-size:12.5px;border:1px solid var(--border-2)}
-  .node b{display:block;font-size:13.5px;margin-bottom:2px}
-  .node small{color:var(--muted-2);font-size:11px}
+  .diagram{border:1px solid var(--border);border-radius:18px;padding:30px;background:var(--panel);margin:20px 0;overflow-x:auto}
+  .layer{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:0 0 10px}
+  .node{min-width:150px;text-align:center;border-radius:13px;padding:14px 16px;font-size:13px;border:1px solid var(--border-2)}
+  .node b{display:block;font-size:14.5px;margin-bottom:3px}
+  .node small{color:var(--muted-2);font-size:12px}
   .node.web{background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.4)}
   .node.api{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.4)}
-  .node.data{background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.35)}
-  .node.ext{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3)}
-  .arrow{text-align:center;color:var(--muted-2);font-size:18px;margin:2px 0}
+  .node.data{background:rgba(16,185,129,.10);border-color:rgba(16,185,129,.35)}
+  .node.ext{background:rgba(245,158,11,.09);border-color:rgba(245,158,11,.32)}
+  .arrow{text-align:center;color:var(--muted-2);font-size:19px;margin:3px 0}
 
-  .foot{border-top:1px solid var(--border);margin-top:60px;padding-top:26px;color:var(--muted-2);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .foot{border-top:1px solid var(--border);margin-top:70px;padding-top:28px;color:var(--muted-2);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+  /* Back to top */
+  #top{position:fixed;right:26px;bottom:26px;z-index:40;width:46px;height:46px;border-radius:14px;border:1px solid var(--border-2);
+    background:var(--panel);color:var(--fg);cursor:pointer;display:none;place-items:center;box-shadow:0 8px 24px var(--shadow);backdrop-filter:blur(8px)}
+  #top.show{display:grid} #top svg{width:20px;height:20px}
 
   /* Mobile */
   .menu-btn{display:none}
-  @media(max-width:980px){
+  @media(max-width:1000px){
     .wrap{grid-template-columns:1fr}
-    aside{position:fixed;left:0;top:0;bottom:0;width:290px;z-index:50;transform:translateX(-100%);transition:.25s;height:100%}
-    aside.open{transform:none;box-shadow:0 0 60px rgba(0,0,0,.6)}
-    main{padding:70px 22px 90px}
-    .menu-btn{display:inline-flex;position:fixed;top:14px;left:14px;z-index:60;background:var(--grad);color:#fff;border:0;
-      width:44px;height:44px;border-radius:12px;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer}
-    .backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:49}
+    aside{position:fixed;left:0;top:0;bottom:0;width:300px;z-index:60;transform:translateX(-100%);transition:.25s;height:100%}
+    aside.open{transform:none;box-shadow:0 0 60px rgba(0,0,0,.5)}
+    main{padding:74px 22px 100px}
+    .menu-btn{display:grid;place-items:center;position:fixed;top:14px;left:14px;z-index:70;background:var(--grad);color:#fff;border:0;
+      width:46px;height:46px;border-radius:13px;box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer;font-size:20px}
+    .backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:59}
     .backdrop.show{display:block}
     .g2,.g3,.g4{grid-template-columns:1fr}
   }
-  @media(min-width:981px){.menu-btn,.backdrop{display:none}}
-  @media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  @media(min-width:1001px){.menu-btn,.backdrop{display:none}}
+  @media(max-width:680px){.g2,.g3,.g4{grid-template-columns:1fr} .hero{padding:36px 26px}}
 </style>
 </head>
 <body>
-<button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+<div id="progress"></div>
+<button class="menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
 <div class="backdrop" id="backdrop"></div>
 
 <div class="wrap">
@@ -183,9 +239,13 @@
       <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V6a2 2 0 0 1 2-2h9l5 5v11"/><path d="M9 4v6h6"/></svg></span>
       <div><b>Fennex</b><small>Documentation</small></div>
     </div>
+    <button class="theme-btn" id="themeBtn">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      <span id="themeLabel">Light mode</span>
+    </button>
     <nav class="toc" id="toc">
-      <span class="grp">Getting started</span>
-      <a href="#overview">Overview</a>
+      <span class="grp">Start here</span>
+      <a href="#overview">Overview &amp; vision</a>
       <a href="#architecture">Software architecture</a>
       <span class="grp">Product</span>
       <a href="#pack">The Fennex Pack</a>
@@ -202,39 +262,72 @@
   <!-- Content -->
   <main>
     <!-- HERO -->
-    <div class="hero"><div class="in">
-      <span class="pill">● AI SEO &amp; content platform</span>
-      <h1>Fennex <span class="grad-text">Documentation</span></h1>
-      <p class="lede">Fennex is an AI-powered SEO &amp; content platform. It helps teams research keywords, generate and optimize articles, create and edit images, publish to WordPress &amp; social, and track rankings — orchestrated by a pack of seven specialised AI agents.</p>
+    <div class="hero full"><div class="in">
+      <span class="pill"><span class="d"></span>The AI content &amp; SEO platform</span>
+      <h1>Turn a keyword into<br><span class="grad-text">ranked, published content.</span></h1>
+      <p class="lede">Fennex is an AI-powered SEO &amp; content platform. Research demand, generate and optimize articles, create and edit images, publish to WordPress &amp; social, and track your rankings — all in one place, orchestrated by a pack of seven specialised AI agents grounded in your real data.</p>
       <div class="hero-meta">
         <span>Next.js 14 · React 18</span>
         <span>FastAPI · Python 3.11</span>
         <span>PostgreSQL + pgvector</span>
         <span>Redis · arq workers</span>
-        <span>Anthropic · OpenAI</span>
+        <span>Anthropic · OpenAI · Google</span>
         <span>6 languages</span>
       </div>
     </div></div>
 
-    <!-- OVERVIEW -->
+    <!-- OVERVIEW / PRODUCT PITCH -->
     <section id="overview">
-      <h2><span class="n">01</span> Overview</h2>
-      <p class="sub">What Fennex is, at a glance.</p>
-      <p>Fennex is a multi-tenant SaaS: an <b>organization</b> owns one or more <b>projects</b> (each a website), and every capability — content, SEO, images, social, analytics — is scoped to a project. AI work is performed by named agents (<b>the Fennex Pack</b>) that share a common LLM layer and are grounded in the project's real data (Google Search Console, tracked keywords, crawled competitors).</p>
-      <div class="grid g3" style="margin-top:20px">
-        <div class="card"><div class="ic tint-2">✍️</div><h4>Create</h4><p>Long-form SEO articles, social posts, images and marketing banners — generated, edited and scored in-app.</p></div>
-        <div class="card"><div class="ic tint-4">📈</div><h4>Optimize</h4><p>Keyword research, SERP rank tracking, on-page scoring, site audits and competitor intelligence.</p></div>
-        <div class="card"><div class="ic tint-3">🚀</div><h4>Publish</h4><p>Push to WordPress and social platforms, plan on a calendar, and monitor rankings with alerts.</p></div>
+      <div class="col">
+        <p class="eyebrow">Overview &amp; vision</p>
+        <h2><span class="n">01</span> One platform for the entire content lifecycle</h2>
+        <p class="sub">Most teams stitch together five tools — a keyword researcher, a writer, an image generator, a publisher and a rank tracker — and copy-paste between them. Fennex collapses that whole workflow into a single, coherent product where every step is aware of the others.</p>
       </div>
+
+      <div class="col">
+        <h3>The problem it solves</h3>
+        <p>Producing content that actually <b>ranks</b> is slow and fragmented. You research keywords in one tab, draft in another, hand-optimize for SEO by memory, generate images somewhere else, publish manually, and only weeks later discover whether any of it worked. Generic AI writers make it faster to produce <em>mediocre</em> content — but mediocre content doesn't rank.</p>
+        <p>Fennex is built on a simple conviction: <b>AI should do the work, grounded in your real data, and the whole pipeline should live in one place.</b> Every article is scored against a real on-page rubric as you write, grounded in your actual Search Console queries and tracked keywords, and one click away from being published and monitored.</p>
+      </div>
+
+      <h3 class="col">What you can do — the three pillars</h3>
+      <div class="grid g3">
+        <div class="card"><div class="ic tint-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><h4>Create</h4><p>Generate long-form SEO articles that stream in live, social posts, on-brand images, product shots and marketing banners. Edit everything in a rich studio with an agentic co-writer beside you.</p></div>
+        <div class="card"><div class="ic tint-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg></div><h4>Optimize</h4><p>Research and cluster keywords by real demand, score every page on-page in real time, run technical site audits, scan competitors and track your live SERP positions daily.</p></div>
+        <div class="card"><div class="ic tint-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg></div><h4>Publish &amp; grow</h4><p>Push straight to WordPress and social, plan on a calendar, then watch rankings and get alerts when positions move — closing the loop from idea to measured result.</p></div>
+      </div>
+
+      <h3 class="col">Why Fennex is different</h3>
+      <div class="grid g2" style="margin-bottom:8px">
+        <div class="card"><div class="vp"><span class="num">1</span><div><h4>A pack of specialists, not one generic bot</h4><p>Seven named agents each own a domain — Dune writes, Zerda strategises, Sable scouts competitors, Mirage edits images. They feel like a team, and each is tuned for its job instead of being a jack-of-all-trades prompt.</p></div></div></div>
+        <div class="card"><div class="vp"><span class="num">2</span><div><h4>Agentic, not just suggestive</h4><p>Ask Dune to “optimize the SEO of this article” and it <b>executes</b> — rewriting the piece, applying the change with highlighted diffs, and recomputing the score. It does the work; you review and approve.</p></div></div></div>
+        <div class="card"><div class="vp"><span class="num">3</span><div><h4>Grounded in your real data</h4><p>Generation and chat are fed your actual GSC queries, tracked keywords and on-page issues — so the output targets demand you genuinely have, not the model's imagination.</p></div></div></div>
+        <div class="card"><div class="vp"><span class="num">4</span><div><h4>Honest, deterministic scoring</h4><p>The SEO score, on-page checks and plagiarism scan are deterministic and transparent — the same formula runs live in your browser and on the server. No black-box vanity metrics.</p></div></div></div>
+        <div class="card"><div class="vp"><span class="num">5</span><div><h4>Excellent by design</h4><p>Articles are generated against the exact scoring rubric, never truncated, and auto-repaired if they fall short of a quality floor — so a strong SEO baseline is guaranteed, not hoped for.</p></div></div></div>
+        <div class="card"><div class="vp"><span class="num">6</span><div><h4>Real-time &amp; delightful</h4><p>Token streaming, word-by-word reveals, live metrics, a Notion-style editor and diff highlights make it feel like a modern, premium product — not a form that spits out a blob of text.</p></div></div></div>
+      </div>
+
+      <h3 class="col">Who it's for</h3>
+      <div class="col grid g2">
+        <div class="persona"><b>Content teams &amp; SEOs</b><p>Ship more ranked articles per week without sacrificing quality, and prove the impact with real ranking data.</p></div>
+        <div class="persona"><b>Agencies</b><p>Run many client projects from one workspace, each with its own data, brand voice and BYO API keys.</p></div>
+        <div class="persona"><b>Founders &amp; solo creators</b><p>Get an entire content marketing team — writer, strategist, designer, outreach — in a single subscription.</p></div>
+        <div class="persona"><b>E-commerce &amp; local businesses</b><p>Turn product and category demand into optimized pages, product shots and social posts that convert.</p></div>
+      </div>
+
+      <div class="note info col"><span class="b">In short:</span><span>Fennex is the difference between <em>“an AI wrote some text”</em> and <em>“a team of AI specialists researched, wrote, optimized, illustrated, published and tracked a piece of content that ranks.”</em></span></div>
     </section>
 
     <!-- ARCHITECTURE -->
     <section id="architecture">
-      <h2><span class="n">02</span> Software architecture</h2>
-      <p class="sub">A pnpm + Turborepo monorepo with a decoupled frontend, API, background workers and a crawler microservice.</p>
+      <div class="col">
+        <p class="eyebrow">Under the hood</p>
+        <h2><span class="n">02</span> Software architecture</h2>
+        <p class="sub">A pnpm + Turborepo monorepo with a decoupled frontend, an async API, background workers and a crawler microservice — designed so slow AI work never blocks the interface.</p>
+      </div>
 
-      <h3>Monorepo layout</h3>
-      <div class="code"><div class="bar"><span>repository structure</span><button class="cp">Copy</button></div><pre>
+      <h3 class="col">Monorepo layout</h3>
+      <div class="code full"><div class="bar"><span>repository structure</span><button class="cp">Copy</button></div><pre>
 fennex/
 ├─ apps/
 │  ├─ web/        <span class="tok-c"># Next.js 14 frontend (App Router, TypeScript)</span>
@@ -244,18 +337,16 @@ fennex/
 │  ├─ ui/         <span class="tok-c"># shared React component library</span>
 │  ├─ types/      <span class="tok-c"># shared TypeScript types</span>
 │  └─ config/     <span class="tok-c"># shared TS / ESLint / Tailwind config</span>
-├─ services/crawler/   <span class="tok-c"># standalone crawler (FastAPI + BeautifulSoup)</span>
-├─ docs/          <span class="tok-c"># specs, plans and this documentation</span>
+├─ services/crawler/        <span class="tok-c"># standalone crawler (FastAPI + BeautifulSoup)</span>
+├─ docs/                    <span class="tok-c"># specs, plans and this documentation</span>
 ├─ docker-compose.yml       <span class="tok-c"># local dev stack</span>
 ├─ docker-compose.prod.yml  <span class="tok-c"># production stack</span>
 └─ turbo.json / pnpm-workspace.yaml</pre></div>
 
-      <h3>System diagram</h3>
-      <div class="diagram">
-        <div class="layer">
-          <div class="node web"><b>Next.js Web</b><small>App Router · TanStack Query</small></div>
-        </div>
-        <div class="arrow">▼ &nbsp; HTTPS / JWT · SSE streaming</div>
+      <h3 class="col">System diagram</h3>
+      <div class="diagram full">
+        <div class="layer"><div class="node web"><b>Next.js Web</b><small>App Router · TanStack Query</small></div></div>
+        <div class="arrow">▼ &nbsp; HTTPS · JWT · SSE streaming</div>
         <div class="layer">
           <div class="node api"><b>FastAPI</b><small>REST · async</small></div>
           <div class="node api"><b>arq Worker</b><small>background jobs</small></div>
@@ -277,89 +368,103 @@ fennex/
         </div>
       </div>
 
-      <h3>Key architectural decisions</h3>
-      <ul>
-        <li><b>Async everywhere</b> — FastAPI + SQLAlchemy 2 async + asyncpg; long tasks (article generation, crawling, rank tracking) run on <b>arq</b> workers backed by Redis, so requests stay fast.</li>
-        <li><b>Real-time streaming</b> — article generation and the Dune co-writer stream tokens to the browser over <b>Server-Sent Events</b>.</li>
-        <li><b>Deterministic + AI</b> — SEO scoring, on-page checks and internal-link discovery are deterministic (identical formula mirrored in TS for instant client feedback); generation and rewriting are AI, grounded in the project's real data.</li>
-        <li><b>Multi-tenant &amp; secure</b> — JWT auth with refresh tokens; every query is org-scoped; third-party credentials are encrypted at rest (AES via <code>ENCRYPTION_KEY</code>).</li>
-        <li><b>Provider-agnostic AI</b> — a router picks the best available model per task (Anthropic → OpenAI → Google) with a quality-aware fallback.</li>
-      </ul>
+      <div class="col">
+        <h3>How a request flows</h3>
+        <p>The browser calls the FastAPI API with a JWT. Quick reads return immediately. Anything slow — generating an article, crawling a competitor, tracking ranks — is either <b>streamed</b> back token-by-token over Server-Sent Events, or enqueued to the <b>arq worker</b> via Redis and polled/pushed when done. The worker and API share the same models and services, so business logic lives in one place.</p>
+
+        <h3>Key architectural decisions</h3>
+        <ul>
+          <li><b>Async everywhere</b> — FastAPI + SQLAlchemy 2 async + asyncpg; long tasks run on arq workers so requests stay fast and the UI stays responsive.</li>
+          <li><b>Real-time streaming</b> — article generation and the Dune co-writer stream over SSE; the frontend renders tokens as they arrive.</li>
+          <li><b>Deterministic + AI split</b> — SEO scoring, on-page checks and internal-link discovery are deterministic (the exact formula is mirrored in TypeScript for instant client feedback); generation and rewriting are AI, grounded in real data.</li>
+          <li><b>Multi-tenant &amp; secure</b> — JWT with refresh tokens, every query org-scoped, third-party credentials encrypted at rest with <code>ENCRYPTION_KEY</code>.</li>
+          <li><b>Provider-agnostic AI</b> — a router picks the best available model per task (Anthropic → OpenAI → Google) with a quality-aware fallback, so long-form never silently drops to a weak model.</li>
+        </ul>
+      </div>
     </section>
 
     <!-- PACK -->
     <section id="pack">
-      <h2><span class="n">03</span> The Fennex Pack</h2>
-      <p class="sub">Seven specialised AI agents, each owning a domain and grounded in your project's real data.</p>
+      <div class="col">
+        <p class="eyebrow">Your AI team</p>
+        <h2><span class="n">03</span> The Fennex Pack</h2>
+        <p class="sub">Seven specialised agents, each owning a domain and grounded in your project's real data. You don't prompt a generic model — you delegate to a named specialist.</p>
+      </div>
       <div class="grid g2">
-        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">Z</span><div><b>Zerda</b><div class="role">SEO &amp; Market Strategist</div><p>Answers questions about your Search Console data, finds striking-distance keywords, explains traffic changes and tracks whether its recommendations worked.</p></div></div></div>
-        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#8b5cf6,#d946ef)">S</span><div><b>Sirocco</b><div class="role">Creative Director</div><p>Plans coordinated multi-asset campaigns from a single goal and applies your brand kit across every asset.</p></div></div></div>
-        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#3b82f6,#6366f1)">D</span><div><b>Dune</b><div class="role">Content Writer</div><p>The Article Studio co-writer: writes SEO articles, rewrites selections, executes agentic edits, sets metadata and suggests internal links.</p></div></div></div>
-        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#d946ef,#ec4899)">M</span><div><b>Mirage</b><div class="role">Image Artisan</div><p>Edits images from plain-language commands, chains edits, removes backgrounds and scores visuals for SEO.</p></div></div></div>
-        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#475569,#6366f1)">S</span><div><b>Sable</b><div class="role">Competitor Scout</div><p>Crawls any competitor page on demand, scores their on-page SEO and pinpoints the gaps worth striking first.</p></div></div></div>
-        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#10b981,#14b8a6)">O</span><div><b>Oasis</b><div class="role">Market Researcher</div><p>Writes complete market reports from your real search data — sizing demand, mapping the landscape and naming the risks.</p></div></div></div>
-        <div class="card" style="grid-column:span 2"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#f59e0b,#f97316)">N</span><div><b>Nomad</b><div class="role">Outreach Agent</div><p>Plans a week of LinkedIn posts from one goal, saves them as drafts and writes connection &amp; follow-up templates tuned to your niche.</p></div></div></div>
+        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">Z</span><div><b>Zerda</b><div class="role">SEO &amp; Market Strategist</div><p>Answers questions about your Search Console data, finds striking-distance keywords and CTR quick wins, explains traffic changes with charts, and tracks whether its own recommendations worked.</p></div></div></div>
+        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#8b5cf6,#d946ef)">S</span><div><b>Sirocco</b><div class="role">Creative Director</div><p>Plans coordinated multi-asset campaigns from a single goal, generates platform-ready visuals with captions and applies your brand kit across every asset.</p></div></div></div>
+        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#3b82f6,#6366f1)">D</span><div><b>Dune</b><div class="role">Content Writer</div><p>The Article Studio co-writer. Writes SEO long-form, rewrites selections (rephrase / simplify / expand / humanize), executes agentic whole-article edits, sets metadata and suggests real internal links.</p></div></div></div>
+        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#d946ef,#ec4899)">M</span><div><b>Mirage</b><div class="role">Image Artisan</div><p>Edits images from plain-language commands, chains multiple edits in one request, removes backgrounds, extracts layers and scores visuals for SEO.</p></div></div></div>
+        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#475569,#6366f1)">S</span><div><b>Sable</b><div class="role">Competitor Scout</div><p>Crawls any competitor page on demand, scores their on-page SEO out of 100, compares their content to your real demand and pinpoints the gaps worth striking first.</p></div></div></div>
+        <div class="card"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#10b981,#14b8a6)">O</span><div><b>Oasis</b><div class="role">Market Researcher</div><p>Writes complete market reports from your real search data — sizing demand, mapping the topic landscape, quantifying opportunities and naming the risks. Client-ready output.</p></div></div></div>
+        <div class="card" style="grid-column:span 2"><div class="agent"><span class="av" style="background:linear-gradient(135deg,#f59e0b,#f97316)">N</span><div><b>Nomad</b><div class="role">Outreach Agent</div><p>Plans a full week of LinkedIn posts from one goal, saves each as a draft ready to publish, and writes connection &amp; follow-up templates tuned to your niche and services.</p></div></div></div>
       </div>
     </section>
 
     <!-- FEATURES -->
     <section id="features">
-      <h2><span class="n">04</span> Features</h2>
-      <p class="sub">The product surface, grouped by domain.</p>
-
-      <h3>✍️ Article Studio &amp; content</h3>
-      <div class="grid g3">
-        <div class="card"><h4>WYSIWYG editor</h4><p>TipTap rich editor (markdown is the source of truth), formatting toolbar, Cmd+B/I/K shortcuts and a Notion-style slash-command menu.</p></div>
-        <div class="card"><h4>Agentic Dune chat</h4><p>Streams live, grounded in your draft + real data. Executes whole-article edits, inserts passages and sets metadata — with one-click apply and diff highlights.</p></div>
-        <div class="card"><h4>Excellent-by-design SEO</h4><p>Live on-page score &amp; ranking signals, a rubric-driven generation prompt and an auto-repair pass that guarantees a quality floor.</p></div>
-        <div class="card"><h4>Streaming generation</h4><p>New articles write themselves in live, token by token, then persist with meta, revision and SEO score.</p></div>
-        <div class="card"><h4>Revisions timeline</h4><p>Commit-style history with word deltas, auto-snapshots before every AI edit, restore &amp; compare.</p></div>
-        <div class="card"><h4>Internal linking</h4><p>Suggests real links to your other <em>published</em> articles and inserts them in one click.</p></div>
-        <div class="card"><h4>Content templates</h4><p>How-to, listicle, comparison, roundup and case-study blueprints that shape the brief.</p></div>
-        <div class="card"><h4>Checks &amp; originality</h4><p>Deterministic on-page checklist, AI-pattern (stylometry) score and SERP-based plagiarism scan.</p></div>
-        <div class="card"><h4>Publishing</h4><p>Export to Markdown/HTML and publish straight to WordPress; schedule on the content calendar.</p></div>
+      <div class="col">
+        <p class="eyebrow">The product surface</p>
+        <h2><span class="n">04</span> Features</h2>
+        <p class="sub">Grouped by domain. The Article Studio is the flagship — a full writing environment where Dune works beside you.</p>
       </div>
 
-      <h3>📈 SEO &amp; analytics</h3>
+      <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Article Studio &amp; content</h3>
       <div class="grid g3">
-        <div class="card"><h4>Keyword research</h4><p>Discover, cluster and prioritise keywords by real demand and difficulty.</p></div>
-        <div class="card"><h4>SERP intelligence</h4><p>Daily rank tracking via DataForSEO — position history, who ranks, SERP features, drop/gain alerts.</p></div>
-        <div class="card"><h4>Site audit</h4><p>Crawl-driven technical &amp; on-page audit with prioritised fixes.</p></div>
-        <div class="card"><h4>Search Console</h4><p>Connect GSC for real clicks, impressions, CTR and position dashboards.</p></div>
-        <div class="card"><h4>Competitor intel</h4><p>Crawl and score competitor pages; compare their content to your demand.</p></div>
-        <div class="card"><h4>Backlinks</h4><p>Track backlink profile and outreach opportunities.</p></div>
+        <div class="card"><h4>WYSIWYG editor</h4><p>A TipTap rich editor (markdown stays the source of truth) with a formatting toolbar, Cmd+B/I/K shortcuts and a Notion-style slash-command menu for headings, lists, quotes and dividers.</p></div>
+        <div class="card"><h4>Agentic Dune chat</h4><p>Streams live and grounded in your draft + real data. Executes whole-article edits, inserts passages and sets metadata — with one-click apply, block-level diff highlights and a “Show changes” review mode.</p></div>
+        <div class="card"><h4>Excellent-by-design SEO</h4><p>A live on-page score and ranking-signal breakdown recompute on every keystroke; generation follows the exact rubric and an auto-repair pass guarantees a quality floor.</p></div>
+        <div class="card"><h4>Streaming generation</h4><p>New articles write themselves in live, token by token, then persist with meta title/description, an initial revision and an accurate SEO score.</p></div>
+        <div class="card"><h4>Revisions timeline</h4><p>Commit-style history with word-count deltas, automatic snapshots before every AI edit, one-click restore and compare-to-current.</p></div>
+        <div class="card"><h4>Internal linking assistant</h4><p>Scans your draft for phrases matching your other <em>published</em> articles and inserts real internal links in one click — no fabricated URLs.</p></div>
+        <div class="card"><h4>Content templates</h4><p>How-to, listicle, comparison (with table + verdict), roundup and case-study blueprints that shape the generation brief.</p></div>
+        <div class="card"><h4>Checks &amp; originality</h4><p>A deterministic on-page checklist, an AI-pattern (stylometry) score with one-click Humanize, and a SERP-based plagiarism scan.</p></div>
+        <div class="card"><h4>Export &amp; publishing</h4><p>Copy or download as Markdown/HTML, publish straight to WordPress, and schedule on the content calendar. Outline navigator &amp; focus mode included.</p></div>
       </div>
 
-      <h3>🎨 Images &amp; social</h3>
+      <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>SEO &amp; analytics</h3>
       <div class="grid g3">
-        <div class="card"><h4>Image generation</h4><p>Create visuals (Replicate) with background removal (rembg) and layer extraction.</p></div>
-        <div class="card"><h4>Mirage editing</h4><p>Natural-language image edits, chained operations and SEO scoring, organised in folders &amp; collections.</p></div>
-        <div class="card"><h4>Product shots &amp; banners</h4><p>Generate product photography and marketing banners on brand.</p></div>
-        <div class="card"><h4>Social studio</h4><p>Platform-ready posts with real brand icons, aspect previews and a scheduling calendar.</p></div>
-        <div class="card"><h4>Brand kit &amp; voice</h4><p>Store brand colours, assets and a cloned brand voice applied across generation.</p></div>
-        <div class="card"><h4>Image publishing</h4><p>Push finished assets to connected destinations.</p></div>
+        <div class="card"><h4>Keyword research</h4><p>Discover, cluster and prioritise keywords by real demand and difficulty; turn a cluster into a content plan.</p></div>
+        <div class="card"><h4>SERP intelligence</h4><p>Daily rank tracking via DataForSEO — position history, who ranks, SERP features, and drop/gain alerts into your inbox.</p></div>
+        <div class="card"><h4>Site audit</h4><p>Crawl-driven technical &amp; on-page audit with prioritised, actionable fixes.</p></div>
+        <div class="card"><h4>Search Console</h4><p>Connect GSC for real clicks, impressions, CTR and average-position dashboards that also feed the agents.</p></div>
+        <div class="card"><h4>Competitor intelligence</h4><p>Crawl and score competitor pages and compare their content coverage to your real demand.</p></div>
+        <div class="card"><h4>Backlinks &amp; recommendations</h4><p>Track your backlink profile and outreach opportunities, plus closed-loop SEO recommendations.</p></div>
       </div>
 
-      <h3>⚙️ Platform</h3>
+      <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Images &amp; social</h3>
+      <div class="grid g3">
+        <div class="card"><h4>Image generation</h4><p>Create visuals with Replicate, background removal (rembg) and layer extraction, organised in folders &amp; collections.</p></div>
+        <div class="card"><h4>Mirage editing</h4><p>Natural-language image edits, chained operations and SEO scoring of visuals.</p></div>
+        <div class="card"><h4>Product shots &amp; banners</h4><p>Generate on-brand product photography and marketing banners.</p></div>
+        <div class="card"><h4>Social studio</h4><p>Platform-ready posts with real brand icons, aspect-ratio previews and a scheduling calendar.</p></div>
+        <div class="card"><h4>Brand kit &amp; voice</h4><p>Store brand colours and assets and clone a brand voice applied consistently across all generation.</p></div>
+        <div class="card"><h4>Image publishing &amp; scoring</h4><p>Score assets for quality and SEO, then push finished images to connected destinations.</p></div>
+      </div>
+
+      <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>Platform</h3>
       <div class="grid g4">
         <div class="card"><h4>Campaigns &amp; autopilot</h4><p>Orchestrated multi-asset campaigns and a weekly autopilot plan.</p></div>
-        <div class="card"><h4>Monitoring &amp; alerts</h4><p>Watchlists and an alerts inbox for ranking &amp; market shifts.</p></div>
-        <div class="card"><h4>A/B testing</h4><p>Experiment on titles &amp; content variants.</p></div>
-        <div class="card"><h4>Billing</h4><p>Stripe subscriptions with usage limits &amp; plan tiers.</p></div>
+        <div class="card"><h4>Monitoring &amp; alerts</h4><p>Watchlists and an alerts inbox for ranking and market shifts.</p></div>
+        <div class="card"><h4>A/B testing</h4><p>Experiment on titles and content variants.</p></div>
+        <div class="card"><h4>Billing</h4><p>Stripe subscriptions with usage limits and Starter / Pro / Agency tiers.</p></div>
         <div class="card"><h4>Collaboration</h4><p>Organizations, projects, invites and roles.</p></div>
-        <div class="card"><h4>i18n</h4><p>Full UI in English, French, Spanish, German, Portuguese &amp; Arabic (RTL).</p></div>
-        <div class="card"><h4>Recommendations</h4><p>Tracked, closed-loop SEO recommendations.</p></div>
-        <div class="card"><h4>Templates &amp; content plans</h4><p>Reusable templates and multi-item content plans.</p></div>
+        <div class="card"><h4>i18n</h4><p>Full UI in English, French, Spanish, German, Portuguese and Arabic (RTL).</p></div>
+        <div class="card"><h4>Content plans</h4><p>Multi-item plans and reusable templates.</p></div>
+        <div class="card"><h4>Command bar</h4><p>An AI command surface to drive the app by intent.</p></div>
       </div>
     </section>
 
     <!-- TECHNOLOGIES -->
     <section id="technologies">
-      <h2><span class="n">05</span> Technologies</h2>
-      <p class="sub">The stack, end to end.</p>
+      <div class="col">
+        <p class="eyebrow">The stack</p>
+        <h2><span class="n">05</span> Technologies</h2>
+        <p class="sub">Modern, typed and async end to end.</p>
+      </div>
 
-      <h4>Frontend</h4>
-      <div class="chips">
+      <h4 class="col">Frontend</h4>
+      <div class="chips col">
         <span class="chip"><span class="dot"></span>Next.js 14 (App Router)</span><span class="chip"><span class="dot"></span>React 18 · TypeScript 5</span>
         <span class="chip"><span class="dot"></span>Tailwind CSS</span><span class="chip"><span class="dot"></span>TanStack Query v5</span>
         <span class="chip"><span class="dot"></span>Zustand</span><span class="chip"><span class="dot"></span>TipTap / ProseMirror</span>
@@ -367,8 +472,8 @@ fennex/
         <span class="chip"><span class="dot"></span>react-hook-form + Zod</span><span class="chip"><span class="dot"></span>lucide-react</span>
       </div>
 
-      <h4>Backend</h4>
-      <div class="chips">
+      <h4 class="col">Backend</h4>
+      <div class="chips col">
         <span class="chip"><span class="dot"></span>FastAPI</span><span class="chip"><span class="dot"></span>Python 3.11+ (async)</span>
         <span class="chip"><span class="dot"></span>SQLAlchemy 2 + asyncpg</span><span class="chip"><span class="dot"></span>Alembic</span>
         <span class="chip"><span class="dot"></span>Pydantic v2</span><span class="chip"><span class="dot"></span>arq (Redis jobs)</span>
@@ -376,15 +481,15 @@ fennex/
         <span class="chip"><span class="dot"></span>httpx</span><span class="chip"><span class="dot"></span>BeautifulSoup4</span>
       </div>
 
-      <h4>Data &amp; infra</h4>
-      <div class="chips">
+      <h4 class="col">Data &amp; infrastructure</h4>
+      <div class="chips col">
         <span class="chip"><span class="dot"></span>PostgreSQL + pgvector</span><span class="chip"><span class="dot"></span>Redis</span>
         <span class="chip"><span class="dot"></span>AWS S3 (boto3)</span><span class="chip"><span class="dot"></span>Docker / Compose</span>
         <span class="chip"><span class="dot"></span>Turborepo · pnpm</span>
       </div>
 
-      <h4>AI &amp; integrations</h4>
-      <div class="chips">
+      <h4 class="col">AI &amp; integrations</h4>
+      <div class="chips col">
         <span class="chip"><span class="dot"></span>Anthropic Claude</span><span class="chip"><span class="dot"></span>OpenAI</span>
         <span class="chip"><span class="dot"></span>Google Gemini</span><span class="chip"><span class="dot"></span>Replicate</span>
         <span class="chip"><span class="dot"></span>rembg / onnxruntime · Pillow</span><span class="chip"><span class="dot"></span>DataForSEO</span>
@@ -395,17 +500,22 @@ fennex/
 
     <!-- LOCAL -->
     <section id="local">
-      <h2><span class="n">06</span> Local development</h2>
-      <p class="sub">Get the full stack running in minutes.</p>
+      <div class="col">
+        <p class="eyebrow">Get running</p>
+        <h2><span class="n">06</span> Local development</h2>
+        <p class="sub">The full stack runs in Docker in a couple of commands.</p>
+      </div>
 
-      <h4>Prerequisites</h4>
-      <ul><li>Docker &amp; Docker Compose</li><li>Node 18+ and <code>pnpm</code> (for running the frontend outside Docker)</li><li>Python 3.11+ (optional, for API tooling)</li></ul>
+      <div class="col">
+        <h4>Prerequisites</h4>
+        <ul><li>Docker &amp; Docker Compose</li><li>Node 18+ and <code>pnpm</code> (to run the frontend outside Docker)</li><li>Python 3.11+ (optional, for API tooling)</li></ul>
+      </div>
 
-      <ol class="steps">
-        <li><h4>Clone &amp; configure</h4><p>Copy the example env and fill in at least a database URL, secret keys and one AI provider key.</p>
+      <ol class="steps col">
+        <li><h4>Clone &amp; configure</h4><p>Copy the example env and set at least the secret keys. AI provider keys are added later in the app's Settings.</p>
           <div class="code"><div class="bar"><span>bash</span><button class="cp">Copy</button></div><pre>git clone &lt;repo&gt; fennex &amp;&amp; cd fennex
 cp .env.example .env
-<span class="tok-c"># edit .env — set SECRET_KEY, ENCRYPTION_KEY and an AI key in Settings later</span></pre></div>
+<span class="tok-c"># edit .env — set SECRET_KEY and ENCRYPTION_KEY</span></pre></div>
         </li>
         <li><h4>Start everything (Docker)</h4><p>Brings up Postgres, Redis, the API, the arq worker, the web app and the crawler.</p>
           <div class="code"><div class="bar"><span>bash</span><button class="cp">Copy</button></div><pre>docker compose up --build
@@ -413,13 +523,13 @@ cp .env.example .env
 make dev</pre></div>
         </li>
         <li><h4>Run database migrations</h4>
-          <div class="code"><div class="bar"><span>bash</span><button class="cp">Copy</button></div><pre>make db-migrate      <span class="tok-c"># apply Alembic migrations inside the api container</span>
+          <div class="code"><div class="bar"><span>bash</span><button class="cp">Copy</button></div><pre>make db-migrate      <span class="tok-c"># apply Alembic migrations in the api container</span>
 <span class="tok-c"># make db-reset      # drop, recreate and re-migrate</span></pre></div>
         </li>
         <li><h4>Open the apps</h4>
-          <p>Frontend → <code>http://localhost:3000</code> · API &amp; docs → <code>http://localhost:8000</code> (<code>/docs</code>) · Crawler → <code>http://localhost:8001</code></p>
+          <p>Frontend → <code>http://localhost:3000</code> · API &amp; interactive docs → <code>http://localhost:8000/docs</code> · Crawler → <code>http://localhost:8001</code></p>
         </li>
-        <li><h4>Verify a change</h4><p>The frontend has no test runner — verify with <code>pnpm --filter @fennex/web typecheck</code>. The API is tested with <code>pytest</code>.</p>
+        <li><h4>Verify changes</h4><p>The frontend has no test runner — verify with a typecheck. The API is covered by <code>pytest</code>.</p>
           <div class="code"><div class="bar"><span>bash</span><button class="cp">Copy</button></div><pre>docker compose exec api pytest -q
 docker compose exec web npx tsc --noEmit</pre></div>
         </li>
@@ -428,12 +538,15 @@ docker compose exec web npx tsc --noEmit</pre></div>
 
     <!-- DEPLOY VERCEL -->
     <section id="deploy-vercel">
-      <h2><span class="n">07</span> Deploy · Vercel + Supabase</h2>
-      <p class="sub">The fastest path to production. Vercel hosts the frontend, Supabase provides Postgres, and a container host runs the Python API + worker.</p>
+      <div class="col">
+        <p class="eyebrow">Go live · path A</p>
+        <h2><span class="n">07</span> Deploy · Vercel + Supabase</h2>
+        <p class="sub">The fastest path to production. Vercel hosts the frontend, Supabase provides Postgres, and a container host runs the Python API + worker.</p>
+      </div>
 
-      <div class="note info"><span class="b">ℹ Honest architecture:</span><span>Vercel is ideal for the <b>Next.js frontend</b>, and Supabase is a managed <b>Postgres</b> (with pgvector). Fennex's backend is a long-running FastAPI service <b>plus an arq worker and Redis</b> — those don't fit Vercel's serverless model, so run the API on a container host (<b>Render, Railway or Fly.io</b>) and use <b>Upstash</b> for Redis. This split is production-grade and cheap.</span></div>
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">Honest architecture:</span><span>Vercel is ideal for the <b>Next.js frontend</b> and Supabase is a managed <b>Postgres</b> (with pgvector). Fennex's backend is a long-running FastAPI service <b>plus an arq worker and Redis</b> — those don't fit Vercel's serverless model, so run the API on a container host (<b>Render, Railway or Fly.io</b>) and use <b>Upstash</b> for Redis. This split is production-grade and inexpensive.</span></div>
 
-      <div class="diagram">
+      <div class="diagram full">
         <div class="layer"><div class="node web"><b>Vercel</b><small>Next.js web</small></div></div>
         <div class="arrow">▼ NEXT_PUBLIC_API_URL</div>
         <div class="layer"><div class="node api"><b>Render / Railway / Fly</b><small>FastAPI + arq worker (Docker)</small></div></div>
@@ -441,43 +554,46 @@ docker compose exec web npx tsc --noEmit</pre></div>
         <div class="layer"><div class="node data"><b>Supabase</b><small>Postgres + pgvector</small></div><div class="node data"><b>Upstash</b><small>Redis</small></div><div class="node ext"><b>AWS S3 / R2</b><small>image storage</small></div></div>
       </div>
 
-      <h3>Step by step</h3>
-      <ol class="steps">
-        <li><h4>Create the Supabase database</h4><p>New Supabase project → Database. Enable the vector extension and grab the connection string (use the connection <em>pooler</em> URL for serverless-friendly access).</p>
+      <h3 class="col">Step by step</h3>
+      <ol class="steps col">
+        <li><h4>Create the Supabase database</h4><p>New Supabase project → enable the vector extension and copy the connection string (use the connection <em>pooler</em> URL for serverless-friendly access).</p>
           <div class="code"><div class="bar"><span>SQL · Supabase SQL editor</span><button class="cp">Copy</button></div><pre>create extension if not exists vector;</pre></div>
           <div class="code"><div class="bar"><span>DATABASE_URL (asyncpg)</span><button class="cp">Copy</button></div><pre>postgresql+asyncpg://postgres:&lt;pwd&gt;@db.&lt;ref&gt;.supabase.co:5432/postgres</pre></div>
         </li>
         <li><h4>Provision Redis (Upstash)</h4><p>Create an Upstash Redis database and copy its <code>rediss://</code> URL into <code>REDIS_URL</code>.</p></li>
-        <li><h4>Deploy the API + worker (Render example)</h4><p>Point Render at the repo, build from <code>apps/api/Dockerfile</code>. Create <b>two</b> services from the same image: a <b>Web Service</b> (uvicorn) and a <b>Background Worker</b> (arq).</p>
+        <li><h4>Deploy the API + worker (Render example)</h4><p>Point Render at the repo and build from <code>apps/api/Dockerfile</code>. Create <b>two</b> services from the same image: a <b>Web Service</b> (uvicorn) and a <b>Background Worker</b> (arq).</p>
           <div class="code"><div class="bar"><span>API service · start command</span><button class="cp">Copy</button></div><pre>uvicorn app.main:app --host 0.0.0.0 --port $PORT</pre></div>
           <div class="code"><div class="bar"><span>Worker service · start command</span><button class="cp">Copy</button></div><pre>arq app.workers.worker.WorkerSettings</pre></div>
           <div class="code"><div class="bar"><span>run migrations once (release / shell)</span><button class="cp">Copy</button></div><pre>alembic upgrade head</pre></div>
         </li>
-        <li><h4>Set backend env vars</h4><p>On both API + worker services set: <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>SECRET_KEY</code>, <code>ENCRYPTION_KEY</code>, S3 credentials, Stripe keys. See the <a href="#env">Environment reference</a>.</p></li>
-        <li><h4>Deploy the frontend to Vercel</h4><p>Import the repo, set the root to <code>apps/web</code>, framework <b>Next.js</b>. Add the env var pointing at your API:</p>
+        <li><h4>Set backend env vars</h4><p>On both services set <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>SECRET_KEY</code>, <code>ENCRYPTION_KEY</code>, S3 credentials and Stripe keys — see the <a href="#env">Environment reference</a>.</p></li>
+        <li><h4>Deploy the frontend to Vercel</h4><p>Import the repo, set the root to <code>apps/web</code>, framework <b>Next.js</b>, install command <code>pnpm install</code>. Add:</p>
           <div class="code"><div class="bar"><span>Vercel · Environment Variables</span><button class="cp">Copy</button></div><pre>NEXT_PUBLIC_API_URL = https://your-api.onrender.com
 NEXTAUTH_URL        = https://your-app.vercel.app</pre></div>
-          <div class="note warn"><span class="b">⚠ Monorepo:</span><span>In Vercel project settings set the <b>Root Directory</b> to <code>apps/web</code> and the install command to <code>pnpm install</code> so workspace packages resolve.</span></div>
+          <div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Monorepo:</span><span>In Vercel project settings set the <b>Root Directory</b> to <code>apps/web</code> so the workspace packages resolve.</span></div>
         </li>
-        <li><h4>Wire CORS &amp; go live</h4><p>Add the Vercel domain to the API's allowed origins, point the API at Supabase &amp; Upstash, then create an org, add an AI key in Settings and generate your first article.</p></li>
+        <li><h4>Wire CORS &amp; go live</h4><p>Add the Vercel domain to the API's allowed origins, then create an org, add an AI key in Settings and generate your first article.</p></li>
       </ol>
     </section>
 
     <!-- DEPLOY AWS -->
     <section id="deploy-aws">
-      <h2><span class="n">08</span> Deploy · AWS</h2>
-      <p class="sub">A fully-managed, scalable deployment on AWS using containers.</p>
+      <div class="col">
+        <p class="eyebrow">Go live · path B</p>
+        <h2><span class="n">08</span> Deploy · AWS</h2>
+        <p class="sub">A fully-managed, scalable deployment on AWS using containers.</p>
+      </div>
 
-      <div class="diagram">
+      <div class="diagram full">
         <div class="layer"><div class="node web"><b>CloudFront + S3</b><small>or Amplify — web</small></div></div>
         <div class="arrow">▼</div>
-        <div class="layer"><div class="node api"><b>ALB → ECS Fargate</b><small>API service</small></div><div class="node api"><b>ECS Fargate</b><small>arq worker service</small></div><div class="node api"><b>ECS Fargate</b><small>crawler</small></div></div>
+        <div class="layer"><div class="node api"><b>ALB → ECS Fargate</b><small>API service</small></div><div class="node api"><b>ECS Fargate</b><small>arq worker</small></div><div class="node api"><b>ECS Fargate</b><small>crawler</small></div></div>
         <div class="arrow">▼</div>
         <div class="layer"><div class="node data"><b>RDS Postgres</b><small>+ pgvector</small></div><div class="node data"><b>ElastiCache</b><small>Redis</small></div><div class="node data"><b>S3</b><small>assets</small></div><div class="node ext"><b>Secrets Manager</b><small>env / keys</small></div></div>
       </div>
 
-      <h3>Recommended service map</h3>
-      <table class="tbl">
+      <h3 class="col">Recommended service map</h3>
+      <table class="tbl col">
         <tr><th>Component</th><th>AWS service</th><th>Notes</th></tr>
         <tr><td>Frontend (Next.js)</td><td>Amplify Hosting <em>or</em> S3 + CloudFront</td><td>Amplify is simplest for SSR; set <code>NEXT_PUBLIC_API_URL</code> to the ALB domain.</td></tr>
         <tr><td>API (FastAPI)</td><td>ECS Fargate + ALB</td><td>Container from <code>apps/api/Dockerfile</code>; autoscale on CPU.</td></tr>
@@ -486,13 +602,13 @@ NEXTAUTH_URL        = https://your-app.vercel.app</pre></div>
         <tr><td>Database</td><td>RDS for PostgreSQL</td><td>Enable the <code>vector</code> extension.</td></tr>
         <tr><td>Cache / queue</td><td>ElastiCache for Redis</td><td>Used by arq and caching.</td></tr>
         <tr><td>Object storage</td><td>S3</td><td>Generated images &amp; assets (boto3).</td></tr>
-        <tr><td>Secrets</td><td>Secrets Manager / SSM</td><td>Inject env into task definitions.</td></tr>
-        <tr><td>Registry</td><td>ECR</td><td>Store the built images.</td></tr>
+        <tr><td>Secrets</td><td>Secrets Manager / SSM</td><td>Injected into ECS task definitions.</td></tr>
+        <tr><td>Registry</td><td>ECR</td><td>Stores the built images.</td></tr>
       </table>
 
-      <h3>Step by step</h3>
-      <ol class="steps">
-        <li><h4>Provision managed data</h4><p>Create an <b>RDS PostgreSQL</b> instance (enable <code>vector</code>), an <b>ElastiCache Redis</b> cluster, and an <b>S3</b> bucket. Put them in a VPC with private subnets.</p>
+      <h3 class="col">Step by step</h3>
+      <ol class="steps col">
+        <li><h4>Provision managed data</h4><p>Create an <b>RDS PostgreSQL</b> instance (enable <code>vector</code>), an <b>ElastiCache Redis</b> cluster and an <b>S3</b> bucket, in a VPC with private subnets.</p>
           <div class="code"><div class="bar"><span>psql · once</span><button class="cp">Copy</button></div><pre>CREATE EXTENSION IF NOT EXISTS vector;</pre></div>
         </li>
         <li><h4>Build &amp; push images to ECR</h4>
@@ -503,23 +619,26 @@ docker build -t fennex-api apps/api
 docker tag fennex-api:latest &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest
 docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest</pre></div>
         </li>
-        <li><h4>Store secrets</h4><p>Create a Secrets Manager secret holding <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>SECRET_KEY</code>, <code>ENCRYPTION_KEY</code>, Stripe &amp; S3 values; reference it from ECS task definitions.</p></li>
-        <li><h4>Create the ECS cluster &amp; services</h4><p>One Fargate cluster with three services from the API image: <b>api</b> (behind an ALB, port 8000), <b>worker</b> (<code>arq …</code>), and <b>crawler</b>. The ALB terminates TLS (ACM cert) and routes to the API target group.</p>
+        <li><h4>Store secrets</h4><p>Create a Secrets Manager secret with <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>SECRET_KEY</code>, <code>ENCRYPTION_KEY</code>, Stripe &amp; S3 values; reference it from ECS task definitions.</p></li>
+        <li><h4>Create the ECS cluster &amp; services</h4><p>One Fargate cluster with three services from the API image: <b>api</b> (behind an ALB on 8000), <b>worker</b> (<code>arq …</code>) and <b>crawler</b>. The ALB terminates TLS with an ACM certificate.</p>
           <div class="code"><div class="bar"><span>task command · worker container</span><button class="cp">Copy</button></div><pre>arq app.workers.worker.WorkerSettings</pre></div>
         </li>
         <li><h4>Run migrations</h4><p>Run a one-off ECS task (or exec into the API task) with <code>alembic upgrade head</code>.</p></li>
-        <li><h4>Deploy the frontend</h4><p>Connect the repo to <b>Amplify Hosting</b> (root <code>apps/web</code>) or build <code>next build</code> and serve via S3 + CloudFront. Set <code>NEXT_PUBLIC_API_URL</code> to the ALB/HTTPS domain and add that domain to the API CORS allow-list.</p></li>
-        <li><h4>Harden</h4><p>Security groups least-privilege (ALB → API → RDS/Redis only), enable RDS automated backups, CloudWatch logs &amp; alarms, and autoscaling policies on the ECS services.</p></li>
+        <li><h4>Deploy the frontend</h4><p>Connect the repo to <b>Amplify Hosting</b> (root <code>apps/web</code>) or build <code>next build</code> and serve via S3 + CloudFront. Set <code>NEXT_PUBLIC_API_URL</code> to the HTTPS ALB domain and add that domain to the API CORS allow-list.</p></li>
+        <li><h4>Harden</h4><p>Least-privilege security groups (ALB → API → RDS/Redis only), RDS automated backups, CloudWatch logs &amp; alarms, and autoscaling on the ECS services.</p></li>
       </ol>
 
-      <div class="note ok"><span class="b">✓ Tip:</span><span>The repo ships <code>docker-compose.prod.yml</code> (postgres, redis, api, worker, web). It's a faithful blueprint of the production topology — a great reference when writing ECS task definitions or a single-VM Docker deployment.</span></div>
+      <div class="note ok col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg><span class="b">Tip:</span><span>The repo ships <code>docker-compose.prod.yml</code> (postgres, redis, api, worker, web) — a faithful blueprint of the production topology and a great reference when authoring ECS task definitions or a single-VM Docker deployment.</span></div>
     </section>
 
     <!-- ENV -->
     <section id="env">
-      <h2><span class="n">09</span> Environment reference</h2>
-      <p class="sub">Core variables. AI provider keys are added per-organization in the app's Settings (encrypted), not as global env.</p>
-      <table class="tbl">
+      <div class="col">
+        <p class="eyebrow">Configuration</p>
+        <h2><span class="n">09</span> Environment reference</h2>
+        <p class="sub">Core variables. AI provider keys are added per-organization inside the app (encrypted), not as global env.</p>
+      </div>
+      <table class="tbl col">
         <tr><th>Variable</th><th>Purpose</th></tr>
         <tr><td><code>DATABASE_URL</code></td><td>Async Postgres DSN — <code>postgresql+asyncpg://…</code></td></tr>
         <tr><td><code>REDIS_URL</code></td><td>Redis connection for the arq queue &amp; cache</td></tr>
@@ -529,36 +648,55 @@ docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest<
         <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td>Public API base URL used by the frontend</td></tr>
         <tr><td><code>NEXTAUTH_URL</code> · <code>NEXTAUTH_SECRET</code></td><td>Frontend auth base URL &amp; secret</td></tr>
         <tr><td><code>STRIPE_SECRET_KEY</code> · <code>STRIPE_WEBHOOK_SECRET</code></td><td>Billing &amp; webhook verification</td></tr>
-        <tr><td><code>STRIPE_PRICE_*</code> · <code>NEXT_PUBLIC_STRIPE_PRICE_*</code></td><td>Plan price IDs (Starter / Pro / Agency, monthly &amp; annual)</td></tr>
+        <tr><td><code>STRIPE_PRICE_*</code> · <code>NEXT_PUBLIC_STRIPE_PRICE_*</code></td><td>Plan price IDs (Starter / Pro / Agency · monthly &amp; annual)</td></tr>
         <tr><td>S3 credentials <em>(AWS_… / bucket)</em></td><td>Object storage for generated images &amp; assets</td></tr>
       </table>
-      <div class="note info"><span class="b">ℹ AI keys:</span><span>Anthropic / OpenAI / Google and DataForSEO keys are managed inside the app (Settings → API keys) per organization, so different tenants can bring their own keys. The model router falls back across providers automatically.</span></div>
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">AI keys:</span><span>Anthropic / OpenAI / Google and DataForSEO keys are managed inside the app (Settings → API keys) per organization, so tenants can bring their own keys. The model router falls back across providers automatically.</span></div>
     </section>
 
     <div class="foot">
-      <span>Fennex — AI SEO &amp; content platform.</span>
-      <span>Generated documentation · dark theme · single self-contained page.</span>
+      <span>Fennex — the AI content &amp; SEO platform.</span>
+      <span>Single self-contained page · light &amp; dark · responsive.</span>
     </div>
   </main>
 </div>
 
+<button id="top" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+
 <script>
-  // Copy buttons
+  // ---- Theme ----
+  var SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  var MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>';
+  var root=document.documentElement, icon=document.getElementById('themeIcon'), label=document.getElementById('themeLabel');
+  function applyTheme(t){
+    root.setAttribute('data-theme',t);
+    icon.innerHTML = t==='dark' ? SUN : MOON;
+    label.textContent = t==='dark' ? 'Light mode' : 'Dark mode';
+    try{ localStorage.setItem('fennex-docs-theme', t); }catch(e){}
+  }
+  (function(){
+    var saved; try{ saved=localStorage.getItem('fennex-docs-theme'); }catch(e){}
+    var sys = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    applyTheme(saved || sys);
+  })();
+  document.getElementById('themeBtn').addEventListener('click',function(){
+    applyTheme(root.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+  });
+
+  // ---- Copy buttons ----
   document.querySelectorAll('.code .cp').forEach(function(btn){
     btn.addEventListener('click', function(){
-      var pre = btn.closest('.code').querySelector('pre');
-      var text = pre.innerText;
+      var text = btn.closest('.code').querySelector('pre').innerText;
       navigator.clipboard.writeText(text).then(function(){
-        var old = btn.textContent; btn.textContent = 'Copied ✓';
+        var old = btn.textContent; btn.textContent = 'Copied';
         setTimeout(function(){ btn.textContent = old; }, 1400);
       });
     });
   });
 
-  // Scrollspy
+  // ---- Scrollspy ----
   var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
-  var map = {};
-  links.forEach(function(a){ var id=a.getAttribute('href').slice(1); map[id]=a; });
+  var map = {}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
   var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); }).filter(Boolean);
   var spy = new IntersectionObserver(function(entries){
     entries.forEach(function(e){
@@ -567,13 +705,21 @@ docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest<
         if(map[e.target.id]) map[e.target.id].classList.add('active');
       }
     });
-  }, { rootMargin:'-10% 0px -80% 0px', threshold:0 });
+  }, { rootMargin:'-8% 0px -82% 0px', threshold:0 });
   sections.forEach(function(s){ spy.observe(s); });
 
-  // Mobile menu
-  var sb = document.getElementById('sidebar');
-  var bd = document.getElementById('backdrop');
-  var mb = document.getElementById('menuBtn');
+  // ---- Progress + back-to-top ----
+  var bar=document.getElementById('progress'), top=document.getElementById('top');
+  function onScroll(){
+    var h=document.documentElement, sc=h.scrollTop||document.body.scrollTop, max=h.scrollHeight-h.clientHeight;
+    bar.style.width = (max>0 ? (sc/max*100) : 0) + '%';
+    top.classList.toggle('show', sc>600);
+  }
+  document.addEventListener('scroll', onScroll, {passive:true}); onScroll();
+  top.addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
+
+  // ---- Mobile menu ----
+  var sb=document.getElementById('sidebar'), bd=document.getElementById('backdrop'), mb=document.getElementById('menuBtn');
   function toggle(open){ sb.classList.toggle('open', open); bd.classList.toggle('show', open); }
   mb.addEventListener('click', function(){ toggle(!sb.classList.contains('open')); });
   bd.addEventListener('click', function(){ toggle(false); });
