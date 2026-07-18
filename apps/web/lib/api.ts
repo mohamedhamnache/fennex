@@ -2235,6 +2235,7 @@ async function streamRequest<T>(
   path: string,
   body: unknown,
   onChunk: (text: string) => void,
+  onStatus?: (status: string) => void,
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -2270,6 +2271,7 @@ async function streamRequest<T>(
       const payload = JSON.parse(line.slice(5));
       if (payload.error) throw new ApiError(500, payload.error);
       if (payload.d) onChunk(payload.d as string);
+      if (payload.status) onStatus?.(payload.status as string);
       if (payload.done) final = payload.result as T;
     }
   }
@@ -2303,11 +2305,13 @@ export async function generateArticleStream(
   articleId: string,
   opts: { provider?: string; model?: string; template?: string } | undefined,
   onChunk: (text: string) => void,
+  onStatus?: (status: string) => void,
 ): Promise<GenerateStreamResult> {
   return streamRequest<GenerateStreamResult>(
     `/articles/${articleId}/generate/stream`,
     opts ?? {},
     onChunk,
+    onStatus,
   );
 }
 

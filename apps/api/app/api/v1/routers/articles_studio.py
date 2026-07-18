@@ -203,10 +203,15 @@ async def studio_generate_stream(
     await increment_usage(current_user.org_id, "articles", db)
     await db.commit()
 
+    from app.services.llm_service import ARTICLE_MAX_TOKENS
+
     async def event_stream():
         acc: list[str] = []
         try:
-            async for chunk in stream_llm(provider_val, model, api_key, system_prompt, user_prompt, locale=locale):
+            async for chunk in stream_llm(
+                provider_val, model, api_key, system_prompt, user_prompt,
+                locale=locale, max_tokens=ARTICLE_MAX_TOKENS,
+            ):
                 acc.append(chunk)
                 yield _sse({"d": chunk})
         except Exception as e:
@@ -224,8 +229,13 @@ async def studio_generate_stream(
         from app.services.article_service import _markdown_to_html, compute_seo_score
         parsed = _parse_llm_response("".join(acc), article_title)
         body_md = parsed["body_markdown"]
+        # Guarantee excellent SEO by design: audit against the rubric and repair
+        # if it falls short.
+        yield _sse({"status": "polishing"})
+        body_md, seo_score = await writing_service.ensure_seo_quality(
+            provider_val, model, api_key, article_title, keyword, body_md, parsed["meta_description"], locale
+        )
         word_count = len(body_md.split())
-        seo_score, _bd = compute_seo_score(article_title, body_md, keyword, parsed["meta_description"])
         async with async_session_factory() as s:
             art = await s.get(Article, article_id)
             if art is None:

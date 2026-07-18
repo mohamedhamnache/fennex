@@ -59,6 +59,12 @@ def language_directive(locale: str | None) -> str:
     )
 
 
+# Long-form articles need a high output budget or they get truncated (which
+# drops the FAQ/conclusion and guts SEO). Chat/transform stay at the default.
+DEFAULT_MAX_TOKENS = 4096
+ARTICLE_MAX_TOKENS = 8192
+
+
 async def call_llm(
     provider: str,
     model: str,
@@ -66,6 +72,7 @@ async def call_llm(
     system_prompt: str,
     user_prompt: str,
     locale: str | None = "en",
+    max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> str:
     """Call the named provider and return the raw text response.
 
@@ -74,19 +81,21 @@ async def call_llm(
     """
     system_prompt = system_prompt + language_directive(locale)
     if provider == "anthropic":
-        return await _call_anthropic(model, api_key, system_prompt, user_prompt)
+        return await _call_anthropic(model, api_key, system_prompt, user_prompt, max_tokens)
     if provider == "openai":
-        return await _call_openai(model, api_key, system_prompt, user_prompt)
+        return await _call_openai(model, api_key, system_prompt, user_prompt, max_tokens)
     if provider == "google":
         return await _call_google(model, api_key, system_prompt, user_prompt)
     raise ValueError(f"Unknown provider: {provider}")
 
 
-async def _call_anthropic(model: str, api_key: str, system_prompt: str, user_prompt: str) -> str:
+async def _call_anthropic(
+    model: str, api_key: str, system_prompt: str, user_prompt: str, max_tokens: int = DEFAULT_MAX_TOKENS
+) -> str:
     client = AsyncAnthropic(api_key=api_key)
     message = await client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=max_tokens,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
     )
@@ -100,6 +109,7 @@ async def stream_llm(
     system_prompt: str,
     user_prompt: str,
     locale: str | None = "en",
+    max_tokens: int = DEFAULT_MAX_TOKENS,
 ):
     """Stream the provider's response as text chunks (async generator).
 
@@ -111,7 +121,7 @@ async def stream_llm(
         client = AsyncAnthropic(api_key=api_key)
         async with client.messages.stream(
             model=model,
-            max_tokens=4096,
+            max_tokens=max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         ) as stream:
@@ -125,7 +135,7 @@ async def stream_llm(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=4096,
+            max_tokens=max_tokens,
             stream=True,
         )
         async for chunk in response:
@@ -138,7 +148,9 @@ async def stream_llm(
         raise ValueError(f"Unknown provider: {provider}")
 
 
-async def _call_openai(model: str, api_key: str, system_prompt: str, user_prompt: str) -> str:
+async def _call_openai(
+    model: str, api_key: str, system_prompt: str, user_prompt: str, max_tokens: int = DEFAULT_MAX_TOKENS
+) -> str:
     client = AsyncOpenAI(api_key=api_key)
     response = await client.chat.completions.create(
         model=model,
@@ -146,7 +158,7 @@ async def _call_openai(model: str, api_key: str, system_prompt: str, user_prompt
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        max_tokens=4096,
+        max_tokens=max_tokens,
     )
     return response.choices[0].message.content
 

@@ -143,6 +143,65 @@ async def _prepare_chat(project, article, question: str, history: list[dict], db
     return pm[0], pm[1], keys[pm[0]], system, user, await project_locale(project.id, db)
 
 
+SEO_QUALITY_FLOOR = 90
+
+
+async def ensure_seo_quality(
+    provider, model, api_key, title, keyword, body_md, meta_description, locale
+) -> tuple[str, float]:
+    """Guarantee excellent on-page SEO 'by design': score the draft against the
+    deterministic rubric and, if it falls short, run ONE targeted repair pass
+    that fixes only the failing body signals. Returns (body_markdown, score).
+    Never raises - a failed repair returns the original."""
+    from app.services.article_service import compute_seo_score
+
+    score, breakdown = compute_seo_score(title, body_md, keyword, meta_description)
+    if score >= SEO_QUALITY_FLOOR or not keyword:
+        return body_md, score
+
+    gaps: list[str] = []
+    if breakdown.get("keyword_in_first_paragraph", 0) == 0:
+        gaps.append(f'the exact primary keyword "{keyword}" must appear naturally in the FIRST paragraph')
+    if breakdown.get("keyword_density", 0) < 15:
+        gaps.append(
+            "the primary keyword and close variants must reach 0.5-2.5% keyword density - "
+            "add natural mentions throughout, never stuff"
+        )
+    if breakdown.get("word_count", 0) < 20:
+        gaps.append(
+            "the article must be AT LEAST 1500 words of genuinely useful depth - expand the thin "
+            "sections, add concrete examples and an FAQ, never add filler"
+        )
+    if breakdown.get("has_h2_headings", 0) == 0:
+        gaps.append("the article must use several clear ## H2 section headings")
+    if not gaps:
+        return body_md, score
+
+    system = (
+        agent_persona("dune")
+        + "You are fixing specific on-page SEO gaps in an existing article. Return ONLY the corrected, "
+        "COMPLETE article in clean markdown - no preamble, no commentary, no <tags>. Preserve everything "
+        "that is already good; change only what is needed to satisfy the requirements. Keep it natural."
+    )
+    user = (
+        f"PRIMARY KEYWORD: {keyword}\nTITLE: {title}\n\nFIX EVERY REQUIREMENT:\n"
+        + "\n".join(f"- {g}" for g in gaps)
+        + f"\n\nARTICLE TO FIX:\n{body_md}"
+    )
+    try:
+        from app.services.llm_service import ARTICLE_MAX_TOKENS
+        fixed = await call_llm(provider, model, api_key, system, user, locale=locale, max_tokens=ARTICLE_MAX_TOKENS)
+        fixed = fixed.strip()
+        if not fixed:
+            return body_md, score
+        new_score, _ = compute_seo_score(title, fixed, keyword, meta_description)
+        # Only keep the repair if it actually improved the score.
+        return (fixed, new_score) if new_score >= score else (body_md, score)
+    except Exception:
+        logger.warning("seo repair failed", exc_info=True)
+        return body_md, score
+
+
 async def chat(project, article, question: str, history: list[dict], db, live_body: str | None = None) -> dict:
     provider, model, key, system, user, locale = await _prepare_chat(
         project, article, question, history, db, live_body

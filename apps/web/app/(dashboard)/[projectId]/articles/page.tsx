@@ -550,6 +550,7 @@ function ArticleEditor({
   const [showOutline, setShowOutline] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [polishing, setPolishing] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const typewriterRef = useRef<HTMLDivElement | null>(null);
@@ -605,6 +606,7 @@ function ArticleEditor({
   async function runStreamingGeneration(template?: TemplateId | null) {
     if (generating) return;
     setGenerating(true);
+    setPolishing(false);
     initialized.current = true;
     if (typingTimerRef.current) clearInterval(typingTimerRef.current);
     setTyping(false);
@@ -623,6 +625,9 @@ function ArticleEditor({
           const el = typewriterRef.current;
           if (el) el.scrollTop = el.scrollHeight;
         },
+        (status) => {
+          if (status === "polishing") setPolishing(true);
+        },
       );
       setBody(result.body_markdown);
       setMetaTitle(result.meta_title ?? "");
@@ -637,6 +642,7 @@ function ArticleEditor({
       queryClient.invalidateQueries({ queryKey: ["article", articleId] });
     } finally {
       setGenerating(false);
+      setPolishing(false);
     }
   }
 
@@ -1136,7 +1142,8 @@ function ArticleEditor({
               <span className="ml-0.5 inline-block h-4 w-[2px] -translate-y-0.5 animate-pulse-dot bg-primary align-middle" />
             </div>
             <div className="pointer-events-none absolute right-4 top-3 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card/90 px-2.5 py-1 text-[11px] font-medium text-primary shadow-sm backdrop-blur animate-fade-in">
-              <PenLine className="h-3 w-3 animate-pulse-dot" /> {t("articleStudio.writing")}
+              <PenLine className="h-3 w-3 animate-pulse-dot" />
+              {polishing ? t("articleStudio.polishing") : t("articleStudio.writing")}
             </div>
             {(generating || article.status === "generating") && !body && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">

@@ -137,6 +137,13 @@ def _build_user_prompt(article: Article, template: str | None = None) -> str:
         f"7. A conclusion with the key takeaways and a natural, non-pushy call to action.\n\n"
         f"AVOID: keyword stuffing, generic fluff, filler transitions, invented data, and the banned "
         f"cliches from your instructions.\n\n"
+        f"NON-NEGOTIABLE SEO REQUIREMENTS (the draft is scored against these - satisfy EVERY one):\n"
+        f"- The primary keyword \"{kw}\" appears in the H1 title.\n"
+        f"- The primary keyword \"{kw}\" appears verbatim in the FIRST paragraph.\n"
+        f"- The primary keyword and close variants keep a natural density of 0.5-2.5% across the article.\n"
+        f"- The article is AT LEAST 1500 words (write the full piece; never stop early or truncate).\n"
+        f"- The body uses multiple ## H2 section headings (and ### H3 where useful).\n"
+        f"- The META_DESCRIPTION is present, <=160 chars, and includes the keyword.\n\n"
         f"Reply in this EXACT format (nothing before META_TITLE):\n\n"
         f"META_TITLE: <compelling SEO title, <=60 chars, primary keyword near the front>\n"
         f"META_DESCRIPTION: <benefit-driven description, <=160 chars, includes the keyword and an implicit CTA>\n\n"
@@ -217,11 +224,16 @@ async def generate_article_task(
                 "FAQ where they fit the topic (never stuff):\n" + grounding
             )
         article_title = article.title
+        article_keyword = article.target_keyword
         article_locale = await project_locale(article.project_id, db)
 
-    # Phase 2: call LLM (outside DB session)
+    # Phase 2: call LLM (outside DB session) with the long-form token budget.
+    from app.services.llm_service import ARTICLE_MAX_TOKENS
     try:
-        raw = await call_llm(provider_val, model, api_key, system_prompt, user_prompt, locale=article_locale)
+        raw = await call_llm(
+            provider_val, model, api_key, system_prompt, user_prompt,
+            locale=article_locale, max_tokens=ARTICLE_MAX_TOKENS,
+        )
     except Exception as e:
         async with async_session_factory() as db:
             art = await db.get(Article, article_id_uuid)
@@ -231,30 +243,32 @@ async def generate_article_task(
                 await db.commit()
         raise
 
-    # Phase 3: parse response and persist
+    # Phase 3: parse, guarantee SEO quality, then persist.
     parsed = _parse_llm_response(raw, article_title)
-    body_html = _markdown_to_html(parsed["body_markdown"])
-    word_count = len(parsed["body_markdown"].split())
+    from app.services.writing_service import ensure_seo_quality
+    body_md, seo_score = await ensure_seo_quality(
+        provider_val, model, api_key, article_title, article_keyword,
+        parsed["body_markdown"], parsed["meta_description"], article_locale,
+    )
+    body_html = _markdown_to_html(body_md)
+    word_count = len(body_md.split())
 
     async with async_session_factory() as db:
         art = await db.get(Article, article_id_uuid)
         if art is None:
             return
-        art.body_markdown = parsed["body_markdown"]
+        art.body_markdown = body_md
         art.body_html = body_html
         art.meta_title = parsed["meta_title"]
         art.meta_description = parsed["meta_description"]
         art.word_count = word_count
-        seo_score, _ = compute_seo_score(
-            article_title, parsed["body_markdown"], art.target_keyword, parsed["meta_description"]
-        )
         art.seo_score = seo_score
         art.status = ArticleStatus.ready
         art.error = None
 
         db.add(ArticleRevision(
             article_id=article_id_uuid,
-            body_markdown=parsed["body_markdown"],
+            body_markdown=body_md,
             word_count=word_count,
             note="Initial generation",
         ))
