@@ -1413,7 +1413,15 @@
       "seoScoreLabel": "درجة السيو",
       "signals": "إشارات الترتيب",
       "metaTitleHint": "50–60 حرفًا هو المثالي",
-      "metaDescHint": "150–160 حرفًا هو المثالي"
+      "metaDescHint": "150–160 حرفًا هو المثالي",
+      "signalNames": {
+        "keyword_in_title": "الكلمة المفتاحية في العنوان",
+        "keyword_in_first_paragraph": "الكلمة المفتاحية في الفقرة الأولى",
+        "keyword_density": "كثافة الكلمة المفتاحية",
+        "word_count": "عدد الكلمات",
+        "has_h2_headings": "عناوين H2",
+        "meta_description": "وصف الميتا"
+      }
     },
     "writing": "Dune يكتب…",
     "restored": "تمت استعادة النسخة.",

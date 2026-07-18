@@ -1413,7 +1413,15 @@
       "seoScoreLabel": "Puntuación SEO",
       "signals": "Señales de posicionamiento",
       "metaTitleHint": "50–60 caracteres es lo ideal",
-      "metaDescHint": "150–160 caracteres es lo ideal"
+      "metaDescHint": "150–160 caracteres es lo ideal",
+      "signalNames": {
+        "keyword_in_title": "Palabra clave en el título",
+        "keyword_in_first_paragraph": "Palabra clave en el primer párrafo",
+        "keyword_density": "Densidad de palabra clave",
+        "word_count": "Número de palabras",
+        "has_h2_headings": "Encabezados H2",
+        "meta_description": "Meta descripción"
+      }
     },
     "writing": "Dune está escribiendo…",
     "restored": "Revisión restaurada.",

@@ -1413,7 +1413,15 @@
       "seoScoreLabel": "SEO-Score",
       "signals": "Ranking-Signale",
       "metaTitleHint": "50–60 Zeichen sind ideal",
-      "metaDescHint": "150–160 Zeichen sind ideal"
+      "metaDescHint": "150–160 Zeichen sind ideal",
+      "signalNames": {
+        "keyword_in_title": "Keyword im Titel",
+        "keyword_in_first_paragraph": "Keyword im ersten Absatz",
+        "keyword_density": "Keyword-Dichte",
+        "word_count": "Wortanzahl",
+        "has_h2_headings": "H2-Überschriften",
+        "meta_description": "Meta-Beschreibung"
+      }
     },
     "writing": "Dune schreibt…",
     "restored": "Revision wiederhergestellt.",

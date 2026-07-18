@@ -1490,7 +1490,15 @@
       "seoScoreLabel": "SEO score",
       "signals": "Ranking signals",
       "metaTitleHint": "50–60 characters is ideal",
-      "metaDescHint": "150–160 characters is ideal"
+      "metaDescHint": "150–160 characters is ideal",
+      "signalNames": {
+        "keyword_in_title": "Keyword in title",
+        "keyword_in_first_paragraph": "Keyword in first paragraph",
+        "keyword_density": "Keyword density",
+        "word_count": "Word count",
+        "has_h2_headings": "H2 headings",
+        "meta_description": "Meta description"
+      }
     },
     "writing": "Dune is writing…",
     "restored": "Revision restored.",

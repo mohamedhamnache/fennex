@@ -137,13 +137,13 @@ export function MetaTab({
           <div className="flex flex-col gap-1">
             {entries.map(([key, val]) => (
               <div key={key} className="flex items-center justify-between rounded-lg bg-muted/30 px-2.5 py-1.5 text-xs">
-                <span className="flex items-center gap-1.5 capitalize text-foreground">
+                <span className="flex items-center gap-1.5 text-foreground">
                   {val > 0 ? (
                     <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                   ) : (
                     <XCircle className="h-3.5 w-3.5 text-destructive" />
                   )}
-                  {key.replace(/_/g, " ")}
+                  {t(`articleStudio.meta.signalNames.${key}`, { defaultValue: key.replace(/_/g, " ") })}
                 </span>
                 <span className={`tabular-nums font-semibold ${val > 0 ? "text-success" : "text-muted-foreground"}`}>
                   +{val}

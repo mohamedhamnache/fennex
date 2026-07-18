@@ -85,20 +85,28 @@ def compute_seo_score(
     else:
         breakdown["keyword_in_title"] = 0
 
-    # keyword in first paragraph: +15
-    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
-    first_para = paragraphs[0].lower() if paragraphs else ""
+    # keyword in first paragraph: +15 (the first REAL paragraph, not the H1)
+    first_para = ""
+    for block in [p for p in body.split("\n\n") if p.strip()]:
+        lines = [ln for ln in block.splitlines() if ln.strip()]
+        # Skip heading-only blocks (e.g. "# Title"); strip inline heading lines.
+        text = " ".join(ln for ln in lines if not ln.lstrip().startswith("#"))
+        if text.strip():
+            first_para = text.lower()
+            break
     if kw and kw in first_para:
         breakdown["keyword_in_first_paragraph"] = 15
         score += 15
     else:
         breakdown["keyword_in_first_paragraph"] = 0
 
-    # keyword density 0.5-2.5%: +15 (partial +7)
+    # keyword density 0.5-2.5%: +15 (partial +7). Count keyword WORDS (a
+    # multi-word phrase contributes its length) over total words.
     words = body.split()
     total_words = len(words)
     if kw and total_words > 0:
-        density = (body.lower().count(kw) / total_words) * 100
+        kw_word_len = max(1, len(kw.split()))
+        density = (body.lower().count(kw) * kw_word_len / total_words) * 100
         if 0.5 <= density <= 2.5:
             breakdown["keyword_density"] = 15
             score += 15
