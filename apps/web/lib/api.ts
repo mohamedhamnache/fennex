@@ -1184,6 +1184,19 @@ export async function planOutreach(projectId: string, goal: string): Promise<Out
   return apiClient.post<OutreachPlan>(`/social/outreach-plan?project_id=${projectId}`, { goal });
 }
 
+export interface TestimonialPiece {
+  format: "linkedin_post" | "case_study" | "quote_card" | "website_blurb";
+  content: string;
+}
+export async function generateTestimonialContent(
+  projectId: string,
+  data: { testimonial: string; client?: string; service?: string },
+): Promise<{ ok: boolean; error?: string; pieces?: TestimonialPiece[] }> {
+  return apiClient.post<{ ok: boolean; error?: string; pieces?: TestimonialPiece[] }>(
+    `/social/testimonial-content?project_id=${projectId}`, data,
+  );
+}
+
 export interface RecommendationMetrics {
   clicks: number;
   impressions: number;

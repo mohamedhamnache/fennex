@@ -5,12 +5,143 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Compass, Loader2, Send, Copy, ArrowRight, Check, MessageSquare,
-  Lightbulb, CalendarDays,
+  Lightbulb, CalendarDays, Quote, Sparkles, Linkedin,
 } from "lucide-react";
-import { planOutreach, type OutreachPlan } from "@/lib/api";
+import {
+  planOutreach, generateTestimonialContent, createSocialPost,
+  type OutreachPlan, type TestimonialPiece,
+} from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+
+const PIECE_LABEL: Record<string, string> = {
+  linkedin_post: "LinkedIn post",
+  case_study: "Case study",
+  quote_card: "Quote card",
+  website_blurb: "Website blurb",
+};
+
+const TESTIMONIAL_ERRORS: Record<string, string> = {
+  no_ai_key: "Add an Anthropic or OpenAI key in Settings to generate content.",
+  empty: "Paste a client testimonial first.",
+  provider_unreachable: "Could not reach the AI provider — please try again.",
+  bad_format: "The AI returned an unexpected format — please try again.",
+};
+
+function TestimonialTool({ projectId }: { projectId: string }) {
+  const { success: showSuccess, error: showError } = useToast();
+  const [testimonial, setTestimonial] = useState("");
+  const [client, setClient] = useState("");
+  const [service, setService] = useState("");
+  const [pieces, setPieces] = useState<TestimonialPiece[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [savedLinkedIn, setSavedLinkedIn] = useState(false);
+
+  async function generate() {
+    if (busy || !testimonial.trim()) return;
+    setBusy(true);
+    setSavedLinkedIn(false);
+    try {
+      const res = await generateTestimonialContent(projectId, { testimonial, client, service });
+      if (res.ok && res.pieces) setPieces(res.pieces);
+      else showError("Couldn't generate", { message: TESTIMONIAL_ERRORS[res.error ?? ""] ?? "Please try again." });
+    } catch {
+      showError("Couldn't generate", { message: "Could not reach the server." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text);
+    showSuccess("Copied", { message: "Text copied to clipboard." });
+  }
+
+  async function saveLinkedIn(content: string) {
+    try {
+      await createSocialPost({ project_id: projectId, platform: "linkedin", post_type: "tip", content });
+      setSavedLinkedIn(true);
+      showSuccess("Saved", { message: "Saved as a LinkedIn draft in Social." });
+    } catch {
+      showError("Couldn't save", { message: "Please try again." });
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Quote className="h-4 w-4 text-primary" strokeWidth={1.8} />
+        <h2 className="text-sm font-semibold text-foreground">Testimonial to content</h2>
+        <span className="text-xs text-muted-foreground">— turn a client win into social proof</span>
+      </div>
+      <textarea
+        value={testimonial}
+        onChange={(e) => setTestimonial(e.target.value)}
+        rows={3}
+        placeholder="Paste a client testimonial… e.g. “Working with Sam doubled our booking rate in 6 weeks — clear communication and real results.”"
+        className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+      <div className="mt-2 flex flex-wrap gap-2">
+        <input
+          value={client}
+          onChange={(e) => setClient(e.target.value)}
+          placeholder="Client / company (optional)"
+          className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          style={{ minWidth: 160 }}
+        />
+        <input
+          value={service}
+          onChange={(e) => setService(e.target.value)}
+          placeholder="Service you provided (optional)"
+          className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          style={{ minWidth: 160 }}
+        />
+        <button
+          onClick={generate}
+          disabled={busy || !testimonial.trim()}
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          {busy ? "Writing…" : "Generate"}
+        </button>
+      </div>
+
+      {pieces && (
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {pieces.map((p, i) => (
+            <div key={i} className="flex flex-col rounded-xl border border-border p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  {PIECE_LABEL[p.format] ?? p.format}
+                </span>
+                <div className="ml-auto flex items-center gap-1.5">
+                  {p.format === "linkedin_post" && (
+                    <button
+                      onClick={() => saveLinkedIn(p.content)}
+                      disabled={savedLinkedIn}
+                      className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-60"
+                    >
+                      {savedLinkedIn ? <Check className="h-3 w-3 text-success" /> : <Linkedin className="h-3 w-3" />}
+                      {savedLinkedIn ? "Saved" : "Save draft"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => copyText(p.content)}
+                    className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  >
+                    <Copy className="h-3 w-3" /> Copy
+                  </button>
+                </div>
+              </div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{p.content}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
 
 const GOAL_SUGGESTIONS = [
   "Attract new clients for my services",
@@ -69,10 +200,13 @@ export default function NomadPage({ params }: { params: { projectId: string } })
         <div>
           <h1 className="text-lg font-bold text-foreground leading-tight">Nomad · Outreach Agent</h1>
           <p className="text-xs text-muted-foreground leading-tight">
-            One goal in — a full week of LinkedIn posts, DM templates and outreach tips out
+            Win clients on LinkedIn — a full week of posts and DMs, plus social proof from your wins
           </p>
         </div>
       </div>
+
+      {/* Testimonial → content */}
+      <TestimonialTool projectId={projectId} />
 
       {/* Goal input */}
       <Card className="p-5">

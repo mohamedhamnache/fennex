@@ -100,6 +100,81 @@ async def generate_outreach_plan(
     return {"ok": True, "posts": posts, "messages": messages, "tips": tips, "drafts_saved": len(posts)}
 
 
+_TESTIMONIAL_SYSTEM = agent_persona("nomad") + (
+    "Turn a client TESTIMONIAL into ready-to-use social proof content for a freelancer's "
+    "personal brand. Respond with ONLY valid JSON, no markdown fences:\n"
+    "{\n"
+    '  "pieces": [\n'
+    '    {"format": "linkedin_post", "content": "story-driven LinkedIn post: hook line, challenge, what you did, the result, a light CTA; 600-1200 chars; \\n line breaks; no emoji"},\n'
+    '    {"format": "case_study", "content": "2-3 sentence outcome-focused case-study snippet"},\n'
+    '    {"format": "quote_card", "content": "one short punchy pull-quote from the testimonial for a graphic"},\n'
+    '    {"format": "website_blurb", "content": "one polished sentence for a website testimonials section"}\n'
+    "  ]\n"
+    "}\n"
+    "Rules: keep the client's authentic voice; NEVER invent facts, metrics or names not in the "
+    "testimonial; if a detail isn't given, stay general. No emoji anywhere."
+)
+
+_TESTIMONIAL_FORMATS = {"linkedin_post", "case_study", "quote_card", "website_blurb"}
+
+
+async def generate_testimonial_content(
+    project_id: uuid.UUID,
+    org_id: uuid.UUID,
+    testimonial: str,
+    client: str,
+    service: str,
+    db: AsyncSession,
+) -> dict:
+    testimonial = (testimonial or "").strip()
+    if not testimonial:
+        return {"ok": False, "error": "empty"}
+    keys = await get_org_llm_keys(org_id, db)
+    if not keys:
+        return {"ok": False, "error": "no_ai_key"}
+
+    project = await db.get(Project, project_id)
+    profile = await project_profile(project_id, db)
+    user_prompt = f"TESTIMONIAL: {testimonial}"
+    if client.strip():
+        user_prompt += f"\nCLIENT: {client.strip()}"
+    if service.strip():
+        user_prompt += f"\nSERVICE PROVIDED: {service.strip()}"
+    if profile:
+        user_prompt += f"\nYOUR PROFILE: {profile}"
+
+    raw = None
+    for provider, model in _PROVIDERS:
+        if provider in keys:
+            try:
+                raw = await call_llm(provider, model, keys[provider], _TESTIMONIAL_SYSTEM, user_prompt,
+                                     locale=(project.locale if project else "en"))
+                break
+            except Exception:
+                continue
+    if raw is None:
+        return {"ok": False, "error": "provider_unreachable"}
+
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip())
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        parsed = json.loads(cleaned)
+    except Exception:
+        return {"ok": False, "error": "bad_format"}
+
+    pieces = []
+    for item in (parsed.get("pieces") or []):
+        if not isinstance(item, dict):
+            continue
+        fmt = str(item.get("format", "")).strip()
+        content = str(item.get("content", "")).strip()
+        if fmt in _TESTIMONIAL_FORMATS and content:
+            pieces.append({"format": fmt, "content": content[:3000]})
+    if not pieces:
+        return {"ok": False, "error": "bad_format"}
+    return {"ok": True, "pieces": pieces}
+
+
 def _sanitize_posts(raw) -> list[dict]:
     if not isinstance(raw, list):
         return []

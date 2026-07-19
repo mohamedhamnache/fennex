@@ -282,6 +282,27 @@ async def create_outreach_plan(
     return await generate_outreach_plan(project_id, current_user.org_id, body.goal, db)
 
 
+class TestimonialRequest(_BaseModel):
+    testimonial: str
+    client: str = ""
+    service: str = ""
+
+
+@router.post("/testimonial-content")
+async def create_testimonial_content(
+    project_id: uuid.UUID,
+    body: TestimonialRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Nomad: turn a client testimonial into social-proof content pieces."""
+    await check_project_not_locked(project_id, db)
+    from app.services.nomad_service import generate_testimonial_content
+    return await generate_testimonial_content(
+        project_id, current_user.org_id, body.testimonial, body.client, body.service, db
+    )
+
+
 # ── LinkedIn OAuth (registered before /{post_id} to avoid UUID coercion) ──────
 
 @router.post("/linkedin/connect")
