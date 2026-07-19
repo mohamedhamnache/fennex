@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Compass, Loader2, Send, Copy, ArrowRight, Check, MessageSquare,
-  Lightbulb, CalendarDays, Quote, Sparkles, Linkedin,
+  Lightbulb, CalendarDays, Quote, Sparkles, Linkedin, Target, Users, X,
 } from "lucide-react";
 import {
-  planOutreach, generateTestimonialContent, createSocialPost,
-  type OutreachPlan, type TestimonialPiece,
+  planOutreach, generateTestimonialContent, generateIcp, createSocialPost,
+  type OutreachPlan, type TestimonialPiece, type IcpSegment,
 } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
@@ -157,18 +157,110 @@ const TYPE_LABEL: Record<string, string> = {
   article_share: "Article share",
 };
 
+const ICP_ERRORS: Record<string, string> = {
+  no_ai_key: "Add an Anthropic or OpenAI key in Settings to generate a profile.",
+  provider_unreachable: "Could not reach the AI provider — please try again.",
+  bad_format: "The AI returned an unexpected format — please try again.",
+};
+
+function IcpTool({
+  projectId, onTarget, targetedName,
+}: { projectId: string; onTarget: (s: IcpSegment) => void; targetedName: string | null }) {
+  const { error: showError } = useToast();
+  const [segments, setSegments] = useState<IcpSegment[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function generate() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await generateIcp(projectId);
+      if (res.ok && res.segments) setSegments(res.segments);
+      else showError("Couldn't generate", { message: ICP_ERRORS[res.error ?? ""] ?? "Please try again." });
+    } catch {
+      showError("Couldn't generate", { message: "Could not reach the server." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Users className="h-4 w-4 text-primary" strokeWidth={1.8} />
+        <h2 className="text-sm font-semibold text-foreground">Ideal client profile</h2>
+        <span className="text-xs text-muted-foreground">— who to target (Oasis)</span>
+        <button
+          onClick={generate}
+          disabled={busy}
+          className="ml-auto flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {busy ? "Researching…" : segments ? "Regenerate" : "Define my ICP"}
+        </button>
+      </div>
+
+      {!segments ? (
+        <p className="text-xs text-muted-foreground">
+          Oasis maps 2-4 ideal client segments from your niche — their pains, where to find them, and the angle that lands. Target one to sharpen your outreach plan.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {segments.map((s, i) => {
+            const on = targetedName === s.name;
+            return (
+              <div key={i} className={cn("flex flex-col rounded-xl border p-3", on ? "border-primary ring-1 ring-primary/40" : "border-border")}>
+                <p className="text-sm font-bold text-foreground">{s.name}</p>
+                <p className="mt-1 text-xs text-foreground/80">{s.description}</p>
+                {s.pains.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">Pains</p>
+                    <ul className="mt-0.5 flex flex-col gap-0.5">
+                      {s.pains.map((p, j) => (
+                        <li key={j} className="flex items-start gap-1.5 text-[11px] text-foreground/80">
+                          <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />{p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {s.channels.length > 0 && (
+                  <p className="mt-2 text-[11px] text-muted-foreground"><span className="font-semibold">Find them:</span> {s.channels.join(", ")}</p>
+                )}
+                {s.angle && (
+                  <p className="mt-1.5 rounded-lg bg-primary/5 px-2 py-1.5 text-[11px] italic text-foreground/80">“{s.angle}”</p>
+                )}
+                <button
+                  onClick={() => onTarget(s)}
+                  className={cn(
+                    "mt-2.5 flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                    on ? "bg-success/10 text-success" : "border border-border text-foreground hover:bg-accent",
+                  )}
+                >
+                  {on ? <><Check className="h-3.5 w-3.5" /> Targeting</> : <><Target className="h-3.5 w-3.5 text-primary" /> Target this</>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function NomadPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
   const [goal, setGoal] = useState("");
   const [plan, setPlan] = useState<OutreachPlan | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [audience, setAudience] = useState<{ name: string; text: string } | null>(null);
   const { success: showSuccess, error: showError } = useToast();
   const queryClient = useQueryClient();
 
   async function generate() {
     setGenerating(true);
     try {
-      const res = await planOutreach(projectId, goal);
+      const res = await planOutreach(projectId, goal, audience?.text);
       if (res.ok) {
         setPlan(res);
         queryClient.invalidateQueries({ queryKey: ["social"] });
@@ -205,12 +297,24 @@ export default function NomadPage({ params }: { params: { projectId: string } })
         </div>
       </div>
 
-      {/* Testimonial → content */}
-      <TestimonialTool projectId={projectId} />
+      {/* Ideal client profile (Oasis) */}
+      <IcpTool
+        projectId={projectId}
+        targetedName={audience?.name ?? null}
+        onTarget={(s) => setAudience({ name: s.name, text: `${s.description} Angle: ${s.angle}` })}
+      />
 
       {/* Goal input */}
       <Card className="p-5">
         <label className="text-sm font-semibold text-foreground">What do you want to achieve this week?</label>
+        {audience && (
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            <Target className="h-3 w-3" /> Targeting: {audience.name}
+            <button onClick={() => setAudience(null)} className="ml-0.5 text-primary/70 hover:text-primary">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         <div className="mt-3 flex gap-2">
           <input
             value={goal}
@@ -346,7 +450,7 @@ export default function NomadPage({ params }: { params: { projectId: string } })
       )}
 
       {!plan && !generating && (
-        <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
           <Compass className="h-8 w-8 opacity-40" strokeWidth={1.5} />
           <p className="text-sm">Tell Nomad your goal and he will map out the whole week.</p>
           <p className="text-xs max-w-md">
@@ -355,6 +459,9 @@ export default function NomadPage({ params }: { params: { projectId: string } })
           </p>
         </div>
       )}
+
+      {/* Testimonial → content (social proof from your wins) */}
+      <TestimonialTool projectId={projectId} />
     </div>
   );
 }

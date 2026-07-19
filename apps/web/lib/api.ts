@@ -1180,8 +1180,21 @@ export interface OutreachPlan {
   error?: string;
 }
 
-export async function planOutreach(projectId: string, goal: string): Promise<OutreachPlan> {
-  return apiClient.post<OutreachPlan>(`/social/outreach-plan?project_id=${projectId}`, { goal });
+export async function planOutreach(projectId: string, goal: string, audience?: string): Promise<OutreachPlan> {
+  return apiClient.post<OutreachPlan>(`/social/outreach-plan?project_id=${projectId}`, { goal, audience: audience ?? "" });
+}
+
+export interface IcpSegment {
+  name: string;
+  description: string;
+  pains: string[];
+  channels: string[];
+  angle: string;
+}
+export async function generateIcp(projectId: string): Promise<{ ok: boolean; error?: string; segments?: IcpSegment[] }> {
+  return apiClient.post<{ ok: boolean; error?: string; segments?: IcpSegment[] }>(
+    `/analytics/icp?project_id=${projectId}`, {},
+  );
 }
 
 export interface TestimonialPiece {

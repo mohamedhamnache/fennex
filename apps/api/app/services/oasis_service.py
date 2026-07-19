@@ -1,5 +1,7 @@
 """Oasis — Market Researcher. Generates a client-ready market report (Markdown)
 grounded in the project's real Search Console data."""
+import json
+import re
 import uuid
 from datetime import date
 
@@ -86,3 +88,76 @@ async def generate_market_report(project_id: uuid.UUID, org_id: uuid.UUID, db: A
             except Exception:
                 continue
     return {"ok": False, "error": "Could not reach the AI provider — please try again."}
+
+
+_ICP_SYSTEM = agent_persona("oasis") + (
+    "From the freelancer/business PROFILE and any market DATA, define 3 ideal client "
+    "segments to target. Respond with ONLY valid JSON, no markdown fences:\n"
+    "{\n"
+    '  "segments": [\n'
+    '    {"name": "short segment name", "description": "1-2 sentences: industry, size, role/decision-maker", '
+    '"pains": ["2-4 concrete pains this segment feels"], '
+    '"channels": ["2-3 concrete places to find and reach them"], '
+    '"angle": "one-sentence messaging angle that resonates"}\n'
+    "  ]\n"
+    "}\n"
+    "Rules: be specific to the niche and services — no generic filler, no emoji. If the profile "
+    "is thin, infer sensibly from the niche but stay realistic."
+)
+
+
+async def generate_icp(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> dict:
+    """Oasis defines the ideal customer profile segments for outreach targeting."""
+    keys = await get_org_llm_keys(org_id, db)
+    if not keys:
+        return {"ok": False, "error": "no_ai_key"}
+
+    project = await db.get(Project, project_id)
+    name = project.name if project else "Project"
+    profile = await project_profile(project_id, db)
+    market = await get_market_insights(project_id, org_id, db)
+
+    lines = [f"FREELANCER/BUSINESS: {name}"]
+    if profile:
+        lines.append(f"PROFILE: {profile}")
+    if market.clusters:
+        lines.append("TOP TOPICS THEY RANK/COMPETE FOR: " + ", ".join(c.topic for c in market.clusters[:8]))
+    user_prompt = "\n".join(lines) + "\n\nDefine the ideal client segments."
+
+    raw = None
+    for provider, model in _PROVIDERS:
+        if provider in keys:
+            try:
+                raw = await call_llm(provider, model, keys[provider], _ICP_SYSTEM, user_prompt,
+                                     locale=(project.locale if project else "en"))
+                break
+            except Exception:
+                continue
+    if raw is None:
+        return {"ok": False, "error": "provider_unreachable"}
+
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip())
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        parsed = json.loads(cleaned)
+    except Exception:
+        return {"ok": False, "error": "bad_format"}
+
+    segments = []
+    for s in (parsed.get("segments") or [])[:4]:
+        if not isinstance(s, dict):
+            continue
+        nm = str(s.get("name", "")).strip()
+        desc = str(s.get("description", "")).strip()
+        if not nm or not desc:
+            continue
+        segments.append({
+            "name": nm[:80],
+            "description": desc[:400],
+            "pains": [str(p).strip() for p in (s.get("pains") or []) if str(p).strip()][:4],
+            "channels": [str(c).strip() for c in (s.get("channels") or []) if str(c).strip()][:3],
+            "angle": str(s.get("angle", "")).strip()[:300],
+        })
+    if not segments:
+        return {"ok": False, "error": "bad_format"}
+    return {"ok": True, "segments": segments}

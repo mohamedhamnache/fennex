@@ -182,6 +182,17 @@ async def analytics_market_report(
     return await generate_market_report(project_id, current_user.org_id, db)
 
 
+@router.post("/icp")
+async def analytics_icp(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Oasis: define ideal client profile segments for outreach targeting."""
+    from app.services.oasis_service import generate_icp
+    return await generate_icp(project_id, current_user.org_id, db)
+
+
 @router.get("/opportunities", response_model=OpportunitiesResponse)
 async def analytics_opportunities(
     project_id: uuid.UUID,

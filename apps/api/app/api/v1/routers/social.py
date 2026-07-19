@@ -267,6 +267,7 @@ async def list_social_connections(
 
 class OutreachPlanRequest(_BaseModel):
     goal: str = ""
+    audience: str = ""
 
 
 @router.post("/outreach-plan")
@@ -279,7 +280,7 @@ async def create_outreach_plan(
     """Nomad: generate a week of LinkedIn posts + DM templates; posts saved as drafts."""
     await check_project_not_locked(project_id, db)
     from app.services.nomad_service import generate_outreach_plan
-    return await generate_outreach_plan(project_id, current_user.org_id, body.goal, db)
+    return await generate_outreach_plan(project_id, current_user.org_id, body.goal, db, body.audience)
 
 
 class TestimonialRequest(_BaseModel):

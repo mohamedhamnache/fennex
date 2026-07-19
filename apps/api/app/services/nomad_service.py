@@ -41,6 +41,7 @@ async def generate_outreach_plan(
     org_id: uuid.UUID,
     goal: str,
     db: AsyncSession,
+    audience: str = "",
 ) -> dict:
     keys = await get_org_llm_keys(org_id, db)
     if not keys:
@@ -53,6 +54,7 @@ async def generate_outreach_plan(
     user_prompt = (
         f"CLIENT: {name}"
         + (f"\nCLIENT PROFILE: {profile}" if profile else "")
+        + (f"\nTARGET AUDIENCE (ideal client to speak to): {audience.strip()}" if audience.strip() else "")
         + f"\nGOAL: {goal.strip() or 'Attract new clients on LinkedIn'}"
         + f"\nWeek starting: {date.today().isoformat()}"
     )
