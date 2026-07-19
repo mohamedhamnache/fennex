@@ -975,7 +975,9 @@
         "sable_competitor_scan": "تحليل المنافس",
         "dune_write_article": "كتابة المقال",
         "sirocco_generate_visual": "إنشاء التصميم",
-        "nomad_social_posts": "منشورات التواصل"
+        "nomad_social_posts": "منشورات التواصل",
+        "sirocco_multi_network_social": "سوشيال متعدد الشبكات",
+        "oasis_define_icp": "تحديد العميل المثالي"
       }
     },
     "stepPanel": {

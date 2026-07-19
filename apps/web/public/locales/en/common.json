@@ -1058,7 +1058,9 @@
         "sable_competitor_scan": "Competitor scan",
         "dune_write_article": "Write the article",
         "sirocco_generate_visual": "Generate the visual",
-        "nomad_social_posts": "Social posts"
+        "nomad_social_posts": "Social posts",
+        "sirocco_multi_network_social": "Multi-network social",
+        "oasis_define_icp": "Define ideal client"
       }
     },
     "stepPanel": {

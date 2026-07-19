@@ -49,6 +49,15 @@ def _build_actions() -> dict[str, ActionDef]:
         ActionDef("sable.competitor_scan", "sable", "Scan a competitor",
                   "Crawl and score a competitor page, with AI content-gap insights vs. the project's own demand.",
                   {"competitor_url": "URL of the competitor page to analyze"}, ex.exec_sable_competitor_scan),
+        ActionDef("sirocco.multi_network_social", "sirocco", "Multi-network social",
+                  "Influencer Studio: write native post variants for several networks (LinkedIn, Instagram, X, "
+                  "Facebook, TikTok) from the chosen angle, saved as social drafts.",
+                  {"topic": "optional post topic", "platforms": "optional list of networks, e.g. [linkedin, instagram]"},
+                  ex.exec_sirocco_multi_network_social),
+        ActionDef("oasis.define_icp", "oasis", "Define ideal client profile",
+                  "Define 2-4 ideal client segments (pains, channels, angle) to target the campaign — best as an "
+                  "early step for freelancer/company goals.",
+                  {}, ex.exec_oasis_define_icp),
     ]
     return {d.key: d for d in defs}
 

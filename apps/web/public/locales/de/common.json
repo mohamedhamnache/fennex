@@ -975,7 +975,9 @@
         "sable_competitor_scan": "Wettbewerbsanalyse",
         "dune_write_article": "Artikel schreiben",
         "sirocco_generate_visual": "Visual erstellen",
-        "nomad_social_posts": "Social-Posts"
+        "nomad_social_posts": "Social-Posts",
+        "sirocco_multi_network_social": "Multi-Network-Social",
+        "oasis_define_icp": "Idealkunden definieren"
       }
     },
     "stepPanel": {

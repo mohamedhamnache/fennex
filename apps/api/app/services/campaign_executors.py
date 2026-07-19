@@ -10,7 +10,9 @@ from app.services.competitor_service import analyze as analyze_competitor
 from app.services.image_service import generate_image_dalle
 from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 from app.services.nomad_service import generate_outreach_plan
-from app.services.oasis_service import generate_market_report
+from app.services.oasis_service import generate_market_report, generate_icp
+from app.services.influencer_service import generate_studio, SUPPORTED_PLATFORMS
+from app.models.social import SocialPost, SocialPlatform, SocialPostStatus, SocialPostType
 from app.services.article_service import compute_seo_score, _markdown_to_html
 from app.workers.tasks.article_tasks import _build_system_prompt, _build_user_prompt, _parse_llm_response
 
@@ -144,3 +146,43 @@ async def exec_sable_competitor_scan(campaign, step, context: CampaignContext, d
     if not res.get("ok"):
         raise RuntimeError(res.get("error", "Competitor scan failed."))
     return StepResult(summary=f"Scanned competitor {url}.", artifact_type="analysis", structured={"analysis": res})
+
+
+async def exec_sirocco_multi_network_social(campaign, step, context: CampaignContext, db) -> StepResult:
+    """Influencer Studio: native per-network variants saved as drafts."""
+    angle = _angle(context)
+    brief = step.brief or {}
+    topic = str(brief.get("topic") or angle.get("topic") or campaign.goal)
+    keyword = (angle.get("keyword") or None)
+    requested = brief.get("platforms") or ["linkedin", "instagram", "twitter"]
+    platforms = [p for p in requested if p in SUPPORTED_PLATFORMS] or ["linkedin"]
+    res = await generate_studio(campaign.project_id, campaign.org_id, topic, platforms, "professional", keyword, db)
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error", "Social generation failed."))
+    ids: list[str] = []
+    for v in res.get("variants", []):
+        try:
+            plat = SocialPlatform(v["platform"])
+        except ValueError:
+            continue
+        content = v.get("content", "")
+        post = SocialPost(
+            org_id=campaign.org_id, project_id=campaign.project_id, platform=plat,
+            post_type=SocialPostType.tip, status=SocialPostStatus.draft,
+            content=content, hashtags=v.get("hashtags", []), char_count=v.get("char_count", len(content)),
+        )
+        db.add(post); await db.flush(); ids.append(str(post.id))
+    await db.commit()
+    return StepResult(summary=f"Drafted {len(ids)} native posts across {len(platforms)} networks.",
+                      artifact_type="social", artifact_ids=ids, structured={"platforms": platforms})
+
+
+async def exec_oasis_define_icp(campaign, step, context: CampaignContext, db) -> StepResult:
+    """Oasis defines ideal client segments to target the campaign."""
+    res = await generate_icp(campaign.project_id, campaign.org_id, db)
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error", "ICP definition failed."))
+    segments = res.get("segments", [])
+    names = ", ".join(s.get("name", "") for s in segments[:3])
+    return StepResult(summary=f"Defined {len(segments)} ideal client segments: {names}.",
+                      artifact_type="research", structured={"segments": segments})

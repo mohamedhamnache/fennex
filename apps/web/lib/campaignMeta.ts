@@ -15,6 +15,8 @@ export const ACTION_ESTIMATES: Record<string, ActionEstimate> = {
   "dune.write_article": { costMin: 0.15, costMax: 0.35, minMinutes: 2, maxMinutes: 4 },
   "sirocco.generate_visual": { costMin: 0.04, costMax: 0.08, minMinutes: 1, maxMinutes: 2 },
   "nomad.social_posts": { costMin: 0.03, costMax: 0.08, minMinutes: 1, maxMinutes: 2 },
+  "sirocco.multi_network_social": { costMin: 0.04, costMax: 0.1, minMinutes: 1, maxMinutes: 2 },
+  "oasis.define_icp": { costMin: 0.02, costMax: 0.05, minMinutes: 1, maxMinutes: 1 },
 };
 
 const FALLBACK_ESTIMATE: ActionEstimate = { costMin: 0.01, costMax: 0.1, minMinutes: 1, maxMinutes: 3 };
