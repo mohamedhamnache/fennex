@@ -1694,7 +1694,8 @@
       "linkedin": "Publish and schedule posts to LinkedIn.",
       "instagram": "Publish images and reels to Instagram.",
       "facebook": "Publish posts to Facebook Pages.",
-      "tiktok": "Publish short-form video to TikTok."
+      "tiktok": "Publish short-form video to TikTok.",
+      "woocommerce": "Sync products and publish optimized content back to your WooCommerce store."
     },
     "shopify": {
       "title": "Connect Shopify",
@@ -1721,6 +1722,29 @@
       "oauthConnect": "Connect with Shopify",
       "useManual": "Connect manually with API credentials",
       "hideManual": "Hide manual setup"
+    },
+    "woo": {
+      "title": "Connect WooCommerce",
+      "intro": "Connect your WooCommerce store with REST API keys so Fennex can sync products and publish optimized copy back.",
+      "step1": "1. In WP admin, go to WooCommerce → Settings → Advanced → REST API.",
+      "step2": "2. Add a key with Read/Write permissions.",
+      "step3": "3. Copy the Consumer key and Consumer secret, plus your store URL, below.",
+      "urlLabel": "Store URL",
+      "keyLabel": "Consumer key",
+      "secretLabel": "Consumer secret",
+      "secretHint": "Starts with cs_. Stored encrypted; used only for the REST API.",
+      "connect": "Connect store",
+      "disconnect": "Disconnect",
+      "help": "How to create REST API keys",
+      "connectedHint": "Fennex can now sync products and publish to this store. Disconnecting removes the stored keys.",
+      "errors": {
+        "unauthorized": "WooCommerce rejected these keys. Check the key/secret and that they have Read/Write access.",
+        "invalid_url": "Enter a valid store URL (https://…).",
+        "missing_credentials": "Enter the Consumer key and secret.",
+        "not_woocommerce": "No WooCommerce REST API found at that URL. Is WooCommerce installed?",
+        "unreachable": "Couldn't reach that store URL. Check it's public and uses HTTPS.",
+        "generic": "Couldn't connect to WooCommerce. Try again."
+      }
     }
   },
   "productTab": {

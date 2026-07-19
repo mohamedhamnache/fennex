@@ -1629,7 +1629,8 @@
       "linkedin": "انشر وجدول المنشورات على LinkedIn.",
       "instagram": "انشر الصور والريلز على Instagram.",
       "facebook": "انشر المنشورات على صفحات Facebook.",
-      "tiktok": "انشر فيديو قصير على TikTok."
+      "tiktok": "انشر فيديو قصير على TikTok.",
+      "woocommerce": "زامن المنتجات وانشر محتوى محسّنًا في متجر WooCommerce."
     },
     "shopify": {
       "title": "ربط Shopify",
@@ -1656,6 +1657,29 @@
       "oauthConnect": "الاتصال عبر Shopify",
       "useManual": "الاتصال يدويًا ببيانات اعتماد API",
       "hideManual": "إخفاء الإعداد اليدوي"
+    },
+    "woo": {
+      "title": "ربط WooCommerce",
+      "intro": "اربط متجر WooCommerce بمفاتيح REST API كي يتمكن Fennex من مزامنة المنتجات ونشر محتوى محسّن.",
+      "step1": "1. في لوحة WP، اذهب إلى WooCommerce ← الإعدادات ← متقدم ← REST API.",
+      "step2": "2. أضف مفتاحًا بصلاحيات قراءة/كتابة.",
+      "step3": "3. انسخ مفتاح العميل والسر، بالإضافة إلى رابط متجرك، أدناه.",
+      "urlLabel": "رابط المتجر",
+      "keyLabel": "مفتاح العميل",
+      "secretLabel": "سر العميل",
+      "secretHint": "يبدأ بـ cs_. يُخزَّن مشفّرًا ويُستخدم فقط لـ REST API.",
+      "connect": "ربط المتجر",
+      "disconnect": "فصل",
+      "help": "كيفية إنشاء مفاتيح REST API",
+      "connectedHint": "يمكن لـ Fennex الآن المزامنة والنشر إلى هذا المتجر. الفصل يزيل المفاتيح المخزَّنة.",
+      "errors": {
+        "unauthorized": "رفض WooCommerce هذه المفاتيح. تحقق من المفتاح/السر وصلاحيات القراءة/الكتابة.",
+        "invalid_url": "أدخل رابط متجر صالحًا (https://…).",
+        "missing_credentials": "أدخل مفتاح العميل والسر.",
+        "not_woocommerce": "لا توجد REST API لـ WooCommerce على هذا الرابط. هل WooCommerce مثبّت؟",
+        "unreachable": "تعذّر الوصول إلى رابط المتجر. تأكد أنه عام ويستخدم HTTPS.",
+        "generic": "تعذّر الاتصال بـ WooCommerce. حاول مجددًا."
+      }
     }
   },
   "productTab": {

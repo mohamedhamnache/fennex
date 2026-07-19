@@ -5,14 +5,15 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  Plug, Search, Radar, Globe, ShoppingBag, KeyRound, ArrowRight, type LucideIcon,
+  Plug, Search, Radar, Globe, ShoppingBag, ShoppingCart, KeyRound, ArrowRight, type LucideIcon,
 } from "lucide-react";
 import {
   listPublishingConnections, getGscStatus, listSocialConnections, getSeoProviderStatus, listApiKeys,
-  getShopifyStatus, type ShopifyStatus,
+  getShopifyStatus, getWooStatus, type ShopifyStatus, type WooStatus,
 } from "@/lib/api";
 import { LinkedInIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "@/components/studio/SocialIcons";
 import { ShopifyConnectModal } from "@/components/integrations/ShopifyConnectModal";
+import { WooConnectModal } from "@/components/integrations/WooConnectModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
@@ -26,6 +27,7 @@ interface HubData {
   social?: { platform: string; handle: string | null }[];
   keys?: { provider: string }[];
   shopify?: ShopifyStatus;
+  woo?: WooStatus;
 }
 
 interface Connector {
@@ -35,7 +37,7 @@ interface Connector {
   Icon: IconCmp;
   status: (d: HubData) => { state: ConnState; detail?: string };
   href?: (projectId: string) => string; // where to connect/manage
-  modal?: "shopify"; // opens an in-app connect modal instead of navigating
+  modal?: "shopify" | "woo"; // opens an in-app connect modal instead of navigating
 }
 
 const GROUPS: { id: Connector["group"]; icon: LucideIcon }[] = [
@@ -73,6 +75,13 @@ const CONNECTORS: Connector[] = [
       ? { state: "connected", detail: d.shopify.shop_name ?? d.shopify.shop_domain ?? undefined }
       : { state: "off" },
     modal: "shopify",
+  },
+  {
+    id: "woocommerce", group: "publishing", name: "WooCommerce", Icon: ShoppingCart,
+    status: (d) => d.woo?.connected
+      ? { state: "connected", detail: d.woo.shop_name ?? d.woo.store_url ?? undefined }
+      : { state: "off" },
+    modal: "woo",
   },
   {
     id: "ai", group: "ai", name: "AI providers", Icon: KeyRound,
@@ -154,8 +163,9 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
   const { data: seo } = useQuery({ queryKey: ["seo-provider-status", projectId], queryFn: () => getSeoProviderStatus(projectId), enabled: !!projectId });
   const { data: keys } = useQuery({ queryKey: ["api-keys"], queryFn: listApiKeys });
   const { data: shopify } = useQuery({ queryKey: ["shopify-status", projectId], queryFn: () => getShopifyStatus(projectId), enabled: !!projectId });
+  const { data: woo } = useQuery({ queryKey: ["woo-status", projectId], queryFn: () => getWooStatus(projectId), enabled: !!projectId });
 
-  const data: HubData = { gsc, seo, publishing, social, keys, shopify };
+  const data: HubData = { gsc, seo, publishing, social, keys, shopify, woo };
 
   const connectedCount = CONNECTORS.filter((c) => c.status(data).state === "connected").length;
   const liveCount = CONNECTORS.filter((c) => c.status(data).state !== "soon").length;
@@ -200,6 +210,15 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
           status={shopify ?? { connected: false, shop_domain: null, shop_name: null }}
           onClose={() => setModal(null)}
           onChanged={() => queryClient.invalidateQueries({ queryKey: ["shopify-status", projectId] })}
+        />
+      )}
+
+      {modal === "woo" && (
+        <WooConnectModal
+          projectId={projectId}
+          status={woo ?? { connected: false, store_url: null, shop_name: null }}
+          onClose={() => setModal(null)}
+          onChanged={() => queryClient.invalidateQueries({ queryKey: ["woo-status", projectId] })}
         />
       )}
     </div>

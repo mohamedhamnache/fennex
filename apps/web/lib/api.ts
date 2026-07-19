@@ -2198,6 +2198,7 @@ export async function disconnectShopify(projectId: string): Promise<void> {
 }
 export interface StoreProduct {
   id: string;
+  source: string;   // "shopify" | "woocommerce"
   external_id: string;
   title: string;
   handle?: string | null;
@@ -2207,12 +2208,46 @@ export interface StoreProduct {
   status?: string | null;
 }
 export async function listStoreProducts(projectId: string): Promise<StoreProduct[]> {
-  return apiClient.get<StoreProduct[]>(`/shopify/products?project_id=${projectId}`);
+  return apiClient.get<StoreProduct[]>(`/store/products?project_id=${projectId}`);
 }
 export async function syncStoreProducts(projectId: string): Promise<{ ok: boolean; error?: string | null; synced: number }> {
   return apiClient.post<{ ok: boolean; error?: string | null; synced: number }>(
-    `/shopify/products/sync?project_id=${projectId}`, {},
+    `/store/products/sync?project_id=${projectId}`, {},
   );
+}
+
+// WooCommerce store connection
+export interface WooStatus {
+  connected: boolean;
+  store_url: string | null;
+  shop_name: string | null;
+  last_tested_at?: string | null;
+}
+export interface WooConnectResult {
+  ok: boolean;
+  error?: string | null;
+  detail?: string | null;
+  store_url?: string | null;
+  shop_name?: string | null;
+}
+export async function getWooStatus(projectId: string): Promise<WooStatus> {
+  return apiClient.get<WooStatus>(`/woocommerce/status?project_id=${projectId}`);
+}
+export async function connectWoo(
+  projectId: string,
+  storeUrl: string,
+  consumerKey: string,
+  consumerSecret: string,
+): Promise<WooConnectResult> {
+  return apiClient.post<WooConnectResult>("/woocommerce/connect", {
+    project_id: projectId,
+    store_url: storeUrl,
+    consumer_key: consumerKey,
+    consumer_secret: consumerSecret,
+  });
+}
+export async function disconnectWoo(projectId: string): Promise<void> {
+  return apiClient.delete<void>(`/woocommerce/disconnect?project_id=${projectId}`);
 }
 export interface ProductCopyResult {
   ok: boolean;
@@ -2223,7 +2258,7 @@ export interface ProductCopyResult {
 }
 export async function generateProductCopy(projectId: string, productId: string): Promise<ProductCopyResult> {
   return apiClient.post<ProductCopyResult>(
-    `/shopify/products/${productId}/copy?project_id=${projectId}`, {},
+    `/store/products/${productId}/copy?project_id=${projectId}`, {},
   );
 }
 export async function publishProductCopy(
@@ -2233,7 +2268,7 @@ export async function publishProductCopy(
   descriptionHtml: string,
 ): Promise<{ ok: boolean; error?: string | null }> {
   return apiClient.post<{ ok: boolean; error?: string | null }>(
-    `/shopify/products/${productId}/publish-copy`,
+    `/store/products/${productId}/publish-copy`,
     { project_id: projectId, title, description_html: descriptionHtml },
   );
 }

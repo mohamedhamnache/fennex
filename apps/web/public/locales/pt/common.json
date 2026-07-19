@@ -1629,7 +1629,8 @@
       "linkedin": "Publique e agende posts no LinkedIn.",
       "instagram": "Publique imagens e reels no Instagram.",
       "facebook": "Publique posts em Páginas do Facebook.",
-      "tiktok": "Publique vídeo curto no TikTok."
+      "tiktok": "Publique vídeo curto no TikTok.",
+      "woocommerce": "Sincronize produtos e publique conteúdo otimizado de volta na sua loja WooCommerce."
     },
     "shopify": {
       "title": "Conectar Shopify",
@@ -1656,6 +1657,29 @@
       "oauthConnect": "Conectar com a Shopify",
       "useManual": "Conectar manualmente com credenciais de API",
       "hideManual": "Ocultar configuração manual"
+    },
+    "woo": {
+      "title": "Conectar WooCommerce",
+      "intro": "Conecte sua loja WooCommerce com chaves da API REST para o Fennex sincronizar produtos e publicar conteúdo otimizado de volta.",
+      "step1": "1. No admin do WP, vá em WooCommerce → Configurações → Avançado → API REST.",
+      "step2": "2. Adicione uma chave com permissões de Leitura/Escrita.",
+      "step3": "3. Copie a chave e o segredo do cliente, e a URL da sua loja, abaixo.",
+      "urlLabel": "URL da loja",
+      "keyLabel": "Chave do cliente",
+      "secretLabel": "Segredo do cliente",
+      "secretHint": "Começa com cs_. Armazenado criptografado; usado apenas para a API REST.",
+      "connect": "Conectar loja",
+      "disconnect": "Desconectar",
+      "help": "Como criar chaves da API REST",
+      "connectedHint": "O Fennex já pode sincronizar e publicar nesta loja. Desconectar remove as chaves armazenadas.",
+      "errors": {
+        "unauthorized": "O WooCommerce rejeitou estas chaves. Verifique a chave/segredo e as permissões de Leitura/Escrita.",
+        "invalid_url": "Informe uma URL de loja válida (https://…).",
+        "missing_credentials": "Informe a chave e o segredo do cliente.",
+        "not_woocommerce": "Nenhuma API REST do WooCommerce nessa URL. O WooCommerce está instalado?",
+        "unreachable": "Não foi possível acessar essa URL. Verifique se é pública e usa HTTPS.",
+        "generic": "Não foi possível conectar ao WooCommerce. Tente de novo."
+      }
     }
   },
   "productTab": {

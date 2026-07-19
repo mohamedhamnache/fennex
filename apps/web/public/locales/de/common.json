@@ -1629,7 +1629,8 @@
       "linkedin": "Veröffentliche und plane Posts auf LinkedIn.",
       "instagram": "Veröffentliche Bilder und Reels auf Instagram.",
       "facebook": "Veröffentliche Posts auf Facebook-Seiten.",
-      "tiktok": "Veröffentliche Kurzvideos auf TikTok."
+      "tiktok": "Veröffentliche Kurzvideos auf TikTok.",
+      "woocommerce": "Synchronisiere Produkte und veröffentliche optimierte Inhalte zurück in deinen WooCommerce-Store."
     },
     "shopify": {
       "title": "Shopify verbinden",
@@ -1656,6 +1657,29 @@
       "oauthConnect": "Mit Shopify verbinden",
       "useManual": "Manuell mit API-Anmeldedaten verbinden",
       "hideManual": "Manuelle Einrichtung ausblenden"
+    },
+    "woo": {
+      "title": "WooCommerce verbinden",
+      "intro": "Verbinde deinen WooCommerce-Store mit REST-API-Schlüsseln, damit Fennex Produkte synchronisieren und optimierte Texte zurück veröffentlichen kann.",
+      "step1": "1. Gehe im WP-Admin zu WooCommerce → Einstellungen → Erweitert → REST-API.",
+      "step2": "2. Füge einen Schlüssel mit Lese-/Schreibrechten hinzu.",
+      "step3": "3. Kopiere Consumer Key und Consumer Secret sowie deine Store-URL unten.",
+      "urlLabel": "Store-URL",
+      "keyLabel": "Consumer Key",
+      "secretLabel": "Consumer Secret",
+      "secretHint": "Beginnt mit cs_. Verschlüsselt gespeichert; nur für die REST-API genutzt.",
+      "connect": "Store verbinden",
+      "disconnect": "Trennen",
+      "help": "So erstellst du REST-API-Schlüssel",
+      "connectedHint": "Fennex kann jetzt synchronisieren und in diesen Store veröffentlichen. Beim Trennen werden die Schlüssel entfernt.",
+      "errors": {
+        "unauthorized": "WooCommerce hat diese Schlüssel abgelehnt. Prüfe Key/Secret und die Lese-/Schreibrechte.",
+        "invalid_url": "Gib eine gültige Store-URL ein (https://…).",
+        "missing_credentials": "Gib Consumer Key und Secret ein.",
+        "not_woocommerce": "Keine WooCommerce-REST-API unter dieser URL. Ist WooCommerce installiert?",
+        "unreachable": "Store-URL nicht erreichbar. Prüfe, ob sie öffentlich ist und HTTPS nutzt.",
+        "generic": "Verbindung zu WooCommerce fehlgeschlagen. Versuche es erneut."
+      }
     }
   },
   "productTab": {
