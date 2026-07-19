@@ -985,7 +985,22 @@
       "noBrief": "Keine Parameter",
       "errorLabel": "Fehler",
       "removeStep": "Schritt entfernen",
-      "estimateLabel": "Geschätzt"
+      "estimateLabel": "Geschätzt",
+      "output": "Ergebnis",
+      "article": "Artikel",
+      "visual": "Kampagnen-Visual",
+      "analysis": "Wettbewerber",
+      "openArticle": "In Artikel öffnen",
+      "viewImage": "Bild ansehen",
+      "openSocial": "In Social öffnen",
+      "drafts": "{{count}} Social-Entwürfe",
+      "status": {
+        "pending": "Ausstehend",
+        "running": "Läuft",
+        "failed": "Fehlgeschlagen",
+        "skipped": "Übersprungen",
+        "completed": "Fertig"
+      }
     },
     "ship": {
       "ship": "Zum Kalender hinzufügen",

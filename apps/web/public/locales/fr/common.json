@@ -985,7 +985,22 @@
       "noBrief": "Aucun paramètre",
       "errorLabel": "Erreur",
       "removeStep": "Retirer l'étape",
-      "estimateLabel": "Estimé"
+      "estimateLabel": "Estimé",
+      "output": "Résultat",
+      "article": "Article",
+      "visual": "Visuel de campagne",
+      "analysis": "Concurrent",
+      "openArticle": "Ouvrir dans Articles",
+      "viewImage": "Voir l'image",
+      "openSocial": "Ouvrir dans Social",
+      "drafts": "{{count}} brouillons sociaux",
+      "status": {
+        "pending": "En attente",
+        "running": "En cours",
+        "failed": "Échoué",
+        "skipped": "Ignoré",
+        "completed": "Terminé"
+      }
     },
     "ship": {
       "ship": "Ajouter au calendrier",

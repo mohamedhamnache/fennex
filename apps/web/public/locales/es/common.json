@@ -985,7 +985,22 @@
       "noBrief": "Sin parámetros",
       "errorLabel": "Error",
       "removeStep": "Quitar paso",
-      "estimateLabel": "Estimado"
+      "estimateLabel": "Estimado",
+      "output": "Resultado",
+      "article": "Artículo",
+      "visual": "Visual de campaña",
+      "analysis": "Competidor",
+      "openArticle": "Abrir en Artículos",
+      "viewImage": "Ver imagen",
+      "openSocial": "Abrir en Social",
+      "drafts": "{{count}} borradores sociales",
+      "status": {
+        "pending": "Pendiente",
+        "running": "En curso",
+        "failed": "Fallido",
+        "skipped": "Omitido",
+        "completed": "Hecho"
+      }
     },
     "ship": {
       "ship": "Añadir al calendario",

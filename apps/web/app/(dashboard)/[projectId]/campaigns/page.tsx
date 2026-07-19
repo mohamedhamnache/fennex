@@ -197,6 +197,7 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
                 <StepPanel
                   step={selectedStep}
                   campaign={activeCampaign}
+                  projectId={projectId}
                   onClose={() => setSelectedStepId(null)}
                   onRemove={handleRemoveStep}
                   removing={removeStepMutation.isPending}

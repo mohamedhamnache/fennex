@@ -1068,7 +1068,22 @@
       "noBrief": "No parameters",
       "errorLabel": "Error",
       "removeStep": "Remove step",
-      "estimateLabel": "Estimated"
+      "estimateLabel": "Estimated",
+      "output": "Output",
+      "article": "Article",
+      "visual": "Campaign visual",
+      "analysis": "Competitor",
+      "openArticle": "Open in Articles",
+      "viewImage": "View image",
+      "openSocial": "Open in Social",
+      "drafts": "{{count}} social drafts",
+      "status": {
+        "pending": "Pending",
+        "running": "Running",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "completed": "Done"
+      }
     },
     "ship": {
       "ship": "Ship to Calendar",

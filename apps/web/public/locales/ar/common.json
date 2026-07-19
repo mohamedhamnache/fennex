@@ -985,7 +985,22 @@
       "noBrief": "لا توجد معلمات",
       "errorLabel": "خطأ",
       "removeStep": "إزالة الخطوة",
-      "estimateLabel": "مقدّر"
+      "estimateLabel": "مقدّر",
+      "output": "الناتج",
+      "article": "مقال",
+      "visual": "تصميم الحملة",
+      "analysis": "منافس",
+      "openArticle": "فتح في المقالات",
+      "viewImage": "عرض الصورة",
+      "openSocial": "فتح في السوشيال",
+      "drafts": "{{count}} مسودات اجتماعية",
+      "status": {
+        "pending": "قيد الانتظار",
+        "running": "قيد التشغيل",
+        "failed": "فشل",
+        "skipped": "تم التخطي",
+        "completed": "تم"
+      }
     },
     "ship": {
       "ship": "إضافة إلى التقويم",
