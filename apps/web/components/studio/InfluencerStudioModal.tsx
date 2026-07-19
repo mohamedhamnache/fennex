@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Sparkles, Loader2, Copy, Check, Clock, Save, Wand2, Twitter, CalendarClock } from "lucide-react";
+import { X, Sparkles, Loader2, Copy, Check, Clock, Save, Wand2, Twitter, CalendarClock, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  generateSocialStudio, createSocialPost, scheduleSocialPost, type SocialPlatform, type StudioVariant,
+  generateSocialStudio, createSocialPost, scheduleSocialPost,
+  generateImage, getImage, attachImage, updateSocialPost,
+  type SocialPlatform, type StudioVariant, type GeneratedImage,
 } from "@/lib/api";
 import { LinkedInIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "@/components/studio/SocialIcons";
 
@@ -61,6 +63,8 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [scheduled, setScheduled] = useState<Record<string, string>>({}); // platform -> ISO
   const [copied, setCopied] = useState<string | null>(null);
+  const [images, setImages] = useState<Record<string, GeneratedImage>>({}); // platform -> visual
+  const [imgBusy, setImgBusy] = useState<Set<string>>(new Set());
 
   function togglePlatform(id: SocialPlatform) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -89,10 +93,46 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
     setVariants((vs) => vs.map((v) => (v.platform === platform ? { ...v, content, char_count: content.length } : v)));
   }
 
+  async function waitReady(img: GeneratedImage): Promise<GeneratedImage> {
+    let cur = img;
+    for (let i = 0; i < 12 && cur.status !== "ready" && cur.status !== "failed"; i++) {
+      await new Promise((r) => setTimeout(r, 2500));
+      cur = await getImage(cur.id);
+    }
+    return cur;
+  }
+
+  async function generateVisual(v: StudioVariant) {
+    if (imgBusy.has(v.platform)) return;
+    setImgBusy((s) => new Set(s).add(v.platform));
+    setError(null);
+    try {
+      const prompt = keyword.trim() ? `${topic.trim()} — ${keyword.trim()}` : topic.trim();
+      let img = await generateImage({ project_id: projectId, prompt, usage: "social_post", social_platform: v.platform, use_brand_kit: true });
+      if (img.status !== "ready") img = await waitReady(img);
+      if (img.status === "ready" && img.image_url) setImages((m) => ({ ...m, [v.platform]: img }));
+      else setError(t("influencerStudio.errors.visualFailed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("influencerStudio.errors.visualFailed"));
+    } finally {
+      setImgBusy((s) => { const n = new Set(s); n.delete(v.platform); return n; });
+    }
+  }
+
+  async function attachVisual(platform: string, postId: string) {
+    const img = images[platform];
+    if (!img?.image_url) return;
+    try {
+      await attachImage(img.id, { social_post_id: postId });
+      await updateSocialPost(postId, { media_urls: [img.image_url] });
+    } catch { /* non-fatal: the post is saved regardless */ }
+  }
+
   async function saveVariant(v: StudioVariant) {
     if (saved.has(v.platform)) return;
     try {
-      await createSocialPost({ project_id: projectId, platform: v.platform, post_type: "tip", content: v.content, hashtags: v.hashtags });
+      const post = await createSocialPost({ project_id: projectId, platform: v.platform, post_type: "tip", content: v.content, hashtags: v.hashtags });
+      await attachVisual(v.platform, post.id);
       setSaved((s) => new Set(s).add(v.platform));
       onSaved();
     } catch {
@@ -105,6 +145,7 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
     const iso = nextBestTimeISO(v.best_time);
     try {
       const post = await createSocialPost({ project_id: projectId, platform: v.platform, post_type: "tip", content: v.content, hashtags: v.hashtags });
+      await attachVisual(v.platform, post.id);
       await scheduleSocialPost(post.id, iso);
       setSaved((s) => new Set(s).add(v.platform));
       setScheduled((m) => ({ ...m, [v.platform]: iso }));
@@ -251,6 +292,28 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
                         ))}
                       </div>
                     )}
+                    {/* Matching visual (Mirage) */}
+                    {(images[v.platform] || imgBusy.has(v.platform)) && (
+                      <div className="mb-2">
+                        {imgBusy.has(v.platform) ? (
+                          <div className="flex h-28 w-28 items-center justify-center rounded-lg border border-border bg-muted">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : images[v.platform]?.image_url ? (
+                          <div className="relative inline-block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={images[v.platform].image_url!} alt="" className="h-28 w-28 rounded-lg border border-border object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setImages((m) => { const n = { ...m }; delete n[v.platform]; return n; })}
+                              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                     <textarea
                       value={v.content}
                       onChange={(e) => updateContent(v.platform, e.target.value)}
@@ -272,6 +335,17 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
                         </span>
                       ) : <span />}
                       <div className="flex items-center gap-2">
+                        {!images[v.platform] && (
+                          <button
+                            type="button"
+                            onClick={() => generateVisual(v)}
+                            disabled={imgBusy.has(v.platform)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-60"
+                          >
+                            {imgBusy.has(v.platform) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                            {t("influencerStudio.addVisual")}
+                          </button>
+                        )}
                         <button type="button" onClick={() => copyVariant(v)} className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
                           {copied === v.platform ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                           {t("influencerStudio.copy")}

@@ -1752,9 +1752,11 @@
     "errors": {
       "no_ai_key": "Füge in den Einstellungen einen KI-Anbieter-Key hinzu, um Posts zu generieren.",
       "generic": "Generierung fehlgeschlagen. Versuche es erneut.",
-      "saveFailed": "Entwurf konnte nicht gespeichert werden. Versuche es erneut."
+      "saveFailed": "Entwurf konnte nicht gespeichert werden. Versuche es erneut.",
+      "visualFailed": "Visual konnte nicht generiert werden. Versuche es erneut."
     },
     "schedule": "Planen",
-    "scheduledFor": "Geplant"
+    "scheduledFor": "Geplant",
+    "addVisual": "Visual hinzufügen"
   }
 }

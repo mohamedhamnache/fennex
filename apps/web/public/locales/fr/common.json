@@ -1752,9 +1752,11 @@
     "errors": {
       "no_ai_key": "Ajoutez une clé de fournisseur IA dans les Paramètres pour générer les posts.",
       "generic": "Génération impossible. Réessayez.",
-      "saveFailed": "Enregistrement impossible. Réessayez."
+      "saveFailed": "Enregistrement impossible. Réessayez.",
+      "visualFailed": "Impossible de générer le visuel. Réessayez."
     },
     "schedule": "Programmer",
-    "scheduledFor": "Programmé"
+    "scheduledFor": "Programmé",
+    "addVisual": "Ajouter un visuel"
   }
 }

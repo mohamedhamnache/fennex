@@ -1752,9 +1752,11 @@
     "errors": {
       "no_ai_key": "Añade una clave de proveedor de IA en Ajustes para generar publicaciones.",
       "generic": "No se pudo generar. Inténtalo de nuevo.",
-      "saveFailed": "No se pudo guardar el borrador. Inténtalo de nuevo."
+      "saveFailed": "No se pudo guardar el borrador. Inténtalo de nuevo.",
+      "visualFailed": "No se pudo generar el visual. Inténtalo de nuevo."
     },
     "schedule": "Programar",
-    "scheduledFor": "Programado"
+    "scheduledFor": "Programado",
+    "addVisual": "Añadir visual"
   }
 }

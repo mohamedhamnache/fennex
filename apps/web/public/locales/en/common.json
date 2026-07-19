@@ -1817,9 +1817,11 @@
     "errors": {
       "no_ai_key": "Add an AI provider key in Settings to generate posts.",
       "generic": "Couldn't generate. Try again.",
-      "saveFailed": "Couldn't save the draft. Try again."
+      "saveFailed": "Couldn't save the draft. Try again.",
+      "visualFailed": "Couldn't generate the visual. Try again."
     },
     "schedule": "Schedule",
-    "scheduledFor": "Scheduled"
+    "scheduledFor": "Scheduled",
+    "addVisual": "Add visual"
   }
 }
