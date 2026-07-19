@@ -1025,7 +1025,7 @@ export interface AiAgentResponse {
   followups?: string[];
 }
 
-export type AnalyticsPersona = "creator" | "ecommerce" | "freelancer";
+export type AnalyticsPersona = "creator" | "ecommerce" | "freelancer" | "company";
 
 export async function askAnalyticsAgent(
   projectId: string,

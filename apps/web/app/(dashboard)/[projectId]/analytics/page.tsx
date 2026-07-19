@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, ArrowDown, BarChart2, MousePointerClick, Eye, TrendingUp, Crosshair, RefreshCw, Globe, Check, Loader2, Target, Sparkles, ExternalLink, Send, Bot, Layers, Lightbulb, ShoppingBag, PenLine, Briefcase, Copy, Swords, X, Activity, Compass, Gauge, Mail, Palmtree, Download, FileText } from "lucide-react";
+import { ArrowUp, ArrowDown, BarChart2, MousePointerClick, Eye, TrendingUp, Crosshair, RefreshCw, Globe, Check, Loader2, Target, Sparkles, ExternalLink, Send, Bot, Layers, Lightbulb, ShoppingBag, PenLine, Briefcase, Copy, Swords, X, Activity, Compass, Gauge, Mail, Palmtree, Download, FileText, Building2 } from "lucide-react";
 
 const AnalyticsAreaChart = dynamic(
   () => import("./AnalyticsChart").then((m) => ({ default: m.AnalyticsAreaChart })),
@@ -957,12 +957,13 @@ const IDEA_TONE: Record<IdeaType, { tone: BadgeTone; label: string }> = {
   informational: { tone: "neutral", label: "Info" },
 };
 
-type Persona = "creator" | "ecommerce" | "freelancer";
+type Persona = "creator" | "ecommerce" | "freelancer" | "company";
 
 const PERSONAS: { id: Persona; label: string; Icon: typeof PenLine; blurb: string; types: IdeaType[] }[] = [
   { id: "creator", label: "Creator", Icon: PenLine, blurb: "Content & video ideas with real search demand you can capture.", types: ["question", "how-to", "list", "informational", "comparison"] },
   { id: "ecommerce", label: "Ecommerce", Icon: ShoppingBag, blurb: "Buyer-intent queries and comparisons — product pages worth building.", types: ["commercial", "comparison", "list"] },
   { id: "freelancer", label: "Freelancer", Icon: Briefcase, blurb: "Map the niche: which topics drive demand, sized for a client report.", types: ["question", "how-to", "list", "commercial", "comparison", "informational"] },
+  { id: "company", label: "Company", Icon: Building2, blurb: "Own your brand's topics: coverage and authority across the search demand you should lead.", types: ["informational", "how-to", "comparison", "question", "commercial", "list"] },
 ];
 
 /** Minimal markdown renderer for Oasis reports (headings, lists, paragraphs, bold). */
@@ -1256,12 +1257,19 @@ const COPILOT_STARTERS: Record<Persona, string[]> = {
     "Summarize this market for a client report",
     "Where can I win visibility fastest?",
   ],
+  company: [
+    "Which brand topics am I not covering yet?",
+    "Where are competitors outranking my brand?",
+    "What content would strengthen my authority?",
+    "Which of my topics are slipping in rank?",
+  ],
 };
 
 const PERSONA_TITLES: Record<Persona, string> = {
   creator: "Content strategist mode",
   ecommerce: "Ecommerce SEO mode",
   freelancer: "Market analyst mode",
+  company: "Brand authority mode",
 };
 
 type AgentMessage = { role: "user" | "assistant"; content: string; chart?: AgentChartSpec | null; followups?: string[] };
@@ -1670,8 +1678,8 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
   // Priority: explicit user choice (localStorage) > project onboarding persona.
   useEffect(() => {
     const saved = localStorage.getItem("fx-analytics-persona");
-    if (saved === "creator" || saved === "ecommerce" || saved === "freelancer") setPersona(saved);
-    else if (projectPersona && projectPersona !== "company") setPersona(projectPersona);
+    if (saved === "creator" || saved === "ecommerce" || saved === "freelancer" || saved === "company") setPersona(saved);
+    else if (projectPersona) setPersona(projectPersona);
   }, [projectPersona]);
   function changePersona(p: Persona) {
     setPersona(p);
