@@ -1651,5 +1651,15 @@
         "generic": "Não foi possível conectar à Shopify. Tente de novo."
       }
     }
+  },
+  "productTab": {
+    "store": {
+      "title": "Da sua loja",
+      "sync": "Sincronizar",
+      "notConnected": "Nenhuma loja conectada.",
+      "connect": "Conectar Shopify",
+      "syncError": "Falha na sincronização. Tente de novo.",
+      "empty": "Sincronize para escolher um produto da sua loja."
+    }
   }
 }

@@ -1651,5 +1651,15 @@
         "generic": "Verbindung zu Shopify fehlgeschlagen. Versuche es erneut."
       }
     }
+  },
+  "productTab": {
+    "store": {
+      "title": "Aus deinem Store",
+      "sync": "Synchronisieren",
+      "notConnected": "Kein Store verbunden.",
+      "connect": "Shopify verbinden",
+      "syncError": "Sync fehlgeschlagen. Erneut versuchen.",
+      "empty": "Synchronisiere, um ein Produkt aus deinem Store zu wählen."
+    }
   }
 }

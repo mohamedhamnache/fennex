@@ -2183,6 +2183,24 @@ export async function connectShopify(
 export async function disconnectShopify(projectId: string): Promise<void> {
   return apiClient.delete<void>(`/shopify/disconnect?project_id=${projectId}`);
 }
+export interface StoreProduct {
+  id: string;
+  external_id: string;
+  title: string;
+  handle?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  price?: string | null;
+  status?: string | null;
+}
+export async function listStoreProducts(projectId: string): Promise<StoreProduct[]> {
+  return apiClient.get<StoreProduct[]>(`/shopify/products?project_id=${projectId}`);
+}
+export async function syncStoreProducts(projectId: string): Promise<{ ok: boolean; error?: string | null; synced: number }> {
+  return apiClient.post<{ ok: boolean; error?: string | null; synced: number }>(
+    `/shopify/products/sync?project_id=${projectId}`, {},
+  );
+}
 export async function listTrackedKeywords(projectId: string): Promise<TrackedKeywordRow[]> {
   return apiClient.get<TrackedKeywordRow[]>(`/seo/keywords?project_id=${projectId}`);
 }

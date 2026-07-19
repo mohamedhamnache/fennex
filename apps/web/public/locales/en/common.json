@@ -1716,5 +1716,15 @@
         "generic": "Couldn't connect to Shopify. Try again."
       }
     }
+  },
+  "productTab": {
+    "store": {
+      "title": "From your store",
+      "sync": "Sync",
+      "notConnected": "No store connected.",
+      "connect": "Connect Shopify",
+      "syncError": "Sync failed. Try again.",
+      "empty": "Sync to pick a product from your store."
+    }
   }
 }
