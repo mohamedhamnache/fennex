@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Upload, Loader2, X, ShoppingBag, Wand2, Pencil, Globe,
-  AlertCircle, CheckCircle2, Sparkles, Scissors, Store, RefreshCw, PenLine,
+  AlertCircle, CheckCircle2, Sparkles, Scissors, Store, RefreshCw, PenLine, Search, Check,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -71,6 +71,8 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
   const [picked, setPicked] = useState<StoreProduct | null>(null);
   const [copyProduct, setCopyProduct] = useState<StoreProduct | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [justSynced, setJustSynced] = useState<number | null>(null);
 
   // Config
   const [description, setDescription] = useState("");
@@ -92,10 +94,16 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
     onSuccess: (res) => {
       if (!res.ok) { setSyncError(res.error === "not_connected" ? "not_connected" : (res.error ?? "generic")); return; }
       setSyncError(null);
+      setJustSynced(res.synced);
+      setTimeout(() => setJustSynced(null), 3000);
       queryClient.invalidateQueries({ queryKey: ["store-products", projectId] });
     },
     onError: () => setSyncError("generic"),
   });
+
+  const filteredProducts = productSearch.trim()
+    ? storeProducts.filter((p) => p.title.toLowerCase().includes(productSearch.trim().toLowerCase()))
+    : storeProducts;
 
   function pickStoreProduct(p: StoreProduct) {
     setPicked(p);
@@ -228,60 +236,110 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
               <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <Store className="h-3.5 w-3.5 text-primary" strokeWidth={1.9} />
                 {t("productTab.store.title", { defaultValue: "From your store" })}
+                {storeProducts.length > 0 && (
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                    {storeProducts.length}
+                  </span>
+                )}
               </span>
-              <button
-                type="button"
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
-              >
-                {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                {t("productTab.store.sync", { defaultValue: "Sync" })}
-              </button>
+              <span className="flex items-center gap-1.5">
+                {justSynced !== null && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-success">
+                    <Check className="h-3 w-3" /> {t("productTab.store.syncedCount", { defaultValue: "Synced {{count}}", count: justSynced })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => syncMutation.mutate()}
+                  disabled={syncMutation.isPending}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
+                >
+                  {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  {t("productTab.store.sync", { defaultValue: "Sync" })}
+                </button>
+              </span>
             </div>
+
             {syncError === "not_connected" ? (
-              <p className="text-[11px] text-muted-foreground">
-                {t("productTab.store.notConnected", { defaultValue: "No store connected." })}{" "}
-                <Link href={`/${projectId}/integrations`} className="font-medium text-primary hover:underline">
-                  {t("productTab.store.connect", { defaultValue: "Connect Shopify" })}
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-3 py-4 text-center">
+                <Store className="h-5 w-5 text-muted-foreground/60" />
+                <p className="text-[11px] text-muted-foreground">{t("productTab.store.notConnected", { defaultValue: "No store connected." })}</p>
+                <Link
+                  href={`/${projectId}/integrations`}
+                  className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  {t("productTab.store.connect", { defaultValue: "Connect a store" })}
                 </Link>
-              </p>
+              </div>
             ) : syncError ? (
               <p className="text-[11px] text-destructive">{t("productTab.store.syncError", { defaultValue: "Sync failed. Try again." })}</p>
+            ) : syncMutation.isPending && storeProducts.length === 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="aspect-square animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
             ) : storeProducts.length === 0 ? (
               <p className="text-[11px] text-muted-foreground">{t("productTab.store.empty", { defaultValue: "Sync to pick a product from your store." })}</p>
             ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {storeProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    className={cn(
-                      "group relative flex w-20 shrink-0 flex-col gap-1 rounded-lg border p-1 transition-colors",
-                      picked?.id === p.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
-                    )}
-                  >
-                    <button type="button" onClick={() => pickStoreProduct(p)} className="flex flex-col gap-1 text-left">
-                      <span className="flex h-16 w-full items-center justify-center overflow-hidden rounded bg-muted">
-                        {p.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.image_url} alt={p.title} className="h-full w-full object-cover" />
-                        ) : (
-                          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
-                        )}
-                      </span>
-                      <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground group-hover:text-foreground">{p.title}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCopyProduct(p)}
-                      title={t("productCopy.write", { defaultValue: "Write copy" })}
-                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-card/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-primary group-hover:opacity-100"
-                    >
-                      <PenLine className="h-3 w-3" />
-                    </button>
+              <>
+                {storeProducts.length > 6 && (
+                  <div className="relative mb-2">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      placeholder={t("productTab.store.search", { defaultValue: "Search products" })}
+                      className="w-full rounded-lg border border-border bg-background py-1.5 pl-7 pr-2 text-xs text-foreground outline-none focus:border-primary"
+                    />
                   </div>
-                ))}
-              </div>
+                )}
+                <div className="grid max-h-52 grid-cols-3 gap-2 overflow-y-auto pr-0.5">
+                  {filteredProducts.map((p) => {
+                    const on = picked?.id === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        className={cn(
+                          "group relative flex flex-col gap-1 rounded-lg border p-1 transition-colors",
+                          on ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "border-border hover:border-primary/50",
+                        )}
+                      >
+                        <button type="button" onClick={() => pickStoreProduct(p)} className="flex flex-col gap-1 text-left">
+                          <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded bg-muted">
+                            {p.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.image_url} alt={p.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            {on && (
+                              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                              </span>
+                            )}
+                          </span>
+                          <span className="line-clamp-2 text-[10px] leading-tight text-foreground/90">{p.title}</span>
+                          {p.price && <span className="text-[10px] font-medium tabular-nums text-muted-foreground">{p.price}</span>}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCopyProduct(p)}
+                          title={t("productCopy.write", { defaultValue: "Write copy" })}
+                          className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-card/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-primary group-hover:opacity-100"
+                        >
+                          <PenLine className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {filteredProducts.length === 0 && (
+                    <p className="col-span-3 py-3 text-center text-[11px] text-muted-foreground">
+                      {t("productTab.store.noMatch", { defaultValue: "No products match." })}
+                    </p>
+                  )}
+                </div>
+              </>
             )}
           </div>
 

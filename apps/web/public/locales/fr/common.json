@@ -1688,9 +1688,12 @@
       "title": "Depuis votre boutique",
       "sync": "Synchroniser",
       "notConnected": "Aucune boutique connectée.",
-      "connect": "Connecter Shopify",
+      "connect": "Connecter une boutique",
       "syncError": "Échec de la synchro. Réessayez.",
-      "empty": "Synchronisez pour choisir un produit de votre boutique."
+      "empty": "Synchronisez pour choisir un produit de votre boutique.",
+      "search": "Rechercher des produits",
+      "syncedCount": "{{count}} synchronisés",
+      "noMatch": "Aucun produit correspondant."
     }
   },
   "productCopy": {

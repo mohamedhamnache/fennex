@@ -1753,9 +1753,12 @@
       "title": "From your store",
       "sync": "Sync",
       "notConnected": "No store connected.",
-      "connect": "Connect Shopify",
+      "connect": "Connect a store",
       "syncError": "Sync failed. Try again.",
-      "empty": "Sync to pick a product from your store."
+      "empty": "Sync to pick a product from your store.",
+      "search": "Search products",
+      "syncedCount": "Synced {{count}}",
+      "noMatch": "No products match."
     }
   },
   "productCopy": {
