@@ -196,6 +196,45 @@ async def generate_post(
     return post
 
 
+# ── Influencer Studio: LLM per-network variants (before GET /{post_id}) ────────
+
+class StudioGenerateRequest(BaseModel):
+    project_id: uuid.UUID
+    topic: str
+    platforms: list[str] = ["linkedin"]
+    tone: str = "professional"
+    keyword: str | None = None
+
+
+class StudioVariant(BaseModel):
+    platform: str
+    hooks: list[str] = []
+    content: str
+    hashtags: list[str] = []
+    char_count: int = 0
+    best_time: Optional[dict] = None
+
+
+class StudioResult(BaseModel):
+    ok: bool
+    error: Optional[str] = None
+    variants: list[StudioVariant] = []
+
+
+@router.post("/studio", response_model=StudioResult)
+async def social_studio(
+    body: StudioGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Influencer Studio: generate native hook + caption variants per network."""
+    await check_project_not_locked(body.project_id, db)
+    from app.services.influencer_service import generate_studio
+    return await generate_studio(
+        body.project_id, current_user.org_id, body.topic, body.platforms, body.tone, body.keyword, db
+    )
+
+
 # ── Social Connections schemas (must be defined before GET /connections route) ─
 from pydantic import BaseModel as _BaseModel
 
