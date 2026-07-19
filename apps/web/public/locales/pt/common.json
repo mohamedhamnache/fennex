@@ -1651,7 +1651,11 @@
         "invalid_domain": "Esse domínio de loja não parece válido.",
         "missing_credentials": "Informe o Client ID e o segredo do cliente.",
         "generic": "Não foi possível conectar à Shopify. Tente de novo."
-      }
+      },
+      "oauthIntro": "Conecte sua loja Shopify com um clique — aprove o Fennex na Shopify e pronto.",
+      "oauthConnect": "Conectar com a Shopify",
+      "useManual": "Conectar manualmente com credenciais de API",
+      "hideManual": "Ocultar configuração manual"
     }
   },
   "productTab": {

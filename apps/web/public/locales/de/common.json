@@ -1651,7 +1651,11 @@
         "invalid_domain": "Das sieht nicht nach einer gültigen Store-Domain aus.",
         "missing_credentials": "Gib Client ID und Client Secret ein.",
         "generic": "Verbindung zu Shopify fehlgeschlagen. Versuche es erneut."
-      }
+      },
+      "oauthIntro": "Verbinde deinen Shopify-Store mit einem Klick — bestätige Fennex bei Shopify, fertig.",
+      "oauthConnect": "Mit Shopify verbinden",
+      "useManual": "Manuell mit API-Anmeldedaten verbinden",
+      "hideManual": "Manuelle Einrichtung ausblenden"
     }
   },
   "productTab": {

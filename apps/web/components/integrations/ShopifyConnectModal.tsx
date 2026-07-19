@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X, ShoppingBag, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
-import { connectShopify, disconnectShopify, type ShopifyStatus } from "@/lib/api";
+import { connectShopify, disconnectShopify, startShopifyOAuth, type ShopifyStatus } from "@/lib/api";
 
 interface Props {
   projectId: string;
@@ -22,8 +22,29 @@ export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: P
   const [clientSecret, setClientSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // When one-click OAuth is available, the manual client-credentials form is hidden behind "advanced".
+  const [showManual, setShowManual] = useState(!status.oauth_available);
 
   const canSubmit = domain.trim() && clientId.trim() && clientSecret.trim();
+
+  async function handleOAuth() {
+    if (busy || !domain.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await startShopifyOAuth(projectId, domain.trim());
+      if (!res.ok || !res.redirect_url) {
+        setError(res.error === "invalid_domain" ? t("integrations.shopify.errors.invalid_domain") : t("integrations.shopify.errors.generic"));
+        setBusy(false);
+        return;
+      }
+      // Hand off to Shopify's approval screen.
+      window.location.href = res.redirect_url;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("integrations.shopify.errors.generic"));
+      setBusy(false);
+    }
+  }
 
   async function handleConnect() {
     if (busy || !canSubmit) return;
@@ -111,12 +132,11 @@ export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: P
           </div>
         ) : (
           <div className="flex flex-col gap-4 p-5">
-            <p className="text-xs text-muted-foreground">{t("integrations.shopify.intro")}</p>
-            <ol className="flex flex-col gap-1.5 rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-              <li>{t("integrations.shopify.step1")}</li>
-              <li>{t("integrations.shopify.step2")}</li>
-              <li>{t("integrations.shopify.step3")}</li>
-            </ol>
+            <p className="text-xs text-muted-foreground">
+              {status.oauth_available ? t("integrations.shopify.oauthIntro") : t("integrations.shopify.intro")}
+            </p>
+
+            {/* Store domain — shared by both flows */}
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.domainLabel")}</span>
               <input
@@ -127,49 +147,83 @@ export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: P
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
               />
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.clientIdLabel")}</span>
-              <input
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                placeholder={t("integrations.shopify.clientIdPlaceholder")}
-                autoComplete="off"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.clientSecretLabel")}</span>
-              <input
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                type="password"
-                placeholder="shpss_..."
-                autoComplete="off"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-              />
-              <span className="text-[11px] text-muted-foreground">{t("integrations.shopify.secretHint")}</span>
-            </label>
-            {error && <p className="text-xs text-destructive">{error}</p>}
-            <div className="flex items-center justify-between gap-2">
-              <a
-                href="https://shopify.dev/docs/apps/build/dev-dashboard/get-api-access-tokens"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                {t("integrations.shopify.help")}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-              <button
-                type="button"
-                onClick={handleConnect}
-                disabled={busy || !canSubmit}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-              >
-                {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {t("integrations.shopify.connect")}
-              </button>
-            </div>
+
+            {/* One-click OAuth (when Fennex's Shopify app is configured) */}
+            {status.oauth_available && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleOAuth}
+                  disabled={busy || !domain.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
+                  {t("integrations.shopify.oauthConnect")}
+                </button>
+                {error && <p className="text-xs text-destructive">{error}</p>}
+                <button
+                  type="button"
+                  onClick={() => setShowManual((v) => !v)}
+                  className="self-center text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                >
+                  {showManual ? t("integrations.shopify.hideManual") : t("integrations.shopify.useManual")}
+                </button>
+              </>
+            )}
+
+            {/* Manual client-credentials flow */}
+            {showManual && (
+              <div className="flex flex-col gap-4 border-t border-border pt-4">
+                <ol className="flex flex-col gap-1.5 rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <li>{t("integrations.shopify.step1")}</li>
+                  <li>{t("integrations.shopify.step2")}</li>
+                  <li>{t("integrations.shopify.step3")}</li>
+                </ol>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.clientIdLabel")}</span>
+                  <input
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    placeholder={t("integrations.shopify.clientIdPlaceholder")}
+                    autoComplete="off"
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.clientSecretLabel")}</span>
+                  <input
+                    value={clientSecret}
+                    onChange={(e) => setClientSecret(e.target.value)}
+                    type="password"
+                    placeholder="shpss_..."
+                    autoComplete="off"
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  />
+                  <span className="text-[11px] text-muted-foreground">{t("integrations.shopify.secretHint")}</span>
+                </label>
+                {!status.oauth_available && error && <p className="text-xs text-destructive">{error}</p>}
+                <div className="flex items-center justify-between gap-2">
+                  <a
+                    href="https://shopify.dev/docs/apps/build/dev-dashboard/get-api-access-tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  >
+                    {t("integrations.shopify.help")}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleConnect}
+                    disabled={busy || !canSubmit}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {t("integrations.shopify.connect")}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

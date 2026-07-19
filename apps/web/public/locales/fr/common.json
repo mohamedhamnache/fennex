@@ -1651,7 +1651,11 @@
         "invalid_domain": "Ce domaine de boutique ne semble pas valide.",
         "missing_credentials": "Saisissez le Client ID et le secret client.",
         "generic": "Connexion à Shopify impossible. Réessayez."
-      }
+      },
+      "oauthIntro": "Connectez votre boutique Shopify en un clic — approuvez Fennex sur Shopify et c'est fait.",
+      "oauthConnect": "Se connecter avec Shopify",
+      "useManual": "Connecter manuellement avec des identifiants API",
+      "hideManual": "Masquer la configuration manuelle"
     }
   },
   "productTab": {

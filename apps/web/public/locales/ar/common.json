@@ -1651,7 +1651,11 @@
         "invalid_domain": "لا يبدو هذا نطاق متجر صالحًا.",
         "missing_credentials": "أدخل Client ID وسر العميل.",
         "generic": "تعذّر الاتصال بـ Shopify. حاول مجددًا."
-      }
+      },
+      "oauthIntro": "اربط متجر Shopify بنقرة واحدة — وافق على Fennex في Shopify وانتهيت.",
+      "oauthConnect": "الاتصال عبر Shopify",
+      "useManual": "الاتصال يدويًا ببيانات اعتماد API",
+      "hideManual": "إخفاء الإعداد اليدوي"
     }
   },
   "productTab": {

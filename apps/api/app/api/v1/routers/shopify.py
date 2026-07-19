@@ -1,8 +1,10 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.services import shopify_service
 
@@ -24,6 +26,18 @@ class ShopifyStatus(BaseModel):
     shop_domain: str | None = None
     shop_name: str | None = None
     last_tested_at: str | None = None
+    oauth_available: bool = False
+
+
+class ShopifyOAuthStartRequest(BaseModel):
+    project_id: uuid.UUID
+    shop_domain: str
+
+
+class ShopifyOAuthStartResult(BaseModel):
+    ok: bool
+    error: str | None = None
+    redirect_url: str | None = None
 
 
 class ShopifyConnectResult(BaseModel):
@@ -91,6 +105,52 @@ async def shopify_connect(body: ShopifyConnectRequest, current_user: CurrentUser
 @router.delete("/disconnect", status_code=204)
 async def shopify_disconnect(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
     await shopify_service.disconnect(project_id, current_user.org_id, db)
+
+
+# ── OAuth "Connect with Shopify" (one-click install) ─────────────────────────
+
+@router.post("/oauth/start", response_model=ShopifyOAuthStartResult)
+async def shopify_oauth_start(body: ShopifyOAuthStartRequest, current_user: CurrentUser):
+    """Return the Shopify authorize/install URL the merchant is redirected to."""
+    if not shopify_service.oauth_configured():
+        return {"ok": False, "error": "oauth_not_configured"}
+    domain = shopify_service._normalize_domain(body.shop_domain)
+    if not domain:
+        return {"ok": False, "error": "invalid_domain"}
+    # state ties the callback back to this project/org; the callback verifies
+    # Shopify's HMAC for authenticity. Only URL-safe chars (UUIDs + dot).
+    state = f"{body.project_id}.{current_user.org_id}"
+    return {"ok": True, "redirect_url": shopify_service.build_authorize_url(domain, state)}
+
+
+@router.get("/oauth/callback")
+async def shopify_oauth_callback(request: Request, db: DB):
+    """Shopify redirects the merchant here after they approve the install."""
+    params = dict(request.query_params)
+    fail = f"{settings.FRONTEND_URL}/integrations?shopify_error="
+
+    shop = shopify_service._normalize_domain(params.get("shop", ""))
+    code = params.get("code")
+    state = params.get("state", "")
+    if not shop or not code or "." not in state:
+        return RedirectResponse(f"{fail}missing_params")
+    if not shopify_service.verify_oauth_hmac(params):
+        return RedirectResponse(f"{fail}bad_hmac")
+
+    project_part, _, org_part = state.partition(".")
+    try:
+        project_id = uuid.UUID(project_part)
+        org_id = uuid.UUID(org_part)
+    except ValueError:
+        return RedirectResponse(f"{fail}invalid_state")
+
+    dest = f"{settings.FRONTEND_URL}/{project_id}/integrations"
+    try:
+        access_token = await shopify_service.exchange_oauth_code(shop, code)
+    except Exception:  # noqa: BLE001
+        return RedirectResponse(f"{dest}?shopify_error=token_exchange_failed")
+    await shopify_service.store_oauth_connection(project_id, org_id, shop, access_token, db)
+    return RedirectResponse(f"{dest}?shopify=connected")
 
 
 @router.get("/products", response_model=list[StoreProductOut])

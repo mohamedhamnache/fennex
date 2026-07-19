@@ -8,10 +8,13 @@ access token, caching it and re-minting before it expires. A directly-supplied
 legacy Admin API token is still accepted and used as-is (never refreshed).
 All secrets and tokens are encrypted at rest.
 """
+import hashlib
+import hmac
 import logging
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 import httpx
 from sqlalchemy import select
@@ -20,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 from app.agents.registry import agent_persona
+from app.core.config import settings
 from app.core.security import encrypt_value, decrypt_value
 from app.models.shopify import ShopifyConnection
 from app.models.store_product import StoreProduct
@@ -124,12 +128,14 @@ async def get_connection(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSess
 async def get_status(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> dict:
     conn = await get_connection(project_id, org_id, db)
     if not conn or not conn.is_active:
-        return {"connected": False, "shop_domain": None, "shop_name": None, "last_tested_at": None}
+        return {"connected": False, "shop_domain": None, "shop_name": None,
+                "last_tested_at": None, "oauth_available": oauth_configured()}
     return {
         "connected": True,
         "shop_domain": conn.shop_domain,
         "shop_name": conn.shop_name,
         "last_tested_at": conn.last_tested_at,
+        "oauth_available": oauth_configured(),
     }
 
 
@@ -200,6 +206,80 @@ async def connect(
     conn.last_test_ok = True
     await db.commit()
     return {"ok": True, "shop_domain": domain, "shop_name": conn.shop_name}
+
+
+# ── OAuth "Connect with Shopify" (single Fennex-owned app) ───────────────────
+
+def oauth_configured() -> bool:
+    return bool(settings.SHOPIFY_APP_CLIENT_ID and settings.SHOPIFY_APP_CLIENT_SECRET)
+
+
+def build_authorize_url(shop: str, state: str) -> str:
+    """The Shopify install/authorize URL the merchant is redirected to."""
+    return (
+        f"https://{shop}/admin/oauth/authorize"
+        f"?client_id={settings.SHOPIFY_APP_CLIENT_ID}"
+        f"&scope={quote(settings.SHOPIFY_APP_SCOPES)}"
+        f"&redirect_uri={quote(settings.SHOPIFY_REDIRECT_URI, safe='')}"
+        f"&state={quote(state)}"
+    )
+
+
+def verify_oauth_hmac(params: dict) -> bool:
+    """Verify the HMAC Shopify appends to the callback, per the OAuth spec:
+    drop hmac/signature, sort the rest, join as key=value with '&', HMAC-SHA256."""
+    provided = params.get("hmac", "")
+    if not provided:
+        return False
+    message = "&".join(
+        f"{k}={v}" for k, v in sorted(params.items()) if k not in ("hmac", "signature")
+    )
+    digest = hmac.new(
+        settings.SHOPIFY_APP_CLIENT_SECRET.encode(), message.encode(), hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(digest, provided)
+
+
+async def exchange_oauth_code(shop: str, code: str) -> str:
+    """Authorization-code grant → a permanent offline access token."""
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            f"https://{shop}/admin/oauth/access_token",
+            json={
+                "client_id": settings.SHOPIFY_APP_CLIENT_ID,
+                "client_secret": settings.SHOPIFY_APP_CLIENT_SECRET,
+                "code": code,
+            },
+        )
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+async def store_oauth_connection(
+    project_id: uuid.UUID, org_id: uuid.UUID, shop: str, access_token: str, db: AsyncSession
+) -> None:
+    """Persist an OAuth (offline-token) connection — no client creds, never expires."""
+    shop_name = shop
+    try:
+        info = await _fetch_shop(shop, access_token)
+        shop_name = info.get("name") or shop
+    except Exception:  # noqa: BLE001 — name is best-effort
+        pass
+    now = datetime.now(timezone.utc).isoformat()
+    conn = await get_connection(project_id, org_id, db)
+    if conn is None:
+        conn = ShopifyConnection(org_id=org_id, project_id=project_id)
+        db.add(conn)
+    conn.shop_domain = shop
+    conn.client_id = None
+    conn.client_secret_encrypted = None
+    conn.access_token_encrypted = encrypt_value(access_token)
+    conn.token_expires_at = None  # offline token: permanent
+    conn.shop_name = shop_name
+    conn.is_active = True
+    conn.last_tested_at = now
+    conn.last_test_ok = True
+    await db.commit()
 
 
 async def disconnect(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> None:

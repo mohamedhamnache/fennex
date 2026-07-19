@@ -1716,7 +1716,11 @@
         "invalid_domain": "That doesn't look like a valid store domain.",
         "missing_credentials": "Enter the Client ID and Client secret.",
         "generic": "Couldn't connect to Shopify. Try again."
-      }
+      },
+      "oauthIntro": "Connect your Shopify store in one click — approve Fennex on Shopify and you're done.",
+      "oauthConnect": "Connect with Shopify",
+      "useManual": "Connect manually with API credentials",
+      "hideManual": "Hide manual setup"
     }
   },
   "productTab": {

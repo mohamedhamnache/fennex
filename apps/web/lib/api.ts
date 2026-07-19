@@ -2159,6 +2159,7 @@ export interface ShopifyStatus {
   shop_domain: string | null;
   shop_name: string | null;
   last_tested_at?: string | null;
+  oauth_available?: boolean;
 }
 export interface ShopifyConnectResult {
   ok: boolean;
@@ -2169,6 +2170,15 @@ export interface ShopifyConnectResult {
 }
 export async function getShopifyStatus(projectId: string): Promise<ShopifyStatus> {
   return apiClient.get<ShopifyStatus>(`/shopify/status?project_id=${projectId}`);
+}
+export async function startShopifyOAuth(
+  projectId: string,
+  shopDomain: string,
+): Promise<{ ok: boolean; error?: string | null; redirect_url?: string | null }> {
+  return apiClient.post<{ ok: boolean; error?: string | null; redirect_url?: string | null }>(
+    "/shopify/oauth/start",
+    { project_id: projectId, shop_domain: shopDomain },
+  );
 }
 export async function connectShopify(
   projectId: string,

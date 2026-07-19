@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     LINKEDIN_CLIENT_SECRET: str = ""
     LINKEDIN_REDIRECT_URI: str = "http://localhost:8000/api/v1/social/linkedin/callback"
 
+    # Shopify OAuth ("Connect with Shopify" one-click install — a single Fennex-owned app)
+    SHOPIFY_APP_CLIENT_ID: str = ""
+    SHOPIFY_APP_CLIENT_SECRET: str = ""
+    SHOPIFY_APP_SCOPES: str = "read_products,write_products,write_files"
+    SHOPIFY_REDIRECT_URI: str = "http://localhost:8000/api/v1/shopify/oauth/callback"
+
     # Frontend base URL (used for OAuth redirects back to the app)
     FRONTEND_URL: str = "http://localhost:3001"
 
