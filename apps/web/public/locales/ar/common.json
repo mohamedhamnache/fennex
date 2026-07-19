@@ -1648,7 +1648,7 @@
       "connectedHint": "يولّد Fennex رموز هذا المتجر ويجددها تلقائيًا. الفصل يزيل بيانات الاعتماد المخزَّنة.",
       "errors": {
         "unauthorized": "رفض Shopify بيانات الاعتماد هذه. تحقق من Client ID/السر، وأن التطبيق مثبّت وفي نفس مؤسسة المتجر.",
-        "invalid_domain": "لا يبدو هذا نطاق متجر صالحًا.",
+        "invalid_domain": "استخدم نطاق ‎.myshopify.com الخاص بك (مثل your-store.myshopify.com)، وليس نطاق متجرك المخصص.",
         "missing_credentials": "أدخل Client ID وسر العميل.",
         "generic": "تعذّر الاتصال بـ Shopify. حاول مجددًا."
       },

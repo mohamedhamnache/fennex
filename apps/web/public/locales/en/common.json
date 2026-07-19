@@ -1713,7 +1713,7 @@
       "connectedHint": "Fennex mints and refreshes access tokens for this store automatically. Disconnecting removes the stored credentials.",
       "errors": {
         "unauthorized": "Shopify rejected these credentials. Check the Client ID/Secret, that the app is installed, and that it's in the same org as the store.",
-        "invalid_domain": "That doesn't look like a valid store domain.",
+        "invalid_domain": "Use your .myshopify.com domain (e.g. your-store.myshopify.com), not your custom storefront domain.",
         "missing_credentials": "Enter the Client ID and Client secret.",
         "generic": "Couldn't connect to Shopify. Try again."
       },

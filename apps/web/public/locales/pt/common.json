@@ -1648,7 +1648,7 @@
       "connectedHint": "O Fennex gera e renova os tokens desta loja automaticamente. Desconectar remove as credenciais armazenadas.",
       "errors": {
         "unauthorized": "A Shopify rejeitou estas credenciais. Verifique o Client ID/segredo, se o app está instalado e na mesma organização da loja.",
-        "invalid_domain": "Esse domínio de loja não parece válido.",
+        "invalid_domain": "Use seu domínio .myshopify.com (ex. sua-loja.myshopify.com), não seu domínio de loja personalizado.",
         "missing_credentials": "Informe o Client ID e o segredo do cliente.",
         "generic": "Não foi possível conectar à Shopify. Tente de novo."
       },

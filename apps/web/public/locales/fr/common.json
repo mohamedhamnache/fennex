@@ -1648,7 +1648,7 @@
       "connectedHint": "Fennex génère et renouvelle automatiquement les jetons pour cette boutique. La déconnexion supprime les identifiants stockés.",
       "errors": {
         "unauthorized": "Shopify a rejeté ces identifiants. Vérifiez le Client ID/secret, que l'app est installée et dans la même organisation que la boutique.",
-        "invalid_domain": "Ce domaine de boutique ne semble pas valide.",
+        "invalid_domain": "Utilisez votre domaine .myshopify.com (ex. votre-boutique.myshopify.com), pas votre domaine de vitrine personnalisé.",
         "missing_credentials": "Saisissez le Client ID et le secret client.",
         "generic": "Connexion à Shopify impossible. Réessayez."
       },

@@ -1648,7 +1648,7 @@
       "connectedHint": "Fennex erzeugt und erneuert die Tokens für diesen Store automatisch. Beim Trennen werden die gespeicherten Anmeldedaten entfernt.",
       "errors": {
         "unauthorized": "Shopify hat diese Anmeldedaten abgelehnt. Prüfe Client ID/Secret, ob die App installiert und in derselben Organisation wie der Store ist.",
-        "invalid_domain": "Das sieht nicht nach einer gültigen Store-Domain aus.",
+        "invalid_domain": "Nutze deine .myshopify.com-Domain (z. B. dein-store.myshopify.com), nicht deine eigene Storefront-Domain.",
         "missing_credentials": "Gib Client ID und Client Secret ein.",
         "generic": "Verbindung zu Shopify fehlgeschlagen. Versuche es erneut."
       },

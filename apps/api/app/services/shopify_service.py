@@ -47,15 +47,25 @@ def _strip_html(html: str | None) -> str:
 
 
 def _normalize_domain(raw: str) -> str:
-    """Accept 'myshop', 'myshop.myshopify.com' or a full URL → 'myshop.myshopify.com'."""
+    """Resolve a store's *.myshopify.com admin domain from user input.
+
+    Accepts a bare handle ('myshop'), the full admin domain
+    ('myshop.myshopify.com'), or a URL to either. A custom storefront domain
+    (e.g. 'www.example.com') cannot be mapped to the myshopify.com admin domain
+    programmatically, so it is rejected (returns '') — OAuth and the Admin API
+    only work on the *.myshopify.com domain.
+    """
     d = (raw or "").strip().lower()
     d = re.sub(r"^https?://", "", d)
     d = d.split("/")[0].strip()
+    d = re.sub(r"^www\.", "", d)
     if not d:
         return ""
-    if not d.endswith(".myshopify.com"):
-        d = f"{d.split('.myshopify.com')[0]}.myshopify.com"
-    return d
+    if d.endswith(".myshopify.com"):
+        return d
+    if "." not in d:  # bare store handle
+        return f"{d}.myshopify.com"
+    return ""  # a custom domain we can't resolve — caller reports invalid_domain
 
 
 async def _fetch_shop(domain: str, token: str) -> dict:
