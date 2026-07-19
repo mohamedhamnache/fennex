@@ -1523,6 +1523,12 @@
     "actions": {
       "campaigns": "Campanhas",
       "seo": "Central de SEO"
+    },
+    "northStar": {
+      "brand_reach": "Alcance orgânico da marca (impressões)"
+    },
+    "focus": {
+      "company": "Temas da marca a reforçar"
     }
   },
   "integrations": {

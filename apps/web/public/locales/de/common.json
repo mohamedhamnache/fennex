@@ -1523,6 +1523,12 @@
     "actions": {
       "campaigns": "Kampagnen",
       "seo": "SEO-Hub"
+    },
+    "northStar": {
+      "brand_reach": "Organische Markenreichweite (Impressionen)"
+    },
+    "focus": {
+      "company": "Markenthemen zum Ausbauen"
     }
   },
   "integrations": {

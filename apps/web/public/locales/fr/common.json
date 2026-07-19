@@ -1523,6 +1523,12 @@
     "actions": {
       "campaigns": "Campagnes",
       "seo": "Pôle SEO"
+    },
+    "northStar": {
+      "brand_reach": "Portée organique de marque (impressions)"
+    },
+    "focus": {
+      "company": "Sujets de marque à renforcer"
     }
   },
   "integrations": {

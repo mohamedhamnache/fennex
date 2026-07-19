@@ -79,7 +79,8 @@
     "northStar": {
       "clicks": "Audience reached (clicks)",
       "buyer_intent_clicks": "Buyer-intent clicks",
-      "niche_visibility": "Niche visibility (impressions)"
+      "niche_visibility": "Niche visibility (impressions)",
+      "brand_reach": "Organic brand reach (impressions)"
     },
     "secondary": {
       "impressions": "Impressions",
@@ -93,7 +94,8 @@
     "focus": {
       "creator": "Content ideas with demand",
       "ecommerce": "Commercial opportunities",
-      "freelancer": "Topics to target"
+      "freelancer": "Topics to target",
+      "company": "Brand topics to reinforce"
     },
     "actions": {
       "keywords": "Run keyword research",

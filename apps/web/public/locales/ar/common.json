@@ -1523,6 +1523,12 @@
     "actions": {
       "campaigns": "الحملات",
       "seo": "مركز السيو"
+    },
+    "northStar": {
+      "brand_reach": "وصول العلامة العضوي (مرات الظهور)"
+    },
+    "focus": {
+      "company": "مواضيع العلامة التي يجب تعزيزها"
     }
   },
   "integrations": {

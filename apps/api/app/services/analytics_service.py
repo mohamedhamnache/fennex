@@ -586,7 +586,7 @@ _BUYER_INTENT = {"commercial", "comparison"}
 
 
 async def get_persona_home(project_id, org_id, persona: str, db) -> PersonaHome:
-    if persona not in ("creator", "ecommerce", "freelancer"):
+    if persona not in ("creator", "ecommerce", "freelancer", "company"):
         persona = "creator"
 
     ov = await get_overview(project_id, org_id, "28d", db)
@@ -637,6 +637,33 @@ async def get_persona_home(project_id, org_id, persona: str, db) -> PersonaHome:
             focus=FocusList(
                 title="Commercial opportunities",
                 items=[FocusItem(label=o.query, detail=f"pos {o.position:.1f} · +{o.potential_clicks} potential") for o in chosen],
+            ),
+        )
+
+    if persona == "company":
+        market = await get_market_insights(project_id, org_id, db)
+        traffic = await get_traffic(project_id, org_id, "28d", db)
+        opps = await get_opportunities(project_id, org_id, db)
+        # Brand topics to reinforce: sizable clusters ranking outside the top 3
+        reinforce = sorted(
+            [c for c in market.clusters if c.avg_position > 3],
+            key=lambda c: (c.query_count, -c.avg_position), reverse=True,
+        )[:5]
+        return PersonaHome(
+            persona=persona,
+            north_star=NorthStar(
+                key="brand_reach", label="Organic brand reach (impressions)", value=float(market.total_impressions),
+                change=ov.impressions_change, trend=[t.impressions for t in traffic],
+                context=f"across {len(market.clusters)} brand topics",
+            ),
+            secondary=[
+                SecondaryMetric(key="clicks", label="Clicks", value=float(ov.clicks), change=ov.clicks_change),
+                SecondaryMetric(key="ctr", label="Avg CTR", value=round(ov.ctr * 100, 2), unit="%", change=ov.ctr_change),
+                SecondaryMetric(key="position", label="Avg position", value=round(ov.avg_position, 1), change=ov.position_change, invert_change=True),
+            ],
+            focus=FocusList(
+                title="Brand topics to reinforce",
+                items=[FocusItem(label=c.topic, detail=f"{c.query_count} queries · avg pos {c.avg_position}") for c in reinforce],
             ),
         )
 
