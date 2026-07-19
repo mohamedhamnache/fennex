@@ -1633,21 +1633,23 @@
     },
     "shopify": {
       "title": "Shopify verbinden",
-      "intro": "Verbinde deinen Shopify-Store mit einem Custom-App-Admin-API-Token, damit Fennex Produkte synchronisieren und Produktbilder und Texte zurück in deinen Store veröffentlichen kann.",
-      "step1": "1. Gehe im Shopify-Admin zu Einstellungen → Apps → Apps entwickeln → App erstellen.",
-      "step2": "2. Erteile Admin-API-Berechtigungen (Produkte, Dateien) und installiere die App.",
-      "step3": "3. Kopiere unten das Admin-API-Zugriffstoken und deine Store-Domain.",
+      "intro": "Shopify nutzt jetzt Dev-Dashboard-Apps. Erstelle eine, installiere sie in deinem Store und füge Client ID + Secret ein — Fennex erzeugt und erneuert Access-Tokens automatisch.",
+      "step1": "1. Erstelle auf dev.shopify.com eine App in derselben Organisation wie dein Store; füge Admin-API-Berechtigungen (Produkte, Dateien) hinzu.",
+      "step2": "2. Wähle die Distribution und installiere die App in deinem Store.",
+      "step3": "3. Kopiere Client ID und Client Secret aus den API-Anmeldedaten der App.",
       "domainLabel": "Store-Domain",
-      "tokenLabel": "Admin-API-Zugriffstoken",
-      "tokenHint": "Beginnt mit shpat_. Verschlüsselt gespeichert; wird nie erneut angezeigt.",
+      "clientIdLabel": "Client ID",
+      "clientIdPlaceholder": "z. B. 1a2b3c4d...",
+      "clientSecretLabel": "Client Secret",
+      "secretHint": "Beginnt mit shpss_. Verschlüsselt gespeichert; nur zur Token-Erzeugung genutzt.",
       "connect": "Store verbinden",
       "disconnect": "Trennen",
-      "help": "So erstellst du eine Custom-App",
-      "connectedHint": "Fennex kann jetzt in diesen Store veröffentlichen. Beim Trennen wird das gespeicherte Token entfernt.",
+      "help": "So erhältst du API-Access-Tokens",
+      "connectedHint": "Fennex erzeugt und erneuert die Tokens für diesen Store automatisch. Beim Trennen werden die gespeicherten Anmeldedaten entfernt.",
       "errors": {
-        "unauthorized": "Shopify hat das Token abgelehnt. Prüfe Token und Berechtigungen.",
+        "unauthorized": "Shopify hat diese Anmeldedaten abgelehnt. Prüfe Client ID/Secret, ob die App installiert und in derselben Organisation wie der Store ist.",
         "invalid_domain": "Das sieht nicht nach einer gültigen Store-Domain aus.",
-        "missing_token": "Füge dein Admin-API-Zugriffstoken ein.",
+        "missing_credentials": "Gib Client ID und Client Secret ein.",
         "generic": "Verbindung zu Shopify fehlgeschlagen. Versuche es erneut."
       }
     }

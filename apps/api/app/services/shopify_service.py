@@ -1,13 +1,16 @@
 """Shopify store connection: connect, verify, status, disconnect.
 
-Uses a custom-app Admin API access token (no Partner-app OAuth). The store
-admin creates a custom app in Shopify admin, grants the needed scopes, and
-pastes the shop domain + Admin API access token. We verify the token against
-the Admin API and persist it encrypted.
+Shopify deprecated permanent admin custom-app tokens on 2026-01-01. New Dev
+Dashboard apps use the client-credentials grant: the merchant supplies the
+app's Client ID + Client Secret (same Shopify org as the store, app installed),
+and we exchange them at /admin/oauth/access_token for a short-lived (~24h)
+access token, caching it and re-minting before it expires. A directly-supplied
+legacy Admin API token is still accepted and used as-is (never refreshed).
+All secrets and tokens are encrypted at rest.
 """
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from sqlalchemy import select
@@ -20,6 +23,8 @@ from app.models.store_product import StoreProduct
 from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 
 SHOPIFY_API_VERSION = "2024-01"
+# Re-mint the token once it's within this window of expiry.
+_TOKEN_REFRESH_MARGIN = timedelta(minutes=60)
 
 # Preference order for the copywriter (Dune). Cheap models suffice for a product blurb.
 _COPY_PROVIDERS = [("anthropic", "claude-haiku-4-5-20251001"), ("openai", "gpt-4o-mini")]
@@ -57,6 +62,52 @@ async def _fetch_shop(domain: str, token: str) -> dict:
     return resp.json().get("shop", {})
 
 
+async def _exchange_token(domain: str, client_id: str, client_secret: str) -> tuple[str, int]:
+    """Client-credentials grant → (access_token, expires_in seconds). Raises on failure."""
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            f"https://{domain}/admin/oauth/access_token",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+        )
+    resp.raise_for_status()
+    body = resp.json()
+    return body["access_token"], int(body.get("expires_in", 86399))
+
+
+def _needs_refresh(expires_at: str | None) -> bool:
+    """A client-credentials token nearing expiry needs a refresh. A legacy token
+    (no expiry recorded) never does."""
+    if not expires_at:
+        return False
+    try:
+        exp = datetime.fromisoformat(expires_at)
+    except ValueError:
+        return True
+    return datetime.now(timezone.utc) >= exp - _TOKEN_REFRESH_MARGIN
+
+
+async def _ensure_token(conn: ShopifyConnection, db: AsyncSession) -> str | None:
+    """Return a currently-valid access token, re-minting via client credentials
+    when the cached one is missing or about to expire."""
+    has_client_creds = bool(conn.client_id and conn.client_secret_encrypted)
+    if has_client_creds and (not conn.access_token_encrypted or _needs_refresh(conn.token_expires_at)):
+        secret = decrypt_value(conn.client_secret_encrypted)
+        try:
+            token, expires_in = await _exchange_token(conn.shop_domain, conn.client_id, secret)
+        except Exception:  # noqa: BLE001 — fall back to any cached token
+            return decrypt_value(conn.access_token_encrypted) if conn.access_token_encrypted else None
+        conn.access_token_encrypted = encrypt_value(token)
+        conn.token_expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+        await db.commit()
+        return token
+    return decrypt_value(conn.access_token_encrypted) if conn.access_token_encrypted else None
+
+
 async def get_connection(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> ShopifyConnection | None:
     result = await db.execute(
         select(ShopifyConnection).where(
@@ -83,24 +134,49 @@ async def connect(
     project_id: uuid.UUID,
     org_id: uuid.UUID,
     shop_domain: str,
-    access_token: str,
     db: AsyncSession,
+    *,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    access_token: str | None = None,
 ) -> dict:
-    """Validate credentials against the Admin API and upsert the connection."""
+    """Establish a connection. Prefers the client-credentials app (Client ID +
+    Secret); accepts a legacy Admin API token as a fallback. Validates against
+    the store and upserts, storing secrets encrypted."""
     domain = _normalize_domain(shop_domain)
-    token = (access_token or "").strip()
     if not domain:
         return {"ok": False, "error": "invalid_domain"}
-    if not token:
-        return {"ok": False, "error": "missing_token"}
 
+    cid = (client_id or "").strip()
+    csecret = (client_secret or "").strip()
+    token = (access_token or "").strip()
+    expires_at: str | None = None
+    using_client_creds = bool(cid and csecret)
+
+    if using_client_creds:
+        # The exchange itself proves the credentials + org/install are valid.
+        try:
+            token, expires_in = await _exchange_token(domain, cid, csecret)
+        except httpx.HTTPStatusError as e:
+            code = e.response.status_code
+            return {"ok": False, "error": "unauthorized" if code in (400, 401, 403) else f"http_{code}"}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+        expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+    elif not token:
+        return {"ok": False, "error": "missing_credentials"}
+
+    # Read the shop name (best-effort). For a legacy token this also validates it;
+    # for client creds the exchange already validated, so a scope 403 is tolerated.
+    shop: dict = {}
     try:
         shop = await _fetch_shop(domain, token)
     except httpx.HTTPStatusError as e:
-        code = e.response.status_code
-        return {"ok": False, "error": "unauthorized" if code in (401, 403) else f"http_{code}"}
-    except Exception as e:  # noqa: BLE001 — surface a clean message to the client
-        return {"ok": False, "error": str(e)}
+        if e.response.status_code in (401, 403) and not using_client_creds:
+            return {"ok": False, "error": "unauthorized"}
+    except Exception as e:  # noqa: BLE001
+        if not using_client_creds:
+            return {"ok": False, "error": str(e)}
 
     now = datetime.now(timezone.utc).isoformat()
     conn = await get_connection(project_id, org_id, db)
@@ -108,7 +184,10 @@ async def connect(
         conn = ShopifyConnection(org_id=org_id, project_id=project_id)
         db.add(conn)
     conn.shop_domain = domain
+    conn.client_id = cid or None
+    conn.client_secret_encrypted = encrypt_value(csecret) if csecret else None
     conn.access_token_encrypted = encrypt_value(token)
+    conn.token_expires_at = expires_at
     conn.shop_name = shop.get("name") or domain
     conn.is_active = True
     conn.last_tested_at = now
@@ -125,11 +204,15 @@ async def disconnect(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession)
 
 
 async def get_credentials(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> tuple[str, str] | None:
-    """Return (shop_domain, access_token) for an active connection, decrypted, or None."""
+    """Return (shop_domain, valid_access_token) for an active connection, refreshing
+    the token via client credentials when needed, or None."""
     conn = await get_connection(project_id, org_id, db)
     if not conn or not conn.is_active:
         return None
-    return conn.shop_domain, decrypt_value(conn.access_token_encrypted)
+    token = await _ensure_token(conn, db)
+    if not token:
+        return None
+    return conn.shop_domain, token
 
 
 def _parse_product(p: dict) -> dict:

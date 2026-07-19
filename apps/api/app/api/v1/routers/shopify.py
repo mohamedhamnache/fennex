@@ -12,7 +12,11 @@ router = APIRouter()
 class ShopifyConnectRequest(BaseModel):
     project_id: uuid.UUID
     shop_domain: str
-    access_token: str
+    # New 2026 Dev Dashboard model: client-credentials app
+    client_id: str | None = None
+    client_secret: str | None = None
+    # Legacy admin custom-app token (still accepted if a store has one)
+    access_token: str | None = None
 
 
 class ShopifyStatus(BaseModel):
@@ -76,7 +80,10 @@ async def shopify_status(project_id: uuid.UUID, current_user: CurrentUser, db: D
 @router.post("/connect", response_model=ShopifyConnectResult)
 async def shopify_connect(body: ShopifyConnectRequest, current_user: CurrentUser, db: DB):
     return await shopify_service.connect(
-        body.project_id, current_user.org_id, body.shop_domain, body.access_token, db
+        body.project_id, current_user.org_id, body.shop_domain, db,
+        client_id=body.client_id,
+        client_secret=body.client_secret,
+        access_token=body.access_token,
     )
 
 

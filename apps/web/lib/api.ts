@@ -2172,12 +2172,14 @@ export async function getShopifyStatus(projectId: string): Promise<ShopifyStatus
 export async function connectShopify(
   projectId: string,
   shopDomain: string,
-  accessToken: string,
+  clientId: string,
+  clientSecret: string,
 ): Promise<ShopifyConnectResult> {
   return apiClient.post<ShopifyConnectResult>("/shopify/connect", {
     project_id: projectId,
     shop_domain: shopDomain,
-    access_token: accessToken,
+    client_id: clientId,
+    client_secret: clientSecret,
   });
 }
 export async function disconnectShopify(projectId: string): Promise<void> {

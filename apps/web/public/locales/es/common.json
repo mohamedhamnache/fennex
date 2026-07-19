@@ -1633,21 +1633,23 @@
     },
     "shopify": {
       "title": "Conectar Shopify",
-      "intro": "Conecta tu tienda Shopify con un token de API Admin de app personalizada para que Fennex sincronice productos y publique imágenes y textos en tu tienda.",
-      "step1": "1. En el admin de Shopify, ve a Configuración → Apps → Desarrollar apps → Crear una app.",
-      "step2": "2. Concede los permisos de la API Admin (productos, archivos) e instala la app.",
-      "step3": "3. Copia el token de acceso de la API Admin y el dominio de tu tienda abajo.",
+      "intro": "Shopify ahora usa apps del Dev Dashboard. Crea una, instálala en tu tienda y pega su Client ID + secreto — Fennex genera y renueva los tokens automáticamente.",
+      "step1": "1. En dev.shopify.com, crea una app en la misma organización que tu tienda; añade permisos de la API Admin (productos, archivos).",
+      "step2": "2. Elige la distribución e instala la app en tu tienda.",
+      "step3": "3. Copia el Client ID y el secreto de cliente desde las credenciales de la API de la app.",
       "domainLabel": "Dominio de la tienda",
-      "tokenLabel": "Token de acceso API Admin",
-      "tokenHint": "Empieza por shpat_. Se guarda cifrado; no se vuelve a mostrar.",
+      "clientIdLabel": "Client ID",
+      "clientIdPlaceholder": "p. ej. 1a2b3c4d...",
+      "clientSecretLabel": "Secreto de cliente",
+      "secretHint": "Empieza por shpss_. Se guarda cifrado; solo se usa para generar tokens de acceso.",
       "connect": "Conectar tienda",
       "disconnect": "Desconectar",
-      "help": "Cómo crear una app personalizada",
-      "connectedHint": "Fennex ya puede publicar en esta tienda. Al desconectar se elimina el token guardado.",
+      "help": "Cómo obtener tokens de acceso de la API",
+      "connectedHint": "Fennex genera y renueva los tokens de esta tienda automáticamente. Al desconectar se eliminan las credenciales guardadas.",
       "errors": {
-        "unauthorized": "Shopify rechazó el token. Revisa el token y sus permisos.",
+        "unauthorized": "Shopify rechazó estas credenciales. Revisa el Client ID/secreto, que la app esté instalada y en la misma organización que la tienda.",
         "invalid_domain": "Ese dominio de tienda no parece válido.",
-        "missing_token": "Pega tu token de acceso de la API Admin.",
+        "missing_credentials": "Introduce el Client ID y el secreto de cliente.",
         "generic": "No se pudo conectar con Shopify. Inténtalo de nuevo."
       }
     }

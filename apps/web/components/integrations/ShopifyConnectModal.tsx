@@ -13,21 +13,24 @@ interface Props {
 }
 
 /** Known backend error codes → i18n key suffix under integrations.shopify.errors */
-const ERROR_KEYS = new Set(["unauthorized", "invalid_domain", "missing_token"]);
+const ERROR_KEYS = new Set(["unauthorized", "invalid_domain", "missing_credentials"]);
 
 export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: Props) {
   const { t } = useTranslation();
   const [domain, setDomain] = useState(status.shop_domain ?? "");
-  const [token, setToken] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canSubmit = domain.trim() && clientId.trim() && clientSecret.trim();
+
   async function handleConnect() {
-    if (busy || !domain.trim() || !token.trim()) return;
+    if (busy || !canSubmit) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await connectShopify(projectId, domain.trim(), token.trim());
+      const res = await connectShopify(projectId, domain.trim(), clientId.trim(), clientSecret.trim());
       if (!res.ok) {
         const code = res.error ?? "";
         setError(ERROR_KEYS.has(code) ? t(`integrations.shopify.errors.${code}`) : t("integrations.shopify.errors.generic"));
@@ -120,21 +123,31 @@ export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: P
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.tokenLabel")}</span>
+              <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.clientIdLabel")}</span>
               <input
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                type="password"
-                placeholder="shpat_..."
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder={t("integrations.shopify.clientIdPlaceholder")}
                 autoComplete="off"
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
               />
-              <span className="text-[11px] text-muted-foreground">{t("integrations.shopify.tokenHint")}</span>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-foreground">{t("integrations.shopify.clientSecretLabel")}</span>
+              <input
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                type="password"
+                placeholder="shpss_..."
+                autoComplete="off"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              />
+              <span className="text-[11px] text-muted-foreground">{t("integrations.shopify.secretHint")}</span>
             </label>
             {error && <p className="text-xs text-destructive">{error}</p>}
             <div className="flex items-center justify-between gap-2">
               <a
-                href="https://help.shopify.com/en/manual/apps/app-types/custom-apps"
+                href="https://shopify.dev/docs/apps/build/dev-dashboard/get-api-access-tokens"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -145,7 +158,7 @@ export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: P
               <button
                 type="button"
                 onClick={handleConnect}
-                disabled={busy || !domain.trim() || !token.trim()}
+                disabled={busy || !canSubmit}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
                 {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

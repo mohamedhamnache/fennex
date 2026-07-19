@@ -7,11 +7,18 @@ from app.models.base import TimestampMixin
 
 
 class ShopifyConnection(Base, TimestampMixin):
-    """A project's connection to a Shopify store via a custom-app Admin API token.
+    """A project's connection to a Shopify store.
 
-    Uses the store admin's own custom-app access token (no Partner-app OAuth):
-    the token and shop domain are all that's needed to call the Admin API. The
-    token is encrypted at rest with the app's Fernet key.
+    Shopify deprecated permanent Admin API tokens (shpat_) for admin-created
+    custom apps on 2026-01-01. New Dev Dashboard apps use the client-credentials
+    grant: we store the app's Client ID + Client Secret and exchange them for a
+    short-lived (~24h) access token on demand, caching it until it nears expiry.
+
+    A directly-supplied Admin API token (legacy admin custom apps that still
+    have one) is also supported: it is stored as access_token with no client
+    credentials and never refreshed.
+
+    Secrets and tokens are encrypted at rest with the app's Fernet key.
     """
     __tablename__ = "shopify_connections"
     __table_args__ = (UniqueConstraint("project_id", name="uq_shopify_connection_project"),)
@@ -20,7 +27,12 @@ class ShopifyConnection(Base, TimestampMixin):
     org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     shop_domain: Mapped[str] = mapped_column(String(255), nullable=False)   # e.g. myshop.myshopify.com
-    access_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    # Client-credentials app (new 2026 model)
+    client_id: Mapped[str | None] = mapped_column(String(255))
+    client_secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    # Cached access token (from exchange, or a legacy pasted token)
+    access_token_encrypted: Mapped[str | None] = mapped_column(Text)
+    token_expires_at: Mapped[str | None] = mapped_column(String(50))        # ISO; null = never expires (legacy)
     shop_name: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_tested_at: Mapped[str | None] = mapped_column(String(50))

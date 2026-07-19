@@ -1698,21 +1698,23 @@
     },
     "shopify": {
       "title": "Connect Shopify",
-      "intro": "Connect your Shopify store with a custom-app Admin API token so Fennex can sync products and publish product shots and copy back to your store.",
-      "step1": "1. In Shopify admin, go to Settings → Apps → Develop apps → Create an app.",
-      "step2": "2. Grant Admin API scopes (products, files) and install the app.",
-      "step3": "3. Copy the Admin API access token and your store domain below.",
+      "intro": "Shopify now uses Dev Dashboard apps. Create one, install it on your store, and paste its Client ID + Secret — Fennex mints and refreshes access tokens automatically.",
+      "step1": "1. At dev.shopify.com, create an app in the same org as your store; add Admin API scopes (products, files).",
+      "step2": "2. Choose distribution and install the app on your store.",
+      "step3": "3. Copy the app's Client ID and Client secret from its API credentials.",
       "domainLabel": "Store domain",
-      "tokenLabel": "Admin API access token",
-      "tokenHint": "Starts with shpat_. Stored encrypted; never shown again.",
+      "clientIdLabel": "Client ID",
+      "clientIdPlaceholder": "e.g. 1a2b3c4d...",
+      "clientSecretLabel": "Client secret",
+      "secretHint": "Starts with shpss_. Stored encrypted; used only to mint access tokens.",
       "connect": "Connect store",
       "disconnect": "Disconnect",
-      "help": "How to create a custom app",
-      "connectedHint": "Fennex can now publish to this store. Disconnecting removes the stored token.",
+      "help": "How to get API access tokens",
+      "connectedHint": "Fennex mints and refreshes access tokens for this store automatically. Disconnecting removes the stored credentials.",
       "errors": {
-        "unauthorized": "Shopify rejected the token. Check the token and its scopes.",
+        "unauthorized": "Shopify rejected these credentials. Check the Client ID/Secret, that the app is installed, and that it's in the same org as the store.",
         "invalid_domain": "That doesn't look like a valid store domain.",
-        "missing_token": "Paste your Admin API access token.",
+        "missing_credentials": "Enter the Client ID and Client secret.",
         "generic": "Couldn't connect to Shopify. Try again."
       }
     }

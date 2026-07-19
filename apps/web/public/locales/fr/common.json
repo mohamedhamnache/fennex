@@ -1633,21 +1633,23 @@
     },
     "shopify": {
       "title": "Connecter Shopify",
-      "intro": "Connectez votre boutique Shopify avec un jeton d'API Admin d'app personnalisée pour que Fennex synchronise vos produits et republie visuels et textes dans votre boutique.",
-      "step1": "1. Dans l'admin Shopify, allez dans Paramètres → Apps → Développer des apps → Créer une app.",
-      "step2": "2. Accordez les portées de l'API Admin (produits, fichiers) et installez l'app.",
-      "step3": "3. Copiez le jeton d'accès de l'API Admin et le domaine de votre boutique ci-dessous.",
+      "intro": "Shopify utilise désormais les apps du Dev Dashboard. Créez-en une, installez-la sur votre boutique et collez son Client ID + secret — Fennex génère et renouvelle les jetons automatiquement.",
+      "step1": "1. Sur dev.shopify.com, créez une app dans la même organisation que votre boutique ; ajoutez les portées API Admin (produits, fichiers).",
+      "step2": "2. Choisissez la distribution et installez l'app sur votre boutique.",
+      "step3": "3. Copiez le Client ID et le secret client depuis les identifiants API de l'app.",
       "domainLabel": "Domaine de la boutique",
-      "tokenLabel": "Jeton d'accès API Admin",
-      "tokenHint": "Commence par shpat_. Stocké chiffré ; jamais réaffiché.",
+      "clientIdLabel": "Client ID",
+      "clientIdPlaceholder": "ex. 1a2b3c4d...",
+      "clientSecretLabel": "Secret client",
+      "secretHint": "Commence par shpss_. Stocké chiffré ; sert uniquement à générer les jetons d'accès.",
       "connect": "Connecter la boutique",
       "disconnect": "Déconnecter",
-      "help": "Comment créer une app personnalisée",
-      "connectedHint": "Fennex peut désormais publier dans cette boutique. La déconnexion supprime le jeton stocké.",
+      "help": "Obtenir les jetons d'accès API",
+      "connectedHint": "Fennex génère et renouvelle automatiquement les jetons pour cette boutique. La déconnexion supprime les identifiants stockés.",
       "errors": {
-        "unauthorized": "Shopify a rejeté le jeton. Vérifiez le jeton et ses portées.",
+        "unauthorized": "Shopify a rejeté ces identifiants. Vérifiez le Client ID/secret, que l'app est installée et dans la même organisation que la boutique.",
         "invalid_domain": "Ce domaine de boutique ne semble pas valide.",
-        "missing_token": "Collez votre jeton d'accès API Admin.",
+        "missing_credentials": "Saisissez le Client ID et le secret client.",
         "generic": "Connexion à Shopify impossible. Réessayez."
       }
     }
