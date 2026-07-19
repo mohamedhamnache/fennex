@@ -33,7 +33,12 @@ export function ShopifyConnectModal({ projectId, status, onClose, onChanged }: P
       const res = await connectShopify(projectId, domain.trim(), clientId.trim(), clientSecret.trim());
       if (!res.ok) {
         const code = res.error ?? "";
-        setError(ERROR_KEYS.has(code) ? t(`integrations.shopify.errors.${code}`) : t("integrations.shopify.errors.generic"));
+        if (ERROR_KEYS.has(code)) {
+          setError(t(`integrations.shopify.errors.${code}`));
+        } else {
+          // Surface the raw cause (e.g. http_404, exchange_failed) so setup issues are debuggable.
+          setError(`${t("integrations.shopify.errors.generic")}${code ? ` (${code})` : ""}${res.detail ? `: ${res.detail}` : ""}`);
+        }
         return;
       }
       onChanged();

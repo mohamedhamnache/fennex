@@ -8,6 +8,7 @@ access token, caching it and re-minting before it expires. A directly-supplied
 legacy Admin API token is still accepted and used as-is (never refreshed).
 All secrets and tokens are encrypted at rest.
 """
+import logging
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,8 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.agents.registry import agent_persona
 from app.core.security import encrypt_value, decrypt_value
@@ -158,10 +161,13 @@ async def connect(
         try:
             token, expires_in = await _exchange_token(domain, cid, csecret)
         except httpx.HTTPStatusError as e:
+            body = e.response.text[:500]
             code = e.response.status_code
-            return {"ok": False, "error": "unauthorized" if code in (400, 401, 403) else f"http_{code}"}
+            logger.warning("Shopify token exchange failed for %s: HTTP %s %s", domain, code, body)
+            return {"ok": False, "error": "unauthorized" if code in (400, 401, 403) else f"http_{code}", "detail": body}
         except Exception as e:  # noqa: BLE001
-            return {"ok": False, "error": str(e)}
+            logger.warning("Shopify token exchange error for %s: %s", domain, e, exc_info=True)
+            return {"ok": False, "error": "exchange_failed", "detail": str(e)}
         expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
     elif not token:
         return {"ok": False, "error": "missing_credentials"}

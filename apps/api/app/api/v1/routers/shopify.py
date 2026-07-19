@@ -29,6 +29,7 @@ class ShopifyStatus(BaseModel):
 class ShopifyConnectResult(BaseModel):
     ok: bool
     error: str | None = None
+    detail: str | None = None
     shop_domain: str | None = None
     shop_name: str | None = None
 

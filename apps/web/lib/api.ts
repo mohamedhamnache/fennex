@@ -2163,6 +2163,7 @@ export interface ShopifyStatus {
 export interface ShopifyConnectResult {
   ok: boolean;
   error?: string | null;
+  detail?: string | null;
   shop_domain?: string | null;
   shop_name?: string | null;
 }
