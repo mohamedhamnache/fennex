@@ -49,6 +49,25 @@ class SyncResult(BaseModel):
     synced: int = 0
 
 
+class ProductCopyResult(BaseModel):
+    ok: bool
+    error: str | None = None
+    title: str | None = None
+    description_html: str | None = None
+    meta_description: str | None = None
+
+
+class PublishCopyRequest(BaseModel):
+    project_id: uuid.UUID
+    title: str
+    description_html: str
+
+
+class PublishCopyResult(BaseModel):
+    ok: bool
+    error: str | None = None
+
+
 @router.get("/status", response_model=ShopifyStatus)
 async def shopify_status(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
     return await shopify_service.get_status(project_id, current_user.org_id, db)
@@ -74,3 +93,15 @@ async def shopify_list_products(project_id: uuid.UUID, current_user: CurrentUser
 @router.post("/products/sync", response_model=SyncResult)
 async def shopify_sync_products(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
     return await shopify_service.sync_products(project_id, current_user.org_id, db)
+
+
+@router.post("/products/{product_id}/copy", response_model=ProductCopyResult)
+async def shopify_generate_copy(product_id: uuid.UUID, project_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    return await shopify_service.generate_copy(product_id, project_id, current_user.org_id, db)
+
+
+@router.post("/products/{product_id}/publish-copy", response_model=PublishCopyResult)
+async def shopify_publish_copy(product_id: uuid.UUID, body: PublishCopyRequest, current_user: CurrentUser, db: DB):
+    return await shopify_service.publish_copy(
+        product_id, body.project_id, current_user.org_id, body.title, body.description_html, db
+    )

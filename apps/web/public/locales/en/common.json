@@ -1726,5 +1726,24 @@
       "syncError": "Sync failed. Try again.",
       "empty": "Sync to pick a product from your store."
     }
+  },
+  "productCopy": {
+    "title": "Write product copy",
+    "write": "Write copy",
+    "intro": "Let Dune write SEO-optimized copy for “{{product}}” from its real product data.",
+    "generate": "Generate copy",
+    "regenerate": "Regenerate",
+    "titleLabel": "Product title",
+    "descLabel": "Description (HTML)",
+    "metaLabel": "Meta description",
+    "publish": "Publish to Shopify",
+    "published": "Published",
+    "publishHint": "Pushes the title and description back to your store.",
+    "errors": {
+      "no_ai_key": "Add an AI provider key in Settings to generate copy.",
+      "not_connected": "Connect your Shopify store first.",
+      "not_found": "Product not found. Re-sync your store.",
+      "generic": "Something went wrong. Try again."
+    }
   }
 }

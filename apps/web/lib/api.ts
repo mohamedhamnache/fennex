@@ -2201,6 +2201,29 @@ export async function syncStoreProducts(projectId: string): Promise<{ ok: boolea
     `/shopify/products/sync?project_id=${projectId}`, {},
   );
 }
+export interface ProductCopyResult {
+  ok: boolean;
+  error?: string | null;
+  title?: string | null;
+  description_html?: string | null;
+  meta_description?: string | null;
+}
+export async function generateProductCopy(projectId: string, productId: string): Promise<ProductCopyResult> {
+  return apiClient.post<ProductCopyResult>(
+    `/shopify/products/${productId}/copy?project_id=${projectId}`, {},
+  );
+}
+export async function publishProductCopy(
+  projectId: string,
+  productId: string,
+  title: string,
+  descriptionHtml: string,
+): Promise<{ ok: boolean; error?: string | null }> {
+  return apiClient.post<{ ok: boolean; error?: string | null }>(
+    `/shopify/products/${productId}/publish-copy`,
+    { project_id: projectId, title, description_html: descriptionHtml },
+  );
+}
 export async function listTrackedKeywords(projectId: string): Promise<TrackedKeywordRow[]> {
   return apiClient.get<TrackedKeywordRow[]>(`/seo/keywords?project_id=${projectId}`);
 }

@@ -13,11 +13,16 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.registry import agent_persona
 from app.core.security import encrypt_value, decrypt_value
 from app.models.shopify import ShopifyConnection
 from app.models.store_product import StoreProduct
+from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
 
 SHOPIFY_API_VERSION = "2024-01"
+
+# Preference order for the copywriter (Dune). Cheap models suffice for a product blurb.
+_COPY_PROVIDERS = [("anthropic", "claude-haiku-4-5-20251001"), ("openai", "gpt-4o-mini")]
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
@@ -203,3 +208,95 @@ async def list_products(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSessi
         .order_by(StoreProduct.title)
     )
     return list(result.scalars().all())
+
+
+async def _get_product(product_id: uuid.UUID, project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> StoreProduct | None:
+    result = await db.execute(
+        select(StoreProduct).where(
+            StoreProduct.id == product_id,
+            StoreProduct.project_id == project_id,
+            StoreProduct.org_id == org_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+_TITLE_RE = re.compile(r"<title>(.*?)</title>", re.S)
+_DESC_RE = re.compile(r"<description>(.*?)</description>", re.S)
+_META_RE = re.compile(r"<meta_description>(.*?)</meta_description>", re.S)
+
+
+async def generate_copy(product_id: uuid.UUID, project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> dict:
+    """Dune writes SEO product copy from the real product data."""
+    product = await _get_product(product_id, project_id, org_id, db)
+    if product is None:
+        return {"ok": False, "error": "not_found"}
+    keys = await get_org_llm_keys(org_id, db)
+    pm = next(((p, m) for p, m in _COPY_PROVIDERS if p in keys), None)
+    if pm is None:
+        return {"ok": False, "error": "no_ai_key"}
+
+    system = (
+        agent_persona("dune") +
+        " You write SEO-optimized ecommerce product copy that ranks and converts. "
+        "Return EXACTLY this structure and nothing else:\n"
+        "<title>refined, keyword-rich product title (<=70 chars)</title>\n"
+        "<description>2-4 short HTML paragraphs (<p>...</p>) with benefits, features and a light call to action</description>\n"
+        "<meta_description>a compelling meta description (<=155 chars)</meta_description>"
+    )
+    ctx = f"Product: {product.title}"
+    if product.price:
+        ctx += f"\nPrice: {product.price}"
+    if product.description:
+        ctx += f"\nCurrent description: {product.description[:1500]}"
+    try:
+        raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, ctx, locale=await project_locale(project_id, db))
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
+
+    tm, dm, mm = _TITLE_RE.search(raw), _DESC_RE.search(raw), _META_RE.search(raw)
+    return {
+        "ok": True,
+        "title": (tm.group(1).strip() if tm else product.title),
+        "description_html": (dm.group(1).strip() if dm else raw.strip()),
+        "meta_description": (mm.group(1).strip() if mm else ""),
+    }
+
+
+async def publish_copy(
+    product_id: uuid.UUID,
+    project_id: uuid.UUID,
+    org_id: uuid.UUID,
+    title: str,
+    description_html: str,
+    db: AsyncSession,
+) -> dict:
+    """Push edited copy back to the Shopify product (title + body_html)."""
+    product = await _get_product(product_id, project_id, org_id, db)
+    if product is None:
+        return {"ok": False, "error": "not_found"}
+    creds = await get_credentials(project_id, org_id, db)
+    if not creds:
+        return {"ok": False, "error": "not_connected"}
+    domain, token = creds
+
+    payload = {"product": {"id": int(product.external_id), "title": title.strip(), "body_html": description_html}}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.put(
+                f"https://{domain}/admin/api/{SHOPIFY_API_VERSION}/products/{product.external_id}.json",
+                json=payload,
+                headers={"X-Shopify-Access-Token": token, "Content-Type": "application/json"},
+            )
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        code = e.response.status_code
+        return {"ok": False, "error": "unauthorized" if code in (401, 403) else f"http_{code}"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
+
+    # Reflect the change locally so the picker shows the new copy immediately.
+    product.title = title.strip()[:500]
+    product.description = _strip_html(description_html)[:4000] or None
+    await db.commit()
+    return {"ok": True}

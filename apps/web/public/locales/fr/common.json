@@ -1661,5 +1661,24 @@
       "syncError": "Échec de la synchro. Réessayez.",
       "empty": "Synchronisez pour choisir un produit de votre boutique."
     }
+  },
+  "productCopy": {
+    "title": "Rédiger la fiche produit",
+    "write": "Rédiger",
+    "intro": "Laissez Dune rédiger un texte optimisé SEO pour « {{product}} » à partir de ses vraies données produit.",
+    "generate": "Générer le texte",
+    "regenerate": "Régénérer",
+    "titleLabel": "Titre du produit",
+    "descLabel": "Description (HTML)",
+    "metaLabel": "Méta description",
+    "publish": "Publier sur Shopify",
+    "published": "Publié",
+    "publishHint": "Renvoie le titre et la description dans votre boutique.",
+    "errors": {
+      "no_ai_key": "Ajoutez une clé de fournisseur IA dans les Paramètres pour générer le texte.",
+      "not_connected": "Connectez d'abord votre boutique Shopify.",
+      "not_found": "Produit introuvable. Resynchronisez votre boutique.",
+      "generic": "Une erreur est survenue. Réessayez."
+    }
   }
 }

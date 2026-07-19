@@ -1661,5 +1661,24 @@
       "syncError": "Sync fehlgeschlagen. Erneut versuchen.",
       "empty": "Synchronisiere, um ein Produkt aus deinem Store zu wählen."
     }
+  },
+  "productCopy": {
+    "title": "Produkttext schreiben",
+    "write": "Text schreiben",
+    "intro": "Lass Dune SEO-optimierten Text für „{{product}}“ aus den echten Produktdaten schreiben.",
+    "generate": "Text generieren",
+    "regenerate": "Neu generieren",
+    "titleLabel": "Produkttitel",
+    "descLabel": "Beschreibung (HTML)",
+    "metaLabel": "Meta-Beschreibung",
+    "publish": "Auf Shopify veröffentlichen",
+    "published": "Veröffentlicht",
+    "publishHint": "Überträgt Titel und Beschreibung zurück in deinen Store.",
+    "errors": {
+      "no_ai_key": "Füge in den Einstellungen einen KI-Anbieter-Key hinzu, um Text zu generieren.",
+      "not_connected": "Verbinde zuerst deinen Shopify-Store.",
+      "not_found": "Produkt nicht gefunden. Synchronisiere deinen Store erneut.",
+      "generic": "Etwas ist schiefgelaufen. Versuche es erneut."
+    }
   }
 }

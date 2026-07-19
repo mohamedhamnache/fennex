@@ -9,7 +9,8 @@ import {
   type GeneratedImage, type StoreProduct,
 } from "@/lib/api";
 import { useTranslation } from "react-i18next";
-import { ShoppingBag, RefreshCw, CheckCircle2, XCircle, Store, Loader2 } from "lucide-react";
+import { ShoppingBag, RefreshCw, CheckCircle2, XCircle, Store, Loader2, PenLine } from "lucide-react";
+import { ProductCopyModal } from "@/components/studio/ProductCopyModal";
 
 const SCENES = [
   { id: "white_studio",      label: "White Studio",  category: "packshot"  },
@@ -49,6 +50,7 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
   const [productUrl, setProductUrl] = useState("");
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<GeneratedImage | null>(null);
+  const [copyProduct, setCopyProduct] = useState<StoreProduct | null>(null);
 
   const queryClient = useQueryClient();
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -131,26 +133,38 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {products.map((p) => (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                onClick={() => pickProduct(p)}
                 title={p.title}
                 className={cn(
-                  "group flex w-20 shrink-0 flex-col gap-1 rounded-lg border p-1 text-left transition-colors",
+                  "group relative flex w-20 shrink-0 flex-col gap-1 rounded-lg border p-1 transition-colors",
                   productUrl && p.image_url === productUrl ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
                 )}
               >
-                <span className="flex h-16 w-full items-center justify-center overflow-hidden rounded bg-muted">
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_url} alt={p.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <ShoppingBag className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </span>
-                <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground group-hover:text-foreground">{p.title}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => pickProduct(p)}
+                  className="flex flex-col gap-1 text-left"
+                >
+                  <span className="flex h-16 w-full items-center justify-center overflow-hidden rounded bg-muted">
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt={p.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </span>
+                  <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground group-hover:text-foreground">{p.title}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCopyProduct(p)}
+                  title={t("productCopy.write", { defaultValue: "Write copy" })}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-card/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-primary group-hover:opacity-100"
+                >
+                  <PenLine className="h-3 w-3" />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -301,6 +315,10 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
             </div>
           ) : null}
         </div>
+      )}
+
+      {copyProduct && (
+        <ProductCopyModal projectId={projectId} product={copyProduct} onClose={() => setCopyProduct(null)} />
       )}
     </div>
   );
