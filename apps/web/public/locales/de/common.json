@@ -1630,6 +1630,26 @@
       "instagram": "Veröffentliche Bilder und Reels auf Instagram.",
       "facebook": "Veröffentliche Posts auf Facebook-Seiten.",
       "tiktok": "Veröffentliche Kurzvideos auf TikTok."
+    },
+    "shopify": {
+      "title": "Shopify verbinden",
+      "intro": "Verbinde deinen Shopify-Store mit einem Custom-App-Admin-API-Token, damit Fennex Produkte synchronisieren und Produktbilder und Texte zurück in deinen Store veröffentlichen kann.",
+      "step1": "1. Gehe im Shopify-Admin zu Einstellungen → Apps → Apps entwickeln → App erstellen.",
+      "step2": "2. Erteile Admin-API-Berechtigungen (Produkte, Dateien) und installiere die App.",
+      "step3": "3. Kopiere unten das Admin-API-Zugriffstoken und deine Store-Domain.",
+      "domainLabel": "Store-Domain",
+      "tokenLabel": "Admin-API-Zugriffstoken",
+      "tokenHint": "Beginnt mit shpat_. Verschlüsselt gespeichert; wird nie erneut angezeigt.",
+      "connect": "Store verbinden",
+      "disconnect": "Trennen",
+      "help": "So erstellst du eine Custom-App",
+      "connectedHint": "Fennex kann jetzt in diesen Store veröffentlichen. Beim Trennen wird das gespeicherte Token entfernt.",
+      "errors": {
+        "unauthorized": "Shopify hat das Token abgelehnt. Prüfe Token und Berechtigungen.",
+        "invalid_domain": "Das sieht nicht nach einer gültigen Store-Domain aus.",
+        "missing_token": "Füge dein Admin-API-Zugriffstoken ein.",
+        "generic": "Verbindung zu Shopify fehlgeschlagen. Versuche es erneut."
+      }
     }
   }
 }

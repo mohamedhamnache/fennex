@@ -14,6 +14,7 @@ from app.models.image import GeneratedImage
 from app.models.publish_record import PublishRecord
 from app.models.publishing import PublishingConnection, PublishingPlatform
 from app.services.publish_service import publish_to_wordpress, publish_to_shopify
+from app.services.shopify_service import get_credentials as get_shopify_credentials
 
 router = APIRouter()
 
@@ -80,20 +81,28 @@ async def publish_image(image_id: uuid.UUID, body: ImagePublishRequest, current_
         )
 
     elif body.platform == "shopify":
-        key_result = await db.execute(
-            select(APIKey).where(
-                APIKey.org_id == current_user.org_id,
-                APIKey.provider == "shopify",
+        shopify_domain = ""
+        shopify_token = ""
+        # Prefer the project's stored Shopify store connection (Integration Hub).
+        creds = await get_shopify_credentials(image.project_id, current_user.org_id, db)
+        if creds:
+            shopify_domain, shopify_token = creds
+        else:
+            # Fall back to the legacy per-org API key + per-request domain.
+            key_result = await db.execute(
+                select(APIKey).where(
+                    APIKey.org_id == current_user.org_id,
+                    APIKey.provider == "shopify",
+                )
             )
-        )
-        api_key_row = key_result.scalar_one_or_none()
-        if not api_key_row:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "Shopify is not connected. Add a Shopify API key in Settings > API Keys.",
-            )
-        shopify_token = decrypt_api_key(api_key_row.encrypted_value)
-        shopify_domain = body.config.get("shopify_domain", "")
+            api_key_row = key_result.scalar_one_or_none()
+            if not api_key_row:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Shopify is not connected. Connect your store in Integrations.",
+                )
+            shopify_token = decrypt_api_key(api_key_row.encrypted_value)
+            shopify_domain = body.config.get("shopify_domain", "")
         result = await publish_to_shopify(
             image_url=image.image_url,
             alt_text=image.alt_text,

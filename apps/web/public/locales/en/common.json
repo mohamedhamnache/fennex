@@ -1695,6 +1695,26 @@
       "instagram": "Publish images and reels to Instagram.",
       "facebook": "Publish posts to Facebook Pages.",
       "tiktok": "Publish short-form video to TikTok."
+    },
+    "shopify": {
+      "title": "Connect Shopify",
+      "intro": "Connect your Shopify store with a custom-app Admin API token so Fennex can sync products and publish product shots and copy back to your store.",
+      "step1": "1. In Shopify admin, go to Settings → Apps → Develop apps → Create an app.",
+      "step2": "2. Grant Admin API scopes (products, files) and install the app.",
+      "step3": "3. Copy the Admin API access token and your store domain below.",
+      "domainLabel": "Store domain",
+      "tokenLabel": "Admin API access token",
+      "tokenHint": "Starts with shpat_. Stored encrypted; never shown again.",
+      "connect": "Connect store",
+      "disconnect": "Disconnect",
+      "help": "How to create a custom app",
+      "connectedHint": "Fennex can now publish to this store. Disconnecting removes the stored token.",
+      "errors": {
+        "unauthorized": "Shopify rejected the token. Check the token and its scopes.",
+        "invalid_domain": "That doesn't look like a valid store domain.",
+        "missing_token": "Paste your Admin API access token.",
+        "generic": "Couldn't connect to Shopify. Try again."
+      }
     }
   }
 }

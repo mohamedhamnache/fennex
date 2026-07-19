@@ -2154,6 +2154,35 @@ export async function getSeoProviderStatus(
     `/seo/provider-status?project_id=${projectId}`,
   );
 }
+export interface ShopifyStatus {
+  connected: boolean;
+  shop_domain: string | null;
+  shop_name: string | null;
+  last_tested_at?: string | null;
+}
+export interface ShopifyConnectResult {
+  ok: boolean;
+  error?: string | null;
+  shop_domain?: string | null;
+  shop_name?: string | null;
+}
+export async function getShopifyStatus(projectId: string): Promise<ShopifyStatus> {
+  return apiClient.get<ShopifyStatus>(`/shopify/status?project_id=${projectId}`);
+}
+export async function connectShopify(
+  projectId: string,
+  shopDomain: string,
+  accessToken: string,
+): Promise<ShopifyConnectResult> {
+  return apiClient.post<ShopifyConnectResult>("/shopify/connect", {
+    project_id: projectId,
+    shop_domain: shopDomain,
+    access_token: accessToken,
+  });
+}
+export async function disconnectShopify(projectId: string): Promise<void> {
+  return apiClient.delete<void>(`/shopify/disconnect?project_id=${projectId}`);
+}
 export async function listTrackedKeywords(projectId: string): Promise<TrackedKeywordRow[]> {
   return apiClient.get<TrackedKeywordRow[]>(`/seo/keywords?project_id=${projectId}`);
 }

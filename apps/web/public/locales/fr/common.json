@@ -1630,6 +1630,26 @@
       "instagram": "Publiez images et reels sur Instagram.",
       "facebook": "Publiez des posts sur les Pages Facebook.",
       "tiktok": "Publiez des vidéos courtes sur TikTok."
+    },
+    "shopify": {
+      "title": "Connecter Shopify",
+      "intro": "Connectez votre boutique Shopify avec un jeton d'API Admin d'app personnalisée pour que Fennex synchronise vos produits et republie visuels et textes dans votre boutique.",
+      "step1": "1. Dans l'admin Shopify, allez dans Paramètres → Apps → Développer des apps → Créer une app.",
+      "step2": "2. Accordez les portées de l'API Admin (produits, fichiers) et installez l'app.",
+      "step3": "3. Copiez le jeton d'accès de l'API Admin et le domaine de votre boutique ci-dessous.",
+      "domainLabel": "Domaine de la boutique",
+      "tokenLabel": "Jeton d'accès API Admin",
+      "tokenHint": "Commence par shpat_. Stocké chiffré ; jamais réaffiché.",
+      "connect": "Connecter la boutique",
+      "disconnect": "Déconnecter",
+      "help": "Comment créer une app personnalisée",
+      "connectedHint": "Fennex peut désormais publier dans cette boutique. La déconnexion supprime le jeton stocké.",
+      "errors": {
+        "unauthorized": "Shopify a rejeté le jeton. Vérifiez le jeton et ses portées.",
+        "invalid_domain": "Ce domaine de boutique ne semble pas valide.",
+        "missing_token": "Collez votre jeton d'accès API Admin.",
+        "generic": "Connexion à Shopify impossible. Réessayez."
+      }
     }
   }
 }

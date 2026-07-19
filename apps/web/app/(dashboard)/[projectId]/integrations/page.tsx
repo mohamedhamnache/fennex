@@ -1,15 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   Plug, Search, Radar, Globe, ShoppingBag, KeyRound, ArrowRight, type LucideIcon,
 } from "lucide-react";
 import {
   listPublishingConnections, getGscStatus, listSocialConnections, getSeoProviderStatus, listApiKeys,
+  getShopifyStatus, type ShopifyStatus,
 } from "@/lib/api";
 import { LinkedInIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "@/components/studio/SocialIcons";
+import { ShopifyConnectModal } from "@/components/integrations/ShopifyConnectModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
@@ -22,6 +25,7 @@ interface HubData {
   publishing?: { id: string }[];
   social?: { platform: string; handle: string | null }[];
   keys?: { provider: string }[];
+  shopify?: ShopifyStatus;
 }
 
 interface Connector {
@@ -31,6 +35,7 @@ interface Connector {
   Icon: IconCmp;
   status: (d: HubData) => { state: ConnState; detail?: string };
   href?: (projectId: string) => string; // where to connect/manage
+  modal?: "shopify"; // opens an in-app connect modal instead of navigating
 }
 
 const GROUPS: { id: Connector["group"]; icon: LucideIcon }[] = [
@@ -64,7 +69,10 @@ const CONNECTORS: Connector[] = [
   },
   {
     id: "shopify", group: "publishing", name: "Shopify", Icon: ShoppingBag,
-    status: () => ({ state: "soon" }),
+    status: (d) => d.shopify?.connected
+      ? { state: "connected", detail: d.shopify.shop_name ?? d.shopify.shop_domain ?? undefined }
+      : { state: "off" },
+    modal: "shopify",
   },
   {
     id: "ai", group: "ai", name: "AI providers", Icon: KeyRound,
@@ -86,7 +94,7 @@ const CONNECTORS: Connector[] = [
   { id: "tiktok", group: "social", name: "TikTok", Icon: TikTokIcon, status: () => ({ state: "soon" }) },
 ];
 
-function ConnectorCard({ c, data, projectId }: { c: Connector; data: HubData; projectId: string }) {
+function ConnectorCard({ c, data, projectId, onOpenModal }: { c: Connector; data: HubData; projectId: string; onOpenModal: (id: NonNullable<Connector["modal"]>) => void }) {
   const { t } = useTranslation();
   const { state, detail } = c.status(data);
   const Icon = c.Icon;
@@ -100,6 +108,9 @@ function ConnectorCard({ c, data, projectId }: { c: Connector; data: HubData; pr
     state === "connected" && detail
       ? (c.id === "wordpress" || c.id === "ai" ? t("integrations.countConnected", { count: Number(detail) }) : detail)
       : "";
+
+  const ctaLabel = state === "connected" ? t("integrations.manage") : t("integrations.connect");
+  const ctaClass = `group inline-flex items-center gap-1.5 text-xs font-semibold ${state === "connected" ? "text-muted-foreground hover:text-foreground" : "text-primary"}`;
 
   return (
     <div className="glass flex flex-col gap-3 rounded-2xl p-4">
@@ -116,12 +127,14 @@ function ConnectorCard({ c, data, projectId }: { c: Connector; data: HubData; pr
       </div>
       {state === "soon" ? (
         <span className="text-xs font-medium text-muted-foreground/60">{t("integrations.soon")}</span>
+      ) : c.modal ? (
+        <button type="button" onClick={() => onOpenModal(c.modal!)} className={ctaClass}>
+          {ctaLabel}
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+        </button>
       ) : c.href ? (
-        <Link
-          href={c.href(projectId)}
-          className={`group inline-flex items-center gap-1.5 text-xs font-semibold ${state === "connected" ? "text-muted-foreground hover:text-foreground" : "text-primary"}`}
-        >
-          {state === "connected" ? t("integrations.manage") : t("integrations.connect")}
+        <Link href={c.href(projectId)} className={ctaClass}>
+          {ctaLabel}
           <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
       ) : null}
@@ -132,14 +145,17 @@ function ConnectorCard({ c, data, projectId }: { c: Connector; data: HubData; pr
 export default function IntegrationsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [modal, setModal] = useState<NonNullable<Connector["modal"]> | null>(null);
 
   const { data: publishing } = useQuery({ queryKey: ["publishing-connections", projectId], queryFn: () => listPublishingConnections(projectId), enabled: !!projectId });
   const { data: gsc } = useQuery({ queryKey: ["gsc-status", projectId], queryFn: () => getGscStatus(projectId), enabled: !!projectId });
   const { data: social } = useQuery({ queryKey: ["social-connections"], queryFn: listSocialConnections });
   const { data: seo } = useQuery({ queryKey: ["seo-provider-status", projectId], queryFn: () => getSeoProviderStatus(projectId), enabled: !!projectId });
   const { data: keys } = useQuery({ queryKey: ["api-keys"], queryFn: listApiKeys });
+  const { data: shopify } = useQuery({ queryKey: ["shopify-status", projectId], queryFn: () => getShopifyStatus(projectId), enabled: !!projectId });
 
-  const data: HubData = { gsc, seo, publishing, social, keys };
+  const data: HubData = { gsc, seo, publishing, social, keys, shopify };
 
   const connectedCount = CONNECTORS.filter((c) => c.status(data).state === "connected").length;
   const liveCount = CONNECTORS.filter((c) => c.status(data).state !== "soon").length;
@@ -171,12 +187,21 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {items.map((c) => (
-                <ConnectorCard key={c.id} c={c} data={data} projectId={projectId} />
+                <ConnectorCard key={c.id} c={c} data={data} projectId={projectId} onOpenModal={setModal} />
               ))}
             </div>
           </section>
         );
       })}
+
+      {modal === "shopify" && (
+        <ShopifyConnectModal
+          projectId={projectId}
+          status={shopify ?? { connected: false, shop_domain: null, shop_name: null }}
+          onClose={() => setModal(null)}
+          onChanged={() => queryClient.invalidateQueries({ queryKey: ["shopify-status", projectId] })}
+        />
+      )}
     </div>
   );
 }

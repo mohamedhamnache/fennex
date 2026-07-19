@@ -1630,6 +1630,26 @@
       "instagram": "Publique imagens e reels no Instagram.",
       "facebook": "Publique posts em Páginas do Facebook.",
       "tiktok": "Publique vídeo curto no TikTok."
+    },
+    "shopify": {
+      "title": "Conectar Shopify",
+      "intro": "Conecte sua loja Shopify com um token de API Admin de app personalizado para o Fennex sincronizar produtos e publicar imagens e textos de volta na sua loja.",
+      "step1": "1. No admin da Shopify, vá em Configurações → Apps → Desenvolver apps → Criar um app.",
+      "step2": "2. Conceda os escopos da API Admin (produtos, arquivos) e instale o app.",
+      "step3": "3. Copie o token de acesso da API Admin e o domínio da sua loja abaixo.",
+      "domainLabel": "Domínio da loja",
+      "tokenLabel": "Token de acesso da API Admin",
+      "tokenHint": "Começa com shpat_. Armazenado criptografado; nunca mais exibido.",
+      "connect": "Conectar loja",
+      "disconnect": "Desconectar",
+      "help": "Como criar um app personalizado",
+      "connectedHint": "O Fennex já pode publicar nesta loja. Desconectar remove o token armazenado.",
+      "errors": {
+        "unauthorized": "A Shopify rejeitou o token. Verifique o token e seus escopos.",
+        "invalid_domain": "Esse domínio de loja não parece válido.",
+        "missing_token": "Cole seu token de acesso da API Admin.",
+        "generic": "Não foi possível conectar à Shopify. Tente de novo."
+      }
     }
   }
 }

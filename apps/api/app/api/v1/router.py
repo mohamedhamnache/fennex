@@ -42,6 +42,7 @@ from app.api.v1.routers import (
     campaigns,
     monitoring,
     seo_hub,
+    shopify,
 )
 
 api_router = APIRouter()
@@ -89,3 +90,4 @@ api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(campaigns.router, prefix="/campaigns", tags=["campaigns"])
 api_router.include_router(monitoring.router, prefix="/monitoring", tags=["monitoring"])
 api_router.include_router(seo_hub.router, prefix="/seo", tags=["seo"])
+api_router.include_router(shopify.router, prefix="/shopify", tags=["shopify"])

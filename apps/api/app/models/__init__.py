@@ -26,3 +26,4 @@ from app.models.ab_test import ABTest, ABTestVariant  # noqa: F401
 from app.models.calendar_entry import CalendarEntry  # noqa: F401
 from app.models.campaign import Campaign, CampaignStep  # noqa: F401
 from app.models.monitoring import WatchedCompetitor, MonitorSnapshot, Alert  # noqa: F401
+from app.models.shopify import ShopifyConnection  # noqa: F401
