@@ -25,7 +25,8 @@
     "forYou": "Für dich",
     "moreTools": "Weitere Tools",
     "calendar": "Kalender",
-    "home": "Startseite"
+    "home": "Startseite",
+    "integrations": "Integrationen"
   },
   "common": {
     "save": "Speichern",
@@ -1522,6 +1523,34 @@
     "actions": {
       "campaigns": "Kampagnen",
       "seo": "SEO-Hub"
+    }
+  },
+  "integrations": {
+    "title": "Integrationen",
+    "subtitle": "Verbinde deine Daten-, Publishing- und Social-Ziele. Fennex funktioniert am besten mit deinen echten Konten.",
+    "connected": "Verbunden",
+    "notConnected": "Nicht verbunden",
+    "soon": "Demnächst",
+    "manage": "Verwalten",
+    "connect": "Verbinden",
+    "countConnected": "{{count}} verbunden",
+    "connectedOf": "{{count}} von {{total}} verbunden",
+    "groups": {
+      "search": "Suche & Analytics",
+      "publishing": "Publishing",
+      "social": "Social Media",
+      "ai": "KI-Anbieter"
+    },
+    "desc": {
+      "gsc": "Echte Klicks, Impressionen und Rankings als Basis für jeden Agenten.",
+      "seoProvider": "SERP-Rank-Tracking, Keyword- und Wettbewerbsdaten.",
+      "wordpress": "Veröffentliche Artikel direkt auf deiner WordPress-Site.",
+      "shopify": "Synchronisiere Produkte und veröffentliche optimierte Inhalte zurück in deinen Shop.",
+      "ai": "Nutze eigene Anthropic-, OpenAI- oder Google-Keys zur Generierung.",
+      "linkedin": "Veröffentliche und plane Posts auf LinkedIn.",
+      "instagram": "Veröffentliche Bilder und Reels auf Instagram.",
+      "facebook": "Veröffentliche Posts auf Facebook-Seiten.",
+      "tiktok": "Veröffentliche Kurzvideos auf TikTok."
     }
   }
 }

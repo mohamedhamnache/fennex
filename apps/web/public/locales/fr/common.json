@@ -25,7 +25,8 @@
     "forYou": "Pour vous",
     "moreTools": "Plus d'outils",
     "calendar": "Calendrier",
-    "home": "Accueil"
+    "home": "Accueil",
+    "integrations": "Intégrations"
   },
   "common": {
     "save": "Enregistrer",
@@ -1522,6 +1523,34 @@
     "actions": {
       "campaigns": "Campagnes",
       "seo": "Pôle SEO"
+    }
+  },
+  "integrations": {
+    "title": "Intégrations",
+    "subtitle": "Connectez vos données, publications et réseaux. Fennex est meilleur ancré dans vos comptes réels.",
+    "connected": "Connecté",
+    "notConnected": "Non connecté",
+    "soon": "Bientôt",
+    "manage": "Gérer",
+    "connect": "Connecter",
+    "countConnected": "{{count}} connecté(s)",
+    "connectedOf": "{{count}} sur {{total}} connectés",
+    "groups": {
+      "search": "Recherche & analytics",
+      "publishing": "Publication",
+      "social": "Réseaux sociaux",
+      "ai": "Fournisseurs IA"
+    },
+    "desc": {
+      "gsc": "Clics, impressions et positions réels qui ancrent chaque agent.",
+      "seoProvider": "Suivi de positions SERP, données mots-clés et concurrents.",
+      "wordpress": "Publiez vos articles directement sur votre site WordPress.",
+      "shopify": "Synchronisez vos produits et republiez du contenu optimisé dans votre boutique.",
+      "ai": "Utilisez vos propres clés Anthropic, OpenAI ou Google pour la génération.",
+      "linkedin": "Publiez et programmez des posts sur LinkedIn.",
+      "instagram": "Publiez images et reels sur Instagram.",
+      "facebook": "Publiez des posts sur les Pages Facebook.",
+      "tiktok": "Publiez des vidéos courtes sur TikTok."
     }
   }
 }

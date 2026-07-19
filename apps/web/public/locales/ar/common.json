@@ -25,7 +25,8 @@
     "forYou": "لك",
     "moreTools": "أدوات أخرى",
     "calendar": "التقويم",
-    "home": "الرئيسية"
+    "home": "الرئيسية",
+    "integrations": "التكاملات"
   },
   "common": {
     "save": "حفظ",
@@ -1522,6 +1523,34 @@
     "actions": {
       "campaigns": "الحملات",
       "seo": "مركز السيو"
+    }
+  },
+  "integrations": {
+    "title": "التكاملات",
+    "subtitle": "اربط بيانات وقنوات النشر والشبكات. يعمل Fennex بأفضل حالاته عندما يرتكز على حساباتك الحقيقية.",
+    "connected": "متصل",
+    "notConnected": "غير متصل",
+    "soon": "قريبًا",
+    "manage": "إدارة",
+    "connect": "ربط",
+    "countConnected": "{{count}} متصل",
+    "connectedOf": "{{count}} من {{total}} متصل",
+    "groups": {
+      "search": "البحث والتحليلات",
+      "publishing": "النشر",
+      "social": "الشبكات الاجتماعية",
+      "ai": "مزودو الذكاء الاصطناعي"
+    },
+    "desc": {
+      "gsc": "نقرات وظهور وترتيب حقيقي يرتكز عليه كل وكيل.",
+      "seoProvider": "تتبع ترتيب SERP وبيانات الكلمات المفتاحية والمنافسين.",
+      "wordpress": "انشر المقالات مباشرة على موقع WordPress.",
+      "shopify": "زامن المنتجات وانشر محتوى محسّنًا في متجرك.",
+      "ai": "استخدم مفاتيح Anthropic أو OpenAI أو Google الخاصة بك للتوليد.",
+      "linkedin": "انشر وجدول المنشورات على LinkedIn.",
+      "instagram": "انشر الصور والريلز على Instagram.",
+      "facebook": "انشر المنشورات على صفحات Facebook.",
+      "tiktok": "انشر فيديو قصير على TikTok."
     }
   }
 }

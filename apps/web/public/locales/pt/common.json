@@ -25,7 +25,8 @@
     "forYou": "Para você",
     "moreTools": "Mais ferramentas",
     "calendar": "Calendário",
-    "home": "Início"
+    "home": "Início",
+    "integrations": "Integrações"
   },
   "common": {
     "save": "Salvar",
@@ -1522,6 +1523,34 @@
     "actions": {
       "campaigns": "Campanhas",
       "seo": "Central de SEO"
+    }
+  },
+  "integrations": {
+    "title": "Integrações",
+    "subtitle": "Conecte seus dados, publicação e redes. O Fennex funciona melhor ancorado nas suas contas reais.",
+    "connected": "Conectado",
+    "notConnected": "Não conectado",
+    "soon": "Em breve",
+    "manage": "Gerenciar",
+    "connect": "Conectar",
+    "countConnected": "{{count}} conectado(s)",
+    "connectedOf": "{{count}} de {{total}} conectados",
+    "groups": {
+      "search": "Busca e analytics",
+      "publishing": "Publicação",
+      "social": "Redes sociais",
+      "ai": "Provedores de IA"
+    },
+    "desc": {
+      "gsc": "Cliques, impressões e posições reais que ancoram cada agente.",
+      "seoProvider": "Rastreamento de posições SERP, dados de palavras-chave e concorrentes.",
+      "wordpress": "Publique artigos direto no seu site WordPress.",
+      "shopify": "Sincronize produtos e publique conteúdo otimizado de volta na sua loja.",
+      "ai": "Use suas próprias chaves Anthropic, OpenAI ou Google para gerar.",
+      "linkedin": "Publique e agende posts no LinkedIn.",
+      "instagram": "Publique imagens e reels no Instagram.",
+      "facebook": "Publique posts em Páginas do Facebook.",
+      "tiktok": "Publique vídeo curto no TikTok."
     }
   }
 }

@@ -25,7 +25,8 @@
     "forYou": "For you",
     "moreTools": "More tools",
     "calendar": "Calendar",
-    "home": "Home"
+    "home": "Home",
+    "integrations": "Integrations"
   },
   "calendar": {
     "title": "Content calendar",
@@ -1591,6 +1592,34 @@
         "s3": "Run a multi-asset campaign",
         "s4": "Distribute across every channel"
       }
+    }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "subtitle": "Connect your data, publishing and social destinations. Fennex works best grounded in your real accounts.",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "soon": "Coming soon",
+    "manage": "Manage",
+    "connect": "Connect",
+    "countConnected": "{{count}} connected",
+    "connectedOf": "{{count}} of {{total}} connected",
+    "groups": {
+      "search": "Search & analytics",
+      "publishing": "Publishing",
+      "social": "Social",
+      "ai": "AI providers"
+    },
+    "desc": {
+      "gsc": "Real clicks, impressions and rankings that ground every agent.",
+      "seoProvider": "SERP rank tracking, keyword and competitor data.",
+      "wordpress": "Publish articles straight to your WordPress site.",
+      "shopify": "Sync products and publish optimized content back to your store.",
+      "ai": "Bring your own Anthropic, OpenAI or Google keys for generation.",
+      "linkedin": "Publish and schedule posts to LinkedIn.",
+      "instagram": "Publish images and reels to Instagram.",
+      "facebook": "Publish posts to Facebook Pages.",
+      "tiktok": "Publish short-form video to TikTok."
     }
   }
 }

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
   PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone, Home,
-  TrendingUp,
+  TrendingUp, Plug,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -41,6 +41,7 @@ const NAV_ITEMS: Record<string, NavItem> = {
   analytics:  { key: "analytics",  href: "analytics",  icon: BarChart2 },
   seo:        { key: "seo",        href: "seo",        icon: TrendingUp },
   audit:      { key: "audit",      href: "audit",      icon: SearchCode },
+  integrations: { key: "integrations", href: "integrations", icon: Plug },
 };
 
 // Persona -> primary tool order (the highlighted "For you" group).
@@ -48,6 +49,7 @@ const PERSONA_PRIMARY: Record<string, string[]> = {
   creator:    ["overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics", "seo"],
   ecommerce:  ["overview", "calendar", "images", "analytics", "seo", "agents", "campaigns", "keywords"],
   freelancer: ["overview", "calendar", "agents", "campaigns", "analytics", "seo", "social", "backlinks"],
+  company:    ["overview", "articles", "seo", "campaigns", "social", "analytics", "agents", "keywords", "integrations"],
 };
 
 function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {
