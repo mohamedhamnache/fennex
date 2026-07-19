@@ -1511,6 +1511,73 @@
         "s3": "Lancez une campagne multi-actifs",
         "s4": "Diffusez sur tous les canaux"
       }
+    },
+    "pickGoal": "Choisissez un objectif",
+    "goals": {
+      "creator": {
+        "series": {
+          "title": "Lancer une série de contenu",
+          "subtitle": "Planifiez une série récurrente autour d'un thème et publiez-la chaque semaine.",
+          "s1": "Choisir un thème à forte demande",
+          "s2": "Rédiger chaque épisode en article",
+          "s3": "Programmer la série sur vos plateformes"
+        },
+        "repurpose": {
+          "title": "Recycler vers les réseaux",
+          "subtitle": "Transformez vos meilleurs articles en une semaine de posts accrocheurs.",
+          "s1": "Choisir un article à recycler",
+          "s2": "Le découper en visuels de marque",
+          "s3": "Programmer les posts partout"
+        }
+      },
+      "ecommerce": {
+        "catalog": {
+          "title": "Optimiser votre catalogue",
+          "subtitle": "Faites que chaque fiche produit et collection se classe et se lise bien.",
+          "s1": "Auditer le SEO des fiches produits",
+          "s2": "Réécrire les textes produits et collections",
+          "s3": "Publier les mises à jour sur votre boutique"
+        },
+        "promo": {
+          "title": "Lancer une promo",
+          "subtitle": "Créez une offre limitée avec ses visuels et sa diffusion sociale.",
+          "s1": "Planifier la campagne promo",
+          "s2": "Concevoir les visuels promo",
+          "s3": "L'annoncer sur les réseaux"
+        }
+      },
+      "freelancer": {
+        "authority": {
+          "title": "Bâtir votre autorité",
+          "subtitle": "Publiez une expertise de niche qui attire les prospects à vous.",
+          "s1": "Trouver les questions de votre niche",
+          "s2": "Rédiger des articles d'expert",
+          "s3": "Les partager sur les réseaux"
+        },
+        "outreach": {
+          "title": "Lancer une prospection",
+          "subtitle": "Touchez les bonnes personnes avec une campagne personnelle et soignée.",
+          "s1": "Rédiger la prospection avec Nomad",
+          "s2": "Créer les visuels d'appui",
+          "s3": "Relancer sur les réseaux"
+        }
+      },
+      "company": {
+        "campaign": {
+          "title": "Lancer une campagne",
+          "subtitle": "Déployez une campagne de marque coordonnée entre contenu et réseaux.",
+          "s1": "Planifier la campagne",
+          "s2": "Produire les créations",
+          "s3": "La déployer sur les réseaux"
+        },
+        "defend": {
+          "title": "Défendre votre marque",
+          "subtitle": "Surveillez les concurrents et renforcez les sujets que vous devez posséder.",
+          "s1": "Analyser les mouvements concurrents",
+          "s2": "Corriger les lacunes on-page",
+          "s3": "Publier du contenu pour reprendre du terrain"
+        }
+      }
     }
   },
   "personaHome": {

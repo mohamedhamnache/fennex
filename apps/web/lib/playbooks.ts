@@ -2,10 +2,11 @@ import type { AgentId } from "@/lib/agents";
 import type { ProjectPersona } from "@/lib/api";
 
 /**
- * Persona playbooks — the "propose the right tools for each project" layer.
- * Each persona gets a flagship playbook: an expert squad (Pack agents) and an
- * ordered sequence of steps, each pointing at the right in-app tool. Copy is
- * referenced by i18n key so it stays translatable; routes are project-relative.
+ * Persona goals — the "propose the right tools for each project" layer.
+ * Each persona offers a few concrete goals; each goal fields an expert squad
+ * (Pack agents) and an ordered sequence of steps pointing at the right in-app
+ * tool. Copy is referenced by i18n key so it stays translatable; routes are
+ * project-relative. The first goal of each persona is its flagship (default).
  */
 export interface PlaybookStep {
   agent: AgentId;
@@ -13,61 +14,106 @@ export interface PlaybookStep {
   labelKey: string;
 }
 
-export interface Playbook {
-  persona: ProjectPersona;
+export interface PlaybookGoal {
+  id: string;
   titleKey: string;
   subtitleKey: string;
   squad: AgentId[];
   steps: PlaybookStep[];
 }
 
-export const PLAYBOOKS: Record<ProjectPersona, Playbook> = {
-  creator: {
-    persona: "creator",
-    titleKey: "startProject.pb.creator.title",
-    subtitleKey: "startProject.pb.creator.subtitle",
-    squad: ["zerda", "dune", "mirage", "sirocco"],
-    steps: [
-      { agent: "zerda", route: "keywords", labelKey: "startProject.pb.creator.s1" },
-      { agent: "dune", route: "articles", labelKey: "startProject.pb.creator.s2" },
-      { agent: "mirage", route: "images", labelKey: "startProject.pb.creator.s3" },
-      { agent: "sirocco", route: "social", labelKey: "startProject.pb.creator.s4" },
-    ],
-  },
-  ecommerce: {
-    persona: "ecommerce",
-    titleKey: "startProject.pb.ecommerce.title",
-    subtitleKey: "startProject.pb.ecommerce.subtitle",
-    squad: ["zerda", "mirage", "dune", "sirocco"],
-    steps: [
-      { agent: "zerda", route: "keywords", labelKey: "startProject.pb.ecommerce.s1" },
-      { agent: "mirage", route: "images", labelKey: "startProject.pb.ecommerce.s2" },
-      { agent: "dune", route: "articles", labelKey: "startProject.pb.ecommerce.s3" },
-      { agent: "sirocco", route: "social", labelKey: "startProject.pb.ecommerce.s4" },
-    ],
-  },
-  freelancer: {
-    persona: "freelancer",
-    titleKey: "startProject.pb.freelancer.title",
-    subtitleKey: "startProject.pb.freelancer.subtitle",
-    squad: ["oasis", "nomad", "dune", "sable"],
-    steps: [
-      { agent: "oasis", route: "analytics?ws=market&oasis=1", labelKey: "startProject.pb.freelancer.s1" },
-      { agent: "nomad", route: "agents/nomad", labelKey: "startProject.pb.freelancer.s2" },
-      { agent: "dune", route: "articles", labelKey: "startProject.pb.freelancer.s3" },
-      { agent: "sable", route: "analytics?ws=competitors", labelKey: "startProject.pb.freelancer.s4" },
-    ],
-  },
-  company: {
-    persona: "company",
-    titleKey: "startProject.pb.company.title",
-    subtitleKey: "startProject.pb.company.subtitle",
-    squad: ["zerda", "dune", "sirocco", "sable"],
-    steps: [
-      { agent: "zerda", route: "seo", labelKey: "startProject.pb.company.s1" },
-      { agent: "dune", route: "articles", labelKey: "startProject.pb.company.s2" },
-      { agent: "sirocco", route: "campaigns", labelKey: "startProject.pb.company.s3" },
-      { agent: "sable", route: "social", labelKey: "startProject.pb.company.s4" },
-    ],
-  },
+/** i18n key prefix for a persona goal's copy. Flagship goals reuse the older
+ * `startProject.pb.<persona>` block; the rest live under `startProject.goals`. */
+const flagship = (persona: ProjectPersona) => `startProject.pb.${persona}`;
+const goalKey = (persona: ProjectPersona, id: string) => `startProject.goals.${persona}.${id}`;
+
+function goal(
+  persona: ProjectPersona,
+  id: string,
+  prefix: string,
+  squad: AgentId[],
+  steps: { agent: AgentId; route: string }[],
+): PlaybookGoal {
+  return {
+    id,
+    titleKey: `${prefix}.title`,
+    subtitleKey: `${prefix}.subtitle`,
+    squad,
+    steps: steps.map((s, i) => ({ ...s, labelKey: `${prefix}.s${i + 1}` })),
+  };
+}
+
+export const PERSONA_GOALS: Record<ProjectPersona, PlaybookGoal[]> = {
+  creator: [
+    goal("creator", "audience", flagship("creator"), ["zerda", "dune", "mirage", "sirocco"], [
+      { agent: "zerda", route: "keywords" },
+      { agent: "dune", route: "articles" },
+      { agent: "mirage", route: "images" },
+      { agent: "sirocco", route: "social" },
+    ]),
+    goal("creator", "series", goalKey("creator", "series"), ["zerda", "dune", "sirocco"], [
+      { agent: "zerda", route: "keywords" },
+      { agent: "dune", route: "articles" },
+      { agent: "sirocco", route: "social" },
+    ]),
+    goal("creator", "repurpose", goalKey("creator", "repurpose"), ["dune", "mirage", "sirocco"], [
+      { agent: "dune", route: "articles" },
+      { agent: "mirage", route: "images" },
+      { agent: "sirocco", route: "social" },
+    ]),
+  ],
+  ecommerce: [
+    goal("ecommerce", "launch", flagship("ecommerce"), ["zerda", "mirage", "dune", "sirocco"], [
+      { agent: "zerda", route: "keywords" },
+      { agent: "mirage", route: "images" },
+      { agent: "dune", route: "articles" },
+      { agent: "sirocco", route: "social" },
+    ]),
+    goal("ecommerce", "catalog", goalKey("ecommerce", "catalog"), ["zerda", "dune"], [
+      { agent: "zerda", route: "seo" },
+      { agent: "dune", route: "articles" },
+      { agent: "dune", route: "publishing" },
+    ]),
+    goal("ecommerce", "promo", goalKey("ecommerce", "promo"), ["sirocco", "mirage", "dune"], [
+      { agent: "sirocco", route: "campaigns" },
+      { agent: "mirage", route: "images" },
+      { agent: "dune", route: "social" },
+    ]),
+  ],
+  freelancer: [
+    goal("freelancer", "clients", flagship("freelancer"), ["oasis", "nomad", "dune", "sable"], [
+      { agent: "oasis", route: "analytics?ws=market&oasis=1" },
+      { agent: "nomad", route: "agents/nomad" },
+      { agent: "dune", route: "articles" },
+      { agent: "sable", route: "analytics?ws=competitors" },
+    ]),
+    goal("freelancer", "authority", goalKey("freelancer", "authority"), ["zerda", "dune", "sirocco"], [
+      { agent: "zerda", route: "keywords" },
+      { agent: "dune", route: "articles" },
+      { agent: "sirocco", route: "social" },
+    ]),
+    goal("freelancer", "outreach", goalKey("freelancer", "outreach"), ["nomad", "mirage", "sirocco"], [
+      { agent: "nomad", route: "agents/nomad" },
+      { agent: "mirage", route: "images" },
+      { agent: "sirocco", route: "social" },
+    ]),
+  ],
+  company: [
+    goal("company", "brand", flagship("company"), ["zerda", "dune", "sirocco", "sable"], [
+      { agent: "zerda", route: "seo" },
+      { agent: "dune", route: "articles" },
+      { agent: "sirocco", route: "campaigns" },
+      { agent: "sable", route: "social" },
+    ]),
+    goal("company", "campaign", goalKey("company", "campaign"), ["sirocco", "mirage", "dune"], [
+      { agent: "sirocco", route: "campaigns" },
+      { agent: "mirage", route: "images" },
+      { agent: "dune", route: "social" },
+    ]),
+    goal("company", "defend", goalKey("company", "defend"), ["sable", "zerda", "dune"], [
+      { agent: "sable", route: "analytics?ws=competitors" },
+      { agent: "zerda", route: "seo" },
+      { agent: "dune", route: "articles" },
+    ]),
+  ],
 };

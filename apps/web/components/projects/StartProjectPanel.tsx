@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { FENNEX_AGENTS, type AgentId } from "@/lib/agents";
-import { PLAYBOOKS } from "@/lib/playbooks";
+import { PERSONA_GOALS } from "@/lib/playbooks";
+import { cn } from "@/lib/cn";
 import type { ProjectPersona } from "@/lib/api";
 
 const AGENT_GRADIENT: Record<AgentId, string> = {
@@ -32,12 +34,16 @@ function AgentAvatar({ id, size = 30 }: { id: AgentId; size?: number }) {
 
 /**
  * "Start a project" — proposes the right expert squad and an ordered tool plan
- * for the project's persona. The first concrete piece of the virtual-agency
- * experience: it turns "who you are" into "do these steps, with these agents".
+ * for the project's persona. The persona offers a few concrete goals; picking
+ * one swaps in its tailored squad and step-by-step plan. The first concrete
+ * piece of the virtual-agency experience: it turns "who you are" and "what you
+ * want" into "do these steps, with these agents".
  */
 export function StartProjectPanel({ projectId, persona }: { projectId: string; persona: ProjectPersona }) {
   const { t } = useTranslation();
-  const pb = PLAYBOOKS[persona] ?? PLAYBOOKS.creator;
+  const goals = PERSONA_GOALS[persona] ?? PERSONA_GOALS.creator;
+  const [active, setActive] = useState(0);
+  const goal = goals[active] ?? goals[0];
 
   return (
     <div className="glass overflow-hidden rounded-2xl">
@@ -47,37 +53,62 @@ export function StartProjectPanel({ projectId, persona }: { projectId: string; p
           className="pointer-events-none absolute inset-0 opacity-70"
           style={{ background: "radial-gradient(560px 200px at 12% -30%, hsl(var(--primary) / 0.12), transparent 60%)" }}
         />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("startProject.heading")}
-            </p>
-            <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
-              {t(pb.titleKey)}
-            </h2>
-            <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">{t(pb.subtitleKey)}</p>
-          </div>
-          {/* Squad */}
-          <div className="flex flex-col items-start gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              {t("startProject.squad")}
-            </span>
-            <div className="flex -space-x-1.5">
-              {pb.squad.map((id) => (
-                <AgentAvatar key={id} id={id} size={32} />
-              ))}
+        <div className="relative flex flex-col gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("startProject.heading")}
+              </p>
+              <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+                {t(goal.titleKey)}
+              </h2>
+              <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">{t(goal.subtitleKey)}</p>
+            </div>
+            {/* Squad */}
+            <div className="flex flex-col items-start gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                {t("startProject.squad")}
+              </span>
+              <div className="flex -space-x-1.5">
+                {goal.squad.map((id) => (
+                  <AgentAvatar key={id} id={id} size={32} />
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Goal picker */}
+          {goals.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              <span className="sr-only">{t("startProject.pickGoal")}</span>
+              {goals.map((g, i) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  aria-pressed={i === active}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                    i === active
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
+                  )}
+                >
+                  {t(g.titleKey)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Steps */}
       <ol className="flex flex-col divide-y divide-border">
-        {pb.steps.map((step, i) => {
+        {goal.steps.map((step, i) => {
           const agent = FENNEX_AGENTS[step.agent];
           return (
-            <li key={i}>
+            <li key={`${goal.id}-${i}`}>
               <Link
                 href={`/${projectId}/${step.route}`}
                 className="group flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-white/[0.03]"

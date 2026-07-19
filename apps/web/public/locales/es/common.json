@@ -1511,6 +1511,73 @@
         "s3": "Lanza una campaña multiactivo",
         "s4": "Distribuye en todos los canales"
       }
+    },
+    "pickGoal": "Elige un objetivo",
+    "goals": {
+      "creator": {
+        "series": {
+          "title": "Lanza una serie de contenido",
+          "subtitle": "Planifica una serie recurrente en torno a un tema y publícala cada semana.",
+          "s1": "Elige un tema con demanda de búsqueda",
+          "s2": "Escribe cada episodio como artículo",
+          "s3": "Programa la serie en tus plataformas"
+        },
+        "repurpose": {
+          "title": "Reutiliza en redes",
+          "subtitle": "Convierte tus mejores artículos en una semana de posts que enganchan.",
+          "s1": "Elige un artículo para reutilizar",
+          "s2": "Divídelo en visuales de marca",
+          "s3": "Programa los posts en todas partes"
+        }
+      },
+      "ecommerce": {
+        "catalog": {
+          "title": "Optimiza tu catálogo",
+          "subtitle": "Haz que cada página de producto y colección posicione y se lea bien.",
+          "s1": "Audita el SEO de las fichas",
+          "s2": "Reescribe textos de producto y colección",
+          "s3": "Publica los cambios en tu tienda"
+        },
+        "promo": {
+          "title": "Lanza una promoción",
+          "subtitle": "Crea una oferta por tiempo limitado con su creatividad y difusión social.",
+          "s1": "Planifica la campaña de promo",
+          "s2": "Diseña los visuales de promo",
+          "s3": "Anúnciala en redes"
+        }
+      },
+      "freelancer": {
+        "authority": {
+          "title": "Construye tu autoridad",
+          "subtitle": "Publica experiencia de nicho que haga que los clientes te busquen.",
+          "s1": "Encuentra las preguntas de tu nicho",
+          "s2": "Escribe artículos de autoridad",
+          "s3": "Compártelos en redes"
+        },
+        "outreach": {
+          "title": "Lanza tu prospección",
+          "subtitle": "Llega a las personas correctas con una campaña personal y de marca.",
+          "s1": "Redacta la prospección con Nomad",
+          "s2": "Crea visuales de apoyo",
+          "s3": "Haz seguimiento en redes"
+        }
+      },
+      "company": {
+        "campaign": {
+          "title": "Lanza una campaña",
+          "subtitle": "Despliega una campaña de marca coordinada entre contenido y redes.",
+          "s1": "Planifica la campaña",
+          "s2": "Produce la creatividad",
+          "s3": "Lánzala en redes"
+        },
+        "defend": {
+          "title": "Defiende tu marca",
+          "subtitle": "Vigila a la competencia y refuerza los temas que debes poseer.",
+          "s1": "Analiza los movimientos de la competencia",
+          "s2": "Corrige las brechas on-page",
+          "s3": "Publica contenido para recuperar terreno"
+        }
+      }
     }
   },
   "personaHome": {

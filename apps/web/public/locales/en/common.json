@@ -1594,6 +1594,73 @@
         "s3": "Run a multi-asset campaign",
         "s4": "Distribute across every channel"
       }
+    },
+    "pickGoal": "Choose a goal",
+    "goals": {
+      "creator": {
+        "series": {
+          "title": "Launch a content series",
+          "subtitle": "Plan a repeatable series around one theme and ship it week after week.",
+          "s1": "Pick a theme with search demand",
+          "s2": "Write each episode as an article",
+          "s3": "Schedule the series across platforms"
+        },
+        "repurpose": {
+          "title": "Repurpose to social",
+          "subtitle": "Turn your best articles into a week of scroll-stopping social posts.",
+          "s1": "Pick an article to repurpose",
+          "s2": "Cut it into on-brand visuals",
+          "s3": "Schedule the posts everywhere"
+        }
+      },
+      "ecommerce": {
+        "catalog": {
+          "title": "Optimize your catalog",
+          "subtitle": "Make every product and collection page rank and read well.",
+          "s1": "Audit product-page SEO",
+          "s2": "Rewrite product & collection copy",
+          "s3": "Publish updates to your store"
+        },
+        "promo": {
+          "title": "Run a promo campaign",
+          "subtitle": "Spin up a limited-time offer with matching creative and social push.",
+          "s1": "Plan the promo campaign",
+          "s2": "Design promo visuals",
+          "s3": "Announce it across social"
+        }
+      },
+      "freelancer": {
+        "authority": {
+          "title": "Build your authority",
+          "subtitle": "Publish niche expertise that makes prospects come to you.",
+          "s1": "Find questions your niche asks",
+          "s2": "Write authoritative articles",
+          "s3": "Share them across social"
+        },
+        "outreach": {
+          "title": "Launch outreach",
+          "subtitle": "Reach the right people with a personal, on-brand campaign.",
+          "s1": "Draft outreach with Nomad",
+          "s2": "Create supporting visuals",
+          "s3": "Follow up on social"
+        }
+      },
+      "company": {
+        "campaign": {
+          "title": "Launch a campaign",
+          "subtitle": "Ship a coordinated brand campaign across content and social.",
+          "s1": "Plan the campaign",
+          "s2": "Produce campaign creative",
+          "s3": "Roll it out on social"
+        },
+        "defend": {
+          "title": "Defend your brand",
+          "subtitle": "Watch competitors and shore up the topics you should own.",
+          "s1": "Scan competitor moves",
+          "s2": "Fix on-page gaps",
+          "s3": "Publish content that reclaims ground"
+        }
+      }
     }
   },
   "integrations": {

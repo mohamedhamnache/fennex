@@ -1511,6 +1511,73 @@
         "s3": "Starte eine Multi-Asset-Kampagne",
         "s4": "Verteile über alle Kanäle"
       }
+    },
+    "pickGoal": "Ziel wählen",
+    "goals": {
+      "creator": {
+        "series": {
+          "title": "Content-Serie starten",
+          "subtitle": "Plane eine wiederkehrende Serie zu einem Thema und veröffentliche sie Woche für Woche.",
+          "s1": "Thema mit Suchnachfrage wählen",
+          "s2": "Jede Folge als Artikel schreiben",
+          "s3": "Serie über deine Plattformen planen"
+        },
+        "repurpose": {
+          "title": "Für Social aufbereiten",
+          "subtitle": "Mach aus deinen besten Artikeln eine Woche voller starker Social-Posts.",
+          "s1": "Artikel zum Aufbereiten wählen",
+          "s2": "In markengerechte Visuals schneiden",
+          "s3": "Posts überall einplanen"
+        }
+      },
+      "ecommerce": {
+        "catalog": {
+          "title": "Katalog optimieren",
+          "subtitle": "Bring jede Produkt- und Kollektionsseite zum Ranken und gut Lesen.",
+          "s1": "Produktseiten-SEO prüfen",
+          "s2": "Produkt- und Kollektionstexte neu schreiben",
+          "s3": "Updates im Shop veröffentlichen"
+        },
+        "promo": {
+          "title": "Promo-Kampagne fahren",
+          "subtitle": "Starte ein zeitlich begrenztes Angebot samt Creative und Social-Push.",
+          "s1": "Promo-Kampagne planen",
+          "s2": "Promo-Visuals gestalten",
+          "s3": "Auf Social ankündigen"
+        }
+      },
+      "freelancer": {
+        "authority": {
+          "title": "Autorität aufbauen",
+          "subtitle": "Veröffentliche Nischen-Expertise, die Interessenten zu dir bringt.",
+          "s1": "Fragen deiner Nische finden",
+          "s2": "Autoritative Artikel schreiben",
+          "s3": "Auf Social teilen"
+        },
+        "outreach": {
+          "title": "Outreach starten",
+          "subtitle": "Erreiche die richtigen Leute mit einer persönlichen, markengerechten Kampagne.",
+          "s1": "Outreach mit Nomad entwerfen",
+          "s2": "Passende Visuals erstellen",
+          "s3": "Auf Social nachfassen"
+        }
+      },
+      "company": {
+        "campaign": {
+          "title": "Kampagne starten",
+          "subtitle": "Bring eine abgestimmte Markenkampagne über Content und Social aus.",
+          "s1": "Kampagne planen",
+          "s2": "Kampagnen-Creative produzieren",
+          "s3": "Auf Social ausrollen"
+        },
+        "defend": {
+          "title": "Marke verteidigen",
+          "subtitle": "Beobachte Wettbewerber und stärke die Themen, die dir gehören sollten.",
+          "s1": "Wettbewerber-Aktivität scannen",
+          "s2": "On-Page-Lücken schließen",
+          "s3": "Content veröffentlichen, der Boden zurückholt"
+        }
+      }
     }
   },
   "personaHome": {
