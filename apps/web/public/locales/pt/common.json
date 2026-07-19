@@ -468,7 +468,8 @@
       "linkedin": "LinkedIn",
       "twitter": "Twitter",
       "instagram": "Instagram",
-      "facebook": "Facebook"
+      "facebook": "Facebook",
+      "tiktok": "TikTok"
     },
     "noPosts": "Nenhum post ainda",
     "noPostsHint": "Crie seu primeiro post para começar.",
@@ -1709,6 +1710,46 @@
       "not_connected": "Conecte primeiro sua loja Shopify.",
       "not_found": "Produto não encontrado. Sincronize sua loja novamente.",
       "generic": "Algo deu errado. Tente de novo."
+    }
+  },
+  "influencerStudio": {
+    "open": "Estúdio Influencer",
+    "title": "Estúdio Influencer",
+    "subtitle": "Um tema → posts nativos para cada rede",
+    "topicLabel": "Sobre o que é o post?",
+    "topicPlaceholder": "ex. Lançamento do nosso novo sérum de verão — skincare limpo e vegetal",
+    "keywordLabel": "Palavra-chave (opcional)",
+    "keywordPlaceholder": "ex. skincare natural",
+    "toneLabel": "Tom",
+    "networksLabel": "Redes",
+    "generate": "Gerar variantes",
+    "regenerate": "Gerar novamente",
+    "hooks": "Ganchos",
+    "useHook": "Usar este gancho",
+    "bestTime": "Melhor horário",
+    "copy": "Copiar",
+    "saveDraft": "Salvar rascunho",
+    "saved": "Salvo",
+    "tones": {
+      "professional": "Profissional",
+      "casual": "Casual",
+      "bold": "Ousado",
+      "playful": "Divertido",
+      "inspirational": "Inspirador"
+    },
+    "days": {
+      "mon": "Seg",
+      "tue": "Ter",
+      "wed": "Qua",
+      "thu": "Qui",
+      "fri": "Sex",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "errors": {
+      "no_ai_key": "Adicione uma chave de provedor de IA nas Configurações para gerar posts.",
+      "generic": "Não foi possível gerar. Tente de novo.",
+      "saveFailed": "Não foi possível salvar o rascunho. Tente de novo."
     }
   }
 }

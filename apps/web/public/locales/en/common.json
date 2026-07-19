@@ -551,7 +551,8 @@
       "linkedin": "LinkedIn",
       "twitter": "Twitter",
       "instagram": "Instagram",
-      "facebook": "Facebook"
+      "facebook": "Facebook",
+      "tiktok": "TikTok"
     },
     "noPosts": "No posts yet",
     "noPostsHint": "Create your first post to get started.",
@@ -1774,6 +1775,46 @@
       "not_connected": "Connect your Shopify store first.",
       "not_found": "Product not found. Re-sync your store.",
       "generic": "Something went wrong. Try again."
+    }
+  },
+  "influencerStudio": {
+    "open": "Influencer Studio",
+    "title": "Influencer Studio",
+    "subtitle": "One topic → native posts for every network",
+    "topicLabel": "What's the post about?",
+    "topicPlaceholder": "e.g. Launching our new summer serum — clean, plant-based skincare",
+    "keywordLabel": "Keyword (optional)",
+    "keywordPlaceholder": "e.g. natural skincare",
+    "toneLabel": "Tone",
+    "networksLabel": "Networks",
+    "generate": "Generate variants",
+    "regenerate": "Regenerate",
+    "hooks": "Hooks",
+    "useHook": "Use this hook",
+    "bestTime": "Best time",
+    "copy": "Copy",
+    "saveDraft": "Save draft",
+    "saved": "Saved",
+    "tones": {
+      "professional": "Professional",
+      "casual": "Casual",
+      "bold": "Bold",
+      "playful": "Playful",
+      "inspirational": "Inspirational"
+    },
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "errors": {
+      "no_ai_key": "Add an AI provider key in Settings to generate posts.",
+      "generic": "Couldn't generate. Try again.",
+      "saveFailed": "Couldn't save the draft. Try again."
     }
   }
 }

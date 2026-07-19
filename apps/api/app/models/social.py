@@ -12,6 +12,7 @@ class SocialPlatform(str, PyEnum):
     twitter = "twitter"
     instagram = "instagram"
     facebook = "facebook"
+    tiktok = "tiktok"
 
 
 class SocialPostStatus(str, PyEnum):

@@ -17,6 +17,7 @@ import {
   X,
   Send,
   Share2,
+  Wand2,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -34,6 +35,8 @@ import {
   type SocialPostStatus,
   type Article,
 } from "@/lib/api";
+import { TikTokIcon } from "@/components/studio/SocialIcons";
+import { InfluencerStudioModal } from "@/components/studio/InfluencerStudioModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
@@ -44,6 +47,7 @@ const CHAR_LIMITS: Record<SocialPlatform, number> = {
   twitter: 280,
   instagram: 2200,
   facebook: 63206,
+  tiktok: 2200,
 };
 
 const PLATFORM_BADGE_STYLES: Record<SocialPlatform, string> = {
@@ -51,6 +55,7 @@ const PLATFORM_BADGE_STYLES: Record<SocialPlatform, string> = {
   twitter: "bg-[#1DA1F2]/10 text-[#1DA1F2]",
   instagram: "bg-[#E1306C]/10 text-[#E1306C]",
   facebook: "bg-[#1877F2]/10 text-[#1877F2]",
+  tiktok: "bg-foreground/10 text-foreground",
 };
 
 const PLATFORM_LABELS: Record<SocialPlatform, string> = {
@@ -58,6 +63,7 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   twitter: "Twitter",
   instagram: "Instagram",
   facebook: "Facebook",
+  tiktok: "TikTok",
 };
 
 // Maps snake_case post type keys to i18n camelCase keys
@@ -75,7 +81,7 @@ const STATUS_TONE: Record<SocialPostStatus, BadgeTone> = {
   failed: "danger",
 };
 
-const PLATFORMS: SocialPlatform[] = ["linkedin", "twitter", "instagram", "facebook"];
+const PLATFORMS: SocialPlatform[] = ["linkedin", "twitter", "instagram", "facebook", "tiktok"];
 const POST_TYPES: SocialPostType[] = ["article_share", "tip", "question", "announcement"];
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
@@ -102,6 +108,8 @@ function PlatformIcon({ platform, size = 16 }: { platform: SocialPlatform; size?
       return <Instagram {...props} />;
     case "facebook":
       return <Facebook {...props} />;
+    case "tiktok":
+      return <span style={{ width: size, height: size, display: "inline-flex" }}><TikTokIcon className="w-full h-full" /></span>;
   }
 }
 
@@ -807,6 +815,7 @@ function PlatformTabs({
     { value: "twitter", label: t("social.platformTabs.twitter") },
     { value: "instagram", label: t("social.platformTabs.instagram") },
     { value: "facebook", label: t("social.platformTabs.facebook") },
+    { value: "tiktok", label: t("social.platformTabs.tiktok") },
   ];
 
   return (
@@ -841,6 +850,7 @@ export default function SocialPage({ params }: { params: { projectId: string } }
 
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showStudio, setShowStudio] = useState(false);
   const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
 
   useEffect(() => {
@@ -872,13 +882,22 @@ export default function SocialPage({ params }: { params: { projectId: string } }
         breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("social.title") }]}
         description={t("social.subtitle")}
         actions={
-          <button
-            onClick={() => setShowNewModal(true)}
-            className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("social.newPost")}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowStudio(true)}
+              className="flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <Wand2 className="h-3.5 w-3.5 text-primary" />
+              {t("influencerStudio.open")}
+            </button>
+            <button
+              onClick={() => setShowNewModal(true)}
+              className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("social.newPost")}
+            </button>
+          </div>
         }
       />
 
@@ -939,6 +958,15 @@ export default function SocialPage({ params }: { params: { projectId: string } }
           post={editingPost}
           projectId={projectId}
           onClose={() => setEditingPost(null)}
+        />
+      )}
+
+      {/* Influencer Studio */}
+      {showStudio && (
+        <InfluencerStudioModal
+          projectId={projectId}
+          onClose={() => setShowStudio(false)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["social-posts", projectId] })}
         />
       )}
     </div>

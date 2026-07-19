@@ -468,7 +468,8 @@
       "linkedin": "LinkedIn",
       "twitter": "Twitter",
       "instagram": "Instagram",
-      "facebook": "Facebook"
+      "facebook": "Facebook",
+      "tiktok": "TikTok"
     },
     "noPosts": "Aucun post pour l'instant",
     "noPostsHint": "Créez votre premier post pour commencer.",
@@ -1709,6 +1710,46 @@
       "not_connected": "Connectez d'abord votre boutique Shopify.",
       "not_found": "Produit introuvable. Resynchronisez votre boutique.",
       "generic": "Une erreur est survenue. Réessayez."
+    }
+  },
+  "influencerStudio": {
+    "open": "Studio Influence",
+    "title": "Studio Influence",
+    "subtitle": "Un sujet → des posts natifs pour chaque réseau",
+    "topicLabel": "De quoi parle le post ?",
+    "topicPlaceholder": "ex. Lancement de notre nouveau sérum d'été — soin clean, à base de plantes",
+    "keywordLabel": "Mot-clé (optionnel)",
+    "keywordPlaceholder": "ex. soin naturel",
+    "toneLabel": "Ton",
+    "networksLabel": "Réseaux",
+    "generate": "Générer les variantes",
+    "regenerate": "Régénérer",
+    "hooks": "Accroches",
+    "useHook": "Utiliser cette accroche",
+    "bestTime": "Meilleur moment",
+    "copy": "Copier",
+    "saveDraft": "Enregistrer",
+    "saved": "Enregistré",
+    "tones": {
+      "professional": "Professionnel",
+      "casual": "Décontracté",
+      "bold": "Audacieux",
+      "playful": "Ludique",
+      "inspirational": "Inspirant"
+    },
+    "days": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mer",
+      "thu": "Jeu",
+      "fri": "Ven",
+      "sat": "Sam",
+      "sun": "Dim"
+    },
+    "errors": {
+      "no_ai_key": "Ajoutez une clé de fournisseur IA dans les Paramètres pour générer les posts.",
+      "generic": "Génération impossible. Réessayez.",
+      "saveFailed": "Enregistrement impossible. Réessayez."
     }
   }
 }

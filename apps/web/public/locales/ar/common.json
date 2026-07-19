@@ -468,7 +468,8 @@
       "linkedin": "LinkedIn",
       "twitter": "Twitter",
       "instagram": "Instagram",
-      "facebook": "Facebook"
+      "facebook": "Facebook",
+      "tiktok": "TikTok"
     },
     "noPosts": "لا توجد منشورات بعد",
     "noPostsHint": "أنشئ أول منشور للبدء.",
@@ -1709,6 +1710,46 @@
       "not_connected": "اربط متجر Shopify أولًا.",
       "not_found": "المنتج غير موجود. أعد مزامنة متجرك.",
       "generic": "حدث خطأ ما. حاول مجددًا."
+    }
+  },
+  "influencerStudio": {
+    "open": "استوديو المؤثرين",
+    "title": "استوديو المؤثرين",
+    "subtitle": "موضوع واحد ← منشورات أصلية لكل شبكة",
+    "topicLabel": "عن ماذا المنشور؟",
+    "topicPlaceholder": "مثال: إطلاق سيرومنا الصيفي الجديد — عناية نظيفة ونباتية",
+    "keywordLabel": "كلمة مفتاحية (اختياري)",
+    "keywordPlaceholder": "مثال: العناية الطبيعية",
+    "toneLabel": "النبرة",
+    "networksLabel": "الشبكات",
+    "generate": "توليد النسخ",
+    "regenerate": "إعادة التوليد",
+    "hooks": "الجمل الافتتاحية",
+    "useHook": "استخدم هذه الجملة",
+    "bestTime": "أفضل وقت",
+    "copy": "نسخ",
+    "saveDraft": "حفظ مسودة",
+    "saved": "محفوظ",
+    "tones": {
+      "professional": "احترافي",
+      "casual": "عفوي",
+      "bold": "جريء",
+      "playful": "مرح",
+      "inspirational": "ملهم"
+    },
+    "days": {
+      "mon": "الإثنين",
+      "tue": "الثلاثاء",
+      "wed": "الأربعاء",
+      "thu": "الخميس",
+      "fri": "الجمعة",
+      "sat": "السبت",
+      "sun": "الأحد"
+    },
+    "errors": {
+      "no_ai_key": "أضف مفتاح مزود ذكاء اصطناعي في الإعدادات لتوليد المنشورات.",
+      "generic": "تعذّر التوليد. حاول مجددًا.",
+      "saveFailed": "تعذّر حفظ المسودة. حاول مجددًا."
     }
   }
 }

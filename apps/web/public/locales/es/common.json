@@ -468,7 +468,8 @@
       "linkedin": "LinkedIn",
       "twitter": "Twitter",
       "instagram": "Instagram",
-      "facebook": "Facebook"
+      "facebook": "Facebook",
+      "tiktok": "TikTok"
     },
     "noPosts": "Aún no hay publicaciones",
     "noPostsHint": "Crea tu primera publicación para comenzar.",
@@ -1709,6 +1710,46 @@
       "not_connected": "Conecta primero tu tienda Shopify.",
       "not_found": "Producto no encontrado. Vuelve a sincronizar tu tienda.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "influencerStudio": {
+    "open": "Estudio Influencer",
+    "title": "Estudio Influencer",
+    "subtitle": "Un tema → publicaciones nativas para cada red",
+    "topicLabel": "¿De qué trata la publicación?",
+    "topicPlaceholder": "ej. Lanzamiento de nuestro nuevo sérum de verano — cuidado limpio y vegetal",
+    "keywordLabel": "Palabra clave (opcional)",
+    "keywordPlaceholder": "ej. cuidado natural",
+    "toneLabel": "Tono",
+    "networksLabel": "Redes",
+    "generate": "Generar variantes",
+    "regenerate": "Regenerar",
+    "hooks": "Ganchos",
+    "useHook": "Usar este gancho",
+    "bestTime": "Mejor momento",
+    "copy": "Copiar",
+    "saveDraft": "Guardar borrador",
+    "saved": "Guardado",
+    "tones": {
+      "professional": "Profesional",
+      "casual": "Casual",
+      "bold": "Atrevido",
+      "playful": "Divertido",
+      "inspirational": "Inspirador"
+    },
+    "days": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "errors": {
+      "no_ai_key": "Añade una clave de proveedor de IA en Ajustes para generar publicaciones.",
+      "generic": "No se pudo generar. Inténtalo de nuevo.",
+      "saveFailed": "No se pudo guardar el borrador. Inténtalo de nuevo."
     }
   }
 }

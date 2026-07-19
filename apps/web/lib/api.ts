@@ -628,7 +628,7 @@ export async function listPublishJobs(projectId: string): Promise<PublishJob[]> 
 
 // ─── Social Media types & helpers ──────────────────────────────────────────
 
-export type SocialPlatform = "linkedin" | "twitter" | "instagram" | "facebook";
+export type SocialPlatform = "linkedin" | "twitter" | "instagram" | "facebook" | "tiktok";
 export type SocialPostStatus = "draft" | "scheduled" | "published" | "failed";
 export type SocialPostType = "article_share" | "tip" | "question" | "announcement";
 
@@ -695,6 +695,27 @@ export async function generateSocialPost(data: {
 
 export async function scheduleSocialPost(id: string, scheduled_at: string): Promise<SocialPost> {
   return apiClient.post<SocialPost>(`/social/${id}/schedule`, { scheduled_at });
+}
+
+// Influencer Studio — LLM per-network variants
+export interface StudioVariant {
+  platform: SocialPlatform;
+  hooks: string[];
+  content: string;
+  hashtags: string[];
+  char_count: number;
+  best_time?: { day: string; time: string } | null;
+}
+export async function generateSocialStudio(data: {
+  project_id: string;
+  topic: string;
+  platforms: SocialPlatform[];
+  tone?: string;
+  keyword?: string | null;
+}): Promise<{ ok: boolean; error?: string | null; variants: StudioVariant[] }> {
+  return apiClient.post<{ ok: boolean; error?: string | null; variants: StudioVariant[] }>(
+    "/social/studio", data,
+  );
 }
 
 export async function publishSocialPost(id: string): Promise<SocialPost> {
