@@ -65,7 +65,7 @@ export const PERSONA_GOALS: Record<ProjectPersona, PlaybookGoal[]> = {
   ecommerce: [
     goal("ecommerce", "launch", flagship("ecommerce"), ["zerda", "mirage", "dune", "sirocco"], [
       { agent: "zerda", route: "keywords" },
-      { agent: "mirage", route: "images" },
+      { agent: "mirage", route: "images/studio?mode=create&intent=product" },
       { agent: "dune", route: "articles" },
       { agent: "sirocco", route: "social" },
     ]),
@@ -76,7 +76,7 @@ export const PERSONA_GOALS: Record<ProjectPersona, PlaybookGoal[]> = {
     ]),
     goal("ecommerce", "promo", goalKey("ecommerce", "promo"), ["sirocco", "mirage", "dune"], [
       { agent: "sirocco", route: "campaigns" },
-      { agent: "mirage", route: "images" },
+      { agent: "mirage", route: "images/studio?mode=create&intent=product" },
       { agent: "dune", route: "social" },
     ]),
   ],

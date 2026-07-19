@@ -1613,7 +1613,8 @@
     },
     "actions": {
       "campaigns": "Campagnes",
-      "seo": "Pôle SEO"
+      "seo": "Pôle SEO",
+      "connectStore": "Connecter votre boutique"
     },
     "northStar": {
       "brand_reach": "Portée organique de marque (impressions)"

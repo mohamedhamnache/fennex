@@ -11,6 +11,7 @@ import {
 import {
   getGscStatus, listArticles, listImages, getBrandKit, listPublishingConnections,
   updateProject, listSocialConnections, connectLinkedIn,
+  getShopifyStatus, getWooStatus,
   type ProjectPersona,
 } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
@@ -79,6 +80,16 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
     queryFn: listSocialConnections,
     staleTime: 60_000,
   });
+  const { data: shopify } = useQuery({
+    queryKey: ["shopify-status", projectId],
+    queryFn: () => getShopifyStatus(projectId),
+    staleTime: 60_000,
+  });
+  const { data: woo } = useQuery({
+    queryKey: ["woo-status", projectId],
+    queryFn: () => getWooStatus(projectId),
+    staleTime: 60_000,
+  });
   const [missionError, setMissionError] = useState<string | null>(null);
 
   async function startLinkedIn() {
@@ -97,7 +108,7 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
   const hasSocialImage = images.some((i) => i.social_platform);
   const hasProductShot = images.some((i) => i.usage === "product_shot");
   const hasBrandKit = !!(brandKit && ((brandKit.colors?.length ?? 0) > 0 || brandKit.primary_font || brandKit.style_rules));
-  const hasStore = connections.length > 0;
+  const hasStore = !!shopify?.connected || !!woo?.connected || connections.length > 0;
   const hasLinkedIn = socialConns.some((c) => c.platform === "linkedin");
 
   const base = `/${projectId}`;
@@ -112,7 +123,7 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
         ]
       : persona === "ecommerce"
       ? [
-          { id: "store", key: "ecommerce_store", href: `${base}/publishing`, done: hasStore },
+          { id: "store", key: "ecommerce_store", href: `${base}/integrations`, done: hasStore },
           { id: "gsc", key: "ecommerce_gsc", href: `${base}/analytics`, done: gscConnected },
           { id: "sync", key: "ecommerce_sync", href: `${base}/analytics`, done: gscSynced },
           { id: "product", key: "ecommerce_product", href: `${base}/images/studio?mode=create&intent=product`, done: hasProductShot },

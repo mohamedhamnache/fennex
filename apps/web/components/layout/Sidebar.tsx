@@ -46,9 +46,9 @@ const NAV_ITEMS: Record<string, NavItem> = {
 
 // Persona -> primary tool order (the highlighted "For you" group).
 const PERSONA_PRIMARY: Record<string, string[]> = {
-  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics", "seo"],
-  ecommerce:  ["overview", "calendar", "images", "analytics", "seo", "agents", "campaigns", "keywords"],
-  freelancer: ["overview", "calendar", "agents", "campaigns", "analytics", "seo", "social", "backlinks"],
+  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics", "seo", "integrations"],
+  ecommerce:  ["overview", "calendar", "images", "integrations", "analytics", "seo", "agents", "campaigns", "keywords"],
+  freelancer: ["overview", "calendar", "agents", "campaigns", "analytics", "seo", "social", "integrations", "backlinks"],
   company:    ["overview", "articles", "seo", "campaigns", "social", "analytics", "agents", "keywords", "integrations"],
 };
 

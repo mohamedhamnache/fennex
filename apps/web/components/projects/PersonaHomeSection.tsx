@@ -28,9 +28,9 @@ const QUICK_ACTIONS: Record<string, { key: string; href: string; icon: React.Ele
     { key: "social", href: "social", icon: Share2 },
   ],
   ecommerce: [
-    { key: "productStudio", href: "images", icon: ImagePlus },
-    { key: "market", href: "analytics?ws=market", icon: ShoppingBag },
-    { key: "analytics", href: "analytics", icon: BarChart2 },
+    { key: "connectStore", href: "integrations", icon: ShoppingBag },
+    { key: "productStudio", href: "images/studio?mode=create&intent=product", icon: ImagePlus },
+    { key: "market", href: "analytics?ws=market", icon: BarChart2 },
   ],
   freelancer: [
     { key: "outreach", href: "agents/nomad", icon: Compass },

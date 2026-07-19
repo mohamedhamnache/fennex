@@ -108,7 +108,8 @@
       "marketReport": "Generate market report",
       "competitor": "Scan a competitor",
       "campaigns": "Campaigns",
-      "seo": "SEO hub"
+      "seo": "SEO hub",
+      "connectStore": "Connect your store"
     }
   },
   "common": {

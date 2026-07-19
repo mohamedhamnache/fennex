@@ -1613,7 +1613,8 @@
     },
     "actions": {
       "campaigns": "Kampagnen",
-      "seo": "SEO-Hub"
+      "seo": "SEO-Hub",
+      "connectStore": "Store verbinden"
     },
     "northStar": {
       "brand_reach": "Organische Markenreichweite (Impressionen)"
