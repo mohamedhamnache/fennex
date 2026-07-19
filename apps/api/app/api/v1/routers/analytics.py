@@ -27,6 +27,7 @@ from app.schemas.analytics import (
     MarketInsights,
     OpportunitiesResponse,
     PersonaHome,
+    PlanGrounding,
     RankingRow,
     TopPageRow,
     TopQueryRow,
@@ -199,6 +200,16 @@ async def analytics_persona_home(
 ):
     from app.services.analytics_service import get_persona_home
     return await get_persona_home(project_id, current_user.org_id, persona, db)
+
+
+@router.get("/plan-grounding", response_model=PlanGrounding)
+async def analytics_plan_grounding(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+):
+    from app.services.analytics_service import get_plan_grounding
+    return await get_plan_grounding(project_id, current_user.org_id, db)
 
 
 @router.get("/gsc/status", response_model=GscConnectionStatus)

@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Target } from "lucide-react";
 import { FENNEX_AGENTS, type AgentId } from "@/lib/agents";
 import { PERSONA_GOALS } from "@/lib/playbooks";
+import { getPlanGrounding, type PlanHint, type ProjectPersona } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import type { ProjectPersona } from "@/lib/api";
 
 const AGENT_GRADIENT: Record<AgentId, string> = {
   zerda: "from-indigo-500 to-violet-500",
@@ -32,6 +33,27 @@ function AgentAvatar({ id, size = 30 }: { id: AgentId; size?: number }) {
   );
 }
 
+/** Map a step route to the grounding capability whose hint applies to it. */
+function capabilityFor(route: string): string | null {
+  if (route.includes("competitors")) return "competitors";
+  if (route.startsWith("keywords") || route.startsWith("seo")) return "keywords";
+  if (route.startsWith("articles")) return "articles";
+  if (route.startsWith("social") || route.startsWith("images") || route.startsWith("campaigns")) return "social";
+  return null;
+}
+
+/** Format a grounding hint's numbers into i18n interpolation values. */
+function hintValues(h: PlanHint, locale: string): Record<string, string> {
+  const num = (n: number) => new Intl.NumberFormat(locale).format(Math.round(n));
+  switch (h.key) {
+    case "keywords": return { query: h.query, pos: h.a.toFixed(1), clicks: num(h.b) };
+    case "articles": return { query: h.query, impressions: num(h.a) };
+    case "social": return { query: h.query, count: num(h.a) };
+    case "competitors": return { query: h.query, pos: h.a.toFixed(1) };
+    default: return { query: h.query };
+  }
+}
+
 /**
  * "Start a project" — proposes the right expert squad and an ordered tool plan
  * for the project's persona. The persona offers a few concrete goals; picking
@@ -40,10 +62,17 @@ function AgentAvatar({ id, size = 30 }: { id: AgentId; size?: number }) {
  * want" into "do these steps, with these agents".
  */
 export function StartProjectPanel({ projectId, persona }: { projectId: string; persona: ProjectPersona }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const goals = PERSONA_GOALS[persona] ?? PERSONA_GOALS.creator;
   const [active, setActive] = useState(0);
   const goal = goals[active] ?? goals[0];
+
+  const { data: grounding } = useQuery({
+    queryKey: ["plan-grounding", projectId],
+    queryFn: () => getPlanGrounding(projectId),
+    staleTime: 5 * 60_000,
+  });
+  const hintByKey = new Map((grounding?.hints ?? []).map((h) => [h.key, h]));
 
   return (
     <div className="glass overflow-hidden rounded-2xl">
@@ -107,6 +136,8 @@ export function StartProjectPanel({ projectId, persona }: { projectId: string; p
       <ol className="flex flex-col divide-y divide-border">
         {goal.steps.map((step, i) => {
           const agent = FENNEX_AGENTS[step.agent];
+          const cap = capabilityFor(step.route);
+          const hint = cap ? hintByKey.get(cap) : undefined;
           return (
             <li key={`${goal.id}-${i}`}>
               <Link
@@ -121,7 +152,14 @@ export function StartProjectPanel({ projectId, persona }: { projectId: string; p
                   <p className="truncate text-sm font-medium text-foreground transition-colors group-hover:text-primary">
                     {t(step.labelKey)}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground">{agent.name}</p>
+                  {hint ? (
+                    <p className="flex items-center gap-1 truncate text-[11px] text-primary/90">
+                      <Target className="h-3 w-3 shrink-0" strokeWidth={2} />
+                      <span className="truncate">{t(`startProject.grounding.${hint.key}`, hintValues(hint, i18n.language))}</span>
+                    </p>
+                  ) : (
+                    <p className="truncate text-[11px] text-muted-foreground">{agent.name}</p>
+                  )}
                 </div>
                 <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
               </Link>

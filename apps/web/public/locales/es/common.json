@@ -1578,6 +1578,12 @@
           "s3": "Publica contenido para recuperar terreno"
         }
       }
+    },
+    "grounding": {
+      "keywords": "Empieza por «{{query}}» — pos {{pos}}, +{{clicks}} clics al alcance",
+      "articles": "Con demanda: «{{query}}» — {{impressions}} impresiones",
+      "social": "Tu audiencia se agrupa en torno a «{{query}}» ({{count}} consultas)",
+      "competitors": "Los rivales dominan «{{query}}» — pos media {{pos}}"
     }
   },
   "personaHome": {

@@ -1578,6 +1578,12 @@
           "s3": "انشر محتوى يستعيد المواقع"
         }
       }
+    },
+    "grounding": {
+      "keywords": "ابدأ بـ «{{query}}» — المركز {{pos}}، ‎+{{clicks}} نقرة في المتناول",
+      "articles": "عليه طلب: «{{query}}» — {{impressions}} ظهور",
+      "social": "جمهورك يتجمع حول «{{query}}» ({{count}} استعلام)",
+      "competitors": "المنافسون يتصدرون «{{query}}» — متوسط المركز {{pos}}"
     }
   },
   "personaHome": {

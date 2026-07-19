@@ -1661,6 +1661,12 @@
           "s3": "Publish content that reclaims ground"
         }
       }
+    },
+    "grounding": {
+      "keywords": "Start with “{{query}}” — pos {{pos}}, +{{clicks}} clicks in reach",
+      "articles": "In demand: “{{query}}” — {{impressions}} impressions",
+      "social": "Your audience clusters around “{{query}}” ({{count}} queries)",
+      "competitors": "Rivals lead on “{{query}}” — avg pos {{pos}}"
     }
   },
   "integrations": {

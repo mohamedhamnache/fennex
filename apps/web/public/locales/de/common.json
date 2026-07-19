@@ -1578,6 +1578,12 @@
           "s3": "Content veröffentlichen, der Boden zurückholt"
         }
       }
+    },
+    "grounding": {
+      "keywords": "Starte mit „{{query}}“ — Pos {{pos}}, +{{clicks}} Klicks in Reichweite",
+      "articles": "Gefragt: „{{query}}“ — {{impressions}} Impressionen",
+      "social": "Deine Zielgruppe bündelt sich um „{{query}}“ ({{count}} Suchanfragen)",
+      "competitors": "Wettbewerber führen bei „{{query}}“ — Ø-Pos {{pos}}"
     }
   },
   "personaHome": {

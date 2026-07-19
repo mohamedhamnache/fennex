@@ -1578,6 +1578,12 @@
           "s3": "Publier du contenu pour reprendre du terrain"
         }
       }
+    },
+    "grounding": {
+      "keywords": "Commencez par « {{query}} » — pos {{pos}}, +{{clicks}} clics à portée",
+      "articles": "Recherché : « {{query}} » — {{impressions}} impressions",
+      "social": "Votre audience se regroupe autour de « {{query}} » ({{count}} requêtes)",
+      "competitors": "Les concurrents dominent « {{query}} » — pos moy. {{pos}}"
     }
   },
   "personaHome": {

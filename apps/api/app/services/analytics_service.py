@@ -29,6 +29,8 @@ from app.schemas.analytics import (
     FocusItem,
     FocusList,
     PersonaHome,
+    PlanHint,
+    PlanGrounding,
 )
 
 
@@ -687,3 +689,36 @@ async def get_persona_home(project_id, org_id, persona: str, db) -> PersonaHome:
             items=[FocusItem(label=c.topic, detail=f"{c.query_count} queries · avg pos {c.avg_position}") for c in clusters],
         ),
     )
+
+
+async def get_plan_grounding(project_id, org_id, db) -> PlanGrounding:
+    """Ground the Start-a-project plan in the project's real Search Console data.
+
+    Returns per-capability hints (keywords / articles / social / competitors)
+    pulled from live opportunities and market clusters, so the plan proposes a
+    concrete first move ("start with this query") instead of generic copy.
+    Empty when the project has no synced GSC data yet.
+    """
+    opps = await get_opportunities(project_id, org_id, db)
+    market = await get_market_insights(project_id, org_id, db)
+    hints: list[PlanHint] = []
+
+    if opps.striking_distance:
+        o = opps.striking_distance[0]
+        hints.append(PlanHint(key="keywords", query=o.query, a=round(o.position, 1), b=float(o.potential_clicks)))
+
+    demand = [i for i in market.ideas if i.idea_type in ("question", "how-to", "list", "comparison")]
+    idea = (demand or market.ideas)
+    if idea:
+        hints.append(PlanHint(key="articles", query=idea[0].query, a=float(idea[0].impressions)))
+
+    by_reach = sorted(market.clusters, key=lambda c: c.impressions, reverse=True)
+    if by_reach:
+        hints.append(PlanHint(key="social", query=by_reach[0].topic, a=float(by_reach[0].query_count)))
+
+    # Rivals lead: a sizable topic where the brand ranks poorly (worst position among reached clusters)
+    rivals = sorted([c for c in market.clusters if c.avg_position > 5], key=lambda c: c.impressions, reverse=True)
+    if rivals:
+        hints.append(PlanHint(key="competitors", query=rivals[0].topic, a=round(rivals[0].avg_position, 1)))
+
+    return PlanGrounding(has_data=bool(hints), hints=hints)

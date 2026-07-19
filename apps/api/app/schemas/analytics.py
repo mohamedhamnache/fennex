@@ -237,3 +237,15 @@ class PersonaHome(BaseModel):
     north_star: NorthStar
     secondary: list[SecondaryMetric]
     focus: FocusList
+
+
+class PlanHint(BaseModel):
+    key: str          # capability: keywords | articles | social | competitors
+    query: str        # the concrete query/topic pulled from the project's real data
+    a: float = 0      # primary metric (position, impressions, or query_count)
+    b: float = 0      # secondary metric (potential clicks)
+
+
+class PlanGrounding(BaseModel):
+    has_data: bool
+    hints: list[PlanHint]

@@ -1098,6 +1098,22 @@ export async function getPersonaHome(projectId: string, persona: string): Promis
   return apiClient.get<PersonaHome>(`/analytics/persona-home?project_id=${projectId}&persona=${persona}`);
 }
 
+export interface PlanHint {
+  key: string;   // capability: keywords | articles | social | competitors
+  query: string;
+  a: number;
+  b: number;
+}
+
+export interface PlanGrounding {
+  has_data: boolean;
+  hints: PlanHint[];
+}
+
+export async function getPlanGrounding(projectId: string): Promise<PlanGrounding> {
+  return apiClient.get<PlanGrounding>(`/analytics/plan-grounding?project_id=${projectId}`);
+}
+
 export interface DigestResult {
   ok: boolean;
   sent: number;
