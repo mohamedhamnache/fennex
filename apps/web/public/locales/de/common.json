@@ -1753,6 +1753,8 @@
       "no_ai_key": "Füge in den Einstellungen einen KI-Anbieter-Key hinzu, um Posts zu generieren.",
       "generic": "Generierung fehlgeschlagen. Versuche es erneut.",
       "saveFailed": "Entwurf konnte nicht gespeichert werden. Versuche es erneut."
-    }
+    },
+    "schedule": "Planen",
+    "scheduledFor": "Geplant"
   }
 }

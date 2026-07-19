@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Sparkles, Loader2, Copy, Check, Clock, Save, Wand2, Twitter } from "lucide-react";
+import { X, Sparkles, Loader2, Copy, Check, Clock, Save, Wand2, Twitter, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  generateSocialStudio, createSocialPost, type SocialPlatform, type StudioVariant,
+  generateSocialStudio, createSocialPost, scheduleSocialPost, type SocialPlatform, type StudioVariant,
 } from "@/lib/api";
 import { LinkedInIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "@/components/studio/SocialIcons";
 
@@ -27,6 +27,22 @@ function replaceFirstLine(text: string, hook: string): string {
   return nl === -1 ? hook : hook + text.slice(nl);
 }
 
+const DAY_INDEX: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+/** Next future occurrence of the best-time slot (weekday + start of the range) as ISO. */
+function nextBestTimeISO(best: { day: string; time: string }): string {
+  const start = best.time.split(/[–-]/)[0].trim(); // "09:00–11:00" -> "09:00"
+  const [h, m] = start.split(":").map((n) => parseInt(n, 10) || 0);
+  const now = new Date();
+  const target = DAY_INDEX[best.day] ?? now.getDay();
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  let diff = (target - now.getDay() + 7) % 7;
+  if (diff === 0 && d <= now) diff = 7; // if that time already passed today, go next week
+  d.setDate(d.getDate() + diff);
+  return d.toISOString();
+}
+
 interface Props {
   projectId: string;
   onClose: () => void;
@@ -34,7 +50,7 @@ interface Props {
 }
 
 export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [topic, setTopic] = useState("");
   const [keyword, setKeyword] = useState("");
   const [tone, setTone] = useState("professional");
@@ -43,6 +59,7 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [scheduled, setScheduled] = useState<Record<string, string>>({}); // platform -> ISO
   const [copied, setCopied] = useState<string | null>(null);
 
   function togglePlatform(id: SocialPlatform) {
@@ -77,6 +94,20 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
     try {
       await createSocialPost({ project_id: projectId, platform: v.platform, post_type: "tip", content: v.content, hashtags: v.hashtags });
       setSaved((s) => new Set(s).add(v.platform));
+      onSaved();
+    } catch {
+      setError(t("influencerStudio.errors.saveFailed"));
+    }
+  }
+
+  async function scheduleVariant(v: StudioVariant) {
+    if (!v.best_time || scheduled[v.platform]) return;
+    const iso = nextBestTimeISO(v.best_time);
+    try {
+      const post = await createSocialPost({ project_id: projectId, platform: v.platform, post_type: "tip", content: v.content, hashtags: v.hashtags });
+      await scheduleSocialPost(post.id, iso);
+      setSaved((s) => new Set(s).add(v.platform));
+      setScheduled((m) => ({ ...m, [v.platform]: iso }));
       onSaved();
     } catch {
       setError(t("influencerStudio.errors.saveFailed"));
@@ -229,8 +260,13 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
                     {v.hashtags.length > 0 && (
                       <p className="mt-1 line-clamp-1 text-[11px] text-primary/80">{v.hashtags.join(" ")}</p>
                     )}
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      {v.best_time ? (
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      {scheduled[v.platform] ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
+                          <CalendarClock className="h-3 w-3" /> {t("influencerStudio.scheduledFor")}:{" "}
+                          {new Date(scheduled[v.platform]).toLocaleString(i18n.language, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      ) : v.best_time ? (
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                           <Clock className="h-3 w-3" /> {t("influencerStudio.bestTime")}: {t(`influencerStudio.days.${v.best_time.day}`)} {v.best_time.time}
                         </span>
@@ -240,6 +276,16 @@ export function InfluencerStudioModal({ projectId, onClose, onSaved }: Props) {
                           {copied === v.platform ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                           {t("influencerStudio.copy")}
                         </button>
+                        {v.best_time && !scheduled[v.platform] && (
+                          <button
+                            type="button"
+                            onClick={() => scheduleVariant(v)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-accent"
+                          >
+                            <CalendarClock className="h-3.5 w-3.5 text-primary" />
+                            {t("influencerStudio.schedule")}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => saveVariant(v)}

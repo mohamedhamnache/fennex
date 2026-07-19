@@ -1753,6 +1753,8 @@
       "no_ai_key": "Ajoutez une clé de fournisseur IA dans les Paramètres pour générer les posts.",
       "generic": "Génération impossible. Réessayez.",
       "saveFailed": "Enregistrement impossible. Réessayez."
-    }
+    },
+    "schedule": "Programmer",
+    "scheduledFor": "Programmé"
   }
 }

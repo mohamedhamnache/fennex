@@ -1753,6 +1753,8 @@
       "no_ai_key": "Adicione uma chave de provedor de IA nas Configurações para gerar posts.",
       "generic": "Não foi possível gerar. Tente de novo.",
       "saveFailed": "Não foi possível salvar o rascunho. Tente de novo."
-    }
+    },
+    "schedule": "Agendar",
+    "scheduledFor": "Agendado"
   }
 }

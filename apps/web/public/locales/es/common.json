@@ -1753,6 +1753,8 @@
       "no_ai_key": "Añade una clave de proveedor de IA en Ajustes para generar publicaciones.",
       "generic": "No se pudo generar. Inténtalo de nuevo.",
       "saveFailed": "No se pudo guardar el borrador. Inténtalo de nuevo."
-    }
+    },
+    "schedule": "Programar",
+    "scheduledFor": "Programado"
   }
 }
