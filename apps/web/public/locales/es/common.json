@@ -1473,5 +1473,55 @@
     },
     "polishing": "Puliendo para SEO…",
     "keywordPlaceholder": "Palabra clave objetivo…"
+  },
+  "startProject": {
+    "heading": "Iniciar un proyecto",
+    "squad": "Tu equipo",
+    "pb": {
+      "creator": {
+        "title": "Haz crecer tu audiencia",
+        "subtitle": "Convierte la demanda de búsqueda en contenido que tu audiencia adora, y publícalo en todas partes.",
+        "s1": "Encuentra los temas que busca tu audiencia",
+        "s2": "Escribe un artículo o guión optimizado para SEO",
+        "s3": "Crea visuales con tu marca",
+        "s4": "Programa publicaciones en tus plataformas"
+      },
+      "ecommerce": {
+        "title": "Vende más productos",
+        "subtitle": "Convierte la demanda de compra en fichas y fotos de producto que posicionan y convierten.",
+        "s1": "Apunta a palabras clave de intención de compra",
+        "s2": "Genera fotos de producto profesionales",
+        "s3": "Escribe textos SEO de producto y categoría",
+        "s4": "Promociona tus productos en redes"
+      },
+      "freelancer": {
+        "title": "Encuentra nuevos clientes",
+        "subtitle": "Investiga tu nicho, llega a las personas adecuadas y construye autoridad.",
+        "s1": "Investiga tu nicho y clientes ideales",
+        "s2": "Planifica tu prospección en LinkedIn",
+        "s3": "Publica contenido que genere autoridad",
+        "s4": "Detecta huecos de la competencia para ofrecer"
+      },
+      "company": {
+        "title": "Domina la búsqueda de tu marca",
+        "subtitle": "Sigue posiciones, publica contenido que rankea y lanza campañas coordinadas.",
+        "s1": "Sigue posiciones y encuentra oportunidades",
+        "s2": "Publica contenido que rankea",
+        "s3": "Lanza una campaña multiactivo",
+        "s4": "Distribuye en todos los canales"
+      }
+    }
+  },
+  "personaHome": {
+    "persona": {
+      "company": "Empresa"
+    },
+    "goal": {
+      "company": "Domina la presencia de tu marca en búsqueda y redes"
+    },
+    "actions": {
+      "campaigns": "Campañas",
+      "seo": "Centro SEO"
+    }
   }
 }

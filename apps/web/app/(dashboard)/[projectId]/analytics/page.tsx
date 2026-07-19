@@ -1671,7 +1671,7 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
   useEffect(() => {
     const saved = localStorage.getItem("fx-analytics-persona");
     if (saved === "creator" || saved === "ecommerce" || saved === "freelancer") setPersona(saved);
-    else if (projectPersona) setPersona(projectPersona);
+    else if (projectPersona && projectPersona !== "company") setPersona(projectPersona);
   }, [projectPersona]);
   function changePersona(p: Persona) {
     setPersona(p);

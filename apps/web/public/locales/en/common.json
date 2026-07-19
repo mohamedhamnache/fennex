@@ -66,12 +66,14 @@
     "persona": {
       "creator": "Creator",
       "ecommerce": "Ecommerce",
-      "freelancer": "Freelancer"
+      "freelancer": "Freelancer",
+      "company": "Company"
     },
     "goal": {
       "creator": "Grow your audience",
       "ecommerce": "Capture buyer intent",
-      "freelancer": "Win clients in your niche"
+      "freelancer": "Win clients in your niche",
+      "company": "Own your brand's search and social presence"
     },
     "northStar": {
       "clicks": "Audience reached (clicks)",
@@ -101,7 +103,9 @@
       "analytics": "View analytics",
       "outreach": "Plan outreach",
       "marketReport": "Generate market report",
-      "competitor": "Scan a competitor"
+      "competitor": "Scan a competitor",
+      "campaigns": "Campaigns",
+      "seo": "SEO hub"
     }
   },
   "common": {
@@ -1550,5 +1554,43 @@
     },
     "polishing": "Polishing for SEO…",
     "keywordPlaceholder": "Target keyword…"
+  },
+  "startProject": {
+    "heading": "Start a project",
+    "squad": "Your squad",
+    "pb": {
+      "creator": {
+        "title": "Grow your audience",
+        "subtitle": "Turn search demand into content your audience loves — and publish it everywhere.",
+        "s1": "Find topics your audience is searching for",
+        "s2": "Write an SEO-optimized article or script",
+        "s3": "Create on-brand visuals",
+        "s4": "Schedule posts across your platforms"
+      },
+      "ecommerce": {
+        "title": "Sell more products",
+        "subtitle": "Turn buyer demand into product pages and shots that rank and convert.",
+        "s1": "Target buyer-intent keywords",
+        "s2": "Generate professional product shots",
+        "s3": "Write SEO product & collection copy",
+        "s4": "Promote your products on social"
+      },
+      "freelancer": {
+        "title": "Find new clients",
+        "subtitle": "Research your niche, reach the right people and build authority.",
+        "s1": "Research your niche and ideal clients",
+        "s2": "Plan your LinkedIn outreach",
+        "s3": "Publish authority-building content",
+        "s4": "Scout competitor gaps to pitch"
+      },
+      "company": {
+        "title": "Own your brand's search",
+        "subtitle": "Track rankings, publish content that ranks and run coordinated campaigns.",
+        "s1": "Track rankings and find opportunities",
+        "s2": "Publish content that ranks",
+        "s3": "Run a multi-asset campaign",
+        "s4": "Distribute across every channel"
+      }
+    }
   }
 }

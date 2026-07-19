@@ -1473,5 +1473,55 @@
     },
     "polishing": "Aprimorando para SEO…",
     "keywordPlaceholder": "Palavra-chave alvo…"
+  },
+  "startProject": {
+    "heading": "Iniciar um projeto",
+    "squad": "Sua equipe",
+    "pb": {
+      "creator": {
+        "title": "Faça sua audiência crescer",
+        "subtitle": "Transforme a demanda de busca em conteúdo que sua audiência adora — e publique em todo lugar.",
+        "s1": "Encontre temas que sua audiência busca",
+        "s2": "Escreva um artigo ou roteiro otimizado para SEO",
+        "s3": "Crie visuais com a sua marca",
+        "s4": "Agende posts nas suas plataformas"
+      },
+      "ecommerce": {
+        "title": "Venda mais produtos",
+        "subtitle": "Transforme a demanda de compra em páginas e fotos de produto que ranqueiam e convertem.",
+        "s1": "Mire palavras-chave de intenção de compra",
+        "s2": "Gere fotos de produto profissionais",
+        "s3": "Escreva textos SEO de produto e categoria",
+        "s4": "Promova seus produtos nas redes"
+      },
+      "freelancer": {
+        "title": "Encontre novos clientes",
+        "subtitle": "Pesquise seu nicho, alcance as pessoas certas e construa autoridade.",
+        "s1": "Pesquise seu nicho e clientes ideais",
+        "s2": "Planeje sua prospecção no LinkedIn",
+        "s3": "Publique conteúdo que gera autoridade",
+        "s4": "Encontre lacunas dos concorrentes para propor"
+      },
+      "company": {
+        "title": "Domine a busca da sua marca",
+        "subtitle": "Acompanhe rankings, publique conteúdo que ranqueia e rode campanhas coordenadas.",
+        "s1": "Acompanhe rankings e encontre oportunidades",
+        "s2": "Publique conteúdo que ranqueia",
+        "s3": "Rode uma campanha multi-ativo",
+        "s4": "Distribua em todos os canais"
+      }
+    }
+  },
+  "personaHome": {
+    "persona": {
+      "company": "Empresa"
+    },
+    "goal": {
+      "company": "Domine a presença da sua marca em busca e redes"
+    },
+    "actions": {
+      "campaigns": "Campanhas",
+      "seo": "Central de SEO"
+    }
   }
 }

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check, ChevronDown, ArrowRight, Rocket,
-  PenLine, ShoppingBag, Briefcase, type LucideIcon,
+  PenLine, ShoppingBag, Briefcase, Building2, type LucideIcon,
 } from "lucide-react";
 import {
   getGscStatus, listArticles, listImages, getBrandKit, listPublishingConnections,
@@ -31,6 +31,7 @@ const PERSONA_ICON: Record<ProjectPersona, LucideIcon> = {
   creator: PenLine,
   ecommerce: ShoppingBag,
   freelancer: Briefcase,
+  company: Building2,
 };
 
 export function MissionControl({ projectId, persona }: { projectId: string; persona: ProjectPersona }) {

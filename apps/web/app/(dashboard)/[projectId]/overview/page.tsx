@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { MissionControl } from "@/components/projects/MissionControl";
 import { PersonaHomeSection } from "@/components/projects/PersonaHomeSection";
+import { StartProjectPanel } from "@/components/projects/StartProjectPanel";
 import { AutopilotCard } from "@/components/autopilot/AutopilotCard";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ export default function ProjectOverviewPage({ params }: { params: { projectId: s
         <>
           <MissionControl projectId={projectId} persona={project.persona ?? "creator"} />
           <PersonaHomeSection projectId={projectId} persona={project.persona ?? "creator"} />
+          <StartProjectPanel projectId={projectId} persona={project.persona ?? "creator"} />
         </>
       )}
 

@@ -1473,5 +1473,55 @@
     },
     "polishing": "SEO-Feinschliff…",
     "keywordPlaceholder": "Ziel-Keyword…"
+  },
+  "startProject": {
+    "heading": "Projekt starten",
+    "squad": "Dein Team",
+    "pb": {
+      "creator": {
+        "title": "Lass dein Publikum wachsen",
+        "subtitle": "Verwandle Suchnachfrage in Inhalte, die dein Publikum liebt – und veröffentliche sie überall.",
+        "s1": "Finde Themen, nach denen dein Publikum sucht",
+        "s2": "Schreibe einen SEO-optimierten Artikel oder ein Skript",
+        "s3": "Erstelle markengerechte Visuals",
+        "s4": "Plane Posts auf deinen Plattformen"
+      },
+      "ecommerce": {
+        "title": "Verkaufe mehr Produkte",
+        "subtitle": "Verwandle Kaufnachfrage in Produktseiten und Aufnahmen, die ranken und konvertieren.",
+        "s1": "Ziele auf kaufintente Keywords",
+        "s2": "Erzeuge professionelle Produktaufnahmen",
+        "s3": "Schreibe SEO-Produkt- und Kategorietexte",
+        "s4": "Bewirb deine Produkte in sozialen Medien"
+      },
+      "freelancer": {
+        "title": "Finde neue Kunden",
+        "subtitle": "Erforsche deine Nische, erreiche die richtigen Leute und baue Autorität auf.",
+        "s1": "Erforsche Nische und Wunschkunden",
+        "s2": "Plane deine LinkedIn-Ansprache",
+        "s3": "Veröffentliche autoritätsbildende Inhalte",
+        "s4": "Finde Lücken der Konkurrenz zum Pitchen"
+      },
+      "company": {
+        "title": "Beherrsche die Suche deiner Marke",
+        "subtitle": "Verfolge Rankings, veröffentliche rankende Inhalte und starte koordinierte Kampagnen.",
+        "s1": "Verfolge Rankings und finde Chancen",
+        "s2": "Veröffentliche rankende Inhalte",
+        "s3": "Starte eine Multi-Asset-Kampagne",
+        "s4": "Verteile über alle Kanäle"
+      }
+    }
+  },
+  "personaHome": {
+    "persona": {
+      "company": "Unternehmen"
+    },
+    "goal": {
+      "company": "Beherrsche die Such- und Social-Präsenz deiner Marke"
+    },
+    "actions": {
+      "campaigns": "Kampagnen",
+      "seo": "SEO-Hub"
+    }
   }
 }

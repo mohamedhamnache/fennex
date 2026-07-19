@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { TrendingUp, TrendingDown, Search, FileText, Share2, ImagePlus, BarChart2, ShoppingBag, Compass, Swords, PenLine, Briefcase } from "lucide-react";
+import { TrendingUp, TrendingDown, Search, FileText, Share2, ImagePlus, BarChart2, ShoppingBag, Compass, Swords, PenLine, Briefcase, Building2, Megaphone } from "lucide-react";
 import { getPersonaHome, updateProject, type SecondaryMetric, type ProjectPersona } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -18,6 +18,7 @@ const PERSONAS: { id: ProjectPersona; icon: React.ElementType }[] = [
   { id: "creator", icon: PenLine },
   { id: "ecommerce", icon: ShoppingBag },
   { id: "freelancer", icon: Briefcase },
+  { id: "company", icon: Building2 },
 ];
 
 const QUICK_ACTIONS: Record<string, { key: string; href: string; icon: React.ElementType }[]> = {
@@ -35,6 +36,11 @@ const QUICK_ACTIONS: Record<string, { key: string; href: string; icon: React.Ele
     { key: "outreach", href: "agents/nomad", icon: Compass },
     { key: "marketReport", href: "analytics?ws=market&oasis=1", icon: FileText },
     { key: "competitor", href: "analytics?ws=competitors", icon: Swords },
+  ],
+  company: [
+    { key: "articles", href: "articles", icon: FileText },
+    { key: "campaigns", href: "campaigns", icon: Megaphone },
+    { key: "seo", href: "seo", icon: BarChart2 },
   ],
 };
 

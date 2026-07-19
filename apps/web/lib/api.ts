@@ -161,7 +161,7 @@ export async function updateMyLanguage(language: string): Promise<{ language: st
 
 // ─── Project types & helpers ───────────────────────────────────────────────
 
-export type ProjectPersona = "creator" | "ecommerce" | "freelancer";
+export type ProjectPersona = "creator" | "ecommerce" | "freelancer" | "company";
 
 export interface Project {
   id: string;

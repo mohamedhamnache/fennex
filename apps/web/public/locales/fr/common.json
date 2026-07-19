@@ -1473,5 +1473,55 @@
     },
     "polishing": "Optimisation SEO…",
     "keywordPlaceholder": "Mot-clé cible…"
+  },
+  "startProject": {
+    "heading": "Démarrer un projet",
+    "squad": "Votre équipe",
+    "pb": {
+      "creator": {
+        "title": "Développez votre audience",
+        "subtitle": "Transformez la demande de recherche en contenu que votre audience adore, et publiez-le partout.",
+        "s1": "Trouvez les sujets recherchés par votre audience",
+        "s2": "Rédigez un article ou script optimisé SEO",
+        "s3": "Créez des visuels à votre image",
+        "s4": "Programmez des posts sur vos plateformes"
+      },
+      "ecommerce": {
+        "title": "Vendez plus de produits",
+        "subtitle": "Transformez la demande d'achat en pages produits et visuels qui se positionnent et convertissent.",
+        "s1": "Ciblez des mots-clés d'intention d'achat",
+        "s2": "Générez des visuels produits pro",
+        "s3": "Rédigez des fiches produits et catégories SEO",
+        "s4": "Promouvez vos produits sur les réseaux"
+      },
+      "freelancer": {
+        "title": "Trouvez de nouveaux clients",
+        "subtitle": "Étudiez votre niche, atteignez les bonnes personnes et bâtissez votre autorité.",
+        "s1": "Étudiez votre niche et vos clients idéaux",
+        "s2": "Planifiez votre prospection LinkedIn",
+        "s3": "Publiez du contenu qui installe votre autorité",
+        "s4": "Repérez les lacunes des concurrents à exploiter"
+      },
+      "company": {
+        "title": "Maîtrisez la recherche de votre marque",
+        "subtitle": "Suivez les positions, publiez du contenu qui se classe et lancez des campagnes coordonnées.",
+        "s1": "Suivez les positions et repérez les opportunités",
+        "s2": "Publiez du contenu qui se classe",
+        "s3": "Lancez une campagne multi-actifs",
+        "s4": "Diffusez sur tous les canaux"
+      }
+    }
+  },
+  "personaHome": {
+    "persona": {
+      "company": "Entreprise"
+    },
+    "goal": {
+      "company": "Maîtrisez la présence de votre marque en recherche et sur les réseaux"
+    },
+    "actions": {
+      "campaigns": "Campagnes",
+      "seo": "Pôle SEO"
+    }
   }
 }

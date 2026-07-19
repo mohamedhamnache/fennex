@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, ArrowLeft, ArrowRight, Check, Loader2, PenLine, ShoppingBag, Briefcase, Sparkles, type LucideIcon } from "lucide-react";
+import { X, ArrowLeft, ArrowRight, Check, Loader2, PenLine, ShoppingBag, Briefcase, Building2, Sparkles, type LucideIcon } from "lucide-react";
 import { createProject, type ProjectPersona } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
@@ -39,6 +39,13 @@ const PERSONA_CARDS: {
     Icon: Briefcase,
     gets: ["Market sizing & niche analysis", "Competitor scans", "Client-ready reports & outreach content"],
   },
+  {
+    id: "company",
+    label: "Company / Brand",
+    desc: "Owning your brand's search and social presence.",
+    Icon: Building2,
+    gets: ["Rank tracking & SEO opportunities", "On-brand articles & campaigns", "Multi-channel publishing"],
+  },
 ];
 
 const CREATOR_PLATFORMS = ["Instagram", "YouTube", "TikTok", "LinkedIn", "Pinterest", "X", "Newsletter"];
@@ -61,6 +68,12 @@ const MISSIONS_PREVIEW: Record<ProjectPersona, string[]> = {
     "Run a competitor scan on rivals",
     "Set up your brand kit",
     "Create LinkedIn outreach content",
+  ],
+  company: [
+    "Connect Search Console & track your rankings",
+    "Publish your first ranking article",
+    "Set up your brand kit & voice",
+    "Launch a multi-channel campaign",
   ],
 };
 
