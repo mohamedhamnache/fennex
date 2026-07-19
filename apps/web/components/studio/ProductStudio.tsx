@@ -2,16 +2,21 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Upload, Loader2, X, ShoppingBag, Wand2, Pencil, Globe,
-  AlertCircle, CheckCircle2, Sparkles, Scissors,
+  AlertCircle, CheckCircle2, Sparkles, Scissors, Store, RefreshCw, PenLine,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   uploadImage, editImage, getImage, generateProductScene,
-  type GeneratedImage,
+  listStoreProducts, syncStoreProducts,
+  type GeneratedImage, type StoreProduct,
 } from "@/lib/api";
 import { PublishModal } from "./PublishModal";
+import { ProductCopyModal } from "./ProductCopyModal";
 import { SaveCollectionButton } from "./SaveCollectionButton";
 
 const SCENES = [
@@ -50,6 +55,8 @@ interface ProductStudioProps {
 
 export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioProps) {
   const router = useRouter();
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Product source
@@ -59,6 +66,11 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
   const [uploading, setUploading] = useState(false);
   const [isolating, setIsolating] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Store product (picked from a connected store instead of uploaded)
+  const [picked, setPicked] = useState<StoreProduct | null>(null);
+  const [copyProduct, setCopyProduct] = useState<StoreProduct | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Config
   const [description, setDescription] = useState("");
@@ -70,8 +82,32 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
   const [generating, setGenerating] = useState(false);
   const [publishId, setPublishId] = useState<string | null>(null);
 
-  const source = isolate ? (isolated ?? original) : original;
-  const productUrl = source?.image_url ?? "";
+  const { data: storeProducts = [] } = useQuery({
+    queryKey: ["store-products", projectId],
+    queryFn: () => listStoreProducts(projectId),
+    enabled: !!projectId,
+  });
+  const syncMutation = useMutation({
+    mutationFn: () => syncStoreProducts(projectId),
+    onSuccess: (res) => {
+      if (!res.ok) { setSyncError(res.error === "not_connected" ? "not_connected" : (res.error ?? "generic")); return; }
+      setSyncError(null);
+      queryClient.invalidateQueries({ queryKey: ["store-products", projectId] });
+    },
+    onError: () => setSyncError("generic"),
+  });
+
+  function pickStoreProduct(p: StoreProduct) {
+    setPicked(p);
+    setOriginal(null);
+    setIsolated(null);
+    const desc = [p.title, p.description].filter(Boolean).join(" — ");
+    if (desc) setDescription(desc.slice(0, 400));
+  }
+
+  const uploadedSource = isolate ? (isolated ?? original) : original;
+  const source = uploadedSource;
+  const productUrl = picked?.image_url ?? uploadedSource?.image_url ?? "";
 
   const runIsolate = useCallback(async (base: GeneratedImage) => {
     setIsolating(true);
@@ -186,6 +222,69 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
       <div className="flex flex-1 overflow-hidden">
         {/* Config column */}
         <div className="w-[380px] shrink-0 border-r border-border overflow-y-auto p-4 flex flex-col gap-5">
+          {/* From your store */}
+          <div className="rounded-xl border border-border bg-card/50 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Store className="h-3.5 w-3.5 text-primary" strokeWidth={1.9} />
+                {t("productTab.store.title", { defaultValue: "From your store" })}
+              </span>
+              <button
+                type="button"
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
+              >
+                {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                {t("productTab.store.sync", { defaultValue: "Sync" })}
+              </button>
+            </div>
+            {syncError === "not_connected" ? (
+              <p className="text-[11px] text-muted-foreground">
+                {t("productTab.store.notConnected", { defaultValue: "No store connected." })}{" "}
+                <Link href={`/${projectId}/integrations`} className="font-medium text-primary hover:underline">
+                  {t("productTab.store.connect", { defaultValue: "Connect Shopify" })}
+                </Link>
+              </p>
+            ) : syncError ? (
+              <p className="text-[11px] text-destructive">{t("productTab.store.syncError", { defaultValue: "Sync failed. Try again." })}</p>
+            ) : storeProducts.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">{t("productTab.store.empty", { defaultValue: "Sync to pick a product from your store." })}</p>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {storeProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "group relative flex w-20 shrink-0 flex-col gap-1 rounded-lg border p-1 transition-colors",
+                      picked?.id === p.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+                    )}
+                  >
+                    <button type="button" onClick={() => pickStoreProduct(p)} className="flex flex-col gap-1 text-left">
+                      <span className="flex h-16 w-full items-center justify-center overflow-hidden rounded bg-muted">
+                        {p.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image_url} alt={p.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </span>
+                      <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground group-hover:text-foreground">{p.title}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCopyProduct(p)}
+                      title={t("productCopy.write", { defaultValue: "Write copy" })}
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-card/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-primary group-hover:opacity-100"
+                    >
+                      <PenLine className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* 1. Product */}
           <div>
             <div className="mb-2 flex items-center gap-2">
@@ -193,7 +292,22 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
               <span className="text-xs font-semibold text-foreground">Your product</span>
             </div>
 
-            {source ? (
+            {picked ? (
+              <div className="relative">
+                <div className="relative w-full overflow-hidden rounded-xl border border-border bg-[repeating-conic-gradient(#0000000d_0%_25%,transparent_0%_50%)_0_0/16px_16px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={picked.image_url ?? ""} alt={picked.title} className="w-full max-h-52 object-contain" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPicked(null)}
+                  className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">{picked.title}</p>
+              </div>
+            ) : source ? (
               <div className="relative">
                 <div className="relative w-full overflow-hidden rounded-xl border border-border bg-[repeating-conic-gradient(#0000000d_0%_25%,transparent_0%_50%)_0_0/16px_16px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -379,6 +493,9 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
       </div>
 
       {publishId && <PublishModal imageId={publishId} onClose={() => setPublishId(null)} />}
+      {copyProduct && (
+        <ProductCopyModal projectId={projectId} product={copyProduct} onClose={() => setCopyProduct(null)} />
+      )}
     </div>
   );
 }
