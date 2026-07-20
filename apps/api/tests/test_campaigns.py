@@ -298,12 +298,13 @@ async def test_director_parses_and_sanitizes(db_session, org_and_project):
 
 @pytest.mark.asyncio
 async def test_director_fallback_on_bad_json(db_session, org_and_project):
-    from app.services.campaign_director import draft_plan
+    from app.services.campaign_director import draft_plan, _flow_for
     db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="openai", encrypted_value=encrypt_value("k")))
     await db_session.commit()
     with patch("app.services.campaign_director.call_llm", new=AsyncMock(return_value="not json at all")):
         plan = await draft_plan(FAKE_PROJECT_ID, FAKE_ORG_ID, "grow", "creator", db_session)
-    assert [s["action"] for s in plan["steps"]] == ["zerda.pick_angle", "dune.write_article"]
+    # bad LLM JSON -> fall back to the persona flow (source of truth, not a stale literal)
+    assert [s["action"] for s in plan["steps"]] == _flow_for("creator")
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
