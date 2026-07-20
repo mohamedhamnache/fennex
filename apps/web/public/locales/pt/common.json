@@ -905,6 +905,18 @@
         "creator": "Criador",
         "ecommerce": "E-commerce",
         "freelancer": "Freelancer"
+      },
+      "palette": "Paleta de destaque",
+      "paletteHint": "Define a cor de destaque deste projeto em todo o app. Salvo instantaneamente.",
+      "paletteSaved": "Paleta atualizada",
+      "palettes": {
+        "desert": "Deserto",
+        "indigo": "Índigo",
+        "teal": "Azul-petróleo",
+        "forest": "Floresta",
+        "amber": "Âmbar",
+        "rose": "Rosa",
+        "plum": "Ameixa"
       }
     }
   },

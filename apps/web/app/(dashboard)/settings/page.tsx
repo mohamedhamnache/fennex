@@ -1075,6 +1075,16 @@ function BillingSection() {
 
 // ─── Project ──────────────────────────────────────────────────────────────────
 
+const PALETTES: { id: string; label: string; color: string }[] = [
+  { id: "desert", label: "Desert", color: "#b5522f" },
+  { id: "indigo", label: "Indigo", color: "#5a54d6" },
+  { id: "teal", label: "Teal", color: "#268a8a" },
+  { id: "forest", label: "Forest", color: "#3a8354" },
+  { id: "amber", label: "Amber", color: "#d68a1e" },
+  { id: "rose", label: "Rose", color: "#c94f74" },
+  { id: "plum", label: "Plum", color: "#8b57c0" },
+];
+
 function ProjectSection() {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -1126,6 +1136,15 @@ function ProjectSection() {
       // language and update the default interface language.
       qc.invalidateQueries({ queryKey: ["projects"] });
       success(t("settings.project.saved"));
+    },
+    onError: () => error(t("settings.project.saveError")),
+  });
+
+  const themeMutation = useMutation({
+    mutationFn: (theme: string) => updateProject(active!.id, { theme }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      success(t("settings.project.paletteSaved", { defaultValue: "Palette updated" }));
     },
     onError: () => error(t("settings.project.saveError")),
   });
@@ -1219,6 +1238,33 @@ function ProjectSection() {
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.autopilot_enabled ? "left-[22px]" : "left-0.5"}`} />
           </button>
         </div>
+
+        <Field
+          label={t("settings.project.palette", { defaultValue: "Accent palette" })}
+          hint={t("settings.project.paletteHint", { defaultValue: "Sets this project's accent color across the whole app. Saved instantly." })}
+        >
+          <div className="flex flex-wrap gap-2">
+            {PALETTES.map((p) => {
+              const on = (active.theme || "desert") === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => themeMutation.mutate(p.id)}
+                  disabled={themeMutation.isPending}
+                  title={p.label}
+                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                    on ? "border-primary ring-1 ring-primary/40 text-foreground" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                >
+                  <span className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10" style={{ background: p.color }} />
+                  {t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
+                  {on && <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
 
         {saveMutation.isError && <ErrorMsg>{t("settings.project.saveError")}</ErrorMsg>}
 

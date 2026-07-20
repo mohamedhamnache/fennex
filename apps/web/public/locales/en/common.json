@@ -989,6 +989,18 @@
         "creator": "Creator",
         "ecommerce": "E-commerce",
         "freelancer": "Freelancer"
+      },
+      "palette": "Accent palette",
+      "paletteHint": "Sets this project's accent color across the whole app. Saved instantly.",
+      "paletteSaved": "Palette updated",
+      "palettes": {
+        "desert": "Desert",
+        "indigo": "Indigo",
+        "teal": "Teal",
+        "forest": "Forest",
+        "amber": "Amber",
+        "rose": "Rose",
+        "plum": "Plum"
       }
     }
   },

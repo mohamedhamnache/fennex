@@ -905,6 +905,18 @@
         "creator": "Creador",
         "ecommerce": "E-commerce",
         "freelancer": "Freelance"
+      },
+      "palette": "Paleta de acento",
+      "paletteHint": "Define el color de acento de este proyecto en toda la app. Se guarda al instante.",
+      "paletteSaved": "Paleta actualizada",
+      "palettes": {
+        "desert": "Desierto",
+        "indigo": "Índigo",
+        "teal": "Verde azulado",
+        "forest": "Bosque",
+        "amber": "Ámbar",
+        "rose": "Rosa",
+        "plum": "Ciruela"
       }
     }
   },

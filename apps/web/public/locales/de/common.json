@@ -905,6 +905,18 @@
         "creator": "Creator",
         "ecommerce": "E-Commerce",
         "freelancer": "Freelancer"
+      },
+      "palette": "Akzent-Palette",
+      "paletteHint": "Legt die Akzentfarbe dieses Projekts in der ganzen App fest. Sofort gespeichert.",
+      "paletteSaved": "Palette aktualisiert",
+      "palettes": {
+        "desert": "Wüste",
+        "indigo": "Indigo",
+        "teal": "Petrol",
+        "forest": "Wald",
+        "amber": "Bernstein",
+        "rose": "Rosé",
+        "plum": "Pflaume"
       }
     }
   },

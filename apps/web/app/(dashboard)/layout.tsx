@@ -9,13 +9,23 @@ import { CommandPaletteProvider } from "@/components/layout/CommandPalette";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { UsageBanner } from "@/components/billing/UsageBanner";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
-import { getBillingUsage, isAuthenticated, ApiError } from "@/lib/api";
+import { getBillingUsage, isAuthenticated, ApiError, listProjects } from "@/lib/api";
 import { useUsageStore } from "@/lib/billing-store";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isFullScreen = /\/images\/edit\//.test(pathname ?? "");
+
+  // Per-project accent palette: read the current project's theme from its route.
+  const routeProjectId = pathname?.split("/").filter(Boolean)[0] ?? null;
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    staleTime: 60_000,
+    enabled: typeof window !== "undefined" && isAuthenticated(),
+  });
+  const activePalette = projects.find((p) => p.id === routeProjectId)?.theme || "desert";
   const setUsage = useUsageStore((s) => s.setUsage);
   const usage = useUsageStore((s) => s.usage);
   const [upgradeResource, setUpgradeResource] = useState<string | null>(null);
@@ -74,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <CommandPaletteProvider>
       <AuroraBackground />
-      <div className="relative z-10 flex h-screen flex-col overflow-hidden">
+      <div data-palette={activePalette} className="relative z-10 flex h-screen flex-col overflow-hidden">
         {usage && (
           <UsageBanner
             onUpgrade={() => {

@@ -23,6 +23,7 @@
     --accent: 33 30% 90%;
     --accent-foreground: 26 16% 14%;
     --ring: 16 58% 47%;
+    --primary-accent: 34 62% 52%;
     --sidebar-bg: 38 38% 97%;
     --sidebar-border: 34 26% 86%;
     --success: 146 42% 34%;
@@ -48,6 +49,7 @@
     --accent: 30 14% 18%;
     --accent-foreground: 36 30% 90%;
     --ring: 18 64% 55%;
+    --primary-accent: 34 68% 58%;
     --sidebar-bg: 28 18% 6%;
     --sidebar-border: 30 14% 15%;
     --success: 148 48% 50%;
@@ -56,6 +58,26 @@
     --info: 200 66% 60%;
   }
 }
+
+/* ─── Per-project accent palettes (unlayered so they override the base theme).
+   Only the accent changes; the warm editorial neutrals stay shared. ─── */
+[data-palette="indigo"] { --primary: 245 68% 58%; --primary-accent: 268 66% 62%; --primary-foreground: 0 0% 100%; --ring: 245 68% 58%; }
+.dark [data-palette="indigo"] { --primary: 248 72% 66%; --primary-accent: 268 68% 68%; --ring: 248 72% 66%; }
+
+[data-palette="teal"] { --primary: 182 58% 37%; --primary-accent: 168 52% 42%; --primary-foreground: 0 0% 100%; --ring: 182 58% 37%; }
+.dark [data-palette="teal"] { --primary: 180 56% 46%; --primary-accent: 168 52% 50%; --ring: 180 56% 46%; }
+
+[data-palette="forest"] { --primary: 146 42% 36%; --primary-accent: 118 38% 42%; --primary-foreground: 0 0% 100%; --ring: 146 42% 36%; }
+.dark [data-palette="forest"] { --primary: 146 46% 46%; --primary-accent: 118 42% 50%; --ring: 146 46% 46%; }
+
+[data-palette="amber"] { --primary: 32 82% 46%; --primary-accent: 24 82% 50%; --primary-foreground: 28 40% 12%; --ring: 32 82% 46%; }
+.dark [data-palette="amber"] { --primary: 34 86% 56%; --primary-accent: 26 84% 58%; --primary-foreground: 28 45% 10%; --ring: 34 86% 56%; }
+
+[data-palette="rose"] { --primary: 344 66% 52%; --primary-accent: 356 64% 56%; --primary-foreground: 0 0% 100%; --ring: 344 66% 52%; }
+.dark [data-palette="rose"] { --primary: 346 70% 62%; --primary-accent: 356 66% 64%; --ring: 346 70% 62%; }
+
+[data-palette="plum"] { --primary: 276 50% 54%; --primary-accent: 292 48% 58%; --primary-foreground: 0 0% 100%; --ring: 276 50% 54%; }
+.dark [data-palette="plum"] { --primary: 278 56% 64%; --primary-accent: 292 52% 66%; --ring: 278 56% 64%; }
 
 @layer base {
   * { @apply border-border; box-sizing: border-box; }
@@ -89,13 +111,13 @@
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 
-/* ── Gradient brand (desert: terracotta → clay → gold) ── */
+/* ── Gradient brand (follows the project accent palette) ── */
 .gradient-brand {
-  background: linear-gradient(135deg, #b5522f 0%, #c47a3d 50%, #d29a45 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-accent)) 100%);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #b5522f 0%, #c47a3d 60%, #d29a45 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-accent)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -241,18 +263,18 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12) !important;
 }
 
-/* ── Gradient CTA button (desert: terracotta→clay→gold + warm glow) ── */
+/* ── Gradient CTA button (follows the project accent palette + glow) ── */
 .btn-primary {
-  background: linear-gradient(135deg, #b5522f 0%, #c06b38 55%, #cf9142 100%);
-  color: white;
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-accent)) 100%);
+  color: hsl(var(--primary-foreground));
   font-weight: 600;
   border-radius: 8px;
   transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-  box-shadow: 0 1px 2px hsl(16 58% 47% / 0.3), 0 4px 12px hsl(16 58% 47% / 0.2);
+  box-shadow: 0 1px 2px hsl(var(--primary) / 0.3), 0 4px 12px hsl(var(--primary) / 0.2);
 }
 .btn-primary:hover:not(:disabled) {
   opacity: 0.92;
-  box-shadow: 0 2px 6px hsl(16 58% 47% / 0.4), 0 8px 20px hsl(16 58% 47% / 0.25);
+  box-shadow: 0 2px 6px hsl(var(--primary) / 0.4), 0 8px 20px hsl(var(--primary) / 0.25);
 }
 .btn-primary:active:not(:disabled) { transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
