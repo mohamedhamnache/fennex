@@ -2,15 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
-import {
-  generateProductScene, listStoreProducts, syncStoreProducts,
-  type GeneratedImage, type StoreProduct,
-} from "@/lib/api";
+import { generateProductScene, type GeneratedImage } from "@/lib/api";
 import { useTranslation } from "react-i18next";
-import { ShoppingBag, RefreshCw, CheckCircle2, XCircle, Store, Loader2, PenLine } from "lucide-react";
-import { ProductCopyModal } from "@/components/studio/ProductCopyModal";
+import { CheckCircle2, XCircle, Store, ArrowRight, RefreshCw, ShoppingBag } from "lucide-react";
 
 const SCENES = [
   { id: "white_studio",      label: "White Studio",  category: "packshot"  },
@@ -50,35 +46,6 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
   const [productUrl, setProductUrl] = useState("");
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<GeneratedImage | null>(null);
-  const [copyProduct, setCopyProduct] = useState<StoreProduct | null>(null);
-
-  const queryClient = useQueryClient();
-  const [syncError, setSyncError] = useState<string | null>(null);
-
-  const { data: products = [] } = useQuery({
-    queryKey: ["store-products", projectId],
-    queryFn: () => listStoreProducts(projectId),
-    enabled: !!projectId,
-  });
-
-  const syncMutation = useMutation({
-    mutationFn: () => syncStoreProducts(projectId),
-    onSuccess: (res) => {
-      if (!res.ok) {
-        setSyncError(res.error === "not_connected" ? "not_connected" : (res.error ?? "generic"));
-        return;
-      }
-      setSyncError(null);
-      queryClient.invalidateQueries({ queryKey: ["store-products", projectId] });
-    },
-    onError: () => setSyncError("generic"),
-  });
-
-  function pickProduct(p: StoreProduct) {
-    if (p.image_url) setProductUrl(p.image_url);
-    const desc = [p.title, p.description].filter(Boolean).join(" — ");
-    if (desc) setDescription(desc.slice(0, 400));
-  }
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -102,73 +69,20 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {/* From your store */}
-      <div className="rounded-xl border border-border bg-card/50 p-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Store className="h-3.5 w-3.5 text-primary" strokeWidth={1.9} />
-            {t("productTab.store.title", { defaultValue: "From your store" })}
-          </span>
-          <button
-            type="button"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
-          >
-            {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-            {t("productTab.store.sync", { defaultValue: "Sync" })}
-          </button>
-        </div>
-        {syncError === "not_connected" ? (
-          <p className="text-[11px] text-muted-foreground">
-            {t("productTab.store.notConnected", { defaultValue: "No store connected." })}{" "}
-            <Link href={`/${projectId}/integrations`} className="font-medium text-primary hover:underline">
-              {t("productTab.store.connect", { defaultValue: "Connect Shopify" })}
-            </Link>
-          </p>
-        ) : syncError ? (
-          <p className="text-[11px] text-destructive">{t("productTab.store.syncError", { defaultValue: "Sync failed. Try again." })}</p>
-        ) : products.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">{t("productTab.store.empty", { defaultValue: "Sync to pick a product from your store." })}</p>
-        ) : (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {products.map((p) => (
-              <div
-                key={p.id}
-                title={p.title}
-                className={cn(
-                  "group relative flex w-20 shrink-0 flex-col gap-1 rounded-lg border p-1 transition-colors",
-                  productUrl && p.image_url === productUrl ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => pickProduct(p)}
-                  className="flex flex-col gap-1 text-left"
-                >
-                  <span className="flex h-16 w-full items-center justify-center overflow-hidden rounded bg-muted">
-                    {p.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt={p.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <ShoppingBag className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </span>
-                  <span className="line-clamp-2 text-[10px] leading-tight text-muted-foreground group-hover:text-foreground">{p.title}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCopyProduct(p)}
-                  title={t("productCopy.write", { defaultValue: "Write copy" })}
-                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-card/90 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-primary group-hover:opacity-100"
-                >
-                  <PenLine className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Store products live in the full Product Studio */}
+      <Link
+        href={`/${projectId}/images/studio?mode=create&intent=product`}
+        className="group flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.04] p-3 transition-colors hover:border-primary/40"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Store className="h-4 w-4" strokeWidth={1.9} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-semibold text-foreground">{t("productTab.openStudio.title", { defaultValue: "Shoot your store products" })}</span>
+          <span className="block text-[11px] text-muted-foreground">{t("productTab.openStudio.desc", { defaultValue: "Open the Product Studio to sync Shopify / WooCommerce and shoot real SKUs." })}</span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       {/* Product inputs */}
       <div className="flex flex-col gap-3">
@@ -315,10 +229,6 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
             </div>
           ) : null}
         </div>
-      )}
-
-      {copyProduct && (
-        <ProductCopyModal projectId={projectId} product={copyProduct} onClose={() => setCopyProduct(null)} />
       )}
     </div>
   );

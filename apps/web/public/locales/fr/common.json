@@ -1712,6 +1712,10 @@
       "search": "Rechercher des produits",
       "syncedCount": "{{count}} synchronisés",
       "noMatch": "Aucun produit correspondant."
+    },
+    "openStudio": {
+      "title": "Photographiez vos produits",
+      "desc": "Ouvrez le Studio Produit pour synchroniser Shopify / WooCommerce et photographier vos vrais produits."
     }
   },
   "productCopy": {

@@ -1712,6 +1712,10 @@
       "search": "Buscar productos",
       "syncedCount": "{{count}} sincronizados",
       "noMatch": "Ningún producto coincide."
+    },
+    "openStudio": {
+      "title": "Fotografía tus productos",
+      "desc": "Abre el Estudio de Producto para sincronizar Shopify / WooCommerce y fotografiar SKUs reales."
     }
   },
   "productCopy": {

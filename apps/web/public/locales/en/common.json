@@ -1777,6 +1777,10 @@
       "search": "Search products",
       "syncedCount": "Synced {{count}}",
       "noMatch": "No products match."
+    },
+    "openStudio": {
+      "title": "Shoot your store products",
+      "desc": "Open the Product Studio to sync Shopify / WooCommerce and shoot real SKUs."
     }
   },
   "productCopy": {

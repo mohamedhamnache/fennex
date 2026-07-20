@@ -1712,6 +1712,10 @@
       "search": "ابحث عن المنتجات",
       "syncedCount": "تمت مزامنة {{count}}",
       "noMatch": "لا توجد منتجات مطابقة."
+    },
+    "openStudio": {
+      "title": "صوّر منتجات متجرك",
+      "desc": "افتح استوديو المنتجات لمزامنة Shopify / WooCommerce وتصوير منتجات حقيقية."
     }
   },
   "productCopy": {

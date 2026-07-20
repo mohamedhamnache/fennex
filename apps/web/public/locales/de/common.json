@@ -1712,6 +1712,10 @@
       "search": "Produkte suchen",
       "syncedCount": "{{count}} synchronisiert",
       "noMatch": "Keine passenden Produkte."
+    },
+    "openStudio": {
+      "title": "Deine Store-Produkte shooten",
+      "desc": "Öffne das Produktstudio, um Shopify / WooCommerce zu synchronisieren und echte SKUs zu shooten."
     }
   },
   "productCopy": {
