@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, Sparkles, Lock } from "lucide-react";
+import { ArrowRight, Check, Sparkles, Lock, Megaphone } from "lucide-react";
 import { listProjects } from "@/lib/api";
 import { FENNEX_AGENTS, UPCOMING_AGENTS, type FennexAgent } from "@/lib/agents";
 import { Card } from "@/components/ui/Card";
@@ -23,8 +23,9 @@ function agentActions(agentId: string, base: string): AgentAction[] {
       ];
     case "sirocco":
       return [
-        { label: "Plan a campaign", href: `${base}/images/studio?mode=ai` },
-        { label: "Open image studio", href: `${base}/images/studio` },
+        { label: "Direct a campaign", href: `${base}/campaigns` },
+        { label: "Multi-network social", href: `${base}/social` },
+        { label: "Image studio", href: `${base}/images/studio` },
       ];
     case "dune":
       return [
@@ -33,17 +34,21 @@ function agentActions(agentId: string, base: string): AgentAction[] {
       ];
     case "mirage":
       return [
+        { label: "Product shots", href: `${base}/images/studio?mode=create&intent=product` },
         { label: "Edit an image", href: `${base}/images/studio?mode=edit` },
-        { label: "Open the library", href: `${base}/images` },
+        { label: "Library", href: `${base}/images` },
       ];
     case "sable":
       return [{ label: "Scan a competitor", href: `${base}/analytics?ws=competitors` }];
     case "oasis":
-      return [{ label: "Generate a market report", href: `${base}/analytics?ws=market&oasis=1` }];
+      return [
+        { label: "Generate a market report", href: `${base}/analytics?ws=market&oasis=1` },
+        { label: "Define ideal client", href: `${base}/agents/nomad` },
+      ];
     case "nomad":
       return [
         { label: "Plan my outreach week", href: `${base}/agents/nomad` },
-        { label: "View LinkedIn drafts", href: `${base}/social` },
+        { label: "Testimonial to content", href: `${base}/agents/nomad` },
       ];
     default:
       return [];
@@ -128,6 +133,30 @@ export default function AgentsPage({ params }: { params: { projectId: string } }
           </p>
         </div>
       </div>
+
+      {/* Assemble the squad — the Virtual Agency (campaign orchestration) */}
+      <Link
+        href={`${base}/campaigns`}
+        className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-primary/[0.03] to-transparent p-5 transition-colors hover:border-primary/40"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{ background: "radial-gradient(520px 160px at 8% -40%, hsl(var(--primary) / 0.16), transparent 60%)" }}
+        />
+        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-white shadow-sm">
+          <Megaphone className="h-5 w-5" strokeWidth={1.8} />
+        </div>
+        <div className="relative min-w-0 flex-1">
+          <p className="text-sm font-bold text-foreground">Assemble the squad</p>
+          <p className="text-xs text-muted-foreground">
+            One goal in — the pack plans and runs a coordinated campaign together, with handoffs and a live project room.
+          </p>
+        </div>
+        <span className="relative flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition-transform group-hover:translate-x-0.5">
+          Run a campaign <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </Link>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sorted.map((agent) => (
