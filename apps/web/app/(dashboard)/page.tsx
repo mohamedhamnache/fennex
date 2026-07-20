@@ -175,7 +175,7 @@ function SetupTile({ items }: { items: { label: string; done: boolean; href: str
 function QuickActionsTile({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const actions = [
-    { label: t("dashboard.keywordResearch"), href: `/${projectId}/keywords`, icon: Search, tone: "text-violet-400 bg-violet-500/15" },
+    { label: t("dashboard.keywordResearch"), href: `/${projectId}/keywords`, icon: Search, tone: "text-amber-400 bg-amber-500/15" },
     { label: t("dashboard.generateArticle"), href: `/${projectId}/articles`, icon: Zap, tone: "text-primary bg-primary/15" },
     { label: t("dashboard.auditSite"), href: `/${projectId}/audit`, icon: Globe, tone: "text-emerald-400 bg-emerald-500/15" },
   ];
@@ -209,7 +209,7 @@ const PACK_GRADIENT: Record<AgentId, string> = {
   zerda: "from-orange-500 to-amber-600",
   sirocco: "from-rose-500 to-orange-500",
   dune: "from-amber-500 to-yellow-600",
-  mirage: "from-fuchsia-500 to-rose-500",
+  mirage: "from-rose-500 to-rose-500",
   sable: "from-stone-500 to-stone-700",
   oasis: "from-emerald-600 to-teal-600",
   nomad: "from-amber-600 to-red-500",

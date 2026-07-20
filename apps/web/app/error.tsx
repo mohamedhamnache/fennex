@@ -19,7 +19,7 @@ export default function GlobalError({
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: "12px", fontFamily: "sans-serif" }}>
           <p style={{ fontSize: "14px", fontWeight: 600, color: "#ef4444" }}>Something went wrong</p>
           <p style={{ fontSize: "12px", color: "#6b7280", fontFamily: "monospace", maxWidth: "480px", wordBreak: "break-all", textAlign: "center" }}>{error.message}</p>
-          <button type="button" onClick={reset} style={{ fontSize: "12px", color: "#6366f1" }}>Try again</button>
+          <button type="button" onClick={reset} style={{ fontSize: "12px", color: "#b5522f" }}>Try again</button>
         </div>
       </body>
     </html>

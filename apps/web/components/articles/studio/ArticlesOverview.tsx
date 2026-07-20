@@ -124,7 +124,7 @@ export function ArticlesOverview({
         {/* Stat tiles */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile icon={FileText} label={t("articleStudio.overview.total")} value={String(stats.total)} tone="bg-primary/12 text-primary" />
-          <StatTile icon={FileEdit} label={t("articleStudio.overview.drafts")} value={String(stats.drafts)} tone="bg-violet-500/15 text-violet-400" />
+          <StatTile icon={FileEdit} label={t("articleStudio.overview.drafts")} value={String(stats.drafts)} tone="bg-amber-500/15 text-amber-400" />
           <StatTile icon={CheckCircle2} label={t("articleStudio.overview.published")} value={String(stats.published)} tone="bg-emerald-500/15 text-emerald-400" />
           <StatTile icon={Gauge} label={t("articleStudio.overview.avgSeo")} value={stats.avg !== null ? String(stats.avg) : "—"} tone="bg-amber-500/15 text-amber-400" />
         </div>

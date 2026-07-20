@@ -12,7 +12,7 @@ import { CalendarEntryPopover } from "@/components/calendar/CalendarEntryPopover
 
 const TYPE_COLOR: Record<string, string> = {
   article: "bg-primary/15 text-primary",
-  social: "bg-violet-500/15 text-violet-500",
+  social: "bg-amber-500/15 text-amber-500",
   banner: "bg-amber-500/15 text-amber-600",
 };
 

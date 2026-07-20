@@ -101,7 +101,7 @@ export function MetaTab({
             <Globe className="h-3 w-3 shrink-0" />
             <span className="truncate">yoursite.com{path ? ` › ${path}` : ""}</span>
           </div>
-          <p className="mt-1 line-clamp-1 text-sm font-medium text-blue-400">{previewTitle}</p>
+          <p className="mt-1 line-clamp-1 text-sm font-medium text-teal-400">{previewTitle}</p>
           <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{previewDesc}</p>
         </div>
       </div>

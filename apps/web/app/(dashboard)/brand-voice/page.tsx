@@ -75,10 +75,10 @@ const TONE_LABELS: Record<VoiceTone, string> = {
 // Dark-mode-safe tone tints (500-level hue at low alpha reads on both themes).
 const TONE_COLORS: Record<VoiceTone, string> = {
   professional: "bg-muted text-muted-foreground",
-  conversational: "bg-sky-500/12 text-sky-500",
-  authoritative: "bg-indigo-500/12 text-indigo-500",
+  conversational: "bg-teal-500/12 text-teal-500",
+  authoritative: "bg-orange-500/12 text-orange-500",
   friendly: "bg-emerald-500/12 text-emerald-500",
-  technical: "bg-violet-500/12 text-violet-500",
+  technical: "bg-amber-500/12 text-amber-500",
   inspirational: "bg-amber-500/12 text-amber-600",
 };
 

@@ -7,14 +7,14 @@ type StatTone = "primary" | "violet" | "emerald" | "amber";
 
 const ICON_TONE: Record<StatTone, string> = {
   primary: "text-primary bg-primary/10",
-  violet: "text-violet-500 bg-violet-500/10",
+  violet: "text-amber-500 bg-amber-500/10",
   emerald: "text-emerald-500 bg-emerald-500/10",
   amber: "text-amber-500 bg-amber-500/10",
 };
 
 const SPARK_TONE: Record<StatTone, string> = {
   primary: "text-primary/70",
-  violet: "text-violet-500/70",
+  violet: "text-amber-500/70",
   emerald: "text-emerald-500/70",
   amber: "text-amber-500/70",
 };

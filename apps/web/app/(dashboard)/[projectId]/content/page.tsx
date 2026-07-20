@@ -66,23 +66,23 @@ const TYPE_I18N: Record<ContentItemType, string> = {
 // Dark-mode-safe tints (500-level hue at low alpha reads on both themes).
 const STATUS_COLORS: Record<ContentItemStatus, string> = {
   idea: "bg-muted text-muted-foreground",
-  draft: "bg-blue-500/12 text-blue-600",
+  draft: "bg-teal-500/12 text-teal-600",
   in_review: "bg-amber-500/12 text-amber-600",
   approved: "bg-emerald-500/12 text-emerald-600",
-  published: "bg-indigo-500/12 text-indigo-500",
+  published: "bg-orange-500/12 text-orange-500",
 };
 
 const STATUS_HEADER_COLORS: Record<ContentItemStatus, string> = {
   idea: "text-muted-foreground",
-  draft: "text-blue-500",
+  draft: "text-teal-500",
   in_review: "text-amber-500",
   approved: "text-emerald-500",
-  published: "text-indigo-500",
+  published: "text-orange-500",
 };
 
 const TYPE_COLORS: Record<ContentItemType, string> = {
-  article: "bg-indigo-500/12 text-indigo-500",
-  landing_page: "bg-violet-500/12 text-violet-500",
+  article: "bg-orange-500/12 text-orange-500",
+  landing_page: "bg-amber-500/12 text-amber-500",
   social_post: "bg-pink-500/12 text-pink-500",
   email: "bg-amber-500/12 text-amber-600",
 };

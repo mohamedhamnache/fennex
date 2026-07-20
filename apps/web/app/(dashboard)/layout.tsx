@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Sidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
             <TopBar />
-            <main className={isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-6"}>{children}</main>
+            <main className={isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-6 lg:p-8 xl:px-10"}>{children}</main>
           </div>
         </div>
       </div>

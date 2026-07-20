@@ -31,8 +31,8 @@ import { ProviderLogo } from "@/components/ui/ProviderLogo";
 // read on both light and dark surfaces.
 const PLAN_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
-  starter: "bg-blue-500/12 text-blue-500",
-  pro: "bg-violet-500/12 text-violet-500",
+  starter: "bg-teal-500/12 text-teal-500",
+  pro: "bg-amber-500/12 text-amber-500",
   agency: "bg-amber-500/12 text-amber-600",
   enterprise: "bg-emerald-500/12 text-emerald-500",
 };
@@ -62,7 +62,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 const PROVIDER_COLORS: Record<string, string> = {
   openai: "bg-emerald-500/12 text-emerald-600 border-emerald-500/20",
   anthropic: "bg-orange-500/12 text-orange-600 border-orange-500/20",
-  google: "bg-blue-500/12 text-blue-600 border-blue-500/20",
+  google: "bg-teal-500/12 text-teal-600 border-teal-500/20",
 };
 
 const PROVIDERS = ["openai", "anthropic", "google"] as const;
@@ -703,22 +703,22 @@ function SocialSection() {
 
 const ROLE_COLORS: Record<string, string> = {
   owner: "bg-amber-500/12 text-amber-600",
-  admin: "bg-violet-500/12 text-violet-500",
-  seo_manager: "bg-blue-500/12 text-blue-500",
+  admin: "bg-amber-500/12 text-amber-500",
+  seo_manager: "bg-teal-500/12 text-teal-500",
   content_writer: "bg-emerald-500/12 text-emerald-500",
-  editor: "bg-cyan-500/12 text-cyan-600",
+  editor: "bg-teal-500/12 text-teal-600",
   designer: "bg-pink-500/12 text-pink-500",
   marketing_manager: "bg-orange-500/12 text-orange-600",
   viewer: "bg-muted text-muted-foreground",
 };
 
 const AVATAR_COLORS = [
-  "bg-violet-500/15 text-violet-500",
-  "bg-blue-500/15 text-blue-500",
+  "bg-amber-500/15 text-amber-500",
+  "bg-teal-500/15 text-teal-500",
   "bg-emerald-500/15 text-emerald-500",
   "bg-amber-500/15 text-amber-600",
   "bg-pink-500/15 text-pink-500",
-  "bg-cyan-500/15 text-cyan-600",
+  "bg-teal-500/15 text-teal-600",
 ];
 
 function avatarColor(name: string) {

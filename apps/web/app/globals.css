@@ -96,8 +96,9 @@
     font-family: 'Fraunces', 'Playfair Display', Georgia, ui-serif, serif;
     font-weight: 600;
     font-optical-sizing: auto;
-    letter-spacing: -0.01em;
-    line-height: 1.18;
+    letter-spacing: -0.006em;
+    line-height: 1.22;
+    text-wrap: balance;
   }
 }
 
