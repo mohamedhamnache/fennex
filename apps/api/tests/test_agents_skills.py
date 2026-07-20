@@ -82,3 +82,21 @@ def test_competitor_scan_reads_url_input():
     td = {"crawl_competitor": {"ok": True, "data": {"analysis": {"url": "x.com", "scorecard": {"score": 60}}}}}
     system, user = sable.COMPETITOR_SCAN.build_prompt(_brief(), {"competitor_url": "x.com"}, td)
     assert "x.com" in user and sable.COMPETITOR_SCAN.output == "json"
+
+
+from app.services.agents.registry import SKILLS, get_skill, catalog_text
+
+
+def test_registry_contains_all_core_skills():
+    for key in ["zerda.pick_angle", "zerda.keyword_targets", "dune.write_article", "dune.product_copy",
+                "sirocco.multi_network_social", "sirocco.generate_visual", "oasis.market_report",
+                "oasis.define_icp", "sable.competitor_scan", "mirage.product_shot",
+                "nomad.outreach_plan", "nomad.testimonial_content"]:
+        assert key in SKILLS, key
+    assert get_skill("dune.write_article").agent_id == "dune"
+    assert get_skill("nope") is None
+
+
+def test_catalog_text_lists_keys_and_agents():
+    txt = catalog_text()
+    assert "zerda.pick_angle (zerda" in txt and "dune.write_article (dune" in txt
