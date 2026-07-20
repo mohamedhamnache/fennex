@@ -89,3 +89,21 @@ async def test_run_campaign_retries_weak_step_then_continues(db):
         await D.run_campaign(camp, db)
     # write_article ran twice (initial + 1 retry), social ran once => 3 runner calls
     assert run.call_count == 3
+
+
+async def test_run_campaign_reads_org_tier(db):
+    from app.services.agents import director as D2
+    org = Organization(slug="o3", name="O", agent_tier="max"); db.add(org); await db.flush()
+    proj = Project(org_id=org.id, name="P", domain="p.com"); db.add(proj); await db.flush()
+    camp = Campaign(org_id=org.id, project_id=proj.id, goal="G", persona="creator", status="planned"); db.add(camp); await db.commit()
+    seen = {}
+    async def fake_run(skill, brief, inputs, tier, db, keys=None, campaign=None):
+        seen["tier"] = tier
+        return AgentResult(ok=True, summary="x", structured={})
+    with patch.object(D2, "plan", new=AsyncMock(return_value=[{"skill": "dune.write_article", "why": "", "inputs": {}},
+             {"skill": "sirocco.multi_network_social", "why": "", "inputs": {}}])), \
+         patch("app.services.agents.director.AgentRunner.run", new=AsyncMock(side_effect=fake_run)), \
+         patch("app.services.agents.director.review", new=AsyncMock(return_value={"passed": True, "score": 90, "feedback": ""})), \
+         patch("app.services.agents.director.get_org_llm_keys", new=AsyncMock(return_value={"anthropic": "x"})):
+        await D2.run_campaign(camp, db)   # tier=None -> read org.agent_tier
+    assert seen["tier"] == "max"

@@ -57,6 +57,7 @@ async def plan(brief, tier, keys, db) -> list[dict]:
 from datetime import datetime, timezone
 from sqlalchemy import select, delete
 from app.models.campaign import Campaign, CampaignStep
+from app.models.organization import Organization
 from app.services.agents.brief import build_brief
 from app.services.agents.runner import AgentRunner
 from app.services.agents.reviewer import review
@@ -78,7 +79,10 @@ def _prior_angle(brief) -> dict:
 
 
 async def run_campaign(campaign, db, tier: str | None = None) -> None:
-    resolved_tier = tier or "balanced"   # Task 13 upgrades this to read org.agent_tier
+    resolved_tier = tier
+    if resolved_tier is None:
+        org_obj = await db.get(Organization, campaign.org_id)
+        resolved_tier = (org_obj.agent_tier if org_obj and org_obj.agent_tier else "balanced")
     keys = await get_org_llm_keys(campaign.org_id, db)
     brief = await build_brief(campaign.project_id, campaign.org_id, campaign.goal, campaign.persona, db)
 
