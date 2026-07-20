@@ -33,3 +33,22 @@ def test_pick_angle_prompt_is_goal_first_and_dedup_aware():
 
 def test_pick_angle_parses_json_with_fences():
     assert parse_json('```json\n{"topic":"X"}\n```') == {"topic": "X"}
+
+
+from app.services.agents.skills import dune
+
+
+def test_write_article_prompt_includes_angle_and_feedback():
+    b = _brief()
+    inputs = {"angle": "Vegan protein for marathon runners", "keyword": "vegan protein runners",
+              "rationale": "Targets an underserved athlete niche", "feedback": "Add training-load specifics"}
+    system, user = dune.WRITE_ARTICLE.build_prompt(b, inputs, {})
+    assert "Vegan protein for marathon runners" in user
+    assert "Targets an underserved athlete niche" in user
+    assert "FIX THIS" in user
+    assert dune.WRITE_ARTICLE.output == "markdown" and dune.WRITE_ARTICLE.persist is not None
+
+
+def test_product_copy_prompt_and_output():
+    system, user = dune.PRODUCT_COPY.build_prompt(_brief(), {"product": {"title": "Serum", "price": "19"}}, {})
+    assert "Serum" in user and dune.PRODUCT_COPY.output == "json"
