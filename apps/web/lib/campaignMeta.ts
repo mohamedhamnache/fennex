@@ -56,13 +56,13 @@ export const CONTEXT_ACTIONS = new Set(["oasis.market_report", "zerda.pick_angle
 
 /** Per-agent visuals for canvas nodes (gradients use Tailwind utility classes). */
 export const AGENT_VISUALS: Record<string, { name: string; Icon: LucideIcon; gradient: string }> = {
-  zerda: { name: "Zerda", Icon: Radar, gradient: "from-indigo-500 to-violet-500" },
-  sirocco: { name: "Sirocco", Icon: Wind, gradient: "from-violet-500 to-fuchsia-500" },
-  dune: { name: "Dune", Icon: ScrollText, gradient: "from-blue-500 to-indigo-500" },
-  mirage: { name: "Mirage", Icon: Wand2, gradient: "from-fuchsia-500 to-pink-500" },
-  sable: { name: "Sable", Icon: Footprints, gradient: "from-slate-600 to-indigo-600" },
-  oasis: { name: "Oasis", Icon: Palmtree, gradient: "from-emerald-500 to-teal-500" },
-  nomad: { name: "Nomad", Icon: Compass, gradient: "from-amber-500 to-orange-500" },
+  zerda: { name: "Zerda", Icon: Radar, gradient: "from-orange-500 to-amber-600" },
+  sirocco: { name: "Sirocco", Icon: Wind, gradient: "from-rose-500 to-orange-500" },
+  dune: { name: "Dune", Icon: ScrollText, gradient: "from-amber-500 to-yellow-600" },
+  mirage: { name: "Mirage", Icon: Wand2, gradient: "from-fuchsia-500 to-rose-500" },
+  sable: { name: "Sable", Icon: Footprints, gradient: "from-stone-500 to-stone-700" },
+  oasis: { name: "Oasis", Icon: Palmtree, gradient: "from-emerald-600 to-teal-600" },
+  nomad: { name: "Nomad", Icon: Compass, gradient: "from-amber-600 to-red-500" },
 };
 
 export function agentVisual(agent: string): { name: string; Icon: LucideIcon; gradient: string } {

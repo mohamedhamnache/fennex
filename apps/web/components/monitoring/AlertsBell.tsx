@@ -23,13 +23,13 @@ const KIND_AGENT: Record<string, AgentId> = {
 };
 
 const KIND_GRADIENT: Record<AgentId, string> = {
-  zerda: "from-indigo-500 to-violet-500",
-  sirocco: "from-violet-500 to-fuchsia-500",
-  dune: "from-blue-500 to-indigo-500",
-  mirage: "from-fuchsia-500 to-pink-500",
-  sable: "from-slate-600 to-indigo-600",
-  oasis: "from-emerald-500 to-teal-500",
-  nomad: "from-amber-500 to-orange-500",
+  zerda: "from-orange-500 to-amber-600",
+  sirocco: "from-rose-500 to-orange-500",
+  dune: "from-amber-500 to-yellow-600",
+  mirage: "from-fuchsia-500 to-rose-500",
+  sable: "from-stone-500 to-stone-700",
+  oasis: "from-emerald-600 to-teal-600",
+  nomad: "from-amber-600 to-red-500",
 };
 
 function agentFor(kind: string): { Icon: LucideIcon; gradient: string } {

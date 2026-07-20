@@ -166,8 +166,8 @@ export function PackagePanel({ projectId, campaign, onRunAgain }: PackagePanelPr
       </div>
 
       {showTrackingChip && (
-        <div className="flex items-start gap-3 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 p-4">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+        <div className="flex items-start gap-3 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 p-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-600 text-white">
             <Radar className="h-4 w-4" strokeWidth={2} />
           </span>
           <div className="min-w-0 flex-1">
