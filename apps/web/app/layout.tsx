@@ -21,6 +21,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        {/* Apply the saved per-project palette before paint to avoid a flash of the default. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var p=localStorage.getItem('fx-palette');if(p)document.documentElement.setAttribute('data-palette',p);}catch(e){}`,
+          }}
+        />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <QueryProvider>
             <I18nProvider>

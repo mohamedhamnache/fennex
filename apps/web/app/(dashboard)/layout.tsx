@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -30,6 +30,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
   const activeProjectId = projects.some((p) => p.id === routeProjectId) ? routeProjectId : storeProjectId;
   const activePalette = projects.find((p) => p.id === activeProjectId)?.theme || "desert";
+
+  // Apply the palette to <html> (where the blocking boot script also sets it, so
+  // there's no flash of the default palette on refresh) and remember it.
+  useLayoutEffect(() => {
+    if (!projects.length) return; // wait until the real theme is known
+    document.documentElement.setAttribute("data-palette", activePalette);
+    try { localStorage.setItem("fx-palette", activePalette); } catch { /* ignore */ }
+  }, [activePalette, projects.length]);
   const setUsage = useUsageStore((s) => s.setUsage);
   const usage = useUsageStore((s) => s.usage);
   const [upgradeResource, setUpgradeResource] = useState<string | null>(null);
@@ -87,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <CommandPaletteProvider>
-      <div data-palette={activePalette} className="relative z-10 flex h-screen flex-col overflow-hidden bg-background">
+      <div className="relative z-10 flex h-screen flex-col overflow-hidden bg-background">
         {usage && (
           <UsageBanner
             onUpgrade={() => {
