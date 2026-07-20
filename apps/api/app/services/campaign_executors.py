@@ -142,13 +142,41 @@ async def exec_dune_write_article(campaign, step, context: CampaignContext, db) 
                       artifact_ids=[str(article.id)], structured={"article_id": str(article.id), "title": title})
 
 
+_ART_DIRECTOR = (
+    "You are Sirocco, a creative director. Write ONE image-generation prompt for a marketing visual. "
+    "Output ONLY the prompt text — no quotes, no preamble, no explanation. Describe a specific, evocative scene: "
+    "a clear subject and focal point, composition, setting, lighting, mood, a tight color palette, and the art "
+    "style (photographic OR illustrative — pick what fits the brand). Be concrete, not generic. "
+    "ABSOLUTELY NO text, words, letters, numbers, logos, watermarks, charts or UI in the image. "
+    "One vivid paragraph under 80 words."
+)
+
+
 async def exec_sirocco_generate_visual(campaign, step, context: CampaignContext, db) -> StepResult:
     keys = await get_org_llm_keys(campaign.org_id, db)
     if "openai" not in keys:
         raise RuntimeError("Image generation needs an OpenAI key.")
     brief = step.brief or {}
     angle = _angle(context)
-    prompt = str(brief.get("prompt") or f"Marketing visual for: {angle.get('topic') or campaign.goal}")[:800]
+    subject = angle.get("topic") or campaign.goal
+
+    # Sirocco writes a proper art-directed prompt first — a good prompt is the biggest lever on image quality.
+    prompt = f"Marketing visual for: {subject}"  # fallback
+    pm = _pick_provider(keys)
+    if pm is not None:
+        adr_user = (
+            f"Campaign goal: {campaign.goal}\nArticle angle: {subject}\n"
+            + (f"Brand & audience: {context.project_profile}\n" if context.project_profile else "")
+            + (f"Extra direction: {brief.get('prompt')}\n" if brief.get("prompt") else "")
+        )
+        try:
+            crafted = (await call_llm(pm[0], pm[1], keys[pm[0]], _ART_DIRECTOR, adr_user,
+                                      locale=await project_locale(campaign.project_id, db))).strip()
+            if crafted:
+                prompt = crafted[:900]
+        except Exception:
+            pass
+
     result = await generate_image_dalle(prompt=prompt, style="professional", usage="marketing_banner",
                                         openai_api_key=keys["openai"])
     if not result.get("ok"):
