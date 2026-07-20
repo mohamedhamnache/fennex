@@ -151,7 +151,7 @@ export function Sidebar() {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => { setHovered(false); setDropdownOpen(false); }}
         className={cn(
-          "relative z-20 flex h-full shrink-0 flex-col border-r border-white/[0.06] bg-[hsl(224_56%_4%/0.7)] backdrop-blur-xl transition-[width] duration-200 ease-out",
+          "relative z-20 flex h-full shrink-0 flex-col border-r border-white/[0.06] bg-[hsl(var(--nav-bg)/0.72)] backdrop-blur-xl transition-[width] duration-200 ease-out",
           expanded ? "w-[244px]" : "w-[72px]",
         )}
       >

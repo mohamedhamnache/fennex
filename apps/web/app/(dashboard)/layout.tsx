@@ -88,8 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <CommandPaletteProvider>
-      <AuroraBackground />
-      <div data-palette={activePalette} className="relative z-10 flex h-screen flex-col overflow-hidden">
+      <div data-palette={activePalette} className="relative z-10 flex h-screen flex-col overflow-hidden bg-background">
+        <AuroraBackground />
         {usage && (
           <UsageBanner
             onUpgrade={() => {
