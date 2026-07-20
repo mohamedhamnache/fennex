@@ -110,22 +110,22 @@ function HeroTile({
             <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -18 }}>
               <defs>
                 <linearGradient id="heroClicks" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.45} />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                  <stop offset="0%" style={{ stopColor: "hsl(var(--primary))" }} stopOpacity={0.45} />
+                  <stop offset="100%" style={{ stopColor: "hsl(var(--primary))" }} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="heroStroke" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#d946ef" />
+                  <stop offset="0%" style={{ stopColor: "hsl(var(--primary))" }} />
+                  <stop offset="100%" style={{ stopColor: "hsl(var(--primary-accent))" }} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={32} />
               <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={44} />
               <Tooltip
-                contentStyle={{ background: "hsl(224 44% 8%)", border: "1px solid hsl(0 0% 100% / 0.1)", borderRadius: 10, fontSize: 12, color: "hsl(var(--foreground))" }}
+                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12, color: "hsl(var(--foreground))" }}
                 labelStyle={{ color: "hsl(var(--muted-foreground))" }}
               />
               <Area type="monotone" dataKey="clicks" stroke="url(#heroStroke)" strokeWidth={2.5} fill="url(#heroClicks)"
-                style={{ filter: "drop-shadow(0 4px 12px hsl(256 92% 55% / 0.35))" }} />
+                style={{ filter: "drop-shadow(0 4px 12px hsl(var(--primary) / 0.35))" }} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (

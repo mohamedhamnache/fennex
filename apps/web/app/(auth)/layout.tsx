@@ -73,7 +73,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative">
           <div className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/8 p-4 backdrop-blur-sm">
             <div className="flex -space-x-2">
-              {["#6366f1","#8b5cf6","#a855f7","#ec4899"].map((c, i) => (
+              {["#b5522f","#c47a3d","#cf9142","#c9764a"].map((c, i) => (
                 <div key={i} className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#1a1065] text-xs font-bold text-white" style={{ background: c }}>
                   {["A","B","C","D"][i]}
                 </div>

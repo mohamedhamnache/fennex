@@ -30,9 +30,8 @@ export function ProgressRing({
       <svg width={size} height={size} className="-rotate-90">
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="55%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#d946ef" />
+            <stop offset="0%" style={{ stopColor: "hsl(var(--primary))" }} />
+            <stop offset="100%" style={{ stopColor: "hsl(var(--primary-accent))" }} />
           </linearGradient>
         </defs>
         <circle
@@ -43,7 +42,7 @@ export function ProgressRing({
           cx={size / 2} cy={size / 2} r={r}
           fill="none" stroke={`url(#${gradId})`} strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={circ} strokeDashoffset={offset}
-          style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)", filter: "drop-shadow(0 0 6px hsl(256 92% 60% / 0.5))" }}
+          style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)", filter: "drop-shadow(0 0 6px hsl(var(--primary) / 0.5))" }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
