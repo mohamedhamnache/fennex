@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { CommandPaletteProvider } from "@/components/layout/CommandPalette";
-import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { UsageBanner } from "@/components/billing/UsageBanner";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { getBillingUsage, isAuthenticated, ApiError, listProjects } from "@/lib/api";
@@ -89,7 +88,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <CommandPaletteProvider>
       <div data-palette={activePalette} className="relative z-10 flex h-screen flex-col overflow-hidden bg-background">
-        <AuroraBackground />
         {usage && (
           <UsageBanner
             onUpgrade={() => {
