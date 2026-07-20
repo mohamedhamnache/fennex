@@ -52,3 +52,33 @@ def test_write_article_prompt_includes_angle_and_feedback():
 def test_product_copy_prompt_and_output():
     system, user = dune.PRODUCT_COPY.build_prompt(_brief(), {"product": {"title": "Serum", "price": "19"}}, {})
     assert "Serum" in user and dune.PRODUCT_COPY.output == "json"
+
+
+from app.services.agents.skills import sirocco, oasis, sable, nomad, mirage
+
+
+def test_multi_network_social_prompt_lists_platforms():
+    inp = {"topic": "Summer serum launch", "platforms": ["linkedin", "instagram"]}
+    system, user = sirocco.MULTI_NETWORK_SOCIAL.build_prompt(_brief(), inp, {})
+    assert "linkedin" in user and "instagram" in user and sirocco.MULTI_NETWORK_SOCIAL.output == "json"
+
+
+def test_generate_visual_is_two_step_with_persist():
+    system, user = sirocco.GENERATE_VISUAL.build_prompt(_brief(), {"topic": "serum"}, {})
+    assert "NO text" in system or "no text" in system.lower()
+    assert sirocco.GENERATE_VISUAL.persist is not None and sirocco.GENERATE_VISUAL.output == "text"
+
+
+def test_market_report_is_markdown_and_icp_is_json():
+    assert oasis.MARKET_REPORT.output == "markdown"
+    assert oasis.DEFINE_ICP.output == "json"
+
+
+def test_outreach_and_testimonial_outputs():
+    assert nomad.OUTREACH_PLAN.output == "json" and nomad.TESTIMONIAL_CONTENT.output == "json"
+
+
+def test_competitor_scan_reads_url_input():
+    td = {"crawl_competitor": {"ok": True, "data": {"analysis": {"url": "x.com", "scorecard": {"score": 60}}}}}
+    system, user = sable.COMPETITOR_SCAN.build_prompt(_brief(), {"competitor_url": "x.com"}, td)
+    assert "x.com" in user and sable.COMPETITOR_SCAN.output == "json"
