@@ -11,21 +11,26 @@ import { UsageBanner } from "@/components/billing/UsageBanner";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { getBillingUsage, isAuthenticated, ApiError, listProjects } from "@/lib/api";
 import { useUsageStore } from "@/lib/billing-store";
+import { useProjectStore } from "@/lib/store";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isFullScreen = /\/images\/edit\//.test(pathname ?? "");
 
-  // Per-project accent palette: read the current project's theme from its route.
+  // Per-project accent palette. Prefer the project in the route; on routes with
+  // no project (e.g. /settings) fall back to the last-active project so the
+  // chosen palette still shows.
   const routeProjectId = pathname?.split("/").filter(Boolean)[0] ?? null;
+  const storeProjectId = useProjectStore((s) => s.currentProjectId);
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: listProjects,
     staleTime: 60_000,
     enabled: typeof window !== "undefined" && isAuthenticated(),
   });
-  const activePalette = projects.find((p) => p.id === routeProjectId)?.theme || "desert";
+  const activeProjectId = projects.some((p) => p.id === routeProjectId) ? routeProjectId : storeProjectId;
+  const activePalette = projects.find((p) => p.id === activeProjectId)?.theme || "desert";
   const setUsage = useUsageStore((s) => s.setUsage);
   const usage = useUsageStore((s) => s.usage);
   const [upgradeResource, setUpgradeResource] = useState<string | null>(null);
