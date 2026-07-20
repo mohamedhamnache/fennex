@@ -2,6 +2,8 @@
 import json
 import re
 
+from sqlalchemy import select
+
 from app.models.article import Article, ArticleStatus
 from app.models.image import GeneratedImage, ImageStatus
 from app.services.analytics_service import get_market_insights, get_opportunities
@@ -41,15 +43,39 @@ async def exec_zerda_pick_angle(campaign, step, context: CampaignContext, db) ->
     pm = _pick_provider(keys)
     if pm is None:
         raise RuntimeError("No AI key configured.")
+
+    # Everything already written for this project — so we pick a FRESH angle, not a repeat.
+    recent = (await db.execute(
+        select(Article.title).where(
+            Article.project_id == campaign.project_id, Article.org_id == campaign.org_id,
+        ).order_by(Article.created_at.desc()).limit(20)
+    )).scalars().all()
+
     top = (opps.striking_distance + opps.ctr_wins)[:12]
     lines = [f"- \"{o.query}\" pos {o.position:.1f}, +{o.potential_clicks} potential" for o in top]
     clusters = "; ".join(f"{c.topic} ({c.query_count} queries)" for c in market.clusters[:8])
+
     system = (
-        "You are Zerda, Fennex's SEO strategist. From the DATA pick ONE focus for a content campaign. "
-        "Respond with ONLY JSON: {\"topic\": str, \"keyword\": str, \"rationale\": str}. "
-        "Prefer a striking-distance query with real demand aligned to the goal."
+        "You are Zerda, Fennex's SEO strategist, scoping ONE content piece for THIS specific campaign.\n"
+        "Rules, in priority order:\n"
+        "1. The GOAL defines the subject. Derive a concrete, specific ANGLE that directly serves the goal — "
+        "a particular question, use-case, comparison, or audience cut. Not a broad restatement of the goal.\n"
+        "2. Use the OPPORTUNITY KEYWORDS only as supporting targets when one genuinely fits the angle; never "
+        "let the keyword list hijack the subject away from the goal.\n"
+        "3. Do NOT repeat or lightly reword any of the EXISTING ARTICLES — pick a distinctly different angle "
+        "that adds something new to the site.\n"
+        "4. Prefer a sharp, opinionated, specific angle over the obvious generic one.\n"
+        "Respond with ONLY JSON: {\"topic\": specific article angle/title, \"keyword\": best target keyword, "
+        "\"rationale\": one sentence on why this angle wins and how it differs from what exists}."
     )
-    user = f"GOAL: {campaign.goal}\nPERSONA: {campaign.persona}\nTOPIC CLUSTERS: {clusters}\nOPPORTUNITIES:\n" + "\n".join(lines)
+    user = (
+        f"GOAL: {campaign.goal}\nPERSONA: {campaign.persona}\n"
+        + (f"CLIENT PROFILE: {context.project_profile}\n" if context.project_profile else "")
+        + f"TOPIC CLUSTERS: {clusters or 'none yet'}\n"
+        + "OPPORTUNITY KEYWORDS:\n" + ("\n".join(lines) or "- (no Search Console data yet — derive the angle from the goal and profile)")
+        + "\n\nEXISTING ARTICLES (choose an angle clearly different from every one of these):\n"
+        + ("\n".join(f"- {t}" for t in recent) or "- (none yet)")
+    )
     raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(campaign.project_id, db))
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     try:
@@ -61,7 +87,7 @@ async def exec_zerda_pick_angle(campaign, step, context: CampaignContext, db) ->
     rationale = str(data.get("rationale") or "")[:400]
     return StepResult(
         summary=f"Focus: {topic} (target keyword: {keyword}). {rationale}",
-        structured={"topic": topic, "keyword": keyword, "rationale": rationale},
+        structured={"topic": topic, "keyword": keyword, "rationale": rationale, "goal": campaign.goal},
     )
 
 
@@ -87,6 +113,15 @@ async def exec_dune_write_article(campaign, step, context: CampaignContext, db) 
     db.add(article); await db.flush()
     system = _build_system_prompt(None, context.project_profile)
     user = _build_user_prompt(article)
+    # Ground the draft in THIS campaign's angle so it's specific, not a generic take on the keyword.
+    ctx_lines = []
+    if angle.get("rationale"):
+        ctx_lines.append(f"Chosen angle & why it wins: {angle['rationale']}")
+    if angle.get("goal") or campaign.goal:
+        ctx_lines.append(f"This article serves the campaign goal: {angle.get('goal') or campaign.goal}. Keep the piece pointed at that goal and audience.")
+    if ctx_lines:
+        user += ("\n\nCAMPAIGN CONTEXT (write specifically to this angle — do NOT drift into a generic "
+                 "overview of the keyword):\n- " + "\n- ".join(ctx_lines))
     try:
         raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(campaign.project_id, db))
     except Exception:
@@ -107,13 +142,41 @@ async def exec_dune_write_article(campaign, step, context: CampaignContext, db) 
                       artifact_ids=[str(article.id)], structured={"article_id": str(article.id), "title": title})
 
 
+_ART_DIRECTOR = (
+    "You are Sirocco, a creative director. Write ONE image-generation prompt for a marketing visual. "
+    "Output ONLY the prompt text — no quotes, no preamble, no explanation. Describe a specific, evocative scene: "
+    "a clear subject and focal point, composition, setting, lighting, mood, a tight color palette, and the art "
+    "style (photographic OR illustrative — pick what fits the brand). Be concrete, not generic. "
+    "ABSOLUTELY NO text, words, letters, numbers, logos, watermarks, charts or UI in the image. "
+    "One vivid paragraph under 80 words."
+)
+
+
 async def exec_sirocco_generate_visual(campaign, step, context: CampaignContext, db) -> StepResult:
     keys = await get_org_llm_keys(campaign.org_id, db)
     if "openai" not in keys:
         raise RuntimeError("Image generation needs an OpenAI key.")
     brief = step.brief or {}
     angle = _angle(context)
-    prompt = str(brief.get("prompt") or f"Marketing visual for: {angle.get('topic') or campaign.goal}")[:800]
+    subject = angle.get("topic") or campaign.goal
+
+    # Sirocco writes a proper art-directed prompt first — a good prompt is the biggest lever on image quality.
+    prompt = f"Marketing visual for: {subject}"  # fallback
+    pm = _pick_provider(keys)
+    if pm is not None:
+        adr_user = (
+            f"Campaign goal: {campaign.goal}\nArticle angle: {subject}\n"
+            + (f"Brand & audience: {context.project_profile}\n" if context.project_profile else "")
+            + (f"Extra direction: {brief.get('prompt')}\n" if brief.get("prompt") else "")
+        )
+        try:
+            crafted = (await call_llm(pm[0], pm[1], keys[pm[0]], _ART_DIRECTOR, adr_user,
+                                      locale=await project_locale(campaign.project_id, db))).strip()
+            if crafted:
+                prompt = crafted[:900]
+        except Exception:
+            pass
+
     result = await generate_image_dalle(prompt=prompt, style="professional", usage="marketing_banner",
                                         openai_api_key=keys["openai"])
     if not result.get("ok"):

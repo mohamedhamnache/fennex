@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.dependencies import CurrentUser, DB
+from app.models.organization import Organization
 from app.services.team_service import list_members, create_invite, update_member_role, deactivate_member
 
 router = APIRouter()
@@ -35,19 +36,59 @@ class MemberRoleUpdate(BaseModel):
     role: str
 
 
+class OrgOut(BaseModel):
+    id: str
+    slug: str
+    name: str
+    plan_tier: str
+    agent_tier: str
+
+
+class OrgUpdate(BaseModel):
+    name: str | None = None
+    agent_tier: str | None = None
+
+
+_AGENT_TIERS = {"economy", "balanced", "max"}
+
+
 @router.post("", status_code=201)
 async def create_organization():
     return {"message": "Not implemented yet"}
 
 
-@router.get("/{org_id}")
-async def get_organization(org_id: str):
-    return {"message": "Not implemented yet"}
+def _org_out(org) -> "OrgOut":
+    return OrgOut(id=str(org.id), slug=org.slug, name=org.name,
+                  plan_tier=org.plan_tier.value if hasattr(org.plan_tier, "value") else str(org.plan_tier),
+                  agent_tier=org.agent_tier or "balanced")
 
 
-@router.patch("/{org_id}")
-async def update_organization(org_id: str):
-    return {"message": "Not implemented yet"}
+@router.get("/{org_id}", response_model=OrgOut)
+async def get_organization(org_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    if current_user.org_id != org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    org = await db.get(Organization, org_id)
+    if org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return _org_out(org)
+
+
+@router.patch("/{org_id}", response_model=OrgOut)
+async def update_organization(org_id: uuid.UUID, body: OrgUpdate, current_user: CurrentUser, db: DB):
+    if current_user.org_id != org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    org = await db.get(Organization, org_id)
+    if org is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if body.name is not None:
+        org.name = body.name
+    if body.agent_tier is not None:
+        if body.agent_tier not in _AGENT_TIERS:
+            raise HTTPException(status_code=422, detail="agent_tier must be economy, balanced or max")
+        org.agent_tier = body.agent_tier
+    await db.commit()
+    await db.refresh(org)
+    return _org_out(org)
 
 
 @router.get("/{org_id}/members", response_model=list[MemberOut])

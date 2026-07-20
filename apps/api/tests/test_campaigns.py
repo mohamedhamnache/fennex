@@ -306,68 +306,12 @@ async def test_director_fallback_on_bad_json(db_session, org_and_project):
     assert [s["action"] for s in plan["steps"]] == ["zerda.pick_angle", "dune.write_article"]
 
 
-# ── Orchestrator (execute_campaign / run_campaign) ────────────────────────────
-
-@pytest.mark.asyncio
-async def test_execute_campaign_runs_steps_and_chains(db_session, org_and_project):
-    from app.services.campaign_catalog import StepResult
-    from app.workers.tasks.campaign_tasks import execute_campaign
-    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
-    db_session.add(c); await db_session.commit()
-    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle"))
-    db_session.add(CampaignStep(campaign_id=c.id, order=1, agent="oasis", action="oasis.market_report"))
-    await db_session.commit()
-    calls = []
-    async def fake_zerda(campaign, step, context, db):
-        calls.append(("zerda", len(context.prior)))
-        return StepResult(summary="angle", structured={"keyword": "k"})
-    async def fake_oasis(campaign, step, context, db):
-        calls.append(("oasis", len(context.prior)))
-        return StepResult(summary="report", artifact_type="report")
-    from app.services import campaign_catalog
-    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}), \
-         patch.dict(campaign_catalog.ACTIONS["oasis.market_report"].__dict__, {"executor": fake_oasis}):
-        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
-    await db_session.refresh(c)
-    steps = (await db_session.execute(select(CampaignStep).where(CampaignStep.campaign_id == c.id).order_by(CampaignStep.order))).scalars().all()
-    assert c.status == "completed"
-    assert [s.status for s in steps] == ["completed", "completed"]
-    assert calls == [("zerda", 0), ("oasis", 1)]   # context grew between steps
-
-
-@pytest.mark.asyncio
-async def test_execute_campaign_resume_skips_completed_steps(db_session, org_and_project):
-    """An arq retry / resumed run must never re-execute an already-completed (possibly paid) step."""
-    from app.services.campaign_catalog import StepResult
-    from app.workers.tasks.campaign_tasks import execute_campaign
-    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
-    db_session.add(c); await db_session.commit()
-    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle",
-                                status="completed", summary="angle picked",
-                                structured={"keyword": "k", "topic": "t"}))
-    db_session.add(CampaignStep(campaign_id=c.id, order=1, agent="oasis", action="oasis.market_report",
-                                status="pending"))
-    await db_session.commit()
-
-    async def exploding_zerda(campaign, step, context, db):
-        raise AssertionError("completed step's executor must not be called on resume")
-
-    calls = []
-    async def fake_oasis(campaign, step, context, db):
-        calls.append(("oasis", len(context.prior)))
-        return StepResult(summary="report", artifact_type="report")
-
-    from app.services import campaign_catalog
-    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": exploding_zerda}), \
-         patch.dict(campaign_catalog.ACTIONS["oasis.market_report"].__dict__, {"executor": fake_oasis}):
-        await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
-
-    await db_session.refresh(c)
-    steps = (await db_session.execute(select(CampaignStep).where(
-        CampaignStep.campaign_id == c.id).order_by(CampaignStep.order))).scalars().all()
-    assert c.status == "completed"
-    assert [s.status for s in steps] == ["completed", "completed"]
-    assert calls == [("oasis", 1)]   # zerda's stored output was re-chained into context
+# ── Orchestrator ──────────────────────────────────────────────────────────────
+# execute_campaign now delegates to the specialized-agent director
+# (app.services.agents.director.run_campaign). The director re-plans and runs
+# skills itself; its execute/review/retry/handoff loop is covered directly in
+# tests/test_agents_director.py. The old ACTIONS-executor step-chaining and
+# resume-skip semantics no longer exist, so their tests were removed here.
 
 
 # ── API router ────────────────────────────────────────────────────────────────
@@ -412,27 +356,40 @@ async def test_plan_edit_rejects_empty_step_list(client, org_and_project):
 
 # ── Zerda auto-track hook ─────────────────────────────────────────────────────
 
+def _director_patches(structured):
+    """Patch the director so execute_campaign runs one zerda.pick_angle step that
+    returns `structured`, without any real LLM/key calls."""
+    from app.services.agents.spec import AgentResult
+    async def fake_run(skill, brief, inputs, tier, db, keys=None, campaign=None):
+        return AgentResult(ok=True, summary="angle", structured=structured)
+    return (
+        patch("app.services.agents.director.get_org_llm_keys", new=AsyncMock(return_value={"anthropic": "x"})),
+        patch("app.services.agents.director.plan",
+              new=AsyncMock(return_value=[{"skill": "zerda.pick_angle", "why": "", "inputs": {}}])),
+        patch("app.services.agents.director.AgentRunner.run", new=AsyncMock(side_effect=fake_run)),
+        patch("app.services.agents.director.review",
+              new=AsyncMock(return_value={"passed": True, "score": 90, "feedback": ""})),
+    )
+
+
 @pytest.mark.asyncio
 async def test_completed_campaign_autotracks_angle(db_session, org_and_project):
-    from app.services.campaign_catalog import StepResult
     from app.workers.tasks.campaign_tasks import execute_campaign
     c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="Win clients", persona="freelancer", status="running")
     db_session.add(c); await db_session.commit()
-    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle"))
-    await db_session.commit()
-    async def fake_zerda(campaign, step, context, db):
-        return StepResult(summary="angle", structured={"topic": "T", "keyword": "menu digital", "rationale": "striking"})
-    from app.services import campaign_catalog
-    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}):
+    structured = {"topic": "T", "keyword": "menu digital", "rationale": "striking"}
+    p_keys, p_plan, p_run, p_review = _director_patches(structured)
+    with p_keys, p_plan, p_run, p_review:
         await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
     rec = (await db_session.execute(select(Recommendation))).scalars().first()
     assert rec is not None
     assert rec.anchor_query == "menu digital"
     assert rec.title.startswith("Campaign:")
-    # duplicate guard: re-running (resume path re-chains completed steps) must not create a second one
+    # duplicate guard: re-running must not create a second recommendation
     c.status = "running"; c.cancel_requested = False
     await db_session.commit()
-    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}):
+    p_keys, p_plan, p_run, p_review = _director_patches(structured)
+    with p_keys, p_plan, p_run, p_review:
         await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
     recs = (await db_session.execute(select(Recommendation))).scalars().all()
     assert len(recs) == 1
@@ -440,16 +397,11 @@ async def test_completed_campaign_autotracks_angle(db_session, org_and_project):
 
 @pytest.mark.asyncio
 async def test_campaign_without_angle_creates_no_recommendation(db_session, org_and_project):
-    from app.services.campaign_catalog import StepResult
     from app.workers.tasks.campaign_tasks import execute_campaign
     c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
     db_session.add(c); await db_session.commit()
-    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="oasis", action="oasis.market_report"))
-    await db_session.commit()
-    async def fake_oasis(campaign, step, context, db):
-        return StepResult(summary="report", artifact_type="report")
-    from app.services import campaign_catalog
-    with patch.dict(campaign_catalog.ACTIONS["oasis.market_report"].__dict__, {"executor": fake_oasis}):
+    p_keys, p_plan, p_run, p_review = _director_patches({"summary_only": True})  # no keyword
+    with p_keys, p_plan, p_run, p_review:
         await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
     recs = (await db_session.execute(select(Recommendation))).scalars().all()
     assert recs == []
@@ -457,16 +409,11 @@ async def test_campaign_without_angle_creates_no_recommendation(db_session, org_
 
 @pytest.mark.asyncio
 async def test_autotrack_failure_does_not_change_campaign_status(db_session, org_and_project):
-    from app.services.campaign_catalog import StepResult
     from app.workers.tasks.campaign_tasks import execute_campaign
     c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="g", persona="creator", status="running")
     db_session.add(c); await db_session.commit()
-    db_session.add(CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle"))
-    await db_session.commit()
-    async def fake_zerda(campaign, step, context, db):
-        return StepResult(summary="angle", structured={"keyword": "k"})
-    from app.services import campaign_catalog
-    with patch.dict(campaign_catalog.ACTIONS["zerda.pick_angle"].__dict__, {"executor": fake_zerda}), \
+    p_keys, p_plan, p_run, p_review = _director_patches({"keyword": "k"})
+    with p_keys, p_plan, p_run, p_review, \
          patch("app.workers.tasks.campaign_tasks.create_recommendation", new=AsyncMock(side_effect=RuntimeError("boom"))):
         await execute_campaign(c.id, db_factory=lambda: _single_session(db_session))
     await db_session.refresh(c)
