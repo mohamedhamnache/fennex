@@ -8,9 +8,7 @@ from sqlalchemy import select
 from app.core.database import async_session_factory
 from app.models.calendar_entry import CalendarEntry
 from app.models.campaign import Campaign, CampaignStep
-from app.services.ai_analytics_service import project_profile
 from app.services.calendar_service import create_entry as create_calendar_entry
-from app.services.campaign_catalog import ACTIONS, CampaignContext
 from app.services.recommendation_service import create_recommendation
 
 logger = logging.getLogger(__name__)
@@ -105,67 +103,9 @@ async def execute_campaign(campaign_id, db_factory=None) -> None:
         campaign = await db.get(Campaign, campaign_id)
         if campaign is None:
             return
-        campaign.status = "running"
-        await db.commit()
+        from app.services.agents.director import run_campaign as run_agent_campaign
         try:
-            steps = (await db.execute(select(CampaignStep).where(
-                CampaignStep.campaign_id == campaign_id).order_by(CampaignStep.order))).scalars().all()
-
-            profile = ""
-            try:
-                profile = await project_profile(campaign.project_id, db)
-            except Exception:
-                pass
-            context = CampaignContext(goal=campaign.goal, persona=campaign.persona, project_profile=profile, prior=[])
-
-            any_done = False
-            for step in steps:
-                await db.refresh(campaign)
-                if campaign.cancel_requested:
-                    break
-                if step.status == "completed":
-                    # Already-terminal step (e.g. a retried/resumed run): re-chain its
-                    # stored output without re-executing the (possibly paid) work.
-                    context.prior.append({"agent": step.agent, "action": step.action,
-                                          "summary": step.summary, "structured": step.structured or {}})
-                    any_done = True
-                    continue
-                if step.status == "skipped":
-                    continue
-                adef = ACTIONS.get(step.action)
-                if adef is None:
-                    step.status = "skipped"; step.error = "Unknown action."; await db.commit(); continue
-                step.status = "running"; step.started_at = _now(); await db.commit()
-                try:
-                    result = await adef.executor(campaign, step, context, db)
-                    if result.structured.get("skipped"):
-                        step.status = "skipped"; step.summary = result.summary
-                    else:
-                        step.status = "completed"; any_done = True
-                        step.summary = result.summary
-                        step.artifact_type = result.artifact_type
-                        step.artifact_ids = result.artifact_ids or None
-                        step.structured = result.structured or None
-                        context.prior.append({"agent": step.agent, "action": step.action,
-                                              "summary": result.summary, "structured": result.structured})
-                except Exception as exc:  # noqa: BLE001 — record + continue
-                    logger.exception("campaign step failed: %s", step.action)
-                    await db.rollback()
-                    step = await db.get(CampaignStep, step.id)
-                    step.status = "failed"; step.error = str(exc)[:2000]
-                    step.finished_at = _now(); await db.commit()
-                    continue
-                step.finished_at = _now(); await db.commit()
-
-            await db.refresh(campaign)
-            if campaign.cancel_requested:
-                campaign.status = "cancelled"
-            else:
-                campaign.status = "completed" if any_done else "failed"
-            await db.commit()
-            if campaign.status == "completed":
-                await _autotrack_campaign(campaign, steps, db)
-                await _ship_autopilot_artifacts(campaign, steps, db)
+            await run_agent_campaign(campaign, db)
         except Exception:
             logger.exception("campaign execution crashed: %s", campaign_id)
             await db.rollback()
@@ -173,6 +113,15 @@ async def execute_campaign(campaign_id, db_factory=None) -> None:
             if campaign is not None:
                 campaign.status = "failed"
                 await db.commit()
+            return
+
+        # Preserve post-completion autopilot hooks on the freshly-produced steps.
+        await db.refresh(campaign)
+        if campaign.status == "completed":
+            steps = (await db.execute(select(CampaignStep).where(
+                CampaignStep.campaign_id == campaign_id).order_by(CampaignStep.order))).scalars().all()
+            await _autotrack_campaign(campaign, steps, db)
+            await _ship_autopilot_artifacts(campaign, steps, db)
 
 
 async def run_campaign(ctx, campaign_id: str) -> None:

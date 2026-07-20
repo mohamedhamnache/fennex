@@ -47,23 +47,29 @@ async def build_brief(project_id, org_id, goal: str, persona: str, db) -> Brief:
     except Exception:
         locale = "en"
 
-    voice = (await db.execute(
-        select(BrandVoice).where(BrandVoice.org_id == org_id).order_by(BrandVoice.is_default.desc())
-    )).scalars().first()
-    kit = (await db.execute(select(BrandKit).where(BrandKit.org_id == org_id))).scalars().first()
     brand: dict = {}
-    if voice:
-        tone = voice.tone.value if hasattr(voice.tone, "value") else voice.tone
-        brand.update({"voice_prompt": voice.voice_prompt, "tone": tone,
-                      "vocabulary": voice.vocabulary or [], "avoid_words": voice.avoid_words or []})
-    if kit:
-        brand["kit"] = {"colors": kit.colors or [], "primary_font": kit.primary_font,
-                        "style_rules": kit.style_rules, "tone": kit.tone}
+    try:
+        voice = (await db.execute(
+            select(BrandVoice).where(BrandVoice.org_id == org_id).order_by(BrandVoice.is_default.desc())
+        )).scalars().first()
+        kit = (await db.execute(select(BrandKit).where(BrandKit.org_id == org_id))).scalars().first()
+        if voice:
+            tone = voice.tone.value if hasattr(voice.tone, "value") else voice.tone
+            brand.update({"voice_prompt": voice.voice_prompt, "tone": tone,
+                          "vocabulary": voice.vocabulary or [], "avoid_words": voice.avoid_words or []})
+        if kit:
+            brand["kit"] = {"colors": kit.colors or [], "primary_font": kit.primary_font,
+                            "style_rules": kit.style_rules, "tone": kit.tone}
+    except Exception:
+        brand = {}
 
-    titles = (await db.execute(
-        select(Article.title).where(Article.project_id == project_id, Article.org_id == org_id)
-        .order_by(Article.created_at.desc()).limit(20)
-    )).scalars().all()
+    try:
+        titles = (await db.execute(
+            select(Article.title).where(Article.project_id == project_id, Article.org_id == org_id)
+            .order_by(Article.created_at.desc()).limit(20)
+        )).scalars().all()
+    except Exception:
+        titles = []
 
     return Brief(goal=goal, persona=persona, project_id=project_id, org_id=org_id, locale=locale,
                  project_profile=profile, brand=brand, existing_content=[t for t in titles if t],
