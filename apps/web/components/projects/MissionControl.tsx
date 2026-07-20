@@ -143,6 +143,10 @@ export function MissionControl({ projectId, persona }: { projectId: string; pers
   const allDone = trackable.length > 0 && doneCount === trackable.length;
   const PersonaIcon = PERSONA_ICON[persona];
 
+  // Once the project is fully set up, retire the checklist — the persona switcher
+  // and metrics live in PersonaHomeSection, so the overview stays uncluttered.
+  if (allDone) return null;
+
   return (
     <Card className="overflow-hidden">
       <div
