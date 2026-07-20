@@ -513,18 +513,18 @@ input:focus, textarea:focus, select:focus {
 /* ── Glow accents ── */
 .glow-primary { box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 28px hsl(var(--primary) / 0.35); }
 .text-gradient-brand {
-  background: linear-gradient(135deg, #c9764a 0%, #d68b4f 45%, #e0a85a 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-accent)) 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 
 /* ── Aurora primary button (gradient + glow) ── */
 .btn-aurora {
-  background: linear-gradient(135deg, #b5522f 0%, #c06b38 55%, #cf9142 100%);
-  color: #fff; font-weight: 600; border-radius: 10px;
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-accent)) 100%);
+  color: hsl(var(--primary-foreground)); font-weight: 600; border-radius: 10px;
   box-shadow: 0 1px 2px hsl(var(--primary) / 0.4), 0 6px 20px hsl(var(--primary) / 0.35);
   transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
 }
-.btn-aurora:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 2px 6px hsl(var(--primary) / 0.5), 0 10px 30px hsl(290 85% 55% / 0.4); }
+.btn-aurora:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 2px 6px hsl(var(--primary) / 0.5), 0 10px 30px hsl(var(--primary-accent) / 0.4); }
 .btn-aurora:active:not(:disabled) { transform: scale(0.98); }
 .btn-aurora:disabled { opacity: 0.5; cursor: not-allowed; }
 
