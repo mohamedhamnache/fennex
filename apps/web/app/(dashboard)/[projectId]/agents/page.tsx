@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Check, Sparkles, Lock, Megaphone } from "lucide-react";
 import { listProjects } from "@/lib/api";
 import { FENNEX_AGENTS, UPCOMING_AGENTS, type FennexAgent } from "@/lib/agents";
@@ -9,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 
 interface AgentAction {
-  label: string;
+  key: string;
   href: string;
 }
 
@@ -17,38 +18,38 @@ function agentActions(agentId: string, base: string): AgentAction[] {
   switch (agentId) {
     case "zerda":
       return [
-        { label: "Ask Zerda", href: `${base}/analytics?copilot=1` },
-        { label: "View opportunities", href: `${base}/analytics?ws=growth` },
-        { label: "Tracked recommendations", href: `${base}/agents/tracking` },
+        { key: "askZerda", href: `${base}/analytics?copilot=1` },
+        { key: "viewOpportunities", href: `${base}/analytics?ws=growth` },
+        { key: "trackedRecommendations", href: `${base}/agents/tracking` },
       ];
     case "sirocco":
       return [
-        { label: "Direct a campaign", href: `${base}/campaigns` },
-        { label: "Multi-network social", href: `${base}/social` },
-        { label: "Image studio", href: `${base}/images/studio` },
+        { key: "directCampaign", href: `${base}/campaigns` },
+        { key: "multiNetworkSocial", href: `${base}/social` },
+        { key: "imageStudio", href: `${base}/images/studio` },
       ];
     case "dune":
       return [
-        { label: "Write an article", href: `${base}/articles` },
-        { label: "Create social posts", href: `${base}/social` },
+        { key: "writeArticle", href: `${base}/articles` },
+        { key: "createSocialPosts", href: `${base}/social` },
       ];
     case "mirage":
       return [
-        { label: "Product shots", href: `${base}/images/studio?mode=create&intent=product` },
-        { label: "Edit an image", href: `${base}/images/studio?mode=edit` },
-        { label: "Library", href: `${base}/images` },
+        { key: "productShots", href: `${base}/images/studio?mode=create&intent=product` },
+        { key: "editImage", href: `${base}/images/studio?mode=edit` },
+        { key: "library", href: `${base}/images` },
       ];
     case "sable":
-      return [{ label: "Scan a competitor", href: `${base}/analytics?ws=competitors` }];
+      return [{ key: "scanCompetitor", href: `${base}/analytics?ws=competitors` }];
     case "oasis":
       return [
-        { label: "Generate a market report", href: `${base}/analytics?ws=market&oasis=1` },
-        { label: "Define ideal client", href: `${base}/agents/nomad` },
+        { key: "marketReport", href: `${base}/analytics?ws=market&oasis=1` },
+        { key: "defineIdealClient", href: `${base}/agents/nomad` },
       ];
     case "nomad":
       return [
-        { label: "Plan my outreach week", href: `${base}/agents/nomad` },
-        { label: "Testimonial to content", href: `${base}/agents/nomad` },
+        { key: "planOutreach", href: `${base}/agents/nomad` },
+        { key: "testimonialContent", href: `${base}/agents/nomad` },
       ];
     default:
       return [];
@@ -56,7 +57,9 @@ function agentActions(agentId: string, base: string): AgentAction[] {
 }
 
 function AgentCard({ agent, base, recommended }: { agent: FennexAgent; base: string; recommended: boolean }) {
+  const { t } = useTranslation();
   const actions = agentActions(agent.id, base);
+  const capabilities = t(`agentsRoster.${agent.id}.capabilities`, { returnObjects: true, defaultValue: agent.capabilities }) as string[];
   return (
     <Card className="flex flex-col p-5">
       <div className="flex items-start gap-3">
@@ -68,17 +71,17 @@ function AgentCard({ agent, base, recommended }: { agent: FennexAgent; base: str
             <p className="text-base font-bold text-foreground">{agent.name}</p>
             {recommended && (
               <span className="rounded-full bg-success/12 px-2 py-0.5 text-[10px] font-semibold text-success">
-                Recommended for you
+                {t("agentsPage.recommended")}
               </span>
             )}
           </div>
-          <p className="text-xs font-medium text-primary">{agent.role}</p>
-          <p className="mt-0.5 text-xs italic text-muted-foreground">&ldquo;{agent.tagline}&rdquo;</p>
+          <p className="text-xs font-medium text-primary">{t(`agentsRoster.${agent.id}.role`, { defaultValue: agent.role })}</p>
+          <p className="mt-0.5 text-xs italic text-muted-foreground">&ldquo;{t(`agentsRoster.${agent.id}.tagline`, { defaultValue: agent.tagline })}&rdquo;</p>
         </div>
       </div>
 
       <ul className="mt-4 flex flex-1 flex-col gap-1.5">
-        {agent.capabilities.map((c) => (
+        {capabilities.map((c) => (
           <li key={c} className="flex items-start gap-2 text-xs text-muted-foreground">
             <Check className="mt-0.5 h-3 w-3 shrink-0 text-success" strokeWidth={2.5} />
             {c}
@@ -98,7 +101,7 @@ function AgentCard({ agent, base, recommended }: { agent: FennexAgent; base: str
                 : "border border-border text-foreground hover:bg-accent",
             )}
           >
-            {a.label} <ArrowRight className="h-3 w-3" />
+            {t(`agentsPage.actions.${a.key}`)} <ArrowRight className="h-3 w-3" />
           </Link>
         ))}
       </div>
@@ -108,6 +111,7 @@ function AgentCard({ agent, base, recommended }: { agent: FennexAgent; base: str
 
 export default function AgentsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const base = `/${projectId}`;
 
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects, staleTime: 60_000 });
@@ -126,10 +130,10 @@ export default function AgentsPage({ params }: { params: { projectId: string } }
           <Sparkles className="h-5 w-5" strokeWidth={1.8} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-foreground leading-tight">The Fennex Pack</h1>
+          <h1 className="text-lg font-bold text-foreground leading-tight">{t("agentsPage.title")}</h1>
           <p className="text-xs text-muted-foreground leading-tight">
-            Your AI team — seven specialists, each grounded in your real data
-            {persona ? " · recommendations tuned to your profile" : ""}
+            {t("agentsPage.subtitle")}
+            {persona ? t("agentsPage.subtitleTuned") : ""}
           </p>
         </div>
       </div>
@@ -148,13 +152,11 @@ export default function AgentsPage({ params }: { params: { projectId: string } }
           <Megaphone className="h-5 w-5" strokeWidth={1.8} />
         </div>
         <div className="relative min-w-0 flex-1">
-          <p className="text-sm font-bold text-foreground">Assemble the squad</p>
-          <p className="text-xs text-muted-foreground">
-            One goal in — the pack plans and runs a coordinated campaign together, with handoffs and a live project room.
-          </p>
+          <p className="text-sm font-bold text-foreground">{t("agentsPage.squad.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("agentsPage.squad.desc")}</p>
         </div>
         <span className="relative flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition-transform group-hover:translate-x-0.5">
-          Run a campaign <ArrowRight className="h-3.5 w-3.5" />
+          {t("agentsPage.squad.cta")} <ArrowRight className="h-3.5 w-3.5" />
         </span>
       </Link>
 
@@ -179,7 +181,7 @@ export default function AgentsPage({ params }: { params: { projectId: string } }
                 <div className="flex items-center gap-2">
                   <p className="text-base font-bold text-foreground">{a.name}</p>
                   <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                    <Lock className="h-2.5 w-2.5" /> Coming soon
+                    <Lock className="h-2.5 w-2.5" /> {t("agentsPage.comingSoon")}
                   </span>
                 </div>
                 <p className="text-xs font-medium text-muted-foreground">{a.role}</p>

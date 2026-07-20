@@ -1780,5 +1780,108 @@
     "schedule": "Planen",
     "scheduledFor": "Geplant",
     "addVisual": "Visual hinzufügen"
+  },
+  "agentsPage": {
+    "title": "Das Fennex-Rudel",
+    "subtitle": "Dein KI-Team — sieben Spezialisten, alle in deinen echten Daten verankert",
+    "subtitleTuned": " · Empfehlungen auf dein Profil abgestimmt",
+    "recommended": "Für dich empfohlen",
+    "comingSoon": "Demnächst",
+    "squad": {
+      "title": "Versammle das Rudel",
+      "desc": "Ein Ziel rein — das Rudel plant und fährt gemeinsam eine koordinierte Kampagne, mit Übergaben und einem Live-Projektraum.",
+      "cta": "Kampagne starten"
+    },
+    "actions": {
+      "askZerda": "Zerda fragen",
+      "viewOpportunities": "Chancen ansehen",
+      "trackedRecommendations": "Verfolgte Empfehlungen",
+      "directCampaign": "Kampagne leiten",
+      "multiNetworkSocial": "Multi-Network-Social",
+      "imageStudio": "Bildstudio",
+      "writeArticle": "Artikel schreiben",
+      "createSocialPosts": "Social-Posts erstellen",
+      "productShots": "Produktfotos",
+      "editImage": "Bild bearbeiten",
+      "library": "Bibliothek",
+      "scanCompetitor": "Wettbewerber scannen",
+      "marketReport": "Marktbericht erstellen",
+      "defineIdealClient": "Idealkunden definieren",
+      "planOutreach": "Meine Woche planen",
+      "testimonialContent": "Testimonial zu Content"
+    }
+  },
+  "agentsRoster": {
+    "zerda": {
+      "role": "SEO- & Marktstratege",
+      "tagline": "Hört alles, was in der Suchwüste passiert",
+      "capabilities": [
+        "Beantwortet Fragen zu deinen echten Search-Console-Daten",
+        "Findet erreichbare Keywords und schnelle CTR-Gewinne",
+        "Erklärt Traffic-Änderungen mit Diagrammen",
+        "Empfiehlt, was als Nächstes zu erstellen oder zu beheben ist",
+        "Verfolgt seine Empfehlungen und meldet, ob sie wirkten"
+      ]
+    },
+    "sirocco": {
+      "role": "Creative Director",
+      "tagline": "Denkt in Kampagnen, nicht in Einzel-Assets",
+      "capabilities": [
+        "Plant koordinierte Multi-Asset-Kampagnen aus einem Ziel",
+        "Erzeugt veröffentlichungsfertige Visuals mit Texten",
+        "Wendet dein Brand-Kit auf jedes Asset an",
+        "Verbessert Bild-Prompts wie ein Profi"
+      ]
+    },
+    "dune": {
+      "role": "Content-Autor",
+      "tagline": "Baut Artikel, die über die Zeit Ranking sammeln",
+      "capabilities": [
+        "Schreibt SEO-optimierte Langform-Artikel",
+        "Passt sich an deine Markenstimme und Nische an",
+        "Erzeugt Social-Posts aus deinem Content",
+        "Schlägt Bilder für jeden Artikelabschnitt vor"
+      ]
+    },
+    "mirage": {
+      "role": "Bild-Handwerker",
+      "tagline": "Verwandelt, was du siehst",
+      "capabilities": [
+        "Bearbeitet Bilder per natürlicher Sprache",
+        "Verkettet mehrere Bearbeitungen in einer Anfrage",
+        "Wandelt flache Bilder in bearbeitbare Ebenen",
+        "Bewertet und SEO-optimiert deine Visuals"
+      ]
+    },
+    "sable": {
+      "role": "Wettbewerbs-Späher",
+      "tagline": "Bewegt sich leise durch fremdes Terrain",
+      "capabilities": [
+        "Crawlt jede Wettbewerberseite auf Abruf",
+        "Bewertet deren On-Page-SEO von 100",
+        "Vergleicht ihren Content mit deiner echten Nachfrage",
+        "Findet die Lücken, die zuerst anzugehen sind"
+      ]
+    },
+    "oasis": {
+      "role": "Marktforscher",
+      "tagline": "Macht aus roher Nachfrage kundenfertige Marktberichte",
+      "capabilities": [
+        "Schreibt vollständige Marktberichte aus deinen echten Daten",
+        "Dimensioniert Nachfrage und kartiert die Themen",
+        "Quantifiziert Chancen und benennt die Risiken",
+        "Kundenfertige Ausgabe zum Kopieren oder Herunterladen"
+      ]
+    },
+    "nomad": {
+      "role": "Outreach-Agent",
+      "tagline": "Zieht los und findet deine nächsten Kunden auf LinkedIn",
+      "capabilities": [
+        "Plant eine ganze Woche LinkedIn-Posts aus einem Ziel",
+        "Speichert jeden Post als veröffentlichungsfertigen Entwurf",
+        "Schreibt Vorlagen für Kontakt und Nachfassen",
+        "Outreach-Tipps auf deine Nische abgestimmt"
+      ]
+    }
   }
 }

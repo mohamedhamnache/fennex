@@ -1780,5 +1780,108 @@
     "schedule": "Programar",
     "scheduledFor": "Programado",
     "addVisual": "Añadir visual"
+  },
+  "agentsPage": {
+    "title": "La manada Fennex",
+    "subtitle": "Tu equipo de IA — siete especialistas, cada uno anclado en tus datos reales",
+    "subtitleTuned": " · recomendaciones ajustadas a tu perfil",
+    "recommended": "Recomendado para ti",
+    "comingSoon": "Próximamente",
+    "squad": {
+      "title": "Reúne a la manada",
+      "desc": "Un objetivo de entrada — la manada planifica y ejecuta una campaña coordinada, con relevos y sala de proyecto en vivo.",
+      "cta": "Lanzar una campaña"
+    },
+    "actions": {
+      "askZerda": "Preguntar a Zerda",
+      "viewOpportunities": "Ver oportunidades",
+      "trackedRecommendations": "Recomendaciones seguidas",
+      "directCampaign": "Dirigir una campaña",
+      "multiNetworkSocial": "Social multirred",
+      "imageStudio": "Estudio de imágenes",
+      "writeArticle": "Escribir un artículo",
+      "createSocialPosts": "Crear posts sociales",
+      "productShots": "Fotos de producto",
+      "editImage": "Editar una imagen",
+      "library": "Biblioteca",
+      "scanCompetitor": "Analizar un competidor",
+      "marketReport": "Generar informe de mercado",
+      "defineIdealClient": "Definir cliente ideal",
+      "planOutreach": "Planificar mi semana",
+      "testimonialContent": "Testimonio a contenido"
+    }
+  },
+  "agentsRoster": {
+    "zerda": {
+      "role": "Estratega de SEO y mercado",
+      "tagline": "Oye todo lo que pasa en el desierto de la búsqueda",
+      "capabilities": [
+        "Responde preguntas sobre tus datos reales de Search Console",
+        "Encuentra keywords a tu alcance y mejoras rápidas de CTR",
+        "Explica los cambios de tráfico con gráficos",
+        "Recomienda qué crear o corregir a continuación",
+        "Sigue sus recomendaciones e informa si funcionaron"
+      ]
+    },
+    "sirocco": {
+      "role": "Director creativo",
+      "tagline": "Piensa en campañas, no en piezas sueltas",
+      "capabilities": [
+        "Planifica campañas multi-activo coordinadas desde un objetivo",
+        "Genera visuales listos para publicar con textos",
+        "Aplica tu kit de marca en cada pieza",
+        "Mejora los prompts de imagen como un pro"
+      ]
+    },
+    "dune": {
+      "role": "Redactor de contenido",
+      "tagline": "Crea artículos que acumulan posición con el tiempo",
+      "capabilities": [
+        "Escribe artículos largos optimizados para SEO",
+        "Se adapta a tu voz de marca y nicho",
+        "Genera posts sociales desde tu contenido",
+        "Sugiere imágenes para cada sección del artículo"
+      ]
+    },
+    "mirage": {
+      "role": "Artesano de imagen",
+      "tagline": "Transforma lo que ves",
+      "capabilities": [
+        "Edita imágenes con comandos en lenguaje natural",
+        "Encadena varias ediciones en una sola petición",
+        "Convierte imágenes planas en capas editables",
+        "Puntúa y optimiza el SEO de tus visuales"
+      ]
+    },
+    "sable": {
+      "role": "Explorador de competencia",
+      "tagline": "Se mueve por territorio rival en silencio",
+      "capabilities": [
+        "Rastrea cualquier página de la competencia a demanda",
+        "Puntúa su SEO on-page sobre 100",
+        "Compara su contenido con tu demanda real",
+        "Señala las brechas que conviene atacar primero"
+      ]
+    },
+    "oasis": {
+      "role": "Investigador de mercado",
+      "tagline": "Convierte la demanda bruta en informes listos para el cliente",
+      "capabilities": [
+        "Escribe informes de mercado completos desde tus datos reales",
+        "Dimensiona la demanda y mapea los temas",
+        "Cuantifica oportunidades y nombra los riesgos",
+        "Salida lista para el cliente para copiar o descargar"
+      ]
+    },
+    "nomad": {
+      "role": "Agente de prospección",
+      "tagline": "Sale a encontrar tus próximos clientes en LinkedIn",
+      "capabilities": [
+        "Planifica una semana entera de posts de LinkedIn desde un objetivo",
+        "Guarda cada post como borrador listo para publicar",
+        "Escribe plantillas de conexión y seguimiento",
+        "Consejos de prospección ajustados a tu nicho"
+      ]
+    }
   }
 }

@@ -1780,5 +1780,108 @@
     "schedule": "Programmer",
     "scheduledFor": "Programmé",
     "addVisual": "Ajouter un visuel"
+  },
+  "agentsPage": {
+    "title": "La meute Fennex",
+    "subtitle": "Votre équipe IA — sept spécialistes, chacun ancré dans vos données réelles",
+    "subtitleTuned": " · recommandations adaptées à votre profil",
+    "recommended": "Recommandé pour vous",
+    "comingSoon": "Bientôt",
+    "squad": {
+      "title": "Rassemblez la meute",
+      "desc": "Un objectif en entrée — la meute planifie et exécute une campagne coordonnée, avec passages de relais et salle de projet en direct.",
+      "cta": "Lancer une campagne"
+    },
+    "actions": {
+      "askZerda": "Demander à Zerda",
+      "viewOpportunities": "Voir les opportunités",
+      "trackedRecommendations": "Recommandations suivies",
+      "directCampaign": "Diriger une campagne",
+      "multiNetworkSocial": "Social multi-réseaux",
+      "imageStudio": "Studio d'images",
+      "writeArticle": "Écrire un article",
+      "createSocialPosts": "Créer des posts sociaux",
+      "productShots": "Photos produit",
+      "editImage": "Éditer une image",
+      "library": "Bibliothèque",
+      "scanCompetitor": "Analyser un concurrent",
+      "marketReport": "Générer un rapport de marché",
+      "defineIdealClient": "Définir le client idéal",
+      "planOutreach": "Planifier ma semaine",
+      "testimonialContent": "Témoignage en contenu"
+    }
+  },
+  "agentsRoster": {
+    "zerda": {
+      "role": "Stratège SEO & marché",
+      "tagline": "Entend tout ce qui se passe dans le désert de la recherche",
+      "capabilities": [
+        "Répond à vos questions sur vos vraies données Search Console",
+        "Trouve les mots-clés à portée et les gains de CTR rapides",
+        "Explique les variations de trafic avec des graphiques",
+        "Recommande quoi créer ou corriger ensuite",
+        "Suit ses recommandations et indique si elles ont marché"
+      ]
+    },
+    "sirocco": {
+      "role": "Directeur créatif",
+      "tagline": "Pense en campagnes, pas en assets isolés",
+      "capabilities": [
+        "Planifie des campagnes multi-assets coordonnées depuis un objectif",
+        "Génère des visuels prêts à publier avec légendes",
+        "Applique votre brand kit sur chaque asset",
+        "Améliore les prompts d'image comme un pro"
+      ]
+    },
+    "dune": {
+      "role": "Rédacteur de contenu",
+      "tagline": "Construit des articles qui accumulent du rang dans le temps",
+      "capabilities": [
+        "Rédige des articles longs optimisés SEO",
+        "S'adapte à votre voix de marque et votre niche",
+        "Génère des posts sociaux à partir de votre contenu",
+        "Suggère des images pour chaque section d'article"
+      ]
+    },
+    "mirage": {
+      "role": "Artisan de l'image",
+      "tagline": "Transforme ce que vous voyez",
+      "capabilities": [
+        "Édite les images à partir de commandes en langage naturel",
+        "Enchaîne plusieurs retouches en une requête",
+        "Convertit des images plates en calques éditables",
+        "Note et optimise le SEO de vos visuels"
+      ]
+    },
+    "sable": {
+      "role": "Éclaireur concurrentiel",
+      "tagline": "Traverse le territoire rival en silence",
+      "capabilities": [
+        "Explore n'importe quelle page concurrente à la demande",
+        "Note leur SEO on-page sur 100",
+        "Compare leur contenu à votre demande réelle",
+        "Repère les lacunes à exploiter en premier"
+      ]
+    },
+    "oasis": {
+      "role": "Chercheur de marché",
+      "tagline": "Transforme la demande brute en rapports de marché prêts pour le client",
+      "capabilities": [
+        "Rédige des rapports de marché complets à partir de vos vraies données",
+        "Dimensionne la demande et cartographie les thèmes",
+        "Quantifie les opportunités et nomme les risques",
+        "Sortie prête pour le client à copier ou télécharger"
+      ]
+    },
+    "nomad": {
+      "role": "Agent de prospection",
+      "tagline": "Part chercher vos prochains clients sur LinkedIn",
+      "capabilities": [
+        "Planifie une semaine complète de posts LinkedIn depuis un objectif",
+        "Enregistre chaque post en brouillon prêt à publier",
+        "Rédige des modèles de connexion et de relance",
+        "Conseils de prospection adaptés à votre niche"
+      ]
+    }
   }
 }

@@ -1845,5 +1845,108 @@
     "schedule": "Schedule",
     "scheduledFor": "Scheduled",
     "addVisual": "Add visual"
+  },
+  "agentsPage": {
+    "title": "The Fennex Pack",
+    "subtitle": "Your AI team — seven specialists, each grounded in your real data",
+    "subtitleTuned": " · recommendations tuned to your profile",
+    "recommended": "Recommended for you",
+    "comingSoon": "Coming soon",
+    "squad": {
+      "title": "Assemble the squad",
+      "desc": "One goal in — the pack plans and runs a coordinated campaign together, with handoffs and a live project room.",
+      "cta": "Run a campaign"
+    },
+    "actions": {
+      "askZerda": "Ask Zerda",
+      "viewOpportunities": "View opportunities",
+      "trackedRecommendations": "Tracked recommendations",
+      "directCampaign": "Direct a campaign",
+      "multiNetworkSocial": "Multi-network social",
+      "imageStudio": "Image studio",
+      "writeArticle": "Write an article",
+      "createSocialPosts": "Create social posts",
+      "productShots": "Product shots",
+      "editImage": "Edit an image",
+      "library": "Library",
+      "scanCompetitor": "Scan a competitor",
+      "marketReport": "Generate a market report",
+      "defineIdealClient": "Define ideal client",
+      "planOutreach": "Plan my outreach week",
+      "testimonialContent": "Testimonial to content"
+    }
+  },
+  "agentsRoster": {
+    "zerda": {
+      "role": "SEO & Market Strategist",
+      "tagline": "Hears everything happening in the search desert",
+      "capabilities": [
+        "Answers questions about your real Search Console data",
+        "Finds striking-distance keywords and CTR quick wins",
+        "Explains traffic changes with charts",
+        "Recommends what to create or fix next",
+        "Tracks its recommendations and reports whether they worked"
+      ]
+    },
+    "sirocco": {
+      "role": "Creative Director",
+      "tagline": "Thinks in campaigns, not single assets",
+      "capabilities": [
+        "Plans coordinated multi-asset campaigns from one goal",
+        "Generates platform-ready visuals with captions",
+        "Applies your brand kit across every asset",
+        "Improves image prompts like a pro"
+      ]
+    },
+    "dune": {
+      "role": "Content Writer",
+      "tagline": "Builds articles that accumulate rank over time",
+      "capabilities": [
+        "Writes SEO-optimized long-form articles",
+        "Adapts to your brand voice and niche",
+        "Generates social posts from your content",
+        "Suggests images for every article section"
+      ]
+    },
+    "mirage": {
+      "role": "Image Artisan",
+      "tagline": "Transforms what you see",
+      "capabilities": [
+        "Edits images from plain-language commands",
+        "Chains multiple edits in one request",
+        "Converts flat images into editable layers",
+        "Scores and SEO-optimizes your visuals"
+      ]
+    },
+    "sable": {
+      "role": "Competitor Scout",
+      "tagline": "Moves through rival territory quietly",
+      "capabilities": [
+        "Crawls any competitor page on demand",
+        "Scores their on-page SEO out of 100",
+        "Compares their content to your real demand",
+        "Pinpoints the gaps worth striking first"
+      ]
+    },
+    "oasis": {
+      "role": "Market Researcher",
+      "tagline": "Turns raw demand into client-ready market reports",
+      "capabilities": [
+        "Writes complete market reports from your real search data",
+        "Sizes demand and maps the topic landscape",
+        "Quantifies opportunities and names the risks",
+        "Client-ready output you can copy or download"
+      ]
+    },
+    "nomad": {
+      "role": "Outreach Agent",
+      "tagline": "Goes out and finds your next clients on LinkedIn",
+      "capabilities": [
+        "Plans a full week of LinkedIn posts from one goal",
+        "Saves every post as a draft ready to publish",
+        "Writes connection and follow-up DM templates",
+        "Outreach tips tuned to your niche and services"
+      ]
+    }
   }
 }
