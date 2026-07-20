@@ -43,7 +43,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["Plus Jakarta Sans", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Fraunces", "Playfair Display", "Georgia", "ui-serif", "serif"],
       },
       fontSize: {
         "2xs": ["0.65rem",  { lineHeight: "1rem" }],
