@@ -1883,5 +1883,85 @@
         "Outreach-Tipps auf deine Nische abgestimmt"
       ]
     }
+  },
+  "nomadPage": {
+    "title": "Nomad · Outreach-Agent",
+    "subtitle": "Gewinne Kunden auf LinkedIn — eine ganze Woche Posts und DMs, plus Social Proof aus deinen Erfolgen",
+    "goalLabel": "Was willst du diese Woche erreichen?",
+    "goalPlaceholder": "z. B. Zwei neue Webdesign-Kunden in der Gastronomie gewinnen",
+    "planning": "Nomad plant...",
+    "planWeek": "Meine Woche planen",
+    "targetingChip": "Ziel:",
+    "goalSuggestions": [
+      "Neue Kunden für meine Dienste gewinnen",
+      "Mich als Experte in meiner Nische positionieren",
+      "Ein neues Angebot bewerben",
+      "Mein LinkedIn-Publikum diesen Monat ausbauen"
+    ],
+    "postTypes": {
+      "tip": "Tipp",
+      "question": "Frage",
+      "announcement": "Ankündigung",
+      "article_share": "Artikel teilen"
+    },
+    "pieces": {
+      "linkedin_post": "LinkedIn-Post",
+      "case_study": "Fallstudie",
+      "quote_card": "Zitat-Karte",
+      "website_blurb": "Website-Text"
+    },
+    "errors": {
+      "no_ai_key": "Füge in den Einstellungen einen Anthropic- oder OpenAI-Key hinzu, um Inhalte zu generieren.",
+      "empty": "Füge zuerst ein Kunden-Testimonial ein.",
+      "provider_unreachable": "KI-Anbieter nicht erreichbar — versuche es erneut.",
+      "bad_format": "Die KI lieferte ein unerwartetes Format — versuche es erneut."
+    },
+    "toast": {
+      "genFail": "Generierung fehlgeschlagen",
+      "retry": "Versuche es erneut.",
+      "server": "Server nicht erreichbar.",
+      "copied": "Kopiert",
+      "copiedMsg": "Text in die Zwischenablage kopiert.",
+      "saved": "Gespeichert",
+      "savedMsg": "Als LinkedIn-Entwurf in Social gespeichert.",
+      "saveFail": "Speichern fehlgeschlagen",
+      "planReady": "Plan bereit",
+      "planReadyMsg": "{{count}} Posts als LinkedIn-Entwürfe in Social gespeichert.",
+      "planFail": "Plan fehlgeschlagen"
+    },
+    "saved": "Gespeichert",
+    "saveDraft": "Entwurf speichern",
+    "copy": "Kopieren",
+    "testimonial": {
+      "title": "Testimonial zu Content",
+      "subtitle": "— mach aus einem Kundenerfolg Social Proof",
+      "placeholder": "Füge ein Kunden-Testimonial ein… z. B. „Mit Sam verdoppelte sich unsere Buchungsrate in 6 Wochen.“",
+      "clientPlaceholder": "Kunde / Firma (optional)",
+      "servicePlaceholder": "Erbrachte Leistung (optional)",
+      "writing": "Schreibt…",
+      "generate": "Generieren"
+    },
+    "icp": {
+      "title": "Idealkundenprofil",
+      "subtitle": "— wen ansprechen (Oasis)",
+      "researching": "Recherchiert…",
+      "regenerate": "Neu generieren",
+      "define": "Mein ICP definieren",
+      "intro": "Oasis kartiert 2-4 ideale Kundensegmente deiner Nische — ihre Schmerzpunkte, wo du sie findest und den passenden Ansatz. Wähle eines, um deinen Plan zu schärfen.",
+      "pains": "Schmerzpunkte",
+      "findThem": "Wo finden:",
+      "targeting": "Angepeilt",
+      "targetThis": "Anpeilen"
+    },
+    "draftsBanner": "{{count}} Posts als LinkedIn-Entwürfe gespeichert — prüfe, bearbeite und veröffentliche sie in Social.",
+    "openSocial": "Social öffnen",
+    "weekOfPosts": "Deine Woche voller Posts",
+    "weekOfPostsSub": "— einer pro Wochentag, fertig entworfen",
+    "postN": "Post {{n}}",
+    "dmTemplates": "DM-Vorlagen",
+    "dmTemplatesSub": "— für Kontakte und Nachfassen",
+    "tipsTitle": "Nomads Outreach-Tipps",
+    "emptyTitle": "Nenne Nomad dein Ziel und er plant die ganze Woche.",
+    "emptyDesc": "Fünf Posts auf deine Nische abgestimmt, drei DM-Vorlagen und Tipps — jeder Post landet in deinen Social-Entwürfen, bereit zum Veröffentlichen oder Planen."
   }
 }

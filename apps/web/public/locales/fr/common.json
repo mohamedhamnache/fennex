@@ -1883,5 +1883,85 @@
         "Conseils de prospection adaptés à votre niche"
       ]
     }
+  },
+  "nomadPage": {
+    "title": "Nomad · Agent de prospection",
+    "subtitle": "Gagnez des clients sur LinkedIn — une semaine de posts et DMs, plus la preuve sociale de vos réussites",
+    "goalLabel": "Que voulez-vous accomplir cette semaine ?",
+    "goalPlaceholder": "ex. Décrocher deux clients en web design dans la restauration",
+    "planning": "Nomad planifie...",
+    "planWeek": "Planifier ma semaine",
+    "targetingChip": "Cible :",
+    "goalSuggestions": [
+      "Attirer de nouveaux clients pour mes services",
+      "Me positionner en expert de ma niche",
+      "Promouvoir une nouvelle offre",
+      "Développer mon audience LinkedIn ce mois-ci"
+    ],
+    "postTypes": {
+      "tip": "Astuce",
+      "question": "Question",
+      "announcement": "Annonce",
+      "article_share": "Partage d'article"
+    },
+    "pieces": {
+      "linkedin_post": "Post LinkedIn",
+      "case_study": "Étude de cas",
+      "quote_card": "Carte citation",
+      "website_blurb": "Accroche site web"
+    },
+    "errors": {
+      "no_ai_key": "Ajoutez une clé Anthropic ou OpenAI dans les Paramètres pour générer du contenu.",
+      "empty": "Collez d'abord un témoignage client.",
+      "provider_unreachable": "Fournisseur IA injoignable — réessayez.",
+      "bad_format": "L'IA a renvoyé un format inattendu — réessayez."
+    },
+    "toast": {
+      "genFail": "Génération impossible",
+      "retry": "Réessayez.",
+      "server": "Serveur injoignable.",
+      "copied": "Copié",
+      "copiedMsg": "Texte copié dans le presse-papiers.",
+      "saved": "Enregistré",
+      "savedMsg": "Enregistré comme brouillon LinkedIn dans Social.",
+      "saveFail": "Enregistrement impossible",
+      "planReady": "Plan prêt",
+      "planReadyMsg": "{{count}} posts enregistrés comme brouillons LinkedIn dans Social.",
+      "planFail": "Échec du plan"
+    },
+    "saved": "Enregistré",
+    "saveDraft": "Enregistrer",
+    "copy": "Copier",
+    "testimonial": {
+      "title": "Témoignage en contenu",
+      "subtitle": "— transformez une réussite client en preuve sociale",
+      "placeholder": "Collez un témoignage client… ex. « Travailler avec Sam a doublé notre taux de réservation en 6 semaines. »",
+      "clientPlaceholder": "Client / entreprise (optionnel)",
+      "servicePlaceholder": "Service fourni (optionnel)",
+      "writing": "Rédaction…",
+      "generate": "Générer"
+    },
+    "icp": {
+      "title": "Profil du client idéal",
+      "subtitle": "— qui cibler (Oasis)",
+      "researching": "Recherche…",
+      "regenerate": "Régénérer",
+      "define": "Définir mon ICP",
+      "intro": "Oasis cartographie 2 à 4 segments de clients idéaux de votre niche — leurs douleurs, où les trouver et l'angle qui marche. Ciblez-en un pour affiner votre plan.",
+      "pains": "Douleurs",
+      "findThem": "Où les trouver :",
+      "targeting": "Ciblé",
+      "targetThis": "Cibler"
+    },
+    "draftsBanner": "{{count}} posts enregistrés comme brouillons LinkedIn — relisez, modifiez et publiez depuis Social.",
+    "openSocial": "Ouvrir Social",
+    "weekOfPosts": "Votre semaine de posts",
+    "weekOfPostsSub": "— un par jour, rédigé et prêt",
+    "postN": "Post {{n}}",
+    "dmTemplates": "Modèles de DM",
+    "dmTemplatesSub": "— pour connexions et relances",
+    "tipsTitle": "Conseils de prospection de Nomad",
+    "emptyTitle": "Donnez son objectif à Nomad et il planifiera toute la semaine.",
+    "emptyDesc": "Cinq posts adaptés à votre niche, trois modèles de DM et des conseils — chaque post arrive dans vos brouillons Social, prêt à publier ou programmer."
   }
 }

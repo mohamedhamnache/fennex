@@ -1948,5 +1948,85 @@
         "Outreach tips tuned to your niche and services"
       ]
     }
+  },
+  "nomadPage": {
+    "title": "Nomad · Outreach Agent",
+    "subtitle": "Win clients on LinkedIn — a full week of posts and DMs, plus social proof from your wins",
+    "goalLabel": "What do you want to achieve this week?",
+    "goalPlaceholder": "e.g. Land two new web design clients in the restaurant niche",
+    "planning": "Nomad is planning...",
+    "planWeek": "Plan my week",
+    "targetingChip": "Targeting:",
+    "goalSuggestions": [
+      "Attract new clients for my services",
+      "Position myself as an expert in my niche",
+      "Promote a new offer or package",
+      "Grow my LinkedIn audience this month"
+    ],
+    "postTypes": {
+      "tip": "Tip",
+      "question": "Question",
+      "announcement": "Announcement",
+      "article_share": "Article share"
+    },
+    "pieces": {
+      "linkedin_post": "LinkedIn post",
+      "case_study": "Case study",
+      "quote_card": "Quote card",
+      "website_blurb": "Website blurb"
+    },
+    "errors": {
+      "no_ai_key": "Add an Anthropic or OpenAI key in Settings to generate content.",
+      "empty": "Paste a client testimonial first.",
+      "provider_unreachable": "Could not reach the AI provider — please try again.",
+      "bad_format": "The AI returned an unexpected format — please try again."
+    },
+    "toast": {
+      "genFail": "Couldn't generate",
+      "retry": "Please try again.",
+      "server": "Could not reach the server.",
+      "copied": "Copied",
+      "copiedMsg": "Text copied to clipboard.",
+      "saved": "Saved",
+      "savedMsg": "Saved as a LinkedIn draft in Social.",
+      "saveFail": "Couldn't save",
+      "planReady": "Plan ready",
+      "planReadyMsg": "{{count}} posts saved as LinkedIn drafts in Social.",
+      "planFail": "Plan failed"
+    },
+    "saved": "Saved",
+    "saveDraft": "Save draft",
+    "copy": "Copy",
+    "testimonial": {
+      "title": "Testimonial to content",
+      "subtitle": "— turn a client win into social proof",
+      "placeholder": "Paste a client testimonial… e.g. “Working with Sam doubled our booking rate in 6 weeks — clear communication and real results.”",
+      "clientPlaceholder": "Client / company (optional)",
+      "servicePlaceholder": "Service you provided (optional)",
+      "writing": "Writing…",
+      "generate": "Generate"
+    },
+    "icp": {
+      "title": "Ideal client profile",
+      "subtitle": "— who to target (Oasis)",
+      "researching": "Researching…",
+      "regenerate": "Regenerate",
+      "define": "Define my ICP",
+      "intro": "Oasis maps 2-4 ideal client segments from your niche — their pains, where to find them, and the angle that lands. Target one to sharpen your outreach plan.",
+      "pains": "Pains",
+      "findThem": "Find them:",
+      "targeting": "Targeting",
+      "targetThis": "Target this"
+    },
+    "draftsBanner": "{{count}} posts saved as LinkedIn drafts — review, edit and publish them from Social.",
+    "openSocial": "Open Social",
+    "weekOfPosts": "Your week of posts",
+    "weekOfPostsSub": "— one per weekday, drafted and ready",
+    "postN": "Post {{n}}",
+    "dmTemplates": "DM templates",
+    "dmTemplatesSub": "— for connections and follow-ups",
+    "tipsTitle": "Nomad's outreach tips",
+    "emptyTitle": "Tell Nomad your goal and he will map out the whole week.",
+    "emptyDesc": "Five posts tuned to your niche, three DM templates, and tips — every post lands in your Social drafts, ready to publish or schedule."
   }
 }

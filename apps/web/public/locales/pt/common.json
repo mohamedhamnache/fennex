@@ -1883,5 +1883,85 @@
         "Dicas de prospecção ajustadas ao seu nicho"
       ]
     }
+  },
+  "nomadPage": {
+    "title": "Nomad · Agente de prospecção",
+    "subtitle": "Ganhe clientes no LinkedIn — uma semana de posts e DMs, além de prova social das suas vitórias",
+    "goalLabel": "O que você quer alcançar esta semana?",
+    "goalPlaceholder": "ex. Conquistar dois clientes de web design no nicho de restaurantes",
+    "planning": "Nomad está planejando...",
+    "planWeek": "Planejar minha semana",
+    "targetingChip": "Alvo:",
+    "goalSuggestions": [
+      "Atrair novos clientes para meus serviços",
+      "Posicionar-me como especialista no meu nicho",
+      "Promover uma nova oferta",
+      "Crescer minha audiência no LinkedIn este mês"
+    ],
+    "postTypes": {
+      "tip": "Dica",
+      "question": "Pergunta",
+      "announcement": "Anúncio",
+      "article_share": "Compartilhar artigo"
+    },
+    "pieces": {
+      "linkedin_post": "Post do LinkedIn",
+      "case_study": "Estudo de caso",
+      "quote_card": "Cartão de citação",
+      "website_blurb": "Texto para site"
+    },
+    "errors": {
+      "no_ai_key": "Adicione uma chave Anthropic ou OpenAI nas Configurações para gerar conteúdo.",
+      "empty": "Cole primeiro um depoimento de cliente.",
+      "provider_unreachable": "Não foi possível contatar o provedor de IA — tente de novo.",
+      "bad_format": "A IA retornou um formato inesperado — tente de novo."
+    },
+    "toast": {
+      "genFail": "Não foi possível gerar",
+      "retry": "Tente de novo.",
+      "server": "Não foi possível contatar o servidor.",
+      "copied": "Copiado",
+      "copiedMsg": "Texto copiado para a área de transferência.",
+      "saved": "Salvo",
+      "savedMsg": "Salvo como rascunho do LinkedIn em Social.",
+      "saveFail": "Não foi possível salvar",
+      "planReady": "Plano pronto",
+      "planReadyMsg": "{{count}} posts salvos como rascunhos do LinkedIn em Social.",
+      "planFail": "Falha no plano"
+    },
+    "saved": "Salvo",
+    "saveDraft": "Salvar",
+    "copy": "Copiar",
+    "testimonial": {
+      "title": "Depoimento em conteúdo",
+      "subtitle": "— transforme uma vitória de cliente em prova social",
+      "placeholder": "Cole um depoimento de cliente… ex. “Trabalhar com o Sam dobrou nossa taxa de reservas em 6 semanas.”",
+      "clientPlaceholder": "Cliente / empresa (opcional)",
+      "servicePlaceholder": "Serviço prestado (opcional)",
+      "writing": "Escrevendo…",
+      "generate": "Gerar"
+    },
+    "icp": {
+      "title": "Perfil de cliente ideal",
+      "subtitle": "— quem mirar (Oasis)",
+      "researching": "Pesquisando…",
+      "regenerate": "Gerar novamente",
+      "define": "Definir meu ICP",
+      "intro": "O Oasis mapeia 2-4 segmentos de clientes ideais do seu nicho — suas dores, onde encontrá-los e o ângulo que funciona. Mire em um para afinar seu plano.",
+      "pains": "Dores",
+      "findThem": "Onde encontrá-los:",
+      "targeting": "Mirado",
+      "targetThis": "Mirar neste"
+    },
+    "draftsBanner": "{{count}} posts salvos como rascunhos do LinkedIn — revise, edite e publique em Social.",
+    "openSocial": "Abrir Social",
+    "weekOfPosts": "Sua semana de posts",
+    "weekOfPostsSub": "— um por dia útil, redigido e pronto",
+    "postN": "Post {{n}}",
+    "dmTemplates": "Modelos de DM",
+    "dmTemplatesSub": "— para conexões e follow-ups",
+    "tipsTitle": "Dicas de prospecção do Nomad",
+    "emptyTitle": "Diga ao Nomad seu objetivo e ele planejará a semana inteira.",
+    "emptyDesc": "Cinco posts ajustados ao seu nicho, três modelos de DM e dicas — cada post vai para seus rascunhos de Social, pronto para publicar ou agendar."
   }
 }

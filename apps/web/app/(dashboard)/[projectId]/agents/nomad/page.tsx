@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Compass, Loader2, Send, Copy, ArrowRight, Check, MessageSquare,
@@ -30,7 +31,11 @@ const TESTIMONIAL_ERRORS: Record<string, string> = {
 };
 
 function TestimonialTool({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const { success: showSuccess, error: showError } = useToast();
+  const gTitle = t("nomadPage.toast.genFail", { defaultValue: "Couldn't generate" });
+  const gRetry = t("nomadPage.toast.retry", { defaultValue: "Please try again." });
+  const gServer = t("nomadPage.toast.server", { defaultValue: "Could not reach the server." });
   const [testimonial, setTestimonial] = useState("");
   const [client, setClient] = useState("");
   const [service, setService] = useState("");
@@ -45,9 +50,9 @@ function TestimonialTool({ projectId }: { projectId: string }) {
     try {
       const res = await generateTestimonialContent(projectId, { testimonial, client, service });
       if (res.ok && res.pieces) setPieces(res.pieces);
-      else showError("Couldn't generate", { message: TESTIMONIAL_ERRORS[res.error ?? ""] ?? "Please try again." });
+      else showError(gTitle, { message: res.error ? t(`nomadPage.errors.${res.error}`, { defaultValue: TESTIMONIAL_ERRORS[res.error] ?? gRetry }) : gRetry });
     } catch {
-      showError("Couldn't generate", { message: "Could not reach the server." });
+      showError(gTitle, { message: gServer });
     } finally {
       setBusy(false);
     }
@@ -55,16 +60,16 @@ function TestimonialTool({ projectId }: { projectId: string }) {
 
   function copyText(text: string) {
     navigator.clipboard.writeText(text);
-    showSuccess("Copied", { message: "Text copied to clipboard." });
+    showSuccess(t("nomadPage.toast.copied", { defaultValue: "Copied" }), { message: t("nomadPage.toast.copiedMsg", { defaultValue: "Text copied to clipboard." }) });
   }
 
   async function saveLinkedIn(content: string) {
     try {
       await createSocialPost({ project_id: projectId, platform: "linkedin", post_type: "tip", content });
       setSavedLinkedIn(true);
-      showSuccess("Saved", { message: "Saved as a LinkedIn draft in Social." });
+      showSuccess(t("nomadPage.toast.saved", { defaultValue: "Saved" }), { message: t("nomadPage.toast.savedMsg", { defaultValue: "Saved as a LinkedIn draft in Social." }) });
     } catch {
-      showError("Couldn't save", { message: "Please try again." });
+      showError(t("nomadPage.toast.saveFail", { defaultValue: "Couldn't save" }), { message: gRetry });
     }
   }
 
@@ -72,28 +77,28 @@ function TestimonialTool({ projectId }: { projectId: string }) {
     <Card className="p-5">
       <div className="mb-3 flex items-center gap-2">
         <Quote className="h-4 w-4 text-primary" strokeWidth={1.8} />
-        <h2 className="text-sm font-semibold text-foreground">Testimonial to content</h2>
-        <span className="text-xs text-muted-foreground">— turn a client win into social proof</span>
+        <h2 className="text-sm font-semibold text-foreground">{t("nomadPage.testimonial.title", { defaultValue: "Testimonial to content" })}</h2>
+        <span className="text-xs text-muted-foreground">{t("nomadPage.testimonial.subtitle", { defaultValue: "— turn a client win into social proof" })}</span>
       </div>
       <textarea
         value={testimonial}
         onChange={(e) => setTestimonial(e.target.value)}
         rows={3}
-        placeholder="Paste a client testimonial… e.g. “Working with Sam doubled our booking rate in 6 weeks — clear communication and real results.”"
+        placeholder={t("nomadPage.testimonial.placeholder", { defaultValue: "Paste a client testimonial… e.g. “Working with Sam doubled our booking rate in 6 weeks — clear communication and real results.”" })}
         className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
       <div className="mt-2 flex flex-wrap gap-2">
         <input
           value={client}
           onChange={(e) => setClient(e.target.value)}
-          placeholder="Client / company (optional)"
+          placeholder={t("nomadPage.testimonial.clientPlaceholder", { defaultValue: "Client / company (optional)" })}
           className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           style={{ minWidth: 160 }}
         />
         <input
           value={service}
           onChange={(e) => setService(e.target.value)}
-          placeholder="Service you provided (optional)"
+          placeholder={t("nomadPage.testimonial.servicePlaceholder", { defaultValue: "Service you provided (optional)" })}
           className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           style={{ minWidth: 160 }}
         />
@@ -103,7 +108,7 @@ function TestimonialTool({ projectId }: { projectId: string }) {
           className="flex items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? "Writing…" : "Generate"}
+          {busy ? t("nomadPage.testimonial.writing", { defaultValue: "Writing…" }) : t("nomadPage.testimonial.generate", { defaultValue: "Generate" })}
         </button>
       </div>
 
@@ -113,7 +118,7 @@ function TestimonialTool({ projectId }: { projectId: string }) {
             <div key={i} className="flex flex-col rounded-xl border border-border p-3">
               <div className="mb-2 flex items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  {PIECE_LABEL[p.format] ?? p.format}
+                  {t(`nomadPage.pieces.${p.format}`, { defaultValue: PIECE_LABEL[p.format] ?? p.format })}
                 </span>
                 <div className="ml-auto flex items-center gap-1.5">
                   {p.format === "linkedin_post" && (
@@ -123,14 +128,14 @@ function TestimonialTool({ projectId }: { projectId: string }) {
                       className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-60"
                     >
                       {savedLinkedIn ? <Check className="h-3 w-3 text-success" /> : <Linkedin className="h-3 w-3" />}
-                      {savedLinkedIn ? "Saved" : "Save draft"}
+                      {savedLinkedIn ? t("nomadPage.saved", { defaultValue: "Saved" }) : t("nomadPage.saveDraft", { defaultValue: "Save draft" })}
                     </button>
                   )}
                   <button
                     onClick={() => copyText(p.content)}
                     className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                   >
-                    <Copy className="h-3 w-3" /> Copy
+                    <Copy className="h-3 w-3" /> {t("nomadPage.copy", { defaultValue: "Copy" })}
                   </button>
                 </div>
               </div>
@@ -166,6 +171,7 @@ const ICP_ERRORS: Record<string, string> = {
 function IcpTool({
   projectId, onTarget, targetedName,
 }: { projectId: string; onTarget: (s: IcpSegment) => void; targetedName: string | null }) {
+  const { t } = useTranslation();
   const { error: showError } = useToast();
   const [segments, setSegments] = useState<IcpSegment[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -176,9 +182,9 @@ function IcpTool({
     try {
       const res = await generateIcp(projectId);
       if (res.ok && res.segments) setSegments(res.segments);
-      else showError("Couldn't generate", { message: ICP_ERRORS[res.error ?? ""] ?? "Please try again." });
+      else showError(t("nomadPage.toast.genFail", { defaultValue: "Couldn't generate" }), { message: res.error ? t(`nomadPage.errors.${res.error}`, { defaultValue: ICP_ERRORS[res.error] ?? t("nomadPage.toast.retry", { defaultValue: "Please try again." }) }) : t("nomadPage.toast.retry", { defaultValue: "Please try again." }) });
     } catch {
-      showError("Couldn't generate", { message: "Could not reach the server." });
+      showError(t("nomadPage.toast.genFail", { defaultValue: "Couldn't generate" }), { message: t("nomadPage.toast.server", { defaultValue: "Could not reach the server." }) });
     } finally {
       setBusy(false);
     }
@@ -188,21 +194,21 @@ function IcpTool({
     <Card className="p-5">
       <div className="mb-3 flex items-center gap-2">
         <Users className="h-4 w-4 text-primary" strokeWidth={1.8} />
-        <h2 className="text-sm font-semibold text-foreground">Ideal client profile</h2>
-        <span className="text-xs text-muted-foreground">— who to target (Oasis)</span>
+        <h2 className="text-sm font-semibold text-foreground">{t("nomadPage.icp.title", { defaultValue: "Ideal client profile" })}</h2>
+        <span className="text-xs text-muted-foreground">{t("nomadPage.icp.subtitle", { defaultValue: "— who to target (Oasis)" })}</span>
         <button
           onClick={generate}
           disabled={busy}
           className="ml-auto flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {busy ? "Researching…" : segments ? "Regenerate" : "Define my ICP"}
+          {busy ? t("nomadPage.icp.researching", { defaultValue: "Researching…" }) : segments ? t("nomadPage.icp.regenerate", { defaultValue: "Regenerate" }) : t("nomadPage.icp.define", { defaultValue: "Define my ICP" })}
         </button>
       </div>
 
       {!segments ? (
         <p className="text-xs text-muted-foreground">
-          Oasis maps 2-4 ideal client segments from your niche — their pains, where to find them, and the angle that lands. Target one to sharpen your outreach plan.
+          {t("nomadPage.icp.intro", { defaultValue: "Oasis maps 2-4 ideal client segments from your niche — their pains, where to find them, and the angle that lands. Target one to sharpen your outreach plan." })}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -214,7 +220,7 @@ function IcpTool({
                 <p className="mt-1 text-xs text-foreground/80">{s.description}</p>
                 {s.pains.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">Pains</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">{t("nomadPage.icp.pains", { defaultValue: "Pains" })}</p>
                     <ul className="mt-0.5 flex flex-col gap-0.5">
                       {s.pains.map((p, j) => (
                         <li key={j} className="flex items-start gap-1.5 text-[11px] text-foreground/80">
@@ -225,7 +231,7 @@ function IcpTool({
                   </div>
                 )}
                 {s.channels.length > 0 && (
-                  <p className="mt-2 text-[11px] text-muted-foreground"><span className="font-semibold">Find them:</span> {s.channels.join(", ")}</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground"><span className="font-semibold">{t("nomadPage.icp.findThem", { defaultValue: "Find them:" })}</span> {s.channels.join(", ")}</p>
                 )}
                 {s.angle && (
                   <p className="mt-1.5 rounded-lg bg-primary/5 px-2 py-1.5 text-[11px] italic text-foreground/80">“{s.angle}”</p>
@@ -237,7 +243,7 @@ function IcpTool({
                     on ? "bg-success/10 text-success" : "border border-border text-foreground hover:bg-accent",
                   )}
                 >
-                  {on ? <><Check className="h-3.5 w-3.5" /> Targeting</> : <><Target className="h-3.5 w-3.5 text-primary" /> Target this</>}
+                  {on ? <><Check className="h-3.5 w-3.5" /> {t("nomadPage.icp.targeting", { defaultValue: "Targeting" })}</> : <><Target className="h-3.5 w-3.5 text-primary" /> {t("nomadPage.icp.targetThis", { defaultValue: "Target this" })}</>}
                 </button>
               </div>
             );
@@ -250,12 +256,15 @@ function IcpTool({
 
 export default function NomadPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const [goal, setGoal] = useState("");
   const [plan, setPlan] = useState<OutreachPlan | null>(null);
   const [generating, setGenerating] = useState(false);
   const [audience, setAudience] = useState<{ name: string; text: string } | null>(null);
   const { success: showSuccess, error: showError } = useToast();
   const queryClient = useQueryClient();
+
+  const goalSuggestions = t("nomadPage.goalSuggestions", { returnObjects: true, defaultValue: GOAL_SUGGESTIONS }) as string[];
 
   async function generate() {
     setGenerating(true);
@@ -264,14 +273,14 @@ export default function NomadPage({ params }: { params: { projectId: string } })
       if (res.ok) {
         setPlan(res);
         queryClient.invalidateQueries({ queryKey: ["social"] });
-        showSuccess("Plan ready", {
-          message: `${res.drafts_saved ?? 0} posts saved as LinkedIn drafts in Social.`,
+        showSuccess(t("nomadPage.toast.planReady", { defaultValue: "Plan ready" }), {
+          message: t("nomadPage.toast.planReadyMsg", { count: res.drafts_saved ?? 0, defaultValue: `${res.drafts_saved ?? 0} posts saved as LinkedIn drafts in Social.` }),
         });
       } else {
-        showError("Plan failed", { message: res.error ?? "Please try again." });
+        showError(t("nomadPage.toast.planFail", { defaultValue: "Plan failed" }), { message: res.error ?? t("nomadPage.toast.retry", { defaultValue: "Please try again." }) });
       }
     } catch {
-      showError("Plan failed", { message: "Could not reach the server." });
+      showError(t("nomadPage.toast.planFail", { defaultValue: "Plan failed" }), { message: t("nomadPage.toast.server", { defaultValue: "Could not reach the server." }) });
     } finally {
       setGenerating(false);
     }
@@ -279,7 +288,7 @@ export default function NomadPage({ params }: { params: { projectId: string } })
 
   function copyText(text: string) {
     navigator.clipboard.writeText(text);
-    showSuccess("Copied", { message: "Text copied to clipboard." });
+    showSuccess(t("nomadPage.toast.copied", { defaultValue: "Copied" }), { message: t("nomadPage.toast.copiedMsg", { defaultValue: "Text copied to clipboard." }) });
   }
 
   return (
@@ -290,9 +299,9 @@ export default function NomadPage({ params }: { params: { projectId: string } })
           <Compass className="h-5 w-5" strokeWidth={1.8} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-foreground leading-tight">Nomad · Outreach Agent</h1>
+          <h1 className="text-lg font-bold text-foreground leading-tight">{t("nomadPage.title", { defaultValue: "Nomad · Outreach Agent" })}</h1>
           <p className="text-xs text-muted-foreground leading-tight">
-            Win clients on LinkedIn — a full week of posts and DMs, plus social proof from your wins
+            {t("nomadPage.subtitle", { defaultValue: "Win clients on LinkedIn — a full week of posts and DMs, plus social proof from your wins" })}
           </p>
         </div>
       </div>
@@ -306,10 +315,10 @@ export default function NomadPage({ params }: { params: { projectId: string } })
 
       {/* Goal input */}
       <Card className="p-5">
-        <label className="text-sm font-semibold text-foreground">What do you want to achieve this week?</label>
+        <label className="text-sm font-semibold text-foreground">{t("nomadPage.goalLabel", { defaultValue: "What do you want to achieve this week?" })}</label>
         {audience && (
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-            <Target className="h-3 w-3" /> Targeting: {audience.name}
+            <Target className="h-3 w-3" /> {t("nomadPage.targetingChip", { defaultValue: "Targeting:" })} {audience.name}
             <button onClick={() => setAudience(null)} className="ml-0.5 text-primary/70 hover:text-primary">
               <X className="h-3 w-3" />
             </button>
@@ -320,7 +329,7 @@ export default function NomadPage({ params }: { params: { projectId: string } })
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !generating && generate()}
-            placeholder="e.g. Land two new web design clients in the restaurant niche"
+            placeholder={t("nomadPage.goalPlaceholder", { defaultValue: "e.g. Land two new web design clients in the restaurant niche" })}
             className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <button
@@ -330,17 +339,17 @@ export default function NomadPage({ params }: { params: { projectId: string } })
           >
             {generating ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Nomad is planning...
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("nomadPage.planning", { defaultValue: "Nomad is planning..." })}
               </>
             ) : (
               <>
-                <Send className="h-4 w-4" /> Plan my week
+                <Send className="h-4 w-4" /> {t("nomadPage.planWeek", { defaultValue: "Plan my week" })}
               </>
             )}
           </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {GOAL_SUGGESTIONS.map((s) => (
+          {goalSuggestions.map((s) => (
             <button
               key={s}
               onClick={() => setGoal(s)}
@@ -361,13 +370,13 @@ export default function NomadPage({ params }: { params: { projectId: string } })
           <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/8 px-4 py-3">
             <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={2.5} />
             <p className="flex-1 text-sm text-foreground">
-              {plan.drafts_saved ?? 0} posts saved as LinkedIn drafts — review, edit and publish them from Social.
+              {t("nomadPage.draftsBanner", { count: plan.drafts_saved ?? 0, defaultValue: `${plan.drafts_saved ?? 0} posts saved as LinkedIn drafts — review, edit and publish them from Social.` })}
             </p>
             <Link
               href={`/${projectId}/social`}
               className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              Open Social <ArrowRight className="h-3 w-3" />
+              {t("nomadPage.openSocial", { defaultValue: "Open Social" })} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
 
@@ -375,22 +384,22 @@ export default function NomadPage({ params }: { params: { projectId: string } })
           <div>
             <div className="mb-2 flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-primary" strokeWidth={1.8} />
-              <h2 className="text-sm font-semibold text-foreground">Your week of posts</h2>
-              <span className="text-xs text-muted-foreground">— one per weekday, drafted and ready</span>
+              <h2 className="text-sm font-semibold text-foreground">{t("nomadPage.weekOfPosts", { defaultValue: "Your week of posts" })}</h2>
+              <span className="text-xs text-muted-foreground">{t("nomadPage.weekOfPostsSub", { defaultValue: "— one per weekday, drafted and ready" })}</span>
             </div>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {(plan.posts ?? []).map((p, i) => (
                 <Card key={i} className="flex flex-col p-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">{p.day || `Post ${i + 1}`}</span>
+                    <span className="text-sm font-bold text-foreground">{p.day || t("nomadPage.postN", { n: i + 1, defaultValue: `Post ${i + 1}` })}</span>
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                      {TYPE_LABEL[p.type] ?? p.type}
+                      {t(`nomadPage.postTypes.${p.type}`, { defaultValue: TYPE_LABEL[p.type] ?? p.type })}
                     </span>
                     <button
                       onClick={() => copyText(p.content + (p.hashtags.length ? "\n\n" + p.hashtags.join(" ") : ""))}
                       className="ml-auto flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                     >
-                      <Copy className="h-3 w-3" /> Copy
+                      <Copy className="h-3 w-3" /> {t("nomadPage.copy", { defaultValue: "Copy" })}
                     </button>
                   </div>
                   <p className="mt-2.5 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{p.content}</p>
@@ -407,8 +416,8 @@ export default function NomadPage({ params }: { params: { projectId: string } })
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-primary" strokeWidth={1.8} />
-                <h2 className="text-sm font-semibold text-foreground">DM templates</h2>
-                <span className="text-xs text-muted-foreground">— for connections and follow-ups</span>
+                <h2 className="text-sm font-semibold text-foreground">{t("nomadPage.dmTemplates", { defaultValue: "DM templates" })}</h2>
+                <span className="text-xs text-muted-foreground">{t("nomadPage.dmTemplatesSub", { defaultValue: "— for connections and follow-ups" })}</span>
               </div>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                 {plan.messages!.map((m, i) => (
@@ -419,7 +428,7 @@ export default function NomadPage({ params }: { params: { projectId: string } })
                         onClick={() => copyText(m.content)}
                         className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                       >
-                        <Copy className="h-3 w-3" /> Copy
+                        <Copy className="h-3 w-3" /> {t("nomadPage.copy", { defaultValue: "Copy" })}
                       </button>
                     </div>
                     <p className="mt-2 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{m.content}</p>
@@ -434,7 +443,7 @@ export default function NomadPage({ params }: { params: { projectId: string } })
             <Card className="p-4">
               <div className="mb-2 flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-primary" strokeWidth={1.8} />
-                <h2 className="text-sm font-semibold text-foreground">Nomad&apos;s outreach tips</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("nomadPage.tipsTitle", { defaultValue: "Nomad's outreach tips" })}</h2>
               </div>
               <ul className="flex flex-col gap-1.5">
                 {plan.tips!.map((t, i) => (
@@ -452,10 +461,9 @@ export default function NomadPage({ params }: { params: { projectId: string } })
       {!plan && !generating && (
         <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
           <Compass className="h-8 w-8 opacity-40" strokeWidth={1.5} />
-          <p className="text-sm">Tell Nomad your goal and he will map out the whole week.</p>
+          <p className="text-sm">{t("nomadPage.emptyTitle", { defaultValue: "Tell Nomad your goal and he will map out the whole week." })}</p>
           <p className="text-xs max-w-md">
-            Five posts tuned to your niche, three DM templates, and tips — every post lands in your
-            Social drafts, ready to publish or schedule.
+            {t("nomadPage.emptyDesc", { defaultValue: "Five posts tuned to your niche, three DM templates, and tips — every post lands in your Social drafts, ready to publish or schedule." })}
           </p>
         </div>
       )}
