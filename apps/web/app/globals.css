@@ -89,13 +89,13 @@
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 
-/* ── Gradient brand ── */
+/* ── Gradient brand (desert: terracotta → clay → gold) ── */
 .gradient-brand {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  background: linear-gradient(135deg, #b5522f 0%, #c47a3d 50%, #d29a45 100%);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #a855f7 100%);
+  background: linear-gradient(135deg, #b5522f 0%, #c47a3d 60%, #d29a45 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -241,31 +241,31 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12) !important;
 }
 
-/* ── Gradient CTA button (Aurora: indigo→violet→fuchsia + glow) ── */
+/* ── Gradient CTA button (desert: terracotta→clay→gold + warm glow) ── */
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
+  background: linear-gradient(135deg, #b5522f 0%, #c06b38 55%, #cf9142 100%);
   color: white;
   font-weight: 600;
   border-radius: 8px;
   transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-  box-shadow: 0 1px 2px hsl(252 95% 63% / 0.3), 0 4px 12px hsl(252 95% 63% / 0.2);
+  box-shadow: 0 1px 2px hsl(16 58% 47% / 0.3), 0 4px 12px hsl(16 58% 47% / 0.2);
 }
 .btn-primary:hover:not(:disabled) {
   opacity: 0.92;
-  box-shadow: 0 2px 6px hsl(252 95% 63% / 0.4), 0 8px 20px hsl(252 95% 63% / 0.25);
+  box-shadow: 0 2px 6px hsl(16 58% 47% / 0.4), 0 8px 20px hsl(16 58% 47% / 0.25);
 }
 .btn-primary:active:not(:disabled) { transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* ── Auth left panel gradient ── */
+/* ── Auth left panel gradient (warm dusk) ── */
 .auth-panel {
-  background: linear-gradient(145deg, #0f0c29 0%, #1a1065 40%, #24243e 100%);
+  background: linear-gradient(145deg, #1a120b 0%, #3a2113 45%, #241a12 100%);
 }
 
-/* ── Floating orbs ── */
-.orb-1 { background: radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%); }
-.orb-2 { background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%); }
-.orb-3 { background: radial-gradient(circle, rgba(168,85,247,0.2) 0%, transparent 70%); }
+/* ── Floating orbs (desert) ── */
+.orb-1 { background: radial-gradient(circle, rgba(192,96,58,0.35) 0%, transparent 70%); }
+.orb-2 { background: radial-gradient(circle, rgba(210,154,69,0.25) 0%, transparent 70%); }
+.orb-3 { background: radial-gradient(circle, rgba(180,88,62,0.22) 0%, transparent 70%); }
 
 /* ── Badge ── */
 .badge {
@@ -446,17 +446,17 @@ input:focus, textarea:focus, select:focus {
 :root .aurora-blob { opacity: 0.22; }
 .aurora-blob-1 {
   width: 46vw; height: 46vw; top: -12vw; left: -6vw;
-  background: radial-gradient(circle, #6366f1 0%, transparent 68%);
+  background: radial-gradient(circle, #c0603a 0%, transparent 68%);
   animation: auroraDrift1 26s ease-in-out infinite alternate;
 }
 .aurora-blob-2 {
   width: 40vw; height: 40vw; top: -8vw; right: -8vw;
-  background: radial-gradient(circle, #d946ef 0%, transparent 68%);
+  background: radial-gradient(circle, #d29a45 0%, transparent 68%);
   animation: auroraDrift2 32s ease-in-out infinite alternate;
 }
 .aurora-blob-3 {
   width: 38vw; height: 38vw; bottom: -16vw; left: 28vw;
-  background: radial-gradient(circle, #8b5cf6 0%, transparent 68%);
+  background: radial-gradient(circle, #b4583e 0%, transparent 68%);
   animation: auroraDrift3 30s ease-in-out infinite alternate;
 }
 @keyframes auroraDrift1 { from { transform: translate(0,0) scale(1) } to { transform: translate(6vw,4vw) scale(1.12) } }
@@ -495,13 +495,13 @@ input:focus, textarea:focus, select:focus {
 /* ── Glow accents ── */
 .glow-primary { box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 28px hsl(256 92% 55% / 0.35); }
 .text-gradient-brand {
-  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 45%, #e879f9 100%);
+  background: linear-gradient(135deg, #c9764a 0%, #d68b4f 45%, #e0a85a 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 
 /* ── Aurora primary button (gradient + glow) ── */
 .btn-aurora {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
+  background: linear-gradient(135deg, #b5522f 0%, #c06b38 55%, #cf9142 100%);
   color: #fff; font-weight: 600; border-radius: 10px;
   box-shadow: 0 1px 2px hsl(256 92% 40% / 0.4), 0 6px 20px hsl(256 92% 50% / 0.35);
   transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
