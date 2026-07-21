@@ -6,25 +6,19 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
-from app.services.analytics_service import get_market_insights, get_top_queries
+from app.services.agents.skills import sable as sable_skills
+from app.services.agents.standalone import run_standalone
 
-_PROVIDERS = [
-    ("anthropic", "claude-opus-4-8"),
-    ("openai", "gpt-4o"),
-]
 
-from app.agents.registry import agent_persona as _agent_persona
-
-_SYSTEM = _agent_persona("sable") + (
-    "You are given a crawl of a "
-    "COMPETITOR page and the user's OWN top search queries and topic clusters (real Google "
-    "Search Console data). In under ~170 words: (1) note what the competitor page does well "
-    "(depth, structure, schema, meta), (2) identify concrete content gaps or angles the user "
-    "is missing relative to their own demand, and (3) finish with 'Recommended actions:' listing "
-    "2-4 specific things to create or improve in Fennex (write/refresh an article on a topic, "
-    "add schema, expand a thin page, target a query). Cite specifics. No fluff, no markdown headings."
-)
+def _render_insights(content: dict) -> str:
+    gaps = [str(g).strip() for g in (content.get("gaps") or []) if str(g).strip()]
+    prose = str(content.get("insights", "")).strip()
+    parts = []
+    if prose:
+        parts.append(prose)
+    if gaps:
+        parts.append("Gaps to strike first:\n" + "\n".join(f"- {g}" for g in gaps))
+    return "\n\n".join(parts)
 
 
 async def _crawl(url: str) -> dict:
@@ -94,29 +88,13 @@ async def analyze(project_id: uuid.UUID, org_id: uuid.UUID, url: str, db: AsyncS
 
     card = _scorecard(page)
 
-    # AI content-gap insights grounded in the user's own demand
+    # AI content-gap insights via the Sable competitor-scan skill (grounding lives in its tools)
     insights = ""
-    keys = await get_org_llm_keys(org_id, db)
-    if keys:
-        queries = await get_top_queries(project_id, org_id, db)
-        market = await get_market_insights(project_id, org_id, db)
-        own = "TOP QUERIES: " + ", ".join(f"{q.query} (pos {q.avg_position:.0f})" for q in queries[:12])
-        own += "\nTOPICS: " + ", ".join(f"{c.topic}({c.clicks})" for c in market.clusters[:10])
-        comp = (
-            f"COMPETITOR {url}\n"
-            f"Title: {card['title']}\nMeta: {card['meta_description']}\n"
-            f"Words: {card['word_count']}, H1: {card['h1_count']}, H2: {card['h2_count']}, "
-            f"Schema: {', '.join(card['schema_types']) or 'none'}, Internal links: {card['internal_links']}\n"
-            f"H2 outline: {', '.join((page.get('h2') or [])[:12])}"
-        )
-        user_prompt = f"OWN DATA:\n{own}\n\n{comp}"
-        for provider, model in _PROVIDERS:
-            if provider in keys:
-                try:
-                    insights = (await call_llm(provider, model, keys[provider], _SYSTEM, user_prompt, locale=await project_locale(project_id, db))).strip()
-                    break
-                except Exception:
-                    continue
+    result = await run_standalone(sable_skills.COMPETITOR_SCAN, project_id, org_id,
+                                  f"Scan competitor {url} and find the gaps to beat them.", db,
+                                  inputs={"competitor_url": url})
+    if result.ok and isinstance(result.content, dict):
+        insights = _render_insights(result.content)
 
     return {
         "ok": True,

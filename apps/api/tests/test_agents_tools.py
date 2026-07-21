@@ -22,3 +22,19 @@ async def test_run_tools_wraps_ok_and_swallows_errors():
         out = await run_tools(["good", "boom"], _brief(), db=None, inputs={})
     assert out["good"] == {"ok": True, "data": {"v": 1}}
     assert out["boom"]["ok"] is False
+
+
+async def test_market_data_includes_overview_and_health():
+    from types import SimpleNamespace as NS
+    from app.services.agents import tools as T
+    ov = NS(clicks=10, impressions=100, ctr=0.1, avg_position=5.0, clicks_change=1.0, impressions_change=2.0)
+    health = NS(score=80, grade="B", components=[])
+    market = NS(clusters=[], ideas=[])
+    opps = NS(striking_distance=[], ctr_wins=[], total_potential_clicks=0)
+    with patch.object(T, "get_overview", new=AsyncMock(return_value=ov)), \
+         patch.object(T, "get_health_score", new=AsyncMock(return_value=health)), \
+         patch.object(T, "get_market_insights", new=AsyncMock(return_value=market)), \
+         patch.object(T, "get_opportunities", new=AsyncMock(return_value=opps)):
+        data = await T.market_data(_brief(), db=None, inputs={})
+    assert data["overview"]["clicks"] == 10 and data["overview"]["ctr"] == 0.1
+    assert data["health"]["score"] == 80 and data["health"]["grade"] == "B"

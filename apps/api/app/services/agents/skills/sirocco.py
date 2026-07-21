@@ -14,8 +14,8 @@ def _social_prompt(brief, inputs, td):
     system = (
         agent_persona("sirocco")
         + " Write native social posts for each requested network from ONE topic. No emoji. "
-        'Return ONLY JSON: {"variants": [{"platform": str, "content": str, "hashtags": [str]}]}. '
-        "Tune length and voice to each network."
+        'Return ONLY JSON: {"variants": [{"platform": str, "hooks": [up to 3 scroll-stopping opening lines], '
+        '"content": str, "hashtags": [str]}]}. Tune length and voice to each network.'
     )
     user = (f"TOPIC: {topic}\nNETWORKS: {', '.join(platforms)}\n" + brief_block(brief) + feedback_block(inputs))
     return system, user

@@ -406,39 +406,24 @@ _META_RE = re.compile(r"<meta_description>(.*?)</meta_description>", re.S)
 
 
 async def generate_copy(product_id: uuid.UUID, project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> dict:
-    """Dune writes SEO product copy from the real product data."""
+    """Dune writes SEO product copy from the real product data, via the agent core."""
+    from app.services.agents.skills import dune as dune_skills  # lazy: avoids import cycle
+    from app.services.agents.standalone import run_standalone
     product = await _get_product(product_id, project_id, org_id, db)
     if product is None:
         return {"ok": False, "error": "not_found"}
-    keys = await get_org_llm_keys(org_id, db)
-    pm = next(((p, m) for p, m in _COPY_PROVIDERS if p in keys), None)
-    if pm is None:
-        return {"ok": False, "error": "no_ai_key"}
-
-    system = (
-        agent_persona("dune") +
-        " You write SEO-optimized ecommerce product copy that ranks and converts. "
-        "Return EXACTLY this structure and nothing else:\n"
-        "<title>refined, keyword-rich product title (<=70 chars)</title>\n"
-        "<description>2-4 short HTML paragraphs (<p>...</p>) with benefits, features and a light call to action</description>\n"
-        "<meta_description>a compelling meta description (<=155 chars)</meta_description>"
-    )
-    ctx = f"Product: {product.title}"
-    if product.price:
-        ctx += f"\nPrice: {product.price}"
-    if product.description:
-        ctx += f"\nCurrent description: {product.description[:1500]}"
-    try:
-        raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, ctx, locale=await project_locale(project_id, db))
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": str(e)}
-
-    tm, dm, mm = _TITLE_RE.search(raw), _DESC_RE.search(raw), _META_RE.search(raw)
+    inputs = {"product": {"title": product.title, "price": product.price,
+                          "description": (product.description or "")[:1500]}}
+    result = await run_standalone(dune_skills.PRODUCT_COPY, project_id, org_id,
+                                  f"Write SEO product copy for {product.title}.", db, inputs=inputs)
+    if not result.ok:
+        return {"ok": False, "error": result.error or "generation_failed"}
+    c = result.content or {}
     return {
         "ok": True,
-        "title": (tm.group(1).strip() if tm else product.title),
-        "description_html": (dm.group(1).strip() if dm else raw.strip()),
-        "meta_description": (mm.group(1).strip() if mm else ""),
+        "title": str(c.get("title") or product.title).strip(),
+        "description_html": str(c.get("description_html", "")).strip(),
+        "meta_description": str(c.get("meta_description", "")).strip(),
     }
 
 
