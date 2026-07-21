@@ -38,7 +38,8 @@ async def test_run_standalone_builds_brief_and_runs_with_org_tier(db):
     proj = Project(org_id=org.id, name="P", domain="p.com", persona="ecommerce"); db.add(proj); await db.flush()
     await db.commit()
     seen = {}
-    async def fake_run(skill, brief, inputs, tier, db, keys=None, campaign=None):
+    async def fake_run(skill, brief, inputs, tier, db, keys=None, campaign=None,
+                       provider_override=None, model_override=None):
         seen["tier"] = tier; seen["persona"] = brief.persona; seen["goal"] = brief.goal
         return AgentResult(ok=True, summary="did it", content={"x": 1})
     with patch("app.services.agents.standalone.AgentRunner.run", new=AsyncMock(side_effect=fake_run)):

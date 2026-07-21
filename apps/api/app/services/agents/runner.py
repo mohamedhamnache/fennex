@@ -9,14 +9,18 @@ logger = logging.getLogger(__name__)
 
 class AgentRunner:
     @staticmethod
-    async def run(skill, brief, inputs, tier, db, keys=None, campaign=None) -> AgentResult:
+    async def run(skill, brief, inputs, tier, db, keys=None, campaign=None,
+                  provider_override=None, model_override=None) -> AgentResult:
         if keys is None:
             keys = await get_org_llm_keys(brief.org_id, db)
         available = list(keys.keys())
         if not available:
             return AgentResult(ok=False, error="No AI key configured. Add an Anthropic or OpenAI key in Settings.")
         try:
-            provider, model = resolve_model(tier, skill.weight, available)
+            if provider_override and model_override and provider_override in keys:
+                provider, model = provider_override, model_override
+            else:
+                provider, model = resolve_model(tier, skill.weight, available)
             tool_data = await run_tools(skill.tools, brief, db, inputs)
             system, user = skill.build_prompt(brief, inputs or {}, tool_data)
             mt = {"max_tokens": skill.max_tokens} if skill.max_tokens else {}
@@ -30,6 +34,8 @@ class AgentRunner:
             if content is None:
                 return AgentResult(ok=False, error="Agent returned an unusable format.")
             if skill.persist:
+                brief.runtime = {"provider": provider, "model": model, "api_key": keys[provider],
+                                 "tier": tier, "inputs": inputs or {}}
                 return await skill.persist(content, campaign, brief, db)
             return AgentResult(ok=True, summary=str(content)[:200], content=content)
         except Exception as exc:  # noqa: BLE001

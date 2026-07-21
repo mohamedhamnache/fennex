@@ -51,3 +51,24 @@ async def test_run_passes_skill_max_tokens_to_call_llm():
     with patch("app.services.agents.runner.call_llm", new=fake_call):
         r = await AgentRunner.run(_mt_skill(), _brief(), inputs={}, tier="balanced", db=None, keys={"anthropic": "x"})
     assert r.ok and seen["max_tokens"] == 8192
+
+
+async def test_override_bypasses_resolve_and_fills_runtime():
+    captured = {}
+    async def persist(content, campaign, brief, db):
+        captured["runtime"] = dict(brief.runtime)
+        from app.services.agents.spec import AgentResult
+        return AgentResult(ok=True, summary="saved")
+    from app.services.agents.spec import Skill
+    skill = Skill(key="dune.generate_article", agent_id="dune", weight="heavy", tools=[],
+                  build_prompt=lambda b, i, td: ("S", "U"), output="markdown", parse=lambda r: r, persist=persist)
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096):
+        captured["provider"] = provider; captured["model"] = model
+        return "body"
+    with patch("app.services.agents.runner.call_llm", new=fake_call):
+        r = await AgentRunner.run(skill, _brief(), inputs={"a": 1}, tier="balanced", db=None,
+                                  keys={"anthropic": "x", "openai": "y"},
+                                  provider_override="openai", model_override="gpt-4o")
+    assert r.ok and captured["provider"] == "openai" and captured["model"] == "gpt-4o"
+    assert captured["runtime"]["provider"] == "openai" and captured["runtime"]["api_key"] == "y"
+    assert captured["runtime"]["inputs"] == {"a": 1}
