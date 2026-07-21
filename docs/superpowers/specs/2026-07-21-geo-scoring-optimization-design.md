@@ -24,7 +24,7 @@ Give Articles a **GEO score** ("answer-engine readiness", 0-100) with the same r
 
 | Signal | Key | Pts | Detected by (deterministic) |
 |---|---|---|---|
-| Direct answer up top | `answer_up_top` | 15 | a concise answer paragraph (~40-80 words, not a heading/list) between the H1 and the first `##` H2 |
+| Direct answer up top | `answer_up_top` | 15 | a concise answer paragraph (~25-120 words, not a heading/list) between the H1 and the first `##` H2 |
 | Question / FAQ structure | `qa_structure` | 12 | at least one `##`/`###` heading containing `?`, or an "FAQ"/"Frequently asked" heading |
 | Extractable formatting | `extractable_format` | 12 | presence of a markdown list (`- `, `* `, or `1.`) and/or a table (a line containing ` \| `) |
 | Statistics & specifics | `statistics` | 10 | ≥ 3 occurrences of digits/percentages/years (regex `\d`), scaled: ≥6 → full, 3-5 → half |
