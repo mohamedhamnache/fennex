@@ -100,3 +100,8 @@ def test_registry_contains_all_core_skills():
 def test_catalog_text_lists_keys_and_agents():
     txt = catalog_text()
     assert "zerda.pick_angle (zerda" in txt and "dune.write_article (dune" in txt
+
+
+def test_multi_network_social_prompt_requests_hooks():
+    system, user = sirocco.MULTI_NETWORK_SOCIAL.build_prompt(_brief(), {"topic": "t", "platforms": ["linkedin"]}, {})
+    assert "hooks" in system.lower()
