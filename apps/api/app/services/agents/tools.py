@@ -1,7 +1,13 @@
 """Specialist-data tools. Each: async (brief, db, inputs) -> data payload."""
+import uuid
+
 from app.services.analytics_service import (
     get_opportunities, get_market_insights, get_overview, get_health_score,
 )
+
+
+def _as_uuid(v):
+    return uuid.UUID(v) if isinstance(v, str) else v
 
 
 async def gsc_opportunities(brief, db, inputs):
@@ -69,8 +75,43 @@ async def store_products(brief, db, inputs):
         return {"products": []}
 
 
+async def article_context(brief, db, inputs):
+    from app.models.article import Article
+    from app.models.brand_voice import BrandVoice
+    from app.workers.tasks.article_tasks import _build_system_prompt, _build_user_prompt
+    aid = (inputs or {}).get("article_id")
+    if not aid:
+        return {}
+    article = await db.get(Article, _as_uuid(aid))
+    if article is None:
+        return {}
+    brand_voice = await db.get(BrandVoice, article.brand_voice_id) if article.brand_voice_id else None
+    return {"system": _build_system_prompt(brand_voice, brief.project_profile),
+            "user": _build_user_prompt(article),
+            "title": article.title, "keyword": article.target_keyword}
+
+
+async def seo_grounding(brief, db, inputs):
+    from app.models.article import Article
+    from app.models.project import Project
+    from app.services.writing_service import _seo_grounding
+    aid = (inputs or {}).get("article_id")
+    if not aid:
+        return {"grounding": ""}
+    try:
+        art = await db.get(Article, _as_uuid(aid))
+        project = await db.get(Project, art.project_id) if art else None
+        if art is None or project is None:
+            return {"grounding": ""}
+        return {"grounding": await _seo_grounding(project, art, None, db, include_checks=False)}
+    except Exception:
+        return {"grounding": ""}
+
+
 TOOLS = {
     "gsc_opportunities": gsc_opportunities,
+    "article_context": article_context,
+    "seo_grounding": seo_grounding,
     "market_insights": market_insights,
     "market_data": market_data,
     "tracked_keywords": tracked_keywords,
