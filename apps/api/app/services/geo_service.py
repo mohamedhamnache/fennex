@@ -92,3 +92,34 @@ async def compute_geo_score(provider, model, api_key, title, body_markdown, meta
     breakdown["llm_judgment"] = judge
     breakdown["llm_feedback"] = feedback
     return round(core + judge, 1), breakdown
+
+
+_REPAIR_SYSTEM = (
+    "You improve an article so AI answer engines will quote it, WITHOUT harming its SEO. "
+    "Keep the primary keyword usage, meaning, length and Markdown structure. Add ONLY what is "
+    "missing: a concise direct answer (~40-70 words) right after the H1; at least one question-"
+    "style H2 or a short FAQ; a bulleted list or table where it fits; one credible source/citation; "
+    "and tighten long paragraphs. Return ONLY the full revised article in Markdown, nothing else."
+)
+
+
+async def _repair_geo(provider, model, api_key, title, keyword, body_md, meta, locale) -> str | None:
+    user = (f"TITLE: {title}\nPRIMARY KEYWORD: {keyword or title}\n\nARTICLE:\n{body_md}")
+    try:
+        from app.services.llm_service import ARTICLE_MAX_TOKENS
+        out = (await call_llm(provider, model, api_key, _REPAIR_SYSTEM, user,
+                              locale=locale, max_tokens=ARTICLE_MAX_TOKENS)).strip()
+        return out or None
+    except Exception:
+        return None
+
+
+async def ensure_geo_quality(provider, model, api_key, title, keyword, body_md, meta, locale
+                             ) -> tuple[str, float, dict]:
+    core, _ = compute_geo_core(title, body_md, meta)
+    if core < GEO_CORE_FLOOR:
+        repaired = await _repair_geo(provider, model, api_key, title, keyword, body_md, meta, locale)
+        if repaired:
+            body_md = repaired
+    score, breakdown = await compute_geo_score(provider, model, api_key, title, body_md, meta, locale)
+    return body_md, score, breakdown

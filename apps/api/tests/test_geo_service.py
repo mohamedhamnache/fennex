@@ -55,3 +55,28 @@ async def test_compute_geo_score_is_core_plus_judgment():
     with patch("app.services.geo_service.geo_llm_judgment", new=AsyncMock(return_value=(20.0, "ok"))):
         score, b = await G.compute_geo_score("anthropic", "m", "k", "Best vegan protein", _RICH, "meta", "en")
     assert score == 90.0 and b["llm_judgment"] == 20.0 and b["answer_up_top"] == 15
+
+
+async def test_ensure_skips_repair_when_core_ok():
+    calls = AsyncMock(return_value='{"score": 25, "feedback": "ok"}')  # only the judgment call
+    with patch("app.services.geo_service.call_llm", new=calls):
+        body, score, b = await G.ensure_geo_quality("anthropic", "m", "k", "Best vegan protein",
+                                                     "vegan protein", _RICH, "meta", "en")
+    assert body == _RICH and score == 95.0 and calls.call_count == 1  # judgment only, no repair
+
+
+async def test_ensure_runs_one_repair_when_core_low():
+    thin = "# T\n\nx."
+    seq = AsyncMock(side_effect=["# T\n\nRepaired answer with structure.", '{"score": 10, "feedback": "better"}'])
+    with patch("app.services.geo_service.call_llm", new=seq):
+        body, score, b = await G.ensure_geo_quality("anthropic", "m", "k", "T", "kw", thin, "meta", "en")
+    assert body == "# T\n\nRepaired answer with structure." and seq.call_count == 2  # repair + judgment
+
+
+async def test_ensure_never_raises_on_repair_failure():
+    thin = "# T\n\nx."
+    async def boom(*a, **k):
+        raise RuntimeError("provider down")
+    with patch("app.services.geo_service.call_llm", new=boom):
+        body, score, b = await G.ensure_geo_quality("anthropic", "m", "k", "T", "kw", thin, "meta", "en")
+    assert body == thin and score >= 0  # original body kept, judgment degraded to 0
