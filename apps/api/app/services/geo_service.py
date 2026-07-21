@@ -3,7 +3,9 @@
 Parallels writing_service.py's SEO score/repair. The deterministic core (0-70) is the
 single source of truth recomputed anywhere; the LLM judgment (0-30) is added only during
 generation. Every LLM path degrades safely and never raises."""
+import json
 import re
+from app.services.llm_service import call_llm
 
 GEO_CORE_FLOOR = 45   # out of 70; below this, generation runs one repair pass
 
@@ -60,3 +62,33 @@ def compute_geo_core(title, body_markdown, meta_description) -> tuple[float, dic
     breakdown["concise_paragraphs"] = conc; score += conc
 
     return round(score, 1), breakdown
+
+
+_JUDGE_SYSTEM = (
+    "You rate how ready a piece of content is to be quoted by an AI answer engine "
+    "(ChatGPT, Perplexity, Google AI Overviews). Judge ONLY: is there a genuine, "
+    "self-contained, quotable answer an engine could extract and trust; is the tone "
+    "factual and authoritative; is it direct. Return ONLY JSON: "
+    '{"score": 0-30, "feedback": one short actionable sentence}. No prose, no fences.'
+)
+
+
+async def geo_llm_judgment(provider, model, api_key, title, body_markdown, locale) -> tuple[float, str]:
+    user = f"TITLE: {title}\n\nCONTENT:\n{(body_markdown or '')[:6000]}"
+    try:
+        raw = await call_llm(provider, model, api_key, _JUDGE_SYSTEM, user, locale=locale)
+        data = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
+        score = float(data.get("score", 0))
+        score = max(0.0, min(30.0, score))
+        return score, str(data.get("feedback", ""))
+    except Exception:
+        return 0.0, ""
+
+
+async def compute_geo_score(provider, model, api_key, title, body_markdown, meta_description, locale
+                            ) -> tuple[float, dict]:
+    core, breakdown = compute_geo_core(title, body_markdown, meta_description)
+    judge, feedback = await geo_llm_judgment(provider, model, api_key, title, body_markdown, locale)
+    breakdown["llm_judgment"] = judge
+    breakdown["llm_feedback"] = feedback
+    return round(core + judge, 1), breakdown

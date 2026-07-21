@@ -1,4 +1,7 @@
+import pytest
+from unittest.mock import AsyncMock, patch
 from app.services.geo_service import compute_geo_core
+from app.services import geo_service as G
 
 _RICH = (
     "# Best vegan protein\n\n"
@@ -31,3 +34,24 @@ def test_core_zero_for_bare_content():
 def test_core_never_exceeds_70():
     score, _ = compute_geo_core("T", _RICH * 3, "m")
     assert 0 <= score <= 70
+
+
+async def test_judgment_parses_json():
+    with patch("app.services.geo_service.call_llm",
+               new=AsyncMock(return_value='{"score": 24, "feedback": "clear answer"}')):
+        score, fb = await G.geo_llm_judgment("anthropic", "m", "k", "T", "body", "en")
+    assert score == 24.0 and fb == "clear answer"
+
+
+async def test_judgment_clamps_and_survives_bad_output():
+    with patch("app.services.geo_service.call_llm", new=AsyncMock(return_value="not json")):
+        assert await G.geo_llm_judgment("anthropic", "m", "k", "T", "b", "en") == (0.0, "")
+    with patch("app.services.geo_service.call_llm", new=AsyncMock(return_value='{"score": 999}')):
+        score, _ = await G.geo_llm_judgment("anthropic", "m", "k", "T", "b", "en")
+    assert score == 30.0  # clamped to max
+
+
+async def test_compute_geo_score_is_core_plus_judgment():
+    with patch("app.services.geo_service.geo_llm_judgment", new=AsyncMock(return_value=(20.0, "ok"))):
+        score, b = await G.compute_geo_score("anthropic", "m", "k", "Best vegan protein", _RICH, "meta", "en")
+    assert score == 90.0 and b["llm_judgment"] == 20.0 and b["answer_up_top"] == 15
