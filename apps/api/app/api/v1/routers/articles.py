@@ -14,6 +14,7 @@ from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
 from app.models.project import Project
 from app.services.article_service import compute_seo_score
+from app.services.geo_service import compute_geo_core
 
 router = APIRouter()
 
@@ -169,6 +170,7 @@ async def update_article(
         article.title, article.body_markdown, article.target_keyword, article.meta_description
     )
     article.seo_score = score
+    article.geo_score = compute_geo_core(article.title, article.body_markdown, article.meta_description)[0]
 
     await db.flush()
     await db.refresh(article)
@@ -294,3 +296,10 @@ async def get_seo_score(
         await db.commit()
 
     return {"score": score, "breakdown": breakdown}
+
+
+@router.get("/{article_id}/geo-score")
+async def get_geo_score(article_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    article = await _get_article_or_404(article_id, current_user.org_id, db)
+    _, breakdown = compute_geo_core(article.title, article.body_markdown, article.meta_description)
+    return {"geo_score": article.geo_score, "breakdown": breakdown}
