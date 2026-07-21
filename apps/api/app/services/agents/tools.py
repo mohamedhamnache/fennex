@@ -1,5 +1,7 @@
 """Specialist-data tools. Each: async (brief, db, inputs) -> data payload."""
-from app.services.analytics_service import get_opportunities, get_market_insights
+from app.services.analytics_service import (
+    get_opportunities, get_market_insights, get_overview, get_health_score,
+)
 from app.services.competitor_service import analyze as _analyze
 
 
@@ -16,10 +18,18 @@ async def market_insights(brief, db, inputs):
 
 
 async def market_data(brief, db, inputs):
-    # richer bundle for the market report; reuse insights + opportunities
+    # richer bundle for the market report; reuse insights + opportunities + overview + health
     m = await get_market_insights(brief.project_id, brief.org_id, db)
     o = await get_opportunities(brief.project_id, brief.org_id, db)
+    ov = await get_overview(brief.project_id, brief.org_id, "28d", db)
+    health = await get_health_score(brief.project_id, brief.org_id, db)
     return {
+        "overview": {"clicks": ov.clicks, "impressions": ov.impressions, "ctr": ov.ctr,
+                     "avg_position": ov.avg_position, "clicks_change": ov.clicks_change,
+                     "impressions_change": ov.impressions_change},
+        "health": {"score": health.score, "grade": health.grade,
+                   "components": [{"label": c.label, "score": c.score, "detail": c.detail}
+                                  for c in (health.components or [])]},
         "clusters": [{"topic": c.topic, "queries": c.query_count, "clicks": c.clicks,
                       "impressions": c.impressions, "avg_position": c.avg_position} for c in m.clusters[:10]],
         "ideas": [{"query": i.query, "type": i.idea_type, "impressions": i.impressions} for i in m.ideas[:15]],
