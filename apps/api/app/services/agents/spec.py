@@ -30,3 +30,4 @@ class Skill:
     description: str = ""
     # persist(result_content, campaign, brief, db) -> AgentResult   (optional artifact saver)
     persist: Optional[Callable[..., Awaitable["AgentResult"]]] = None
+    max_tokens: Optional[int] = None              # override call_llm's token budget when set

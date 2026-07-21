@@ -19,12 +19,13 @@ class AgentRunner:
             provider, model = resolve_model(tier, skill.weight, available)
             tool_data = await run_tools(skill.tools, brief, db, inputs)
             system, user = skill.build_prompt(brief, inputs or {}, tool_data)
-            raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale)
+            mt = {"max_tokens": skill.max_tokens} if skill.max_tokens else {}
+            raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale, **mt)
             content = _parse(skill, raw)
             if content is None and skill.output == "json":
                 raw2 = await call_llm(provider, model, keys[provider], system,
                                       user + "\n\nReturn ONLY valid JSON. No prose, no code fences.",
-                                      locale=brief.locale)
+                                      locale=brief.locale, **mt)
                 content = _parse(skill, raw2)
             if content is None:
                 return AgentResult(ok=False, error="Agent returned an unusable format.")

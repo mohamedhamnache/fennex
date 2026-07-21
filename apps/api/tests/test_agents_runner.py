@@ -34,3 +34,20 @@ async def test_run_repairs_malformed_json_once():
 async def test_run_returns_error_when_no_keys():
     r = await AgentRunner.run(_json_skill(), _brief(), inputs={}, tier="balanced", db=None, keys={})
     assert r.ok is False and r.error
+
+
+def _mt_skill():
+    from app.services.agents.spec import Skill
+    return Skill(key="dune.generate_article", agent_id="dune", weight="heavy", tools=[],
+                 build_prompt=lambda b, i, td: ("SYS", "USR"), output="markdown",
+                 parse=lambda raw: raw, max_tokens=8192)
+
+
+async def test_run_passes_skill_max_tokens_to_call_llm():
+    seen = {}
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096):
+        seen["max_tokens"] = max_tokens
+        return "body"
+    with patch("app.services.agents.runner.call_llm", new=fake_call):
+        r = await AgentRunner.run(_mt_skill(), _brief(), inputs={}, tier="balanced", db=None, keys={"anthropic": "x"})
+    assert r.ok and seen["max_tokens"] == 8192
