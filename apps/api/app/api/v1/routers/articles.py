@@ -32,6 +32,7 @@ class ArticleOut(BaseModel):
     word_count: int
     word_count_target: int
     seo_score: Optional[float]
+    geo_score: Optional[float]
     meta_title: Optional[str]
     meta_description: Optional[str]
     outline: Optional[dict]

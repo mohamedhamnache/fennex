@@ -29,6 +29,7 @@ class Article(Base, TimestampMixin):
     word_count: Mapped[int] = mapped_column(Integer, default=0)
     word_count_target: Mapped[int] = mapped_column(Integer, default=1500)
     seo_score: Mapped[float | None] = mapped_column(Float)
+    geo_score: Mapped[float | None] = mapped_column(Float)
     meta_title: Mapped[str | None] = mapped_column(String(500))
     meta_description: Mapped[str | None] = mapped_column(Text)
     outline: Mapped[dict | None] = mapped_column(JSON)
