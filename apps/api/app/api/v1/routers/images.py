@@ -118,6 +118,7 @@ async def _get_image_or_404(image_id: uuid.UUID, org_id: uuid.UUID, db) -> Gener
         select(GeneratedImage).where(
             GeneratedImage.id == image_id,
             GeneratedImage.org_id == org_id,
+            GeneratedImage.is_deleted.is_(False),
         )
     )
     image = result.scalar_one_or_none()
