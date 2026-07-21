@@ -77,6 +77,7 @@ import uuid as _uuid
 from app.models.article import ArticleRevision
 from app.services.llm_service import ARTICLE_MAX_TOKENS
 from app.services.writing_service import ensure_seo_quality
+from app.services.geo_service import ensure_geo_quality
 
 
 def _generate_article_prompt(brief, inputs, td):
@@ -102,6 +103,11 @@ async def _persist_generated_article(raw_markdown, campaign, brief, db):
         rt.get("provider"), rt.get("model"), rt.get("api_key"),
         article.title, article.target_keyword, parsed["body_markdown"], parsed["meta_description"], brief.locale,
     )
+    body_md, geo_score, _ = await ensure_geo_quality(
+        rt.get("provider"), rt.get("model"), rt.get("api_key"),
+        article.title, article.target_keyword, body_md, parsed["meta_description"], brief.locale,
+    )
+    article.geo_score = geo_score
     article.body_markdown = body_md
     article.body_html = _markdown_to_html(body_md)
     article.meta_title = parsed["meta_title"]

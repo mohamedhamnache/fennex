@@ -72,10 +72,13 @@ async def test_generate_article_persist_updates_in_place(db):
                      "tier": "balanced", "inputs": {"article_id": str(art.id)}}
     raw = "META_TITLE: T\nMETA_DESCRIPTION: D\n---\n# T\n\nvegan protein body with enough words."
     with patch("app.services.agents.skills.dune.ensure_seo_quality",
-               new=AsyncMock(return_value=("# T\n\nfinal body", 88.0))):
+               new=AsyncMock(return_value=("# T\n\nseo body", 88.0))), \
+         patch("app.services.agents.skills.dune.ensure_geo_quality",
+               new=AsyncMock(return_value=("# T\n\ngeo body", 79.0, {"answer_up_top": 15}))):
         res = await dune.GENERATE_ARTICLE.persist(raw, None, brief, db)
     assert res.ok and res.artifact_type == "article" and res.artifact_ids == [str(art.id)]
     await db.refresh(art)
-    assert art.status == ArticleStatus.ready and art.seo_score == 88.0 and art.body_markdown == "# T\n\nfinal body"
+    assert art.status == ArticleStatus.ready and art.seo_score == 88.0
+    assert art.geo_score == 79.0 and art.body_markdown == "# T\n\ngeo body"
     revs = (await db.execute(select(ArticleRevision).where(ArticleRevision.article_id == art.id))).scalars().all()
     assert len(revs) == 1 and revs[0].note == "Initial generation"
