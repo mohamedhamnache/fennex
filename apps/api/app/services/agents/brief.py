@@ -17,6 +17,7 @@ class Brief:
     brand: dict
     existing_content: list[str]
     artifacts: list[dict] = field(default_factory=list)
+    runtime: dict = field(default_factory=dict)   # runner fills provider/model/api_key/tier/inputs for persist
 
     def add_artifact(self, result: AgentResult, agent_id: str, skill_key: str) -> None:
         self.artifacts.append({

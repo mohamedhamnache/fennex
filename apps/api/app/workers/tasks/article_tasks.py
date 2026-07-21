@@ -152,124 +152,34 @@ def _build_user_prompt(article: Article, template: str | None = None) -> str:
     )
 
 
-async def generate_article_task(
-    ctx,
-    article_id: str,
-    org_id: str,
-    provider_override: str | None = None,
-    model_override: str | None = None,
-):
-    """ARQ task: call LLM and save generated article content."""
+async def generate_article_task(ctx, article_id, org_id, provider_override=None, model_override=None):
+    """ARQ task: generate an article in place via the agent core (dune.GENERATE_ARTICLE)."""
     article_id_uuid = uuid.UUID(article_id)
     org_id_uuid = uuid.UUID(org_id)
+    from app.services.agents.skills.dune import GENERATE_ARTICLE
+    from app.services.agents.standalone import run_standalone
 
-    # Phase 1: load article + keys, build prompts
     async with async_session_factory() as db:
         article = await db.get(Article, article_id_uuid)
         if article is None:
             return
-
-        brand_voice = None
-        if article.brand_voice_id:
-            brand_voice = await db.get(BrandVoice, article.brand_voice_id)
-
         org_keys = await get_org_llm_keys(org_id_uuid, db)
         if not org_keys:
             article.status = ArticleStatus.failed
             article.error = "No LLM API keys configured. Add keys in Settings."
             await db.commit()
             return
+        project_id = article.project_id
+        goal = f"Write the article: {article.title}"
 
-        try:
-            if provider_override and model_override and provider_override in org_keys:
-                provider_val = provider_override
-                model = model_override
-            else:
-                available_providers = {LLMProvider(p) for p in org_keys}
-                resolved_provider, model = LLMRouter(available_providers).resolve(TaskType.LONG_FORM_ARTICLE)
-                provider_val = resolved_provider.value
-        except (ValueError, KeyError) as e:
-            article.status = ArticleStatus.failed
-            article.error = str(e)
-            await db.commit()
-            return
-
-        api_key = org_keys[provider_val]
-
-        # Ground the article in the project's onboarding profile (persona, niche…)
-        try:
-            from app.services.ai_analytics_service import project_profile
-            profile = await project_profile(article.project_id, db)
-        except Exception:
-            profile = ""
-
-        # Ground in real search data (GSC queries + tracked keywords) so the
-        # brief targets demand the site actually has - checks are skipped since
-        # there is no draft to lint yet.
-        grounding = ""
-        try:
-            from app.models.project import Project
-            from app.services.writing_service import _seo_grounding
-            project = await db.get(Project, article.project_id)
-            if project is not None:
-                grounding = await _seo_grounding(project, article, None, db, include_checks=False)
-        except Exception:
-            grounding = ""
-
-        system_prompt = _build_system_prompt(brand_voice, profile)
-        user_prompt = _build_user_prompt(article)
-        if grounding:
-            user_prompt += (
-                "\n\nREAL SEARCH DATA for this site - weave these naturally into headings, copy and the "
-                "FAQ where they fit the topic (never stuff):\n" + grounding
-            )
-        article_title = article.title
-        article_keyword = article.target_keyword
-        article_locale = await project_locale(article.project_id, db)
-
-    # Phase 2: call LLM (outside DB session) with the long-form token budget.
-    from app.services.llm_service import ARTICLE_MAX_TOKENS
-    try:
-        raw = await call_llm(
-            provider_val, model, api_key, system_prompt, user_prompt,
-            locale=article_locale, max_tokens=ARTICLE_MAX_TOKENS,
+        result = await run_standalone(
+            GENERATE_ARTICLE, project_id, org_id_uuid, goal, db,
+            inputs={"article_id": article_id},
+            provider_override=provider_override, model_override=model_override,
         )
-    except Exception as e:
-        async with async_session_factory() as db:
+        if not result.ok:
             art = await db.get(Article, article_id_uuid)
-            if art:
+            if art is not None:
                 art.status = ArticleStatus.failed
-                art.error = str(e)
+                art.error = result.error or "Generation failed."
                 await db.commit()
-        raise
-
-    # Phase 3: parse, guarantee SEO quality, then persist.
-    parsed = _parse_llm_response(raw, article_title)
-    from app.services.writing_service import ensure_seo_quality
-    body_md, seo_score = await ensure_seo_quality(
-        provider_val, model, api_key, article_title, article_keyword,
-        parsed["body_markdown"], parsed["meta_description"], article_locale,
-    )
-    body_html = _markdown_to_html(body_md)
-    word_count = len(body_md.split())
-
-    async with async_session_factory() as db:
-        art = await db.get(Article, article_id_uuid)
-        if art is None:
-            return
-        art.body_markdown = body_md
-        art.body_html = body_html
-        art.meta_title = parsed["meta_title"]
-        art.meta_description = parsed["meta_description"]
-        art.word_count = word_count
-        art.seo_score = seo_score
-        art.status = ArticleStatus.ready
-        art.error = None
-
-        db.add(ArticleRevision(
-            article_id=article_id_uuid,
-            body_markdown=body_md,
-            word_count=word_count,
-            note="Initial generation",
-        ))
-        await db.commit()
