@@ -24,6 +24,9 @@ async def test_upload_bytes_calls_put_object(monkeypatch):
     monkeypatch.setattr(settings, "S3_ENDPOINT_URL", "")
     monkeypatch.setattr(settings, "S3_BUCKET", "testbucket")
     monkeypatch.setattr(settings, "S3_REGION", "us-east-1")
+    # credentials required so _s3_configured() takes the real upload path (not the data-URI fallback)
+    monkeypatch.setattr(settings, "S3_ACCESS_KEY", "test-access-key")
+    monkeypatch.setattr(settings, "S3_SECRET_KEY", "test-secret-key")
     mock_client = MagicMock()
     with patch("app.core.storage._s3_client", return_value=mock_client):
         url = await upload_bytes(b"data", "test/key.png", "image/png")
