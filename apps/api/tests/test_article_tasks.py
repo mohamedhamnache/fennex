@@ -131,8 +131,14 @@ async def test_generate_article_task_success():
         "## Conclusion\n\nStart your seo guide journey today."
     )
 
+    # Generation now flows through the agent core: the LLM boundary is
+    # agents.runner.call_llm, and the SEO-repair loop is exercised in its own
+    # tests, so it is stubbed here to keep this an offline worker integration test.
+    async def _fake_ensure(provider, model, key, title, keyword, body_md, meta, locale):
+        return body_md, 90.0
     with patch("app.workers.tasks.article_tasks.async_session_factory", TestSessionLocal):
-        with patch("app.workers.tasks.article_tasks.call_llm", AsyncMock(return_value=llm_response)):
+        with patch("app.services.agents.runner.call_llm", AsyncMock(return_value=llm_response)), \
+             patch("app.services.agents.skills.dune.ensure_seo_quality", new=_fake_ensure):
             await generate_article_task(ctx={}, article_id=str(article_id), org_id=str(FAKE_ORG_ID))
 
     async with TestSessionLocal() as session:
@@ -157,14 +163,14 @@ async def test_generate_article_task_success():
 
 @pytest.mark.asyncio
 async def test_generate_article_task_llm_error():
-    """When LLM call raises, article gets status=failed and exception is re-raised."""
+    """When the LLM call fails, the agent core captures it into AgentResult(ok=False)
+    and the worker marks the article failed with the error (it no longer re-raises)."""
     from app.workers.tasks.article_tasks import generate_article_task
     article_id = await _seed()
 
     with patch("app.workers.tasks.article_tasks.async_session_factory", TestSessionLocal):
-        with patch("app.workers.tasks.article_tasks.call_llm", AsyncMock(side_effect=RuntimeError("Rate limit exceeded"))):
-            with pytest.raises(RuntimeError, match="Rate limit exceeded"):
-                await generate_article_task(ctx={}, article_id=str(article_id), org_id=str(FAKE_ORG_ID))
+        with patch("app.services.agents.runner.call_llm", AsyncMock(side_effect=RuntimeError("Rate limit exceeded"))):
+            await generate_article_task(ctx={}, article_id=str(article_id), org_id=str(FAKE_ORG_ID))
 
     async with TestSessionLocal() as session:
         article = await session.get(Article, article_id)
@@ -195,9 +201,12 @@ async def test_generate_article_task_provider_override():
 
     fake_raw = "META_TITLE: Override Title\nMETA_DESCRIPTION: Desc\n\n---\n\n# Body"
 
+    async def _fake_ensure(provider, model, key, title, keyword, body_md, meta, locale):
+        return body_md, 90.0
     with (
         patch("app.workers.tasks.article_tasks.async_session_factory", TestSessionLocal),
-        patch("app.workers.tasks.article_tasks.call_llm", new_callable=AsyncMock, return_value=fake_raw) as mock_call,
+        patch("app.services.agents.runner.call_llm", new_callable=AsyncMock, return_value=fake_raw) as mock_call,
+        patch("app.services.agents.skills.dune.ensure_seo_quality", new=_fake_ensure),
     ):
         await generate_article_task(
             {}, str(article_id), str(FAKE_ORG_ID),
@@ -205,7 +214,7 @@ async def test_generate_article_task_provider_override():
             model_override="claude-haiku-4-5-20251001",
         )
 
-    # call_llm was called with the overridden model, not the router's default
+    # call_llm was called with the overridden provider/model, bypassing tier resolution
     mock_call.assert_called_once()
     call_args = mock_call.call_args
     assert call_args[0][0] == "anthropic"
