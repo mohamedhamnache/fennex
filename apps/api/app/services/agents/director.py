@@ -79,10 +79,8 @@ def _prior_angle(brief) -> dict:
 
 
 async def run_campaign(campaign, db, tier: str | None = None) -> None:
-    resolved_tier = tier
-    if resolved_tier is None:
-        org_obj = await db.get(Organization, campaign.org_id)
-        resolved_tier = (org_obj.agent_tier if org_obj and org_obj.agent_tier else "balanced")
+    from app.services.agents.standalone import org_tier
+    resolved_tier = tier if tier is not None else await org_tier(campaign.org_id, db)
     keys = await get_org_llm_keys(campaign.org_id, db)
     brief = await build_brief(campaign.project_id, campaign.org_id, campaign.goal, campaign.persona, db)
 
