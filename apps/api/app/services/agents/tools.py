@@ -2,7 +2,6 @@
 from app.services.analytics_service import (
     get_opportunities, get_market_insights, get_overview, get_health_score,
 )
-from app.services.competitor_service import analyze as _analyze
 
 
 async def gsc_opportunities(brief, db, inputs):
@@ -52,6 +51,7 @@ async def crawl_competitor(brief, db, inputs):
     url = str((inputs or {}).get("competitor_url") or "").strip()
     if not url:
         return {"skipped": True}
+    from app.services.competitor_service import analyze as _analyze  # lazy: avoids import cycle
     return {"analysis": await _analyze(brief.project_id, brief.org_id, url, db)}
 
 
