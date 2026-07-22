@@ -227,6 +227,8 @@
       "saveRevision": "Revision speichern",
       "breakdown": "Aufschlüsselung",
       "seoScore": "SEO-Punktzahl",
+      "geoScore": "GEO-Punktzahl (Lesbarkeit durch Answer-Engine)",
+      "geoJudgmentNote": "KI-Antworturteil: {{score}}/100 — wird bei Generierung aktualisiert",
       "metaTitle": "Meta-Titel",
       "metaDescription": "Meta-Beschreibung",
       "articleTitle": "Artikeltitel",

@@ -45,6 +45,7 @@ import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { ArticlesOverview } from "@/components/articles/studio/ArticlesOverview";
 import { RichEditor, type RichEditorHandle } from "@/components/articles/studio/RichEditor";
 import { computeSeoScore } from "@/lib/seo-score";
+import { computeGeoCore } from "@/lib/geo-score";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
 
 // ─── Provider/Model options ────────────────────────────────────────────────
@@ -831,6 +832,11 @@ function ArticleEditor({
     [title, body, metaDesc, keyword],
   );
 
+  const { score: geoScore, breakdown: geoBreakdown } = useMemo(
+    () => computeGeoCore(title, body, metaDesc),
+    [title, body, metaDesc],
+  );
+
   if (isLoading || !article) {
     return (
       <div className="flex flex-1 items-center justify-center h-64">
@@ -1032,6 +1038,7 @@ function ArticleEditor({
           wordCount={wordCount}
           wordTarget={article.word_count_target}
           seoScore={seoScore}
+          geoScore={geoScore}
           saveState={saveState}
         />
 
@@ -1225,6 +1232,8 @@ function ArticleEditor({
         onMetaDescChange={setMetaDesc}
         onMetaDescBlur={handleMetaDescBlur}
         breakdown={breakdown}
+        geoBreakdown={geoBreakdown}
+        geoScore={article.geo_score}
         body={body}
         onBodyChange={handleBodyChange}
         onInsert={(text) => richRef.current?.insertAtCursor(text)}

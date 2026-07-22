@@ -227,6 +227,8 @@
       "saveRevision": "حفظ المراجعة",
       "breakdown": "التفاصيل",
       "seoScore": "نقاط SEO",
+      "geoScore": "نقاط GEO (جهوزية محرك الإجابة)",
+      "geoJudgmentNote": "حكم الإجابة بالذكاء الاصطناعي: {{score}}/100 — يتم التحديث عند الإنشاء",
       "metaTitle": "عنوان ميتا",
       "metaDescription": "وصف ميتا",
       "articleTitle": "عنوان المقال",
