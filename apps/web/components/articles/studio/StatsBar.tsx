@@ -30,10 +30,18 @@ function seoColor(score: number | null): string {
   return "text-red-500";
 }
 
+function geoColor(score: number | null): string {
+  if (score === null) return "text-muted-foreground";
+  if (score >= 50) return "text-emerald-500";
+  if (score >= 35) return "text-amber-500";
+  return "text-red-500";
+}
+
 interface StatsBarProps {
   wordCount: number;
   wordTarget?: number | null;
   seoScore: number | null;
+  geoScore: number | null;
   saveState: "idle" | "saving" | "saved";
 }
 
@@ -42,7 +50,7 @@ interface StatsBarProps {
  * time, SEO score chip, and the autosave state. Actions (revision / publish /
  * save) live in the editor header.
  */
-export function StatsBar({ wordCount, wordTarget, seoScore, saveState }: StatsBarProps) {
+export function StatsBar({ wordCount, wordTarget, seoScore, geoScore, saveState }: StatsBarProps) {
   const { t } = useTranslation();
   const readingMinutes = Math.ceil(wordCount / 200);
   const goalPct = wordTarget ? Math.min(100, Math.round((wordCount / wordTarget) * 100)) : null;
@@ -75,6 +83,17 @@ export function StatsBar({ wordCount, wordTarget, seoScore, saveState }: StatsBa
           <span className={`font-semibold tabular-nums ${seoColor(seoScore)}`}>SEO {seoScore}</span>
         ) : (
           <span className="text-muted-foreground">SEO</span>
+        )}
+      </span>
+
+      <span
+        title={t("articles.editor.geoScore")}
+        className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 transition-colors"
+      >
+        {geoScore !== null ? (
+          <span className={`font-semibold tabular-nums ${geoColor(geoScore)}`}>GEO {geoScore}</span>
+        ) : (
+          <span className="text-muted-foreground">GEO</span>
         )}
       </span>
 

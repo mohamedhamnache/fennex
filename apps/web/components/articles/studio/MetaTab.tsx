@@ -16,6 +16,8 @@ interface MetaTabProps {
   onMetaDescChange: (val: string) => void;
   onMetaDescBlur: () => void;
   breakdown: Record<string, number>;
+  geoBreakdown: Record<string, number>;
+  geoScore: number | null;
 }
 
 function slug(text: string): string {
@@ -54,6 +56,8 @@ export function MetaTab({
   onMetaDescChange,
   onMetaDescBlur,
   breakdown,
+  geoBreakdown,
+  geoScore,
 }: MetaTabProps) {
   const { t } = useTranslation();
 
@@ -168,6 +172,46 @@ export function MetaTab({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Answer-engine (GEO) signals */}
+      {Object.keys(geoBreakdown).length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              {t("articleStudio.meta.geoSignals", { defaultValue: "Answer-engine signals" })}
+            </p>
+            <span className="text-[11px] font-semibold tabular-nums text-foreground">
+              {t("articleStudio.meta.geoScoreLabel", { defaultValue: "GEO score" })}{" "}
+              {Math.round(Object.values(geoBreakdown).reduce((s, v) => s + v, 0))}/70
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            {Object.entries(geoBreakdown).map(([key, val]) => (
+              <div key={key} className="flex items-center justify-between rounded-lg bg-muted/30 px-2.5 py-1.5 text-xs">
+                <span className="flex items-center gap-1.5 text-foreground">
+                  {val > 0 ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 text-destructive" />
+                  )}
+                  {t(`articleStudio.meta.geoSignalNames.${key}`, { defaultValue: key.replace(/_/g, " ") })}
+                </span>
+                <span className={`tabular-nums font-semibold ${val > 0 ? "text-success" : "text-muted-foreground"}`}>
+                  +{val}
+                </span>
+              </div>
+            ))}
+          </div>
+          {geoScore !== null && (
+            <p className="text-[10px] text-muted-foreground">
+              {t("articles.editor.geoJudgmentNote", {
+                score: geoScore,
+                defaultValue: `AI-answer judgment: ${geoScore}/100 — refreshes on generate`,
+              })}
+            </p>
+          )}
         </div>
       )}
     </div>

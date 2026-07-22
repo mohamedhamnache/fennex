@@ -34,6 +34,8 @@ interface DuneDockProps {
   onMetaDescChange: (val: string) => void;
   onMetaDescBlur: () => void;
   breakdown: Record<string, number>;
+  geoBreakdown: Record<string, number>;
+  geoScore: number | null;
   body: string;
   onBodyChange: (val: string) => void;
   onInsert: (text: string) => void;
@@ -67,6 +69,8 @@ export function DuneDock({
   onMetaDescChange,
   onMetaDescBlur,
   breakdown,
+  geoBreakdown,
+  geoScore,
   body,
   onBodyChange,
   onInsert,
@@ -165,6 +169,8 @@ export function DuneDock({
             onMetaDescChange={onMetaDescChange}
             onMetaDescBlur={onMetaDescBlur}
             breakdown={breakdown}
+            geoBreakdown={geoBreakdown}
+            geoScore={geoScore}
           />
         )}
       </div>
