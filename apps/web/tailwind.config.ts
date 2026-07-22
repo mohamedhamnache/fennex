@@ -42,7 +42,7 @@ const config: Config = {
         info: "hsl(var(--info) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-geist-sans)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["Fraunces", "Playfair Display", "Georgia", "ui-serif", "serif"],
       },
       // Type scale bumped up one comfortable notch for readability — the UI leans
