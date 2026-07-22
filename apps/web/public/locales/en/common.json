@@ -1388,6 +1388,14 @@
     }
   },
   "articleStudio": {
+    "write": "Write",
+    "preview": {
+      "tab": "Preview",
+      "eyebrow": "Reader's preview",
+      "readTime": "{{min}} min read",
+      "untitled": "Untitled article",
+      "empty": "Start writing and your article will take shape here."
+    },
     "dock": {
       "title": "Dune - your co-writer",
       "tabs": {

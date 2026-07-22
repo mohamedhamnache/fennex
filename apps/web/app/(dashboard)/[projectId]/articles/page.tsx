@@ -44,6 +44,7 @@ import { StatsBar } from "@/components/articles/studio/StatsBar";
 import { DuneDock } from "@/components/articles/studio/DuneDock";
 import { ArticlesOverview } from "@/components/articles/studio/ArticlesOverview";
 import { RichEditor, type RichEditorHandle } from "@/components/articles/studio/RichEditor";
+import { ArticlePreview } from "@/components/articles/studio/ArticlePreview";
 import { computeSeoScore } from "@/lib/seo-score";
 import { computeGeoCore } from "@/lib/geo-score";
 import { ImageSuggestionsPanel } from "@/components/articles/ImageSuggestionsPanel";
@@ -535,6 +536,7 @@ function ArticleEditor({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [revisionMsg, setRevisionMsg] = useState<string | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
@@ -1045,6 +1047,27 @@ function ArticleEditor({
         {revisionMsg && <span className="text-xs text-emerald-500">{revisionMsg}</span>}
 
         <div className="ml-auto flex items-center gap-1.5">
+          {/* Write / Preview — see the article as it will publish */}
+          <div className="flex items-center rounded-lg border border-border p-0.5">
+            <button
+              onClick={() => setPreviewMode(false)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                !previewMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("articleStudio.write")}</span>
+            </button>
+            <button
+              onClick={() => setPreviewMode(true)}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                previewMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("articleStudio.preview.tab")}</span>
+            </button>
+          </div>
           {preEditBody !== null && (
             <button
               onClick={toggleChanges}
@@ -1148,7 +1171,10 @@ function ArticleEditor({
         </div>
       )}
 
-      {/* Editor body */}
+      {/* Editor body — Write / Preview */}
+      {previewMode ? (
+        <ArticlePreview title={title} body={body} keyword={keyword} metaDescription={metaDesc} />
+      ) : (
       <div className="relative flex min-h-0 flex-1 flex-col">
         {typing || generating || article.status === "generating" ? (
           /* Live writing surface: real streamed tokens (or the replay reveal) */
@@ -1207,6 +1233,7 @@ function ArticleEditor({
           </div>
         )}
       </div>
+      )}
 
       {showPublishModal && (
         <PublishModal
