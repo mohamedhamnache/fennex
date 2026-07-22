@@ -31,6 +31,15 @@ function seoColor(score: number | null): string {
   return "text-red-500";
 }
 
+// GEO ("answer-engine readiness") lives on a 0-100 scale where structure alone
+// tops out near 70; tune the color bands accordingly.
+function geoColor(score: number | null): string {
+  if (score === null) return "text-muted-foreground";
+  if (score >= 70) return "text-emerald-500";
+  if (score >= 45) return "text-amber-500";
+  return "text-red-500";
+}
+
 function StatTile({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: string; value: string; tone: string }) {
   return (
     <div className="glass flex items-center gap-3 p-4">
@@ -277,7 +286,15 @@ function ArticleCard({
       </div>
 
       <div className="flex items-center justify-between border-t border-border pt-2.5 text-[11px] text-muted-foreground">
-        <span>{new Date(article.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
+        <div className="flex items-center gap-2">
+          <span>{new Date(article.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
+          {article.geo_score !== null && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-1.5 py-0.5" title={t("articles.editor.geoScore")}>
+              <span className="text-[8px] font-semibold uppercase tracking-wide opacity-60">GEO</span>
+              <span className={`font-semibold tabular-nums ${geoColor(article.geo_score)}`}>{Math.round(article.geo_score)}</span>
+            </span>
+          )}
+        </div>
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
       </div>
     </div>
