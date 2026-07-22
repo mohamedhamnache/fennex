@@ -1086,7 +1086,7 @@ function ArticleEditor({
       </div>
 
       {/* Toolbar: live stats + model / regenerate / images */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-5 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-card/30 px-5 py-2.5">
         <StatsBar
           wordCount={wordCount}
           wordTarget={article.word_count_target}
@@ -1119,6 +1119,7 @@ function ArticleEditor({
               <span className="hidden sm:inline">{t("articleStudio.preview.tab")}</span>
             </button>
           </div>
+          <span className="mx-0.5 hidden h-5 w-px bg-border sm:block" aria-hidden />
           {preEditBody !== null && (
             <button
               onClick={toggleChanges}
