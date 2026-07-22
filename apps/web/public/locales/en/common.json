@@ -1522,6 +1522,14 @@
         "draft": "Draft",
         "ready": "Ready",
         "published": "Published"
+      },
+      "untitled": "Untitled article",
+      "rowActions": "Article actions",
+      "cols": {
+        "article": "Article",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "Updated"
       }
     },
     "format": {

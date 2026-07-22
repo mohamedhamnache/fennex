@@ -1427,6 +1427,14 @@
         "draft": "Brouillon",
         "ready": "Prêt",
         "published": "Publié"
+      },
+      "untitled": "Article sans titre",
+      "rowActions": "Actions de l'article",
+      "cols": {
+        "article": "Article",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "Modifié"
       }
     },
     "format": {

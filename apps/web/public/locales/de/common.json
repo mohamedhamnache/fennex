@@ -1427,6 +1427,14 @@
         "draft": "Entwurf",
         "ready": "Bereit",
         "published": "Veröffentlicht"
+      },
+      "untitled": "Unbenannter Artikel",
+      "rowActions": "Artikelaktionen",
+      "cols": {
+        "article": "Artikel",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "Aktualisiert"
       }
     },
     "format": {

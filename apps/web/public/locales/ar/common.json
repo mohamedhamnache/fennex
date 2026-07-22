@@ -1427,6 +1427,14 @@
         "draft": "مسودة",
         "ready": "جاهز",
         "published": "منشور"
+      },
+      "untitled": "مقال بدون عنوان",
+      "rowActions": "إجراءات المقال",
+      "cols": {
+        "article": "المقال",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "آخر تحديث"
       }
     },
     "format": {
