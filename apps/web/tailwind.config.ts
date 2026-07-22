@@ -42,7 +42,7 @@ const config: Config = {
         info: "hsl(var(--info) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["Hanken Grotesk", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["Fraunces", "Playfair Display", "Georgia", "ui-serif", "serif"],
       },
       fontSize: {
