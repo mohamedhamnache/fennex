@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/cn";
 import { duneChatStream } from "@/lib/api";
 import { FENNEX_AGENTS } from "@/lib/agents";
+import { MarkdownLite } from "./MarkdownLite";
 import { useToast } from "@/components/ui/Toast";
 
 const SUGGESTION_CHIPS: { id: "outline" | "stats" | "intro" | "listicle"; Icon: LucideIcon }[] = [
@@ -273,13 +274,13 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
                 <div className={cn("flex min-w-0 flex-col gap-1.5", msg.role === "user" ? "items-end" : "items-start")}>
                   <div
                     className={cn(
-                      "max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed",
+                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed",
                       msg.role === "user"
-                        ? "gradient-brand rounded-tr-md text-white shadow-sm"
+                        ? "gradient-brand whitespace-pre-wrap rounded-tr-md text-white shadow-sm"
                         : "rounded-tl-md border border-border bg-card text-foreground",
                     )}
                   >
-                    {msg.content}
+                    {msg.role === "user" ? msg.content : <MarkdownLite text={msg.content} />}
                   </div>
                   {msg.role === "assistant" && msg.insertable && (
                     <div className="flex w-full max-w-[85%] flex-col gap-1.5 rounded-xl border border-primary/25 bg-primary/[0.04] p-2.5">
