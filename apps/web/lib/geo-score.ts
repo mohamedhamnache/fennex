@@ -55,8 +55,10 @@ export function computeGeoCore(
   breakdown.extractable_format = ef;
   score += ef;
 
-  // 4. statistics (+10 / +5): count digit characters.
-  const nums = (b.match(/\d/g) ?? []).length;
+  // 4. statistics (+10 / +5): count digit characters. Use \p{Nd} (Unicode decimal
+  // digits) so this matches Python's `\d`, which is Unicode-aware — otherwise
+  // non-Latin numerals (e.g. Arabic-Indic in the `ar` locale) would be missed.
+  const nums = (b.match(/\p{Nd}/gu) ?? []).length;
   const stat = nums >= 6 ? 10 : nums >= 3 ? 5 : 0;
   breakdown.statistics = stat;
   score += stat;
