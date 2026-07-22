@@ -486,6 +486,7 @@ export interface Article {
   word_count: number;
   word_count_target: number;
   seo_score: number | null;
+  geo_score: number | null;
   meta_title: string | null;
   meta_description: string | null;
   outline: { sections: { heading: string; content?: string }[] } | null;

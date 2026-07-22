@@ -227,6 +227,8 @@
       "saveRevision": "Guardar revisión",
       "breakdown": "Desglose",
       "seoScore": "Puntuación SEO",
+      "geoScore": "Puntuación GEO (legibilidad del motor de respuestas)",
+      "geoJudgmentNote": "Juicio de respuesta IA: {{score}}/100 — actualizado en generar",
       "metaTitle": "Título meta",
       "metaDescription": "Descripción meta",
       "articleTitle": "Título del artículo",

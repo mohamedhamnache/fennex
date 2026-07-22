@@ -311,6 +311,8 @@
       "saveRevision": "Save Revision",
       "breakdown": "Breakdown",
       "seoScore": "SEO Score",
+      "geoScore": "GEO score (answer-engine readiness)",
+      "geoJudgmentNote": "AI-answer judgment: {{score}}/100 — refreshes on generate",
       "metaTitle": "Meta title",
       "metaDescription": "Meta description",
       "articleTitle": "Article title",
@@ -1526,7 +1528,9 @@
     "meta": {
       "serpPreview": "Search preview",
       "seoScoreLabel": "SEO score",
+      "geoScoreLabel": "GEO score",
       "signals": "Ranking signals",
+      "geoSignals": "Answer-engine signals",
       "metaTitleHint": "50–60 characters is ideal",
       "metaDescHint": "150–160 characters is ideal",
       "signalNames": {
@@ -1536,6 +1540,14 @@
         "word_count": "Word count",
         "has_h2_headings": "H2 headings",
         "meta_description": "Meta description"
+      },
+      "geoSignalNames": {
+        "answer_up_top": "Direct answer up top",
+        "qa_structure": "Question / FAQ structure",
+        "extractable_format": "Lists or tables",
+        "statistics": "Statistics & specifics",
+        "citations": "Citations / sources",
+        "concise_paragraphs": "Concise paragraphs"
       },
       "keyword": "Target keyword",
       "keywordHint": "The phrase you want to rank for (e.g. \"digital restaurant menu\"). It drives the SEO score."
