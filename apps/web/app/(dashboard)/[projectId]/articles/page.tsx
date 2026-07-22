@@ -20,6 +20,7 @@ import {
   Minimize2,
   Download,
   Copy,
+  Sparkles,
 } from "lucide-react";
 import { useProjectStore } from "@/lib/store";
 import {
@@ -31,6 +32,7 @@ import {
   generateArticle,
   generateArticleStream,
   saveRevision,
+  suggestArticleTitles,
   listPublishingConnections,
   publishArticle,
   listApiKeys,
@@ -537,6 +539,8 @@ function ArticleEditor({
   const [revisionMsg, setRevisionMsg] = useState<string | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
+  const [showTitleSuggest, setShowTitleSuggest] = useState(false);
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
@@ -687,6 +691,19 @@ function ArticleEditor({
       setTimeout(() => setSaveState("idle"), 2000);
     },
     onError: () => { setSaveState("idle"); error(t("articles.toast.saveError")); },
+  });
+
+  const suggestTitlesMutation = useMutation({
+    mutationFn: () => suggestArticleTitles(articleId),
+    onSuccess: (r) => {
+      if (r.ok && r.titles.length) {
+        setTitleSuggestions(r.titles);
+        setShowTitleSuggest(true);
+      } else {
+        error(r.error || t("articleStudio.suggestTitlesError"));
+      }
+    },
+    onError: () => error(t("articleStudio.suggestTitlesError")),
   });
 
   const revisionMutation = useMutation({
@@ -882,13 +899,47 @@ function ArticleEditor({
         >
           <PanelLeft className="h-4 w-4" />
         </button>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-foreground focus:outline-none"
-          placeholder={t("articles.editor.articleTitle")}
-        />
+        <div className="relative flex min-w-0 flex-1 items-center gap-1">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-foreground focus:outline-none"
+            placeholder={t("articles.editor.articleTitle")}
+          />
+          <button
+            onClick={() => (showTitleSuggest ? setShowTitleSuggest(false) : suggestTitlesMutation.mutate())}
+            disabled={suggestTitlesMutation.isPending}
+            title={t("articleStudio.suggestTitles")}
+            className="shrink-0 rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          >
+            {suggestTitlesMutation.isPending ? <Spinner size={14} /> : <Sparkles className="h-4 w-4" />}
+          </button>
+          {showTitleSuggest && titleSuggestions.length > 0 && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setShowTitleSuggest(false)} />
+              <div className="popover absolute left-0 top-full z-30 mt-2 w-full max-w-lg p-1.5 animate-scale-in">
+                <p className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  {t("articleStudio.suggestTitlesHeading")}
+                </p>
+                {titleSuggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setTitle(s);
+                      updateMutation.mutate({ title: s });
+                      setShowTitleSuggest(false);
+                    }}
+                    className="block w-full rounded-lg px-2.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <Badge tone={STATUS_TONE[article.status] ?? "neutral"} dot className="hidden capitalize sm:inline-flex">
           {article.status}
         </Badge>

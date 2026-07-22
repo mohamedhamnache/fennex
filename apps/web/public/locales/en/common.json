@@ -1389,6 +1389,9 @@
   },
   "articleStudio": {
     "write": "Write",
+    "suggestTitles": "Suggest optimized titles",
+    "suggestTitlesHeading": "SEO title options",
+    "suggestTitlesError": "Could not generate titles — please try again.",
     "preview": {
       "tab": "Preview",
       "eyebrow": "Reader's preview",

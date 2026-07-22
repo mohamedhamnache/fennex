@@ -549,6 +549,16 @@ export async function saveRevision(
   );
 }
 
+export interface TitleSuggestionsResult {
+  ok: boolean;
+  titles: string[];
+  error?: string | null;
+}
+
+export async function suggestArticleTitles(id: string): Promise<TitleSuggestionsResult> {
+  return apiClient.post<TitleSuggestionsResult>(`/articles/${id}/suggest-titles`, {});
+}
+
 export async function getArticleSeoScore(id: string): Promise<SEOScoreBreakdown> {
   return apiClient.get<SEOScoreBreakdown>(`/articles/${id}/seo-score`);
 }
