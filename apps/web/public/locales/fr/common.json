@@ -1996,5 +1996,119 @@
     "tipsTitle": "Conseils de prospection de Nomad",
     "emptyTitle": "Donnez son objectif à Nomad et il planifiera toute la semaine.",
     "emptyDesc": "Cinq posts adaptés à votre niche, trois modèles de DM et des conseils — chaque post arrive dans vos brouillons Social, prêt à publier ou programmer."
+  },
+  "landing": {
+    "nav": {
+      "pack": "La Meute",
+      "how": "Fonctionnement",
+      "features": "Fonctionnalités",
+      "results": "Résultats",
+      "signIn": "Se connecter",
+      "start": "Essai gratuit"
+    },
+    "hero": {
+      "badge": "Une agence marketing virtuelle d'agents IA",
+      "titleA": "Développez votre trafic organique avec une",
+      "titleHi": "meute de spécialistes IA",
+      "subtitle": "Sept agents nommés recherchent vos mots-clés, rédigent des articles qui se classent, créent les visuels, publient partout et mesurent ce qui fonctionne — pour une croissance qui se cumule en pilote automatique.",
+      "ctaPrimary": "Commencer gratuitement — sans carte",
+      "ctaSecondary": "Découvrir la meute",
+      "trial": "Essai gratuit de 14 jours",
+      "keys": "Utilisez vos propres clés IA",
+      "cancel": "Annulable à tout moment"
+    },
+    "integrations": {
+      "title": "S'intègre aux outils que vous utilisez déjà pour publier"
+    },
+    "pack": {
+      "badge": "La Meute Fennex",
+      "title": "Sept spécialistes, un objectif commun",
+      "subtitle": "Chaque agent a un nom, un métier et la mémoire de votre projet. Ils se transmettent le travail comme une vraie équipe — sans prompts à surveiller.",
+      "ctaTitle": "Mettez la meute au travail",
+      "ctaBody": "Créez votre espace de travail et laissez les agents démarrer votre premier projet dès aujourd'hui.",
+      "ctaLink": "Commencer"
+    },
+    "loop": {
+      "badge": "La boucle fermée",
+      "title": "Un moteur de croissance qui apprend en continu",
+      "subtitle": "La plupart des outils s'arrêtent à la production. Fennex réinjecte les résultats — chaque cycle est plus affûté que le précédent.",
+      "research": {
+        "title": "Rechercher",
+        "body": "Zerda écoute vos vraies données Search Console et fait ressortir les mots-clés à portée de main et les gains de CTR rapides à saisir."
+      },
+      "create": {
+        "title": "Créer",
+        "body": "Dune rédige du contenu long optimisé SEO dans votre voix de marque pendant que Mirage crée les visuels — articles et images, prêts ensemble."
+      },
+      "publish": {
+        "title": "Publier",
+        "body": "Envoyez le contenu finalisé directement vers WordPress, Shopify ou Ghost en un clic. Sans copier-coller, sans remise en forme."
+      },
+      "learn": {
+        "title": "Apprendre",
+        "body": "Zerda suit chaque recommandation, mesure ce qui a réellement fait bouger les classements et vous indique le prochain meilleur coup. La boucle se referme."
+      }
+    },
+    "features": {
+      "badge": "Tout au même endroit",
+      "title": "Toute la chaîne de contenu, gérée",
+      "subtitle": "Du premier mot-clé à l'article publié et au backlink qui le propulse — fini d'assembler six outils.",
+      "keyword": {
+        "title": "Intelligence des mots-clés",
+        "body": "Regroupez la demande, trouvez les gains peu concurrentiels et agissez sur vos propres données Search Console — pas un index générique."
+      },
+      "articles": {
+        "title": "Articles longs par IA",
+        "body": "Un contenu de qualité pour le classement en quelques minutes, adapté à votre niche et à votre voix de marque, avec des images suggérées par section."
+      },
+      "images": {
+        "title": "Studio d'images",
+        "body": "Générez, éditez et superposez des visuels en langage naturel. Transformez des images plates en ressources modifiables et fidèles à votre marque."
+      },
+      "publishing": {
+        "title": "Publication en un clic",
+        "body": "Des intégrations natives avec WordPress, Shopify et Ghost mettent votre contenu en ligne sans détour."
+      },
+      "tracking": {
+        "title": "Suivi du classement et du trafic",
+        "body": "Observez les positions, clics et impressions évoluer en temps réel — et voyez quel contenu a produit le gain."
+      },
+      "backlinks": {
+        "title": "Backlinks et prospection",
+        "body": "Nomad planifie une semaine de posts LinkedIn et rédige la prospection qui transforme vos lecteurs en clients."
+      }
+    },
+    "results": {
+      "teams": "Équipes qui grandissent avec Fennex",
+      "views": "Vues organiques générées",
+      "agents": "Spécialistes IA dans votre meute",
+      "draft": "Brouillon d'article moyen",
+      "quote": "On a vraiment l'impression d'embaucher une petite agence. Fennex a trouvé les mots-clés, rédigé les articles, les a publiés, puis nous a dit lesquels fonctionnaient. Notre trafic organique a triplé en un trimestre.",
+      "author": "Maya Lindqvist",
+      "role": "Directrice de la croissance, Northwind Studio"
+    },
+    "cta": {
+      "title": "Votre meute est prête à passer à l'action",
+      "body": "Commencez gratuitement aujourd'hui. Connectez un site, choisissez un mot-clé et regardez sept spécialistes IA en faire du contenu qui se classe.",
+      "primary": "Commencer gratuitement",
+      "signIn": "Se connecter",
+      "setup": "Configuré en moins de deux minutes"
+    },
+    "footer": {
+      "tagline": "Une agence marketing virtuelle d'agents IA — rechercher, créer, publier et croître depuis un seul espace de travail.",
+      "product": "Produit",
+      "company": "Entreprise",
+      "getStarted": "Commencer",
+      "about": "À propos",
+      "blog": "Blog",
+      "careers": "Carrières",
+      "contact": "Contact",
+      "signIn": "Se connecter",
+      "createAccount": "Créer un compte",
+      "rights": "Tous droits réservés.",
+      "privacy": "Confidentialité",
+      "terms": "Conditions",
+      "status": "Statut"
+    }
   }
 }
