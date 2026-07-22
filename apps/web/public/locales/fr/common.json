@@ -1505,7 +1505,18 @@
       "casestudy": "Étude de cas"
     },
     "polishing": "Optimisation SEO…",
-    "keywordPlaceholder": "Mot-clé cible…"
+    "keywordPlaceholder": "Mot-clé cible…",
+    "write": "Écrire",
+    "preview": {
+      "tab": "Aperçu",
+      "eyebrow": "Aperçu lecteur",
+      "readTime": "{{min}} min de lecture",
+      "untitled": "Article sans titre",
+      "empty": "Commencez à écrire et votre article prendra forme ici."
+    },
+    "suggestTitles": "Suggérer des titres optimisés",
+    "suggestTitlesHeading": "Options de titre SEO",
+    "suggestTitlesError": "Impossible de générer des titres — réessayez."
   },
   "startProject": {
     "heading": "Démarrer un projet",
