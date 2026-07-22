@@ -1427,6 +1427,14 @@
         "draft": "Entwurf",
         "ready": "Bereit",
         "published": "Veröffentlicht"
+      },
+      "untitled": "Unbenannter Artikel",
+      "rowActions": "Artikelaktionen",
+      "cols": {
+        "article": "Artikel",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "Aktualisiert"
       }
     },
     "format": {
@@ -1505,7 +1513,18 @@
       "casestudy": "Fallstudie"
     },
     "polishing": "SEO-Feinschliff…",
-    "keywordPlaceholder": "Ziel-Keyword…"
+    "keywordPlaceholder": "Ziel-Keyword…",
+    "write": "Schreiben",
+    "preview": {
+      "tab": "Vorschau",
+      "eyebrow": "Leseansicht",
+      "readTime": "{{min}} Min. Lesezeit",
+      "untitled": "Unbenannter Artikel",
+      "empty": "Beginne zu schreiben und dein Artikel entsteht hier."
+    },
+    "suggestTitles": "Optimierte Titel vorschlagen",
+    "suggestTitlesHeading": "SEO-Titeloptionen",
+    "suggestTitlesError": "Titel konnten nicht erstellt werden — bitte erneut versuchen."
   },
   "startProject": {
     "heading": "Projekt starten",

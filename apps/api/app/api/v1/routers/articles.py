@@ -303,3 +303,48 @@ async def get_geo_score(article_id: uuid.UUID, current_user: CurrentUser, db: DB
     article = await _get_article_or_404(article_id, current_user.org_id, db)
     _, breakdown = compute_geo_core(article.title, article.body_markdown, article.meta_description)
     return {"geo_score": article.geo_score, "breakdown": breakdown}
+
+
+class TitleSuggestions(BaseModel):
+    ok: bool
+    titles: list[str] = []
+    error: Optional[str] = None
+
+
+@router.post("/{article_id}/suggest-titles", response_model=TitleSuggestions)
+async def suggest_titles(article_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Zerda proposes several SEO-optimized, click-worthy headline options for the
+    article, grounded in its own body and target keyword."""
+    import json, re
+    from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
+    from app.services.agents.tiers import resolve_model
+
+    article = await _get_article_or_404(article_id, current_user.org_id, db)
+    keys = await get_org_llm_keys(current_user.org_id, db)
+    if not keys:
+        return TitleSuggestions(ok=False, error="No AI key configured. Add an Anthropic or OpenAI key in Settings.")
+    provider, model = resolve_model("balanced", "light", list(keys.keys()))
+
+    excerpt = (article.body_markdown or "")[:1800]
+    system = (
+        "You are an expert SEO copywriter. Propose 6 headline options for the article. "
+        "Each must: be under 60 characters, read naturally, promise a clear benefit, and use the "
+        "target keyword where it fits without stuffing. Vary the angles (how-to, list, question, "
+        "outcome, contrarian). No emoji, no numbering, no surrounding quotes. "
+        'Return ONLY a JSON array of strings, e.g. ["Title one", "Title two"].'
+    )
+    user = (
+        f"TARGET KEYWORD: {article.target_keyword or '(none)'}\n"
+        f"CURRENT TITLE: {article.title}\n\nARTICLE EXCERPT:\n{excerpt}"
+    )
+    try:
+        raw = await call_llm(provider, model, keys[provider], system, user,
+                             locale=await project_locale(article.project_id, db))
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+        titles = json.loads(cleaned)
+    except Exception:
+        return TitleSuggestions(ok=False, error="Could not generate titles — please try again.")
+    titles = [str(t).strip().strip('"').strip() for t in titles if isinstance(titles, list) and str(t).strip()][:6]
+    if not titles:
+        return TitleSuggestions(ok=False, error="The AI returned no usable titles — please try again.")
+    return TitleSuggestions(ok=True, titles=titles)

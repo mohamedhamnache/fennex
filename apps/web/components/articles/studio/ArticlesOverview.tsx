@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Plus, Search, FileText, FileEdit, CheckCircle2, Gauge,
-  MoreHorizontal, RefreshCw, XCircle, ArrowRight, type LucideIcon,
+  MoreHorizontal, RefreshCw, XCircle, type LucideIcon,
 } from "lucide-react";
 import { FennecMascot } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import { ProgressRing } from "@/components/ui/ProgressRing";
 import { FENNEX_AGENTS } from "@/lib/agents";
 import type { Article, ArticleStatus } from "@/lib/api";
 
@@ -28,6 +27,15 @@ function seoColor(score: number | null): string {
   if (score === null) return "text-muted-foreground";
   if (score >= 80) return "text-emerald-500";
   if (score >= 60) return "text-amber-500";
+  return "text-red-500";
+}
+
+// GEO ("answer-engine readiness") lives on a 0-100 scale where structure alone
+// tops out near 70; tune the color bands accordingly.
+function geoColor(score: number | null): string {
+  if (score === null) return "text-muted-foreground";
+  if (score >= 70) return "text-emerald-500";
+  if (score >= 45) return "text-amber-500";
   return "text-red-500";
 }
 
@@ -160,9 +168,9 @@ export function ArticlesOverview({
         {/* Grid */}
         <div className="mt-4">
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-32 animate-pulse rounded-2xl bg-white/[0.04]" />
+            <div className="overflow-hidden rounded-2xl border border-border">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="h-[52px] animate-pulse border-b border-border bg-white/[0.03] last:border-0" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -177,17 +185,27 @@ export function ArticlesOverview({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((a) => (
-                <ArticleCard
-                  key={a.id}
-                  article={a}
-                  locale={i18n.language}
-                  onOpen={() => onOpen(a.id)}
-                  onRegenerate={() => onRegenerate(a.id)}
-                  onDelete={() => onDelete(a.id)}
-                />
-              ))}
+            <div className="overflow-hidden rounded-2xl border border-border bg-card/30">
+              {/* Column header — the list's spine */}
+              <div className="hidden items-center gap-4 border-b border-border bg-muted/25 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:flex">
+                <span className="flex-1">{t("articleStudio.overview.cols.article")}</span>
+                <span className="w-12 text-center">{t("articleStudio.overview.cols.seo")}</span>
+                <span className="w-12 text-center">{t("articleStudio.overview.cols.geo")}</span>
+                <span className="w-24">{t("articleStudio.overview.cols.updated")}</span>
+                <span className="w-6" />
+              </div>
+              <div className="divide-y divide-border">
+                {filtered.map((a) => (
+                  <ArticleRow
+                    key={a.id}
+                    article={a}
+                    locale={i18n.language}
+                    onOpen={() => onOpen(a.id)}
+                    onRegenerate={() => onRegenerate(a.id)}
+                    onDelete={() => onDelete(a.id)}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -196,7 +214,7 @@ export function ArticlesOverview({
   );
 }
 
-function ArticleCard({
+function ArticleRow({
   article,
   locale,
   onOpen,
@@ -215,70 +233,91 @@ function ArticleCard({
   return (
     <div
       onClick={onOpen}
-      className="glass-hover group relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-white/[0.05] p-4"
+      className="group relative flex cursor-pointer items-center gap-4 px-4 py-2.5 transition-colors hover:bg-accent/40"
     >
-      {/* top accent */}
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0.5 gradient-brand opacity-0 transition-opacity group-hover:opacity-100" />
+      {/* left rail: hover accent */}
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-0.5 gradient-brand opacity-0 transition-opacity group-hover:opacity-100" />
 
-      <div className="flex items-start justify-between gap-2">
-        <Badge tone={STATUS_TONE[article.status]} dot className="capitalize">
-          {article.status}
-        </Badge>
-        <div className="relative" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-lg p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 z-20 w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg animate-scale-in">
-                <button
-                  onClick={() => { setMenuOpen(false); onRegenerate(); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-foreground transition-colors hover:bg-accent"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" /> {t("articles.card.regenerate")}
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (window.confirm(t("articleStudio.confirmDelete"))) onDelete();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-destructive transition-colors hover:bg-destructive/10"
-                >
-                  <XCircle className="h-3.5 w-3.5" /> {t("articles.card.delete")}
-                </button>
-              </div>
-            </>
+      {/* Title + status + keyword */}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="truncate text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+          {article.title || t("articleStudio.overview.untitled")}
+        </p>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <Badge tone={STATUS_TONE[article.status]} dot className="capitalize">
+            {t(`articleStudio.overview.filters.${article.status}`, { defaultValue: article.status })}
+          </Badge>
+          {article.target_keyword && (
+            <span className="inline-flex min-w-0 items-center gap-1 truncate">
+              <span className="opacity-40">·</span>
+              <span className="truncate">{article.target_keyword}</span>
+            </span>
           )}
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
-            {article.title}
-          </p>
-          {article.target_keyword && (
-            <span className="mt-2 inline-block max-w-full truncate rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
-              {article.target_keyword}
-            </span>
-          )}
-        </div>
-        {article.seo_score !== null && (
-          <ProgressRing value={article.seo_score} size={44} stroke={4}>
-            <span className={`text-[11px] font-bold tabular-nums ${seoColor(article.seo_score)}`}>
-              {article.seo_score}
-            </span>
-          </ProgressRing>
+      {/* SEO */}
+      <div className="hidden w-12 justify-center md:flex">
+        {article.seo_score !== null ? (
+          <span className={cn("text-sm font-bold tabular-nums", seoColor(article.seo_score))} title={t("articles.editor.seoScore")}>
+            {Math.round(article.seo_score)}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/40">—</span>
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-2.5 text-[11px] text-muted-foreground">
-        <span>{new Date(article.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
-        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+      {/* GEO */}
+      <div className="hidden w-12 justify-center md:flex">
+        {article.geo_score !== null ? (
+          <span className={cn("text-sm font-bold tabular-nums", geoColor(article.geo_score))} title={t("articles.editor.geoScore")}>
+            {Math.round(article.geo_score)}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/40">—</span>
+        )}
+      </div>
+
+      {/* Updated */}
+      <span className="hidden w-24 text-[11px] text-muted-foreground md:block">
+        {new Date(article.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}
+      </span>
+
+      {/* Mobile compact SEO score */}
+      {article.seo_score !== null && (
+        <span className={cn("text-xs font-bold tabular-nums md:hidden", seoColor(article.seo_score))}>
+          {Math.round(article.seo_score)}
+        </span>
+      )}
+
+      {/* Actions */}
+      <div className="relative flex w-6 shrink-0 justify-end" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="rounded-lg p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus:opacity-100 group-hover:opacity-100"
+          aria-label={t("articleStudio.overview.rowActions")}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+            <div className="absolute right-0 top-8 z-20 w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg animate-scale-in">
+              <button
+                onClick={() => { setMenuOpen(false); onRegenerate(); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-foreground transition-colors hover:bg-accent"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> {t("articles.card.regenerate")}
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); if (window.confirm(t("articleStudio.confirmDelete"))) onDelete(); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <XCircle className="h-3.5 w-3.5" /> {t("articles.card.delete")}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

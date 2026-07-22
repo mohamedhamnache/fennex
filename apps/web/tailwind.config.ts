@@ -42,21 +42,23 @@ const config: Config = {
         info: "hsl(var(--info) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["Fraunces", "Playfair Display", "Georgia", "ui-serif", "serif"],
       },
+      // Type scale bumped up one comfortable notch for readability — the UI leans
+      // heavily on xs/sm/base, so a larger floor materially improves legibility.
       fontSize: {
-        "2xs": ["0.65rem",  { lineHeight: "1rem" }],
-        xs:   ["0.75rem",  { lineHeight: "1.1rem" }],
-        sm:   ["0.8125rem",{ lineHeight: "1.25rem" }],
-        base: ["0.875rem", { lineHeight: "1.5rem" }],
-        md:   ["0.9375rem",{ lineHeight: "1.5rem" }],
-        lg:   ["1rem",     { lineHeight: "1.6rem" }],
-        xl:   ["1.125rem", { lineHeight: "1.6rem" }],
-        "2xl":["1.375rem", { lineHeight: "1.8rem" }],
-        "3xl":["1.75rem",  { lineHeight: "2.1rem" }],
-        "4xl":["2.25rem",  { lineHeight: "2.5rem" }],
-        "5xl":["3rem",     { lineHeight: "1.15" }],
+        "2xs": ["0.6875rem", { lineHeight: "1rem" }],      // 11px
+        xs:   ["0.8125rem", { lineHeight: "1.15rem" }],   // 13px
+        sm:   ["0.875rem",  { lineHeight: "1.3rem" }],    // 14px
+        base: ["0.9375rem", { lineHeight: "1.55rem" }],   // 15px
+        md:   ["1rem",      { lineHeight: "1.6rem" }],     // 16px
+        lg:   ["1.0625rem", { lineHeight: "1.7rem" }],    // 17px
+        xl:   ["1.1875rem", { lineHeight: "1.7rem" }],    // 19px
+        "2xl":["1.5rem",    { lineHeight: "1.9rem" }],    // 24px
+        "3xl":["1.875rem",  { lineHeight: "2.2rem" }],    // 30px
+        "4xl":["2.375rem",  { lineHeight: "2.6rem" }],    // 38px
+        "5xl":["3.25rem",   { lineHeight: "1.12" }],      // 52px
       },
       spacing: { "13": "3.25rem", "15": "3.75rem", "18": "4.5rem" },
       borderRadius: {

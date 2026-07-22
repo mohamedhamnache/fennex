@@ -1388,6 +1388,17 @@
     }
   },
   "articleStudio": {
+    "write": "Write",
+    "suggestTitles": "Suggest optimized titles",
+    "suggestTitlesHeading": "SEO title options",
+    "suggestTitlesError": "Could not generate titles — please try again.",
+    "preview": {
+      "tab": "Preview",
+      "eyebrow": "Reader's preview",
+      "readTime": "{{min}} min read",
+      "untitled": "Untitled article",
+      "empty": "Start writing and your article will take shape here."
+    },
     "dock": {
       "title": "Dune - your co-writer",
       "tabs": {
@@ -1511,6 +1522,14 @@
         "draft": "Draft",
         "ready": "Ready",
         "published": "Published"
+      },
+      "untitled": "Untitled article",
+      "rowActions": "Article actions",
+      "cols": {
+        "article": "Article",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "Updated"
       }
     },
     "format": {

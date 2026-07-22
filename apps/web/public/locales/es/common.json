@@ -1427,6 +1427,14 @@
         "draft": "Borrador",
         "ready": "Listo",
         "published": "Publicado"
+      },
+      "untitled": "Artículo sin título",
+      "rowActions": "Acciones del artículo",
+      "cols": {
+        "article": "Artículo",
+        "seo": "SEO",
+        "geo": "GEO",
+        "updated": "Actualizado"
       }
     },
     "format": {
@@ -1505,7 +1513,18 @@
       "casestudy": "Caso de estudio"
     },
     "polishing": "Puliendo para SEO…",
-    "keywordPlaceholder": "Palabra clave objetivo…"
+    "keywordPlaceholder": "Palabra clave objetivo…",
+    "write": "Escribir",
+    "preview": {
+      "tab": "Vista previa",
+      "eyebrow": "Vista del lector",
+      "readTime": "{{min}} min de lectura",
+      "untitled": "Artículo sin título",
+      "empty": "Empieza a escribir y tu artículo tomará forma aquí."
+    },
+    "suggestTitles": "Sugerir títulos optimizados",
+    "suggestTitlesHeading": "Opciones de título SEO",
+    "suggestTitlesError": "No se pudieron generar títulos: inténtalo de nuevo."
   },
   "startProject": {
     "heading": "Iniciar un proyecto",
