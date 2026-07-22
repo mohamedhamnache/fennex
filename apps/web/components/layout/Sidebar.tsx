@@ -7,7 +7,7 @@ import {
   LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
   PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone, Home,
-  TrendingUp, Plug,
+  TrendingUp, Plug, type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -22,7 +22,7 @@ function projectInitials(name?: string) {
   return name.split(" ").map((w) => w[0]).filter(Boolean).join("").slice(0, 2).toUpperCase();
 }
 
-type NavItem = { key: string; href: string; icon: typeof LayoutDashboard };
+type NavItem = { key: string; href: string; icon: LucideIcon };
 
 // All destinations, defined once. `key` is the i18n suffix (nav.<key>); it
 // matches the href slug except for `content`, whose translation key is `planner`.
@@ -58,6 +58,42 @@ function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {
   const primary = order.map((k) => NAV_ITEMS[k]);
   const more = Object.keys(NAV_ITEMS).filter((k) => !primaryKeys.has(k)).map((k) => NAV_ITEMS[k]);
   return { primary, more };
+}
+
+/** One rail row — shared by Home, the persona nav, and the footer so the
+ *  active/hover/press treatment is identical everywhere. */
+function RailLink({
+  href, label, icon: Icon, active, expanded, danger = false, onClick,
+}: {
+  href?: string; label: string; icon: LucideIcon; active?: boolean;
+  expanded: boolean; danger?: boolean; onClick?: () => void;
+}) {
+  const cls = cn(
+    "group relative flex w-full items-center rounded-xl text-[13px] font-medium transition-all duration-150 active:scale-[0.98]",
+    expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
+    danger
+      ? "text-white/45 hover:bg-destructive/15 hover:text-destructive"
+      : active
+        ? "rail-active text-primary"
+        : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+  );
+  const inner = (
+    <>
+      {active && !danger && (
+        <span className="rail-marker absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full" />
+      )}
+      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.2 : 1.8} />
+      {expanded && <span className="truncate">{label}</span>}
+    </>
+  );
+  if (onClick && !href) {
+    return <button type="button" onClick={onClick} title={!expanded ? label : undefined} className={cls}>{inner}</button>;
+  }
+  return (
+    <Link href={href ?? "#"} onClick={onClick} title={!expanded ? label : undefined} className={cls}>
+      {inner}
+    </Link>
+  );
 }
 
 export function Sidebar() {
@@ -107,31 +143,11 @@ export function Sidebar() {
     setMoreOpen((o) => { localStorage.setItem("fennex-nav-more", o ? "0" : "1"); return !o; });
   }
 
-  function renderNavItem(item: NavItem) {
-    const href = currentProject ? `/${currentProject.id}/${item.href}` : "#";
+  function navItemProps(item: NavItem) {
+    const href = currentProject ? `/${currentProject.id}/${item.href}` : undefined;
     const active = !!currentProject &&
       (pathname === href || pathname.startsWith(`/${currentProject.id}/${item.href}`));
-    const label = t(`nav.${item.key}`);
-    return (
-      <li key={item.href}>
-        <Link
-          href={href}
-          title={!expanded ? label : undefined}
-          className={cn(
-            "group relative flex items-center rounded-xl text-[13px] font-medium transition-all",
-            expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
-            active ? "bg-primary/15 text-primary" : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
-            !currentProject && "pointer-events-none opacity-30",
-          )}
-        >
-          {active && (
-            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-          )}
-          <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.2 : 1.8} />
-          {expanded && <span className="truncate">{label}</span>}
-        </Link>
-      </li>
-    );
+    return { href, active, label: t(`nav.${item.key}`), icon: item.icon };
   }
 
   function handleLogout() {
@@ -151,18 +167,18 @@ export function Sidebar() {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => { setHovered(false); setDropdownOpen(false); }}
         className={cn(
-          "relative z-20 flex h-full shrink-0 flex-col border-r border-white/[0.06] bg-[hsl(var(--nav-bg)/0.72)] backdrop-blur-xl transition-[width] duration-200 ease-out",
-          expanded ? "w-[244px]" : "w-[72px]",
+          "rail-surface relative z-20 flex h-full shrink-0 flex-col border-r border-white/[0.06] backdrop-blur-xl transition-[width] duration-200 ease-out",
+          expanded ? "w-[248px]" : "w-[72px]",
         )}
       >
         {/* Logo + pin */}
-        <div className="flex h-[60px] items-center gap-2.5 border-b border-white/[0.06] px-[18px]">
+        <div className="flex h-[60px] items-center gap-2.5 px-[18px]">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl gradient-brand glow-primary">
             <FennecMark className="h-5 w-5 brightness-0 invert" />
           </div>
           {expanded && (
             <>
-              <span className="font-display text-[16px] font-bold tracking-tight text-white">Fennex</span>
+              <span className="font-display text-[17px] font-bold tracking-tight text-white">Fennex</span>
               {mounted && (
                 <button
                   onClick={togglePin}
@@ -175,6 +191,7 @@ export function Sidebar() {
             </>
           )}
         </div>
+        <div className="rail-divider mx-[18px]" />
 
         {/* Workspace switcher */}
         <div className="relative px-3 py-3">
@@ -182,8 +199,8 @@ export function Sidebar() {
             <button
               onClick={() => setModalOpen(true)}
               className={cn(
-                "flex w-full items-center gap-2 rounded-xl border border-dashed border-white/15 text-white/45 transition-all hover:border-white/30 hover:text-white/70",
-                expanded ? "px-3 py-2" : "justify-center p-2.5",
+                "flex w-full items-center gap-2 rounded-xl border border-dashed border-white/15 text-white/45 transition-all hover:border-primary/40 hover:text-white/80",
+                expanded ? "px-3 py-2.5" : "justify-center p-2.5",
               )}
             >
               <Plus className="h-4 w-4 shrink-0" />
@@ -194,18 +211,26 @@ export function Sidebar() {
               <button
                 onClick={() => expanded && setDropdownOpen((o) => !o)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] transition-all hover:bg-white/[0.06]",
+                  "flex w-full items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] transition-all hover:border-white/15 hover:bg-white/[0.06]",
                   expanded ? "px-2.5 py-2" : "justify-center p-1.5",
+                  dropdownOpen && "border-primary/40 bg-white/[0.06]",
                 )}
                 title={!expanded ? currentProject?.name : undefined}
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-brand text-[11px] font-bold text-white">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-brand text-[11px] font-bold text-white shadow-sm">
                   {projectInitials(currentProject?.name)}
                 </span>
                 {expanded && (
                   <>
-                    <span className="flex-1 truncate text-left text-[13px] font-medium text-white/85">
-                      {currentProject?.name ?? t("nav.selectProject")}
+                    <span className="flex min-w-0 flex-1 flex-col items-start leading-tight">
+                      <span className="w-full truncate text-left text-[13px] font-semibold text-white/90">
+                        {currentProject?.name ?? t("nav.selectProject")}
+                      </span>
+                      {currentProject && (
+                        <span className="truncate text-[10px] font-medium uppercase tracking-wider text-white/35">
+                          {persona}
+                        </span>
+                      )}
                     </span>
                     <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-white/30 transition-transform", dropdownOpen && "rotate-180")} />
                   </>
@@ -251,33 +276,26 @@ export function Sidebar() {
           {/* Home — the global dashboard at "/" (distinct from a project's Overview) */}
           <ul className="space-y-0.5">
             <li>
-              <Link
-                href="/"
-                title={!expanded ? t("nav.home") : undefined}
-                className={cn(
-                  "group relative flex items-center rounded-xl text-[13px] font-medium transition-all",
-                  expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
-                  pathname === "/" ? "bg-primary/15 text-primary" : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
-                )}
-              >
-                {pathname === "/" && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-                )}
-                <Home className="h-[18px] w-[18px] shrink-0" strokeWidth={pathname === "/" ? 2.2 : 1.8} />
-                {expanded && <span className="truncate">{t("nav.home")}</span>}
-              </Link>
+              <RailLink href="/" label={t("nav.home")} icon={Home} active={pathname === "/"} expanded={expanded} />
             </li>
           </ul>
 
           {/* For you */}
           <div>
             {expanded ? (
-              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/60">{t("nav.forYou")}</p>
+              <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">{t("nav.forYou")}</p>
             ) : (
-              <div className="mx-2 mb-1.5 h-px bg-white/[0.06]" />
+              <div className="rail-divider mx-2 mb-1.5" />
             )}
             <ul className="space-y-0.5">
-              {primary.map((item) => renderNavItem(item))}
+              {primary.map((item) => {
+                const p = navItemProps(item);
+                return (
+                  <li key={item.href} className={!currentProject ? "pointer-events-none opacity-30" : undefined}>
+                    <RailLink {...p} expanded={expanded} />
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -286,53 +304,39 @@ export function Sidebar() {
             {expanded && (
               <button
                 onClick={toggleMore}
-                className="mb-1.5 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25 hover:text-white/50"
+                className="mb-1.5 flex w-full items-center gap-1 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30 transition-colors hover:text-white/55"
               >
                 {t("nav.moreTools")} <ChevronDown className={cn("h-3 w-3 transition-transform", moreOpen && "rotate-180")} />
               </button>
             )}
             {(moreOpen || !expanded) && (
               <ul className="space-y-0.5">
-                {more.map((item) => renderNavItem(item))}
+                {more.map((item) => {
+                  const p = navItemProps(item);
+                  return (
+                    <li key={item.href} className={!currentProject ? "pointer-events-none opacity-30" : undefined}>
+                      <RailLink {...p} expanded={expanded} />
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
         </nav>
 
         {/* Footer */}
-        <div className="space-y-0.5 border-t border-white/[0.06] px-3 py-3">
+        <div className="rail-divider mx-[18px]" />
+        <div className="space-y-0.5 px-3 py-3">
           {[
             { href: "/brand-voice", label: t("nav.brandVoice"), icon: Mic2 },
             { href: "/settings", label: t("nav.settings"), icon: Settings },
           ].map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={!expanded ? item.label : undefined}
-                className={cn(
-                  "flex items-center rounded-xl text-[13px] font-medium transition-all",
-                  expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
-                  active ? "bg-primary/15 text-primary" : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
-                )}
-              >
-                <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
-                {expanded && <span className="truncate">{item.label}</span>}
-              </Link>
+              <RailLink key={item.href} href={item.href} label={item.label} icon={item.icon} active={active} expanded={expanded} />
             );
           })}
-          <button
-            onClick={handleLogout}
-            title={!expanded ? t("nav.signOut") : undefined}
-            className={cn(
-              "flex w-full items-center rounded-xl text-[13px] font-medium text-white/45 transition-all hover:bg-destructive/15 hover:text-destructive",
-              expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
-            )}
-          >
-            <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
-            {expanded && <span className="truncate">{t("nav.signOut")}</span>}
-          </button>
+          <RailLink label={t("nav.signOut")} icon={LogOut} expanded={expanded} danger onClick={handleLogout} />
         </div>
       </aside>
 

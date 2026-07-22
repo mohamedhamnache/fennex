@@ -1,13 +1,16 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Sun, Moon, Search, Settings, Mic2, LogOut, ChevronDown } from "lucide-react";
+import {
+  Sun, Moon, Search, Settings, Mic2, LogOut, ChevronDown, ChevronRight, Home,
+} from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getMe, authLogout } from "@/lib/api";
+import { getMe, authLogout, listProjects } from "@/lib/api";
+import { useProjectStore } from "@/lib/store";
 import { useCommandPalette } from "@/components/layout/CommandPalette";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { AlertsBell } from "@/components/monitoring/AlertsBell";
@@ -17,6 +20,20 @@ function initials(name?: string | null): string {
   if (!name) return "?";
   return name.split(" ").map((n) => n[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "?";
 }
+
+function projectInitials(name?: string) {
+  if (!name) return "—";
+  return name.split(" ").map((w) => w[0]).filter(Boolean).join("").slice(0, 2).toUpperCase();
+}
+
+// Route slug -> i18n key (nav.<key>). Matches the slug except `content`->`planner`.
+const SECTION_KEY: Record<string, string> = {
+  overview: "overview", calendar: "calendar", agents: "agents", campaigns: "campaigns",
+  keywords: "keywords", content: "planner", articles: "articles", social: "social",
+  images: "images", publishing: "publishing", backlinks: "backlinks", analytics: "analytics",
+  seo: "seo", audit: "audit", integrations: "integrations", settings: "settings",
+  "brand-voice": "brandVoice",
+};
 
 /** Close a popover when clicking outside its ref. */
 function useClickOutside(ref: React.RefObject<HTMLElement>, onClose: () => void, active: boolean) {
@@ -33,6 +50,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement>, onClose: () => void,
 export function TopBar() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const { open: openPalette } = useCommandPalette();
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
@@ -44,6 +62,17 @@ export function TopBar() {
   useClickOutside(menuRef, () => setMenuOpen(false), menuOpen);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: getMe, staleTime: 5 * 60_000 });
+  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects, staleTime: 30_000 });
+  const storeProjectId = useProjectStore((s) => s.currentProjectId);
+
+  // Resolve the breadcrumb: is the route inside a project, or a top-level page?
+  const segments = (pathname ?? "").split("/").filter(Boolean);
+  const routeProject = projects.find((p) => p.id === segments[0]) ?? null;
+  const currentProject = routeProject ?? projects.find((p) => p.id === storeProjectId) ?? projects[0] ?? null;
+
+  const sectionSlug = routeProject ? (segments[1] ?? "overview") : segments[0] ?? "";
+  const sectionKey = SECTION_KEY[sectionSlug];
+  const sectionLabel = sectionKey ? t(`nav.${sectionKey}`) : (pathname === "/" ? t("nav.home") : "");
 
   function handleLogout() {
     authLogout();
@@ -51,21 +80,54 @@ export function TopBar() {
   }
 
   return (
-    <header className="relative z-30 flex h-[60px] items-center justify-between border-b border-white/[0.06] bg-background/30 px-5 py-2.5 backdrop-blur-xl">
-      {/* Search → command palette */}
-      <button
-        onClick={openPalette}
-        className="group flex w-72 items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted"
-      >
-        <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
-        <span className="text-sm">{t("topbar.searchPlaceholder")}</span>
-        <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/60 group-hover:text-muted-foreground">
-          ⌘K
-        </kbd>
-      </button>
+    <header className="app-header relative z-30 flex h-[60px] items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+      {/* Breadcrumb / location */}
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
+        {routeProject ? (
+          <>
+            <Link
+              href={`/${routeProject.id}/overview`}
+              className="flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-accent"
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md gradient-brand text-[10px] font-bold text-white">
+                {projectInitials(routeProject.name)}
+              </span>
+              <span className="hidden max-w-[160px] truncate font-semibold text-foreground sm:block">
+                {routeProject.name}
+              </span>
+            </Link>
+            {sectionLabel && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" strokeWidth={2} />
+                <span className="truncate font-medium text-muted-foreground">{sectionLabel}</span>
+              </>
+            )}
+          </>
+        ) : (
+          <span className="flex items-center gap-2 px-1.5 py-1 font-semibold text-foreground">
+            <Home className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.9} />
+            <span className="truncate">{sectionLabel || t("nav.home")}</span>
+          </span>
+        )}
+      </nav>
 
       {/* Actions */}
       <div className="flex items-center gap-1">
+        {/* Search → command palette */}
+        <button
+          onClick={openPalette}
+          aria-label={t("topbar.searchPlaceholder")}
+          className="group flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted sm:w-56 sm:px-3"
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+          <span className="hidden sm:block">{t("topbar.searchPlaceholder")}</span>
+          <kbd className="ml-auto hidden rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/60 group-hover:text-muted-foreground sm:block">
+            ⌘K
+          </kbd>
+        </button>
+
+        <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
+
         {/* Language picker */}
         <LanguagePicker />
 
@@ -86,21 +148,21 @@ export function TopBar() {
         )}
 
         {/* User menu */}
-        <div className="relative ml-1.5" ref={menuRef}>
+        <div className="relative ml-1" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
             className={cn(
               "flex items-center gap-2 rounded-xl border py-1 pl-1 pr-2 transition-all",
               menuOpen
-                ? "border-primary/40 bg-white/[0.06]"
-                : "border-white/[0.07] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.06]",
+                ? "border-primary/40 bg-accent"
+                : "border-border bg-card hover:border-primary/20 hover:bg-accent",
             )}
             aria-label="Account menu"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg gradient-brand text-[11px] font-bold text-white">
               {initials(me?.full_name)}
             </span>
-            <span className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
+            <span className="hidden min-w-0 flex-col items-start leading-tight lg:flex">
               <span className="max-w-[120px] truncate text-xs font-semibold text-foreground">
                 {me?.full_name ?? t("topbar.loading")}
               </span>
