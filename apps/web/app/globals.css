@@ -583,9 +583,63 @@ input:focus, textarea:focus, select:focus {
 }
 .node-active { animation: nodePulse 1.8s ease-out infinite; }
 
+/* -- Marketing / landing page ------------------------------------------------ */
+
+/* Scroll-reveal: elements fade + rise into place when they enter the viewport.
+   Reveal.tsx toggles `.is-visible`. Honour the stagger via --reveal-delay. */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* Warm desert mesh — layered radial glows for the hero/CTA backdrops. */
+.mesh-warm {
+  background:
+    radial-gradient(60% 80% at 15% 0%, hsl(var(--primary) / 0.18) 0%, transparent 55%),
+    radial-gradient(55% 70% at 100% 10%, hsl(var(--primary-accent) / 0.16) 0%, transparent 55%),
+    radial-gradient(70% 90% at 50% 120%, hsl(24 62% 40% / 0.14) 0%, transparent 60%);
+}
+.dark .mesh-warm {
+  background:
+    radial-gradient(60% 80% at 15% 0%, hsl(var(--primary) / 0.22) 0%, transparent 55%),
+    radial-gradient(55% 70% at 100% 10%, hsl(var(--primary-accent) / 0.18) 0%, transparent 55%),
+    radial-gradient(70% 90% at 50% 120%, hsl(18 64% 30% / 0.30) 0%, transparent 60%);
+}
+
+/* Conic ring that slowly rotates behind the hero mark. */
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spinSlow 28s linear infinite; }
+
+/* Logo marquee for the social-proof strip. */
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+.marquee-mask {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* Soft card glow that follows the brand accent on hover. */
+.tilt-card { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease, box-shadow 0.35s ease; }
+.tilt-card:hover {
+  transform: translateY(-4px);
+  border-color: hsl(var(--primary) / 0.35);
+  box-shadow: 0 18px 44px -18px hsl(var(--primary) / 0.45);
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none !important; }
   .animate-fade-in, .animate-slide-up, .animate-scale-in, .animate-toast-in,
   .edge-flow, .node-active, .animate-pulse-dot, .animate-msg-in, .animate-edit-flash, .word-in { animation: none !important; }
+  .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .spin-slow, .marquee-track { animation: none !important; }
 }

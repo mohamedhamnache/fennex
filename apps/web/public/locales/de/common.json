@@ -1996,5 +1996,119 @@
     "tipsTitle": "Nomads Outreach-Tipps",
     "emptyTitle": "Nenne Nomad dein Ziel und er plant die ganze Woche.",
     "emptyDesc": "Fünf Posts auf deine Nische abgestimmt, drei DM-Vorlagen und Tipps — jeder Post landet in deinen Social-Entwürfen, bereit zum Veröffentlichen oder Planen."
+  },
+  "landing": {
+    "nav": {
+      "pack": "Das Rudel",
+      "how": "So funktioniert's",
+      "features": "Funktionen",
+      "results": "Ergebnisse",
+      "signIn": "Anmelden",
+      "start": "Kostenlos starten"
+    },
+    "hero": {
+      "badge": "Eine virtuelle Marketingagentur aus KI-Agenten",
+      "titleA": "Steigere deinen organischen Traffic mit einem",
+      "titleHi": "Rudel aus KI-Spezialisten",
+      "subtitle": "Sieben benannte Agenten recherchieren deine Keywords, schreiben rankende Artikel, gestalten die Visuals, veröffentlichen überall und messen, was wirkt — damit dein Wachstum automatisch zunimmt.",
+      "ctaPrimary": "Kostenlos starten — ohne Karte",
+      "ctaSecondary": "Das Rudel kennenlernen",
+      "trial": "14 Tage kostenlos testen",
+      "keys": "Nutze deine eigenen KI-Schlüssel",
+      "cancel": "Jederzeit kündbar"
+    },
+    "integrations": {
+      "title": "Fügt sich in die Tools ein, mit denen du bereits veröffentlichst"
+    },
+    "pack": {
+      "badge": "Das Fennex-Rudel",
+      "title": "Sieben Spezialisten, ein gemeinsames Ziel",
+      "subtitle": "Jeder Agent hat einen Namen, ein Handwerk und ein Gedächtnis für dein Projekt. Sie geben die Arbeit weiter wie ein echtes Team — keine Prompts zu überwachen.",
+      "ctaTitle": "Setze das Rudel ein",
+      "ctaBody": "Richte deinen Arbeitsbereich ein und lass die Agenten noch heute mit deinem ersten Projekt beginnen.",
+      "ctaLink": "Loslegen"
+    },
+    "loop": {
+      "badge": "Der geschlossene Kreislauf",
+      "title": "Ein Wachstumsmotor, der ständig dazulernt",
+      "subtitle": "Die meisten Tools hören beim Ergebnis auf. Fennex speist die Resultate zurück — jeder Zyklus ist schärfer als der letzte.",
+      "research": {
+        "title": "Recherchieren",
+        "body": "Zerda hört auf deine echten Search-Console-Daten und bringt greifbare Keywords und schnelle CTR-Gewinne ans Licht, die sich lohnen."
+      },
+      "create": {
+        "title": "Erstellen",
+        "body": "Dune schreibt SEO-optimierte Langform in deiner Markenstimme, während Mirage die Visuals gestaltet — Artikel und Bilder, gemeinsam fertig."
+      },
+      "publish": {
+        "title": "Veröffentlichen",
+        "body": "Schiebe fertige Inhalte mit einem Klick direkt zu WordPress, Shopify oder Ghost. Kein Copy-Paste, keine Formatierungsarbeit."
+      },
+      "learn": {
+        "title": "Lernen",
+        "body": "Zerda verfolgt jede Empfehlung, misst, was die Rankings wirklich bewegt hat, und nennt dir den nächsten besten Schritt. Der Kreislauf schließt sich."
+      }
+    },
+    "features": {
+      "badge": "Alles an einem Ort",
+      "title": "Die gesamte Content-Pipeline, erledigt",
+      "subtitle": "Vom ersten Keyword über den veröffentlichten Beitrag bis zum Backlink, der ihn hebt — kein Zusammenstückeln von sechs Tools mehr.",
+      "keyword": {
+        "title": "Keyword-Intelligenz",
+        "body": "Bündle die Nachfrage, finde Gewinne mit geringer Konkurrenz und handle auf Basis deiner eigenen Search-Console-Daten — kein generischer Index."
+      },
+      "articles": {
+        "title": "KI-Langform-Artikel",
+        "body": "Ranking-taugliche Inhalte in Minuten, abgestimmt auf deine Nische und Markenstimme, mit Bildvorschlägen pro Abschnitt."
+      },
+      "images": {
+        "title": "Bild-Studio",
+        "body": "Erzeuge, bearbeite und schichte Visuals per Klartext. Verwandle flache Bilder in bearbeitbare, markengerechte Assets."
+      },
+      "publishing": {
+        "title": "Ein-Klick-Veröffentlichung",
+        "body": "Native Integrationen mit WordPress, Shopify und Ghost bringen deinen Content ohne Umweg live."
+      },
+      "tracking": {
+        "title": "Ranking- & Traffic-Tracking",
+        "body": "Beobachte Positionen, Klicks und Impressionen in Echtzeit — und sieh, welcher Content den Anstieg gebracht hat."
+      },
+      "backlinks": {
+        "title": "Backlinks & Outreach",
+        "body": "Nomad plant eine Woche LinkedIn-Beiträge und verfasst die Ansprache, die Leser zu Kunden macht."
+      }
+    },
+    "results": {
+      "teams": "Teams, die mit Fennex wachsen",
+      "views": "Erzeugte organische Aufrufe",
+      "agents": "KI-Spezialisten in deinem Rudel",
+      "draft": "Durchschnittlicher Artikelentwurf",
+      "quote": "Es fühlt sich wirklich an, als hätte man eine kleine Agentur engagiert. Fennex fand die Keywords, schrieb die Beiträge, veröffentlichte sie und sagte uns dann, welche funktionierten. Unser organischer Traffic hat sich in einem Quartal verdreifacht.",
+      "author": "Maya Lindqvist",
+      "role": "Head of Growth, Northwind Studio"
+    },
+    "cta": {
+      "title": "Dein Rudel ist startklar",
+      "body": "Starte heute kostenlos. Verbinde eine Website, wähle ein Keyword und sieh zu, wie sieben KI-Spezialisten daraus rankenden Content machen.",
+      "primary": "Kostenlos loslegen",
+      "signIn": "Anmelden",
+      "setup": "In unter zwei Minuten eingerichtet"
+    },
+    "footer": {
+      "tagline": "Eine virtuelle Marketingagentur aus KI-Agenten — recherchieren, erstellen, veröffentlichen und wachsen aus einem einzigen Arbeitsbereich.",
+      "product": "Produkt",
+      "company": "Unternehmen",
+      "getStarted": "Loslegen",
+      "about": "Über uns",
+      "blog": "Blog",
+      "careers": "Karriere",
+      "contact": "Kontakt",
+      "signIn": "Anmelden",
+      "createAccount": "Konto erstellen",
+      "rights": "Alle Rechte vorbehalten.",
+      "privacy": "Datenschutz",
+      "terms": "AGB",
+      "status": "Status"
+    }
   }
 }

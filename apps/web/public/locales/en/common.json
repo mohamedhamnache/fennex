@@ -2071,5 +2071,119 @@
     "tipsTitle": "Nomad's outreach tips",
     "emptyTitle": "Tell Nomad your goal and he will map out the whole week.",
     "emptyDesc": "Five posts tuned to your niche, three DM templates, and tips — every post lands in your Social drafts, ready to publish or schedule."
+  },
+  "landing": {
+    "nav": {
+      "pack": "The Pack",
+      "how": "How it works",
+      "features": "Features",
+      "results": "Results",
+      "signIn": "Sign in",
+      "start": "Start free"
+    },
+    "hero": {
+      "badge": "A virtual marketing agency of AI agents",
+      "titleA": "Grow organic traffic with a",
+      "titleHi": "pack of AI specialists",
+      "subtitle": "Seven named agents research your keywords, write ranking articles, design the visuals, publish everywhere, and measure what works — so your growth compounds on autopilot.",
+      "ctaPrimary": "Start free — no card required",
+      "ctaSecondary": "Meet the pack",
+      "trial": "Free 14-day trial",
+      "keys": "Bring your own AI keys",
+      "cancel": "Cancel anytime"
+    },
+    "integrations": {
+      "title": "Plugs into the tools you already publish with"
+    },
+    "pack": {
+      "badge": "The Fennex Pack",
+      "title": "Seven specialists, one shared goal",
+      "subtitle": "Every agent has a name, a craft, and memory of your project. They hand work to one another like a real team — no prompts to babysit.",
+      "ctaTitle": "Put the pack to work",
+      "ctaBody": "Spin up your workspace and let the agents start on your first project today.",
+      "ctaLink": "Get started"
+    },
+    "loop": {
+      "badge": "The closed loop",
+      "title": "A growth engine that keeps learning",
+      "subtitle": "Most tools stop at output. Fennex feeds results back in — every cycle is sharper than the last.",
+      "research": {
+        "title": "Research",
+        "body": "Zerda listens to your real Search Console data and surfaces striking-distance keywords and CTR quick wins worth chasing."
+      },
+      "create": {
+        "title": "Create",
+        "body": "Dune writes SEO-optimized long-form in your brand voice while Mirage crafts the visuals — articles and imagery, ready together."
+      },
+      "publish": {
+        "title": "Publish",
+        "body": "Push finished content straight to WordPress, Shopify or Ghost in a single click. No copy-paste, no formatting cleanup."
+      },
+      "learn": {
+        "title": "Learn",
+        "body": "Zerda tracks every recommendation, measures what actually moved rankings, and tells you the next best move. The loop closes."
+      }
+    },
+    "features": {
+      "badge": "Everything in one place",
+      "title": "The whole content pipeline, handled",
+      "subtitle": "From the first keyword to the published post and the backlink that lifts it — no more stitching six tools together.",
+      "keyword": {
+        "title": "Keyword intelligence",
+        "body": "Cluster demand, find low-competition wins, and act on your own Search Console data — not a generic index."
+      },
+      "articles": {
+        "title": "AI long-form articles",
+        "body": "Ranking-grade content in minutes, tuned to your niche and brand voice, with images suggested per section."
+      },
+      "images": {
+        "title": "Image Studio",
+        "body": "Generate, edit and layer visuals from plain language. Turn flat images into editable, on-brand assets."
+      },
+      "publishing": {
+        "title": "One-click publishing",
+        "body": "Native integrations with WordPress, Shopify and Ghost push polished content live without a detour."
+      },
+      "tracking": {
+        "title": "Rank & traffic tracking",
+        "body": "Watch positions, clicks and impressions move in real time — and see which content earned the lift."
+      },
+      "backlinks": {
+        "title": "Backlinks & outreach",
+        "body": "Nomad plans a week of LinkedIn posts and drafts the outreach that turns readers into clients."
+      }
+    },
+    "results": {
+      "teams": "Teams growing with Fennex",
+      "views": "Organic views generated",
+      "agents": "AI specialists in your pack",
+      "draft": "Average article draft",
+      "quote": "It genuinely feels like hiring a small agency. Fennex found the keywords, wrote the posts, published them, and then told us which ones were working. Our organic traffic tripled in a quarter.",
+      "author": "Maya Lindqvist",
+      "role": "Head of Growth, Northwind Studio"
+    },
+    "cta": {
+      "title": "Your pack is ready to run",
+      "body": "Start free today. Connect a site, pick a keyword, and watch seven AI specialists turn it into ranking content.",
+      "primary": "Get started free",
+      "signIn": "Sign in",
+      "setup": "Set up in under two minutes"
+    },
+    "footer": {
+      "tagline": "A virtual marketing agency of AI agents — research, create, publish and grow from a single workspace.",
+      "product": "Product",
+      "company": "Company",
+      "getStarted": "Get started",
+      "about": "About",
+      "blog": "Blog",
+      "careers": "Careers",
+      "contact": "Contact",
+      "signIn": "Sign in",
+      "createAccount": "Create account",
+      "rights": "All rights reserved.",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "status": "Status"
+    }
   }
 }
