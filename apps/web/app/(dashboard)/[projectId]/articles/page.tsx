@@ -399,10 +399,18 @@ function PublishModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">{t("articles.publishModal.title")}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="animate-scale-in relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-28"
+          style={{ background: "radial-gradient(420px 120px at 50% -30%, hsl(var(--primary) / 0.18), transparent 70%)" }}
+        />
+        <div className="relative flex items-center gap-3 border-b border-border px-6 py-5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl gradient-brand glow-primary">
+            <Send className="h-5 w-5 text-white" strokeWidth={1.9} />
+          </span>
+          <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{t("articles.publishModal.title")}</h2>
         </div>
 
         <div className="p-6 flex flex-col gap-4">
@@ -414,8 +422,8 @@ function PublishModal({
 
           {result !== null ? (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
-                <CheckCircle2 className="h-6 w-6 text-success" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success/15 ring-1 ring-success/25">
+                <CheckCircle2 className="h-7 w-7 text-success" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">{t("articles.publishModal.publishedSuccess")}</p>
@@ -466,20 +474,25 @@ function PublishModal({
                 <label className="block text-sm font-medium text-foreground mb-2">
                   {t("articles.publishModal.publishAs")}
                 </label>
-                <div className="flex gap-4">
-                  {(["draft", "publish"] as const).map((opt) => (
-                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="publish_status"
-                        value={opt}
-                        checked={publishStatus === opt}
-                        onChange={() => setPublishStatus(opt)}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm text-foreground capitalize">{opt}</span>
-                    </label>
-                  ))}
+                <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/40 p-1">
+                  {(["draft", "publish"] as const).map((opt) => {
+                    const active = publishStatus === opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPublishStatus(opt)}
+                        aria-pressed={active}
+                        className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-all active:scale-[0.98] ${
+                          active
+                            ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/20"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
