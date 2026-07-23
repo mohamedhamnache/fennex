@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { X, FileText, Share2, Image as ImageIcon, Loader2 } from "lucide-react";
+import { X, FileText, Share2, Image as ImageIcon, Loader2, CalendarPlus } from "lucide-react";
 import {
   createCalendarEntry,
   listArticles,
@@ -37,6 +37,14 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
   const [scheduledAt, setScheduledAt] = useState<string>(defaultDate ?? "");
   const [connectionId, setConnectionId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Can't schedule in the past: constrain the picker and re-derive on open.
+  const nowLocal = useMemo(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
+  const isPast = scheduledAt.length > 0 && new Date(scheduledAt).getTime() < Date.now();
 
   const { data: articles = [] } = useQuery({
     queryKey: ["calendar-articles", projectId],
@@ -90,7 +98,7 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
     setConnectionId("");
   }
 
-  const canSubmit = contentId.length > 0 && scheduledAt.length > 0 && !submitting;
+  const canSubmit = contentId.length > 0 && scheduledAt.length > 0 && !isPast && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -124,9 +132,19 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative flex w-full max-w-lg flex-col rounded-2xl border border-border bg-card shadow-lg animate-scale-in max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-border p-5">
-          <h2 className="text-lg font-semibold text-foreground">{t("calendar.addContent")}</h2>
+      <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg animate-scale-in max-h-[90vh]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-24"
+          style={{ background: "radial-gradient(420px 110px at 50% -30%, hsl(var(--primary) / 0.16), transparent 70%)" }}
+        />
+        <div className="relative flex items-center justify-between border-b border-border p-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl gradient-brand glow-primary">
+              <CalendarPlus className="h-5 w-5 text-white" strokeWidth={1.9} />
+            </span>
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{t("calendar.addContent")}</h2>
+          </div>
           <button
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -194,9 +212,11 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
             <input
               type="datetime-local"
               value={scheduledAt}
+              min={nowLocal}
               onChange={(e) => setScheduledAt(e.target.value)}
-              className={inputClass}
+              className={cn(inputClass, isPast && "border-destructive/60")}
             />
+            {isPast && <p className="mt-1 text-[11px] text-destructive">{t("calendar.noPast")}</p>}
           </div>
 
           {contentType !== "social" && (

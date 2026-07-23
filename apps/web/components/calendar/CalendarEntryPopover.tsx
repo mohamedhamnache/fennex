@@ -41,6 +41,11 @@ export function CalendarEntryPopover({ projectId, entry, onClose }: CalendarEntr
   const queryClient = useQueryClient();
 
   const [scheduledAt, setScheduledAt] = useState(() => toLocalInputValue(entry.scheduled_at));
+  const nowLocal = useMemo(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
   const [targetKind, setTargetKind] = useState<"wordpress" | "linkedin">(entry.target_kind ?? (entry.content_type === "social" ? "linkedin" : "wordpress"));
   const [connectionId, setConnectionId] = useState(entry.connection_id ?? "");
   const [busy, setBusy] = useState(false);
@@ -60,8 +65,10 @@ export function CalendarEntryPopover({ projectId, entry, onClose }: CalendarEntr
   }
 
   async function handleReschedule(value: string) {
+    if (!value) { setScheduledAt(value); return; }
+    // No scheduling in the past (the picker's `min` also guards this).
+    if (new Date(value).getTime() < Date.now()) return;
     setScheduledAt(value);
-    if (!value) return;
     setBusy(true);
     try {
       await updateCalendarEntry(entry.id, { scheduled_at: new Date(value).toISOString() });
@@ -171,6 +178,7 @@ export function CalendarEntryPopover({ projectId, entry, onClose }: CalendarEntr
             <input
               type="datetime-local"
               value={scheduledAt}
+              min={nowLocal}
               onChange={(e) => handleReschedule(e.target.value)}
               disabled={busy}
               className={inputClass}
