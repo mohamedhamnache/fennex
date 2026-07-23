@@ -27,6 +27,26 @@ function FieldCard({ icon: Icon, title, children }: { icon: LucideIcon; title: s
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30";
 
+// Curated brand fonts for the typography pickers.
+const FONT_OPTIONS = [
+  "Inter", "Roboto", "Open Sans", "Lato", "Montserrat", "Poppins", "Nunito",
+  "Raleway", "Work Sans", "DM Sans", "Space Grotesk", "Playfair Display",
+  "Merriweather", "Lora", "Fraunces", "Georgia", "Oswald", "Bebas Neue",
+];
+
+/** Font dropdown; preserves any custom value already saved on the kit. */
+function FontSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const opts = value && !FONT_OPTIONS.includes(value) ? [value, ...FONT_OPTIONS] : FONT_OPTIONS;
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={INPUT_CLS} style={{ fontFamily: value || undefined }}>
+      <option value="">—</option>
+      {opts.map((f) => (
+        <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
+      ))}
+    </select>
+  );
+}
+
 export function BrandKitSection() {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -222,11 +242,11 @@ export function BrandKitSection() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("settings.brandKit.primaryFont")}</label>
-            <input value={primaryFont} onChange={(e) => touch(setPrimaryFont)(e.target.value)} placeholder={t("settings.brandKit.primaryFontPlaceholder")} className={INPUT_CLS} />
+            <FontSelect value={primaryFont} onChange={touch(setPrimaryFont)} />
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("settings.brandKit.secondaryFont")}</label>
-            <input value={secondaryFont} onChange={(e) => touch(setSecondaryFont)(e.target.value)} placeholder={t("settings.brandKit.secondaryFontPlaceholder")} className={INPUT_CLS} />
+            <FontSelect value={secondaryFont} onChange={touch(setSecondaryFont)} />
           </div>
         </div>
       </FieldCard>
