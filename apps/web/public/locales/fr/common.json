@@ -883,7 +883,13 @@
         "brandVoices": "Voix de marque",
         "audits": "Exécutions d'audit",
         "backlinks": "Analyses de backlinks"
-      }
+      },
+      "title": "Facturation",
+      "subtitle": "Gérez votre offre et suivez l'utilisation du mois.",
+      "popular": "Populaire",
+      "perMonth": "/mois",
+      "billedAnnually": "facturé annuellement",
+      "free": "Gratuit"
     },
     "project": {
       "title": "Projet",
@@ -909,17 +915,79 @@
         "freelancer": "Freelance"
       },
       "palette": "Palette d'accent",
-      "paletteHint": "Définit la couleur d'accent de ce projet dans toute l'app. Enregistré instantanément.",
+      "paletteHint": "Définit la couleur d'accent du projet dans toute l'app — appliquée instantanément.",
       "paletteSaved": "Palette mise à jour",
       "palettes": {
         "desert": "Désert",
         "indigo": "Indigo",
-        "teal": "Sarcelle",
+        "teal": "Turquoise",
         "forest": "Forêt",
         "amber": "Ambre",
         "rose": "Rose",
         "plum": "Prune"
-      }
+      },
+      "custom": "Personnalisé",
+      "accentPreview": "Aperçu"
+    },
+    "title": "Paramètres",
+    "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",
+    "searchPlaceholder": "Rechercher des paramètres…",
+    "noResults": "Aucun paramètre correspondant.",
+    "groups": {
+      "account": "Compte",
+      "workspace": "Espace de travail"
+    },
+    "nav": {
+      "account": "Compte",
+      "appearance": "Apparence",
+      "organization": "Organisation",
+      "billing": "Facturation",
+      "project": "Projet",
+      "team": "Équipe",
+      "brandKit": "Kit de marque",
+      "aiKeys": "Clés IA",
+      "social": "Comptes sociaux"
+    },
+    "appearance": {
+      "title": "Apparence",
+      "subtitle": "Choisissez l'apparence de Fennex sur cet appareil.",
+      "theme": "Thème",
+      "themeHint": "S'applique instantanément et est mémorisé sur cet appareil.",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système",
+      "accentNote": "Les couleurs d'accent se règlent par projet dans les paramètres du projet."
+    },
+    "brandKit": {
+      "title": "Kit de marque",
+      "subtitle": "Votre identité est injectée automatiquement dans les prompts d'images quand « Utiliser le kit de marque » est activé dans le studio.",
+      "preview": "Aperçu en direct",
+      "brandName": "Votre marque",
+      "specimen": "Portez ce vieux whisky",
+      "logo": "Logo",
+      "replace": "Remplacer",
+      "uploadCta": "Téléverser un logo",
+      "uploadHint": "PNG, JPG ou SVG · max 5 Mo",
+      "uploading": "Téléversement…",
+      "noLogo": "Pas encore de logo",
+      "colors": "Couleurs de la marque",
+      "addColor": "Ajouter une couleur",
+      "noColors": "Ajoutez vos couleurs de marque",
+      "typography": "Typographie",
+      "primaryFont": "Police principale",
+      "secondaryFont": "Police secondaire",
+      "primaryFontPlaceholder": "ex. Inter",
+      "secondaryFontPlaceholder": "ex. Playfair Display",
+      "addFonts": "Ajoutez vos polices ci-dessous",
+      "voice": "Voix & style",
+      "styleRules": "Règles de style",
+      "styleRulesPlaceholder": "ex. Fonds blancs épurés, minimal, haut de gamme",
+      "tone": "Ton / ambiance",
+      "tonePlaceholder": "ex. Premium, assuré, sobre",
+      "save": "Enregistrer le kit",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "saveError": "Échec de l'enregistrement — réessayez."
     }
   },
   "billing": {

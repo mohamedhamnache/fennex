@@ -883,7 +883,13 @@
         "brandVoices": "أصوات العلامة",
         "audits": "عمليات التدقيق",
         "backlinks": "تحليلات الروابط الخلفية"
-      }
+      },
+      "title": "الفوترة",
+      "subtitle": "أدر خطتك وتابع استخدام هذا الشهر.",
+      "popular": "الأكثر شيوعًا",
+      "perMonth": "/شهر",
+      "billedAnnually": "يُفوتر سنويًا",
+      "free": "مجاني"
     },
     "project": {
       "title": "المشروع",
@@ -909,17 +915,79 @@
         "freelancer": "مستقل"
       },
       "palette": "لوحة التمييز",
-      "paletteHint": "تحدد لون التمييز لهذا المشروع في كامل التطبيق. يُحفظ فورًا.",
+      "paletteHint": "تحدد لون التمييز للمشروع في التطبيق كله — يُطبَّق فورًا.",
       "paletteSaved": "تم تحديث اللوحة",
       "palettes": {
         "desert": "صحراء",
         "indigo": "نيلي",
-        "teal": "أزرق مخضر",
+        "teal": "فيروزي",
         "forest": "غابة",
         "amber": "كهرماني",
         "rose": "وردي",
         "plum": "برقوقي"
-      }
+      },
+      "custom": "مخصص",
+      "accentPreview": "معاينة"
+    },
+    "title": "الإعدادات",
+    "subtitle": "أدر حسابك ومساحة عملك وتفضيلاتك.",
+    "searchPlaceholder": "ابحث في الإعدادات…",
+    "noResults": "لا توجد إعدادات مطابقة.",
+    "groups": {
+      "account": "الحساب",
+      "workspace": "مساحة العمل"
+    },
+    "nav": {
+      "account": "الحساب",
+      "appearance": "المظهر",
+      "organization": "المؤسسة",
+      "billing": "الفوترة",
+      "project": "المشروع",
+      "team": "الفريق",
+      "brandKit": "حزمة العلامة",
+      "aiKeys": "مفاتيح الذكاء الاصطناعي",
+      "social": "الحسابات الاجتماعية"
+    },
+    "appearance": {
+      "title": "المظهر",
+      "subtitle": "اختر شكل Fennex على هذا الجهاز.",
+      "theme": "السمة",
+      "themeHint": "يُطبَّق فورًا ويُحفظ على هذا الجهاز.",
+      "light": "فاتح",
+      "dark": "داكن",
+      "system": "النظام",
+      "accentNote": "تُضبط ألوان التمييز لكل مشروع من إعدادات المشروع."
+    },
+    "brandKit": {
+      "title": "حزمة العلامة",
+      "subtitle": "تُدرَج هويتك تلقائيًا في مطالبات الصور عند تفعيل «استخدام حزمة العلامة» في الاستوديو.",
+      "preview": "معاينة حية",
+      "brandName": "علامتك",
+      "specimen": "نص تجريبي للخط",
+      "logo": "الشعار",
+      "replace": "استبدال",
+      "uploadCta": "رفع شعار",
+      "uploadHint": "PNG أو JPG أو SVG · بحد أقصى 5 ميغابايت",
+      "uploading": "جارٍ الرفع…",
+      "noLogo": "لا يوجد شعار بعد",
+      "colors": "ألوان العلامة",
+      "addColor": "إضافة لون",
+      "noColors": "أضف ألوان علامتك",
+      "typography": "الخطوط",
+      "primaryFont": "الخط الأساسي",
+      "secondaryFont": "الخط الثانوي",
+      "primaryFontPlaceholder": "مثل Inter",
+      "secondaryFontPlaceholder": "مثل Playfair Display",
+      "addFonts": "أضف خطوطك أدناه",
+      "voice": "النبرة والأسلوب",
+      "styleRules": "قواعد الأسلوب",
+      "styleRulesPlaceholder": "مثل خلفيات بيضاء نظيفة، بسيط، فاخر",
+      "tone": "النبرة / الأجواء",
+      "tonePlaceholder": "مثل فاخر، واثق، هادئ",
+      "save": "حفظ حزمة العلامة",
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم الحفظ",
+      "saveError": "فشل الحفظ — حاول مجددًا."
     }
   },
   "billing": {

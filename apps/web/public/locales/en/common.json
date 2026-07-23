@@ -980,7 +980,13 @@
         "brandVoices": "Brand voices",
         "audits": "Audit runs",
         "backlinks": "Backlink analyses"
-      }
+      },
+      "title": "Billing",
+      "subtitle": "Manage your plan and track this month's usage.",
+      "popular": "Popular",
+      "perMonth": "/mo",
+      "billedAnnually": "billed annually",
+      "free": "Free"
     },
     "project": {
       "title": "Project",
@@ -1006,7 +1012,7 @@
         "freelancer": "Freelancer"
       },
       "palette": "Accent palette",
-      "paletteHint": "Sets this project's accent color across the whole app. Saved instantly.",
+      "paletteHint": "Sets this project's accent across the whole app — applied instantly.",
       "paletteSaved": "Palette updated",
       "palettes": {
         "desert": "Desert",
@@ -1016,7 +1022,69 @@
         "amber": "Amber",
         "rose": "Rose",
         "plum": "Plum"
-      }
+      },
+      "custom": "Custom",
+      "accentPreview": "Preview"
+    },
+    "title": "Settings",
+    "subtitle": "Manage your account, workspace, and preferences.",
+    "searchPlaceholder": "Search settings…",
+    "noResults": "No settings match.",
+    "groups": {
+      "account": "Account",
+      "workspace": "Workspace"
+    },
+    "nav": {
+      "account": "Account",
+      "appearance": "Appearance",
+      "organization": "Organization",
+      "billing": "Billing",
+      "project": "Project",
+      "team": "Team",
+      "brandKit": "Brand Kit",
+      "aiKeys": "AI Keys",
+      "social": "Social Accounts"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "subtitle": "Choose how Fennex looks on this device.",
+      "theme": "Theme",
+      "themeHint": "Applies instantly and is remembered on this device.",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "accentNote": "Accent colors are set per project in Project settings."
+    },
+    "brandKit": {
+      "title": "Brand Kit",
+      "subtitle": "Your identity is auto-injected into image prompts when “Use brand kit” is on in the studio.",
+      "preview": "Live preview",
+      "brandName": "Your brand",
+      "specimen": "The quick brown fox",
+      "logo": "Logo",
+      "replace": "Replace",
+      "uploadCta": "Upload logo",
+      "uploadHint": "PNG, JPG or SVG · max 5 MB",
+      "uploading": "Uploading…",
+      "noLogo": "No logo yet",
+      "colors": "Brand colors",
+      "addColor": "Add color",
+      "noColors": "Add your brand colors",
+      "typography": "Typography",
+      "primaryFont": "Primary font",
+      "secondaryFont": "Secondary font",
+      "primaryFontPlaceholder": "e.g. Inter",
+      "secondaryFontPlaceholder": "e.g. Playfair Display",
+      "addFonts": "Add your fonts below",
+      "voice": "Voice & style",
+      "styleRules": "Style rules",
+      "styleRulesPlaceholder": "e.g. Clean white backgrounds, minimal, premium feel",
+      "tone": "Tone / mood",
+      "tonePlaceholder": "e.g. Premium, confident, understated",
+      "save": "Save brand kit",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "saveError": "Failed to save — please try again."
     }
   },
   "billing": {

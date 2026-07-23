@@ -883,7 +883,13 @@
         "brandVoices": "Markenstimmen",
         "audits": "Audit-Durchläufe",
         "backlinks": "Backlink-Analysen"
-      }
+      },
+      "title": "Abrechnung",
+      "subtitle": "Verwalte deinen Tarif und behalte den Verbrauch dieses Monats im Blick.",
+      "popular": "Beliebt",
+      "perMonth": "/Mon.",
+      "billedAnnually": "jährlich abgerechnet",
+      "free": "Kostenlos"
     },
     "project": {
       "title": "Projekt",
@@ -908,18 +914,80 @@
         "ecommerce": "E-Commerce",
         "freelancer": "Freelancer"
       },
-      "palette": "Akzent-Palette",
-      "paletteHint": "Legt die Akzentfarbe dieses Projekts in der ganzen App fest. Sofort gespeichert.",
+      "palette": "Akzentpalette",
+      "paletteHint": "Legt die Akzentfarbe des Projekts in der ganzen App fest – sofort angewendet.",
       "paletteSaved": "Palette aktualisiert",
       "palettes": {
         "desert": "Wüste",
         "indigo": "Indigo",
-        "teal": "Petrol",
+        "teal": "Türkis",
         "forest": "Wald",
         "amber": "Bernstein",
         "rose": "Rosé",
         "plum": "Pflaume"
-      }
+      },
+      "custom": "Benutzerdefiniert",
+      "accentPreview": "Vorschau"
+    },
+    "title": "Einstellungen",
+    "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",
+    "searchPlaceholder": "Einstellungen suchen…",
+    "noResults": "Keine Einstellung gefunden.",
+    "groups": {
+      "account": "Konto",
+      "workspace": "Arbeitsbereich"
+    },
+    "nav": {
+      "account": "Konto",
+      "appearance": "Darstellung",
+      "organization": "Organisation",
+      "billing": "Abrechnung",
+      "project": "Projekt",
+      "team": "Team",
+      "brandKit": "Marken-Kit",
+      "aiKeys": "KI-Schlüssel",
+      "social": "Soziale Konten"
+    },
+    "appearance": {
+      "title": "Darstellung",
+      "subtitle": "Lege fest, wie Fennex auf diesem Gerät aussieht.",
+      "theme": "Design",
+      "themeHint": "Wird sofort angewendet und auf diesem Gerät gespeichert.",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "System",
+      "accentNote": "Akzentfarben werden pro Projekt in den Projekteinstellungen festgelegt."
+    },
+    "brandKit": {
+      "title": "Marken-Kit",
+      "subtitle": "Deine Identität wird automatisch in Bild-Prompts eingefügt, wenn „Marken-Kit verwenden“ im Studio aktiv ist.",
+      "preview": "Live-Vorschau",
+      "brandName": "Deine Marke",
+      "specimen": "Franz jagt im Taxi",
+      "logo": "Logo",
+      "replace": "Ersetzen",
+      "uploadCta": "Logo hochladen",
+      "uploadHint": "PNG, JPG oder SVG · max. 5 MB",
+      "uploading": "Wird hochgeladen…",
+      "noLogo": "Noch kein Logo",
+      "colors": "Markenfarben",
+      "addColor": "Farbe hinzufügen",
+      "noColors": "Füge deine Markenfarben hinzu",
+      "typography": "Typografie",
+      "primaryFont": "Primäre Schrift",
+      "secondaryFont": "Sekundäre Schrift",
+      "primaryFontPlaceholder": "z. B. Inter",
+      "secondaryFontPlaceholder": "z. B. Playfair Display",
+      "addFonts": "Füge unten deine Schriften hinzu",
+      "voice": "Stimme & Stil",
+      "styleRules": "Stilregeln",
+      "styleRulesPlaceholder": "z. B. Saubere weiße Hintergründe, minimal, edel",
+      "tone": "Ton / Stimmung",
+      "tonePlaceholder": "z. B. Edel, souverän, zurückhaltend",
+      "save": "Marken-Kit speichern",
+      "saving": "Speichern…",
+      "saved": "Gespeichert",
+      "saveError": "Speichern fehlgeschlagen – bitte erneut versuchen."
     }
   },
   "billing": {

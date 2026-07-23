@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,6 +10,9 @@ import {
   Trash2, Plus, Eye, EyeOff, Link2, Link2Off,
   UserX, UserPlus, Copy, Check, ChevronRight,
   Shield, AtSign, Calendar, CreditCard, Palette, Globe,
+  Sun, Moon, Monitor, Search, Brush, Settings as SettingsIcon,
+  FileText, Image as ImageIcon, Gauge, Mic2, Sparkles, Star,
+  type LucideIcon,
 } from "lucide-react";
 import {
   getMe,
@@ -19,6 +23,7 @@ import {
   listProjects, updateProject, type ProjectPersona,
 } from "@/lib/api";
 import { BrandKitSection } from "@/components/settings/BrandKitSection";
+import { applyPalette, isCustomTheme } from "@/lib/palette";
 import { useProjectStore } from "@/lib/store";
 import { useUsageStore } from "@/lib/billing-store";
 import { Badge } from "@/components/ui/Badge";
@@ -76,16 +81,20 @@ const SOCIAL_PLATFORMS = [
 
 type PlatformId = (typeof SOCIAL_PLATFORMS)[number]["id"];
 
+// Grouped nav. `navKey` maps to settings.nav.<navKey>; `tone` colors the icon chip.
 const NAV_ITEMS = [
-  { id: "account", label: "Account", icon: User },
-  { id: "organization", label: "Organization", icon: Building2 },
-  { id: "project", label: "Project", icon: Globe },
-  { id: "team", label: "Team", icon: Users },
-  { id: "ai-keys", label: "AI Keys", icon: KeyRound },
-  { id: "brand-kit", label: "Brand Kit", icon: Palette },
-  { id: "social", label: "Social Accounts", icon: Share2 },
-  { id: "billing", label: "Billing", icon: CreditCard },
+  { id: "account", navKey: "account", icon: User, group: "account", tone: "bg-primary/12 text-primary" },
+  { id: "appearance", navKey: "appearance", icon: Palette, group: "account", tone: "bg-violet-500/12 text-violet-500" },
+  { id: "organization", navKey: "organization", icon: Building2, group: "account", tone: "bg-sky-500/12 text-sky-500" },
+  { id: "billing", navKey: "billing", icon: CreditCard, group: "account", tone: "bg-emerald-500/12 text-emerald-500" },
+  { id: "project", navKey: "project", icon: Globe, group: "workspace", tone: "bg-primary/12 text-primary" },
+  { id: "team", navKey: "team", icon: Users, group: "workspace", tone: "bg-amber-500/12 text-amber-500" },
+  { id: "brand-kit", navKey: "brandKit", icon: Brush, group: "workspace", tone: "bg-rose-500/12 text-rose-500" },
+  { id: "ai-keys", navKey: "aiKeys", icon: KeyRound, group: "workspace", tone: "bg-sky-500/12 text-sky-500" },
+  { id: "social", navKey: "social", icon: Share2, group: "workspace", tone: "bg-violet-500/12 text-violet-500" },
 ] as const;
+
+const NAV_GROUPS = ["account", "workspace"] as const;
 
 const PROJECT_LANGS = [
   { code: "en", label: "English" },
@@ -141,13 +150,30 @@ const RESOURCE_LABELS: Record<string, string> = {
   backlinks: "Backlink analyses",
 };
 
+const RESOURCE_ICON: Record<string, LucideIcon> = {
+  articles: FileText,
+  images: ImageIcon,
+  social: Share2,
+  keywords: Search,
+  brand_voices: Mic2,
+  audits: Gauge,
+  backlinks: Link2,
+};
+
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function SectionHeader({ title, description }: { title: string; description?: string }) {
+function SectionHeader({ icon: Icon, title, description }: { icon?: LucideIcon; title: string; description?: string }) {
   return (
-    <div className="mb-6">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="mb-6 flex items-start gap-3">
+      {Icon && (
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" strokeWidth={1.9} />
+        </span>
+      )}
+      <div className="min-w-0">
+        <h2 className="font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
+        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+      </div>
     </div>
   );
 }
@@ -168,7 +194,7 @@ function InfoRow({ icon: Icon, label, value, mono = false }: { icon: React.Eleme
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border bg-card ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-border bg-card/60 backdrop-blur-sm ${className}`}>{children}</div>
   );
 }
 
@@ -242,7 +268,7 @@ function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnT
 
   return (
     <div>
-      <SectionHeader title={t("settings.account.title")} description={t("settings.account.subtitle")} />
+      <SectionHeader icon={User} title={t("settings.account.title")} description={t("settings.account.subtitle")} />
 
       {/* Avatar block */}
       <div className="mb-6 flex items-center gap-4">
@@ -299,7 +325,7 @@ function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<Re
 
   return (
     <div>
-      <SectionHeader title={t("settings.organization.title")} description={t("settings.organization.subtitle")} />
+      <SectionHeader icon={Building2} title={t("settings.organization.title")} description={t("settings.organization.subtitle")} />
 
       <Card>
         <div className="px-5">
@@ -945,24 +971,38 @@ function BillingSection() {
     : null;
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Current plan card */}
-      <div className="glass rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("settings.billing.currentPlan")}</p>
-            <p className="mt-1 text-2xl font-bold capitalize">{currentTier}</p>
-            {trialDaysLeft !== null && trialDaysLeft > 0 && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
-                {t("settings.billing.trialEnds", { n: trialDaysLeft })}
-              </span>
-            )}
+    <div className="flex flex-col gap-6">
+      <SectionHeader icon={CreditCard} title={t("settings.billing.title")} description={t("settings.billing.subtitle")} />
+
+      {/* Current plan hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-card/60 p-5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(560px 200px at 10% -30%, hsl(var(--primary) / 0.18), transparent 60%), radial-gradient(420px 160px at 100% 120%, hsl(var(--primary-accent) / 0.12), transparent 60%)" }}
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl gradient-brand text-white glow-primary">
+              <Sparkles className="h-6 w-6" strokeWidth={1.9} />
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{t("settings.billing.currentPlan")}</p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
+                <p className="font-display text-3xl font-bold capitalize leading-none text-foreground">{currentTier}</p>
+                {trialDaysLeft !== null && trialDaysLeft > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-warning/12 px-2.5 py-0.5 text-xs font-medium text-warning">
+                    {t("settings.billing.trialEnds", { n: trialDaysLeft })}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           {currentTier !== "free" && (
             <button
               onClick={() => portalMutation.mutate()}
               disabled={portalMutation.isPending}
-              className="btn-aurora px-4 py-2 text-sm"
+              className="btn-primary px-4 py-2 text-sm"
             >
               {portalMutation.isPending ? t("settings.billing.opening") : t("settings.billing.managePlan")}
             </button>
@@ -972,47 +1012,59 @@ function BillingSection() {
 
       {/* Usage meters */}
       {billing && Object.keys(billing.usage).length > 0 && (
-        <div className="glass rounded-xl p-6">
-          <p className="mb-4 text-sm font-semibold">{t("settings.billing.usageThisMonth")}</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {Object.entries(billing.usage).map(([resource, { used, limit, pct }]) => (
-              <div key={resource}>
-                <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-muted-foreground">{t(`settings.billing.resources.${resource}`) || RESOURCE_LABELS[resource] || resource}</span>
-                  <span className={pct >= 1 ? "text-destructive" : pct >= 0.8 ? "text-warning" : "text-foreground"}>
-                    {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
+        <Card className="p-5">
+          <p className="mb-4 flex items-center gap-2 text-sm font-semibold">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary"><Gauge className="h-3.5 w-3.5" strokeWidth={2} /></span>
+            {t("settings.billing.usageThisMonth")}
+          </p>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            {Object.entries(billing.usage).map(([resource, { used, limit, pct }]) => {
+              const RIcon = RESOURCE_ICON[resource] ?? Sparkles;
+              const over = pct >= 1;
+              const near = pct >= 0.8 && pct < 1;
+              return (
+                <div key={resource} className="flex items-center gap-3">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${over ? "bg-destructive/12 text-destructive" : near ? "bg-warning/12 text-warning" : "bg-muted text-muted-foreground"}`}>
+                    <RIcon className="h-4 w-4" strokeWidth={1.9} />
                   </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-muted-foreground">{t(`settings.billing.resources.${resource}`) || RESOURCE_LABELS[resource] || resource}</span>
+                      <span className={`shrink-0 font-medium tabular-nums ${over ? "text-destructive" : near ? "text-warning" : "text-foreground"}`}>
+                        {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full transition-all ${over ? "bg-destructive" : near ? "bg-warning" : "gradient-brand"}`}
+                        style={{ width: `${Math.max(Math.min(pct * 100, 100), pct > 0 ? 4 : 0)}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      pct >= 1 ? "bg-destructive" : pct >= 0.8 ? "bg-warning" : "bg-primary"
-                    }`}
-                    style={{ width: `${Math.min(pct * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Pricing table */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm font-semibold">{t("settings.billing.plans")}</p>
-          <div className="flex items-center gap-2 rounded-lg border border-border p-1">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground">{t("settings.billing.plans")}</p>
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
             <button
               onClick={() => setAnnual(false)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${!annual ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${!annual ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/15" : "text-muted-foreground hover:text-foreground"}`}
             >
               {t("settings.billing.monthly")}
             </button>
             <button
               onClick={() => setAnnual(true)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${annual ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${annual ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/15" : "text-muted-foreground hover:text-foreground"}`}
             >
-              {t("settings.billing.annual")} <span className="text-success">{t("settings.billing.annualDiscount")}</span>
+              {t("settings.billing.annual")}
+              <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success">{t("settings.billing.annualDiscount")}</span>
             </button>
           </div>
         </div>
@@ -1021,37 +1073,52 @@ function BillingSection() {
             const planIdx = tierOrder.indexOf(plan.id);
             const isCurrent = plan.id === currentTier;
             const isUpgrade = planIdx > currentIdx;
+            const popular = plan.id === "pro";
 
             return (
               <div
                 key={plan.id}
-                className={`glass rounded-xl p-5 flex flex-col gap-4 ${isCurrent ? "border-primary/50" : ""}`}
+                className={`relative flex flex-col gap-4 rounded-2xl border p-5 transition-all ${
+                  isCurrent
+                    ? "border-primary bg-primary/[0.04] ring-1 ring-inset ring-primary/20"
+                    : popular
+                      ? "border-primary/40 bg-card/60 hover:-translate-y-0.5 hover:shadow-lg"
+                      : "border-border bg-card/60 hover:-translate-y-0.5 hover:border-primary/25"
+                }`}
               >
+                {popular && !isCurrent && (
+                  <span className="absolute -top-2.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full gradient-brand px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                    <Star className="h-2.5 w-2.5 fill-current" /> {t("settings.billing.popular")}
+                  </span>
+                )}
                 <div>
-                  <p className="font-bold text-lg">{plan.name}</p>
-                  <p className="mt-1 text-2xl font-bold">
-                    {plan.monthlyPrice === 0 ? "Free" : (
-                      <>${annual ? plan.annualPrice : plan.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">/mo</span></>
+                  <p className="font-display text-lg font-bold text-foreground">{plan.name}</p>
+                  <p className="mt-1 font-display text-3xl font-bold tracking-tight text-foreground">
+                    {plan.monthlyPrice === 0 ? t("settings.billing.free") : (
+                      <>${annual ? plan.annualPrice : plan.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">{t("settings.billing.perMonth")}</span></>
                     )}
                   </p>
+                  {annual && plan.monthlyPrice > 0 && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{t("settings.billing.billedAnnually")}</p>
+                  )}
                 </div>
-                <ul className="flex flex-col gap-1.5 flex-1">
+                <ul className="flex flex-1 flex-col gap-2">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
+                    <li key={f} className="flex items-start gap-2 text-xs text-foreground/80">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.4} />
                       {f}
                     </li>
                   ))}
                 </ul>
                 {isCurrent ? (
-                  <button disabled className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground cursor-default">
-                    {t("settings.billing.currentPlan")}
-                  </button>
+                  <span className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary/10 py-2 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+                    <Check className="h-3.5 w-3.5" /> {t("settings.billing.currentPlan")}
+                  </span>
                 ) : isUpgrade ? (
                   <button
                     onClick={() => checkoutMutation.mutate({ tier: plan.id, annual })}
                     disabled={checkoutMutation.isPending}
-                    className="btn-aurora w-full py-2 text-xs"
+                    className="btn-primary w-full py-2 text-xs"
                   >
                     {t("settings.billing.upgrade")}
                   </button>
@@ -1059,7 +1126,7 @@ function BillingSection() {
                   <button
                     onClick={() => portalMutation.mutate()}
                     disabled={portalMutation.isPending}
-                    className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-full rounded-lg border border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     {t("settings.billing.downgrade")}
                   </button>
@@ -1102,7 +1169,7 @@ function ProjectSection() {
 
   const [form, setForm] = useState({
     name: "", domain: "", locale: "en", target_country: "", industry: "", persona: "" as ProjectPersona | "",
-    autopilot_enabled: false,
+    autopilot_enabled: false, theme: "desert",
   });
 
   // Re-seed the form whenever the selected project changes.
@@ -1116,9 +1183,17 @@ function ProjectSection() {
         industry: active.industry ?? "",
         persona: active.persona ?? "",
         autopilot_enabled: active.autopilot_enabled ?? false,
+        theme: active.theme || "desert",
       });
     }
   }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Discard any unsaved accent preview when leaving: restore the app's real
+  // active-project theme (the picker only persists via Save).
+  const appActiveTheme = (projects.find((p) => p.id === currentProjectId) ?? projects[0])?.theme || "desert";
+  const appThemeRef = useRef(appActiveTheme);
+  appThemeRef.current = appActiveTheme;
+  useEffect(() => () => { applyPalette(appThemeRef.current); }, []);
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -1130,21 +1205,13 @@ function ProjectSection() {
         industry: form.industry.trim() || null,
         persona: form.persona || undefined,
         autopilot_enabled: form.autopilot_enabled,
+        theme: form.theme,
       }),
     onSuccess: () => {
       // Refreshing projects also lets I18nProvider pick up a new project
       // language and update the default interface language.
       qc.invalidateQueries({ queryKey: ["projects"] });
       success(t("settings.project.saved"));
-    },
-    onError: () => error(t("settings.project.saveError")),
-  });
-
-  const themeMutation = useMutation({
-    mutationFn: (theme: string) => updateProject(active!.id, { theme }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      success(t("settings.project.paletteSaved", { defaultValue: "Palette updated" }));
     },
     onError: () => error(t("settings.project.saveError")),
   });
@@ -1168,10 +1235,18 @@ function ProjectSection() {
   }
 
   const knownLang = PROJECT_LANGS.some((l) => l.code === form.locale);
+  const currentTheme = form.theme || "desert";
+  const custom = isCustomTheme(form.theme);
+
+  // Live preview only: recolor the app now, but it's definitive on Save.
+  function pickTheme(theme: string) {
+    applyPalette(theme);
+    setForm((f) => ({ ...f, theme }));
+  }
 
   return (
-    <div>
-      <SectionHeader title={t("settings.project.title")} description={t("settings.project.subtitle")} />
+    <div className="flex flex-col gap-5">
+      <SectionHeader icon={Globe} title={t("settings.project.title")} description={t("settings.project.subtitle")} />
 
       <Card className="flex flex-col gap-4 p-5">
         {projects.length > 1 && (
@@ -1239,33 +1314,6 @@ function ProjectSection() {
           </button>
         </div>
 
-        <Field
-          label={t("settings.project.palette", { defaultValue: "Accent palette" })}
-          hint={t("settings.project.paletteHint", { defaultValue: "Sets this project's accent color across the whole app. Saved instantly." })}
-        >
-          <div className="flex flex-wrap gap-2">
-            {PALETTES.map((p) => {
-              const on = (active.theme || "desert") === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => themeMutation.mutate(p.id)}
-                  disabled={themeMutation.isPending}
-                  title={p.label}
-                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                    on ? "border-primary ring-1 ring-primary/40 text-foreground" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  <span className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10" style={{ background: p.color }} />
-                  {t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
-                  {on && <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />}
-                </button>
-              );
-            })}
-          </div>
-        </Field>
-
         {saveMutation.isError && <ErrorMsg>{t("settings.project.saveError")}</ErrorMsg>}
 
         <div>
@@ -1274,14 +1322,180 @@ function ProjectSection() {
           </PrimaryBtn>
         </div>
       </Card>
+
+      {/* Accent palette */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><Palette className="h-3.5 w-3.5" strokeWidth={2} /></span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{t("settings.project.palette")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.project.paletteHint")}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {PALETTES.map((p) => {
+            const on = !custom && currentTheme === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => pickTheme(p.id)}
+                title={t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
+                className="group flex flex-col items-center gap-1.5"
+              >
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-105 ${on ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
+                  style={{ background: p.color, ...(on ? { boxShadow: `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${p.color}` } : {}) }}
+                >
+                  {on && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
+                </span>
+                <span className={`text-[10px] font-medium ${on ? "text-foreground" : "text-muted-foreground"}`}>
+                  {t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Custom color */}
+          <label className="group flex cursor-pointer flex-col items-center gap-1.5" title={t("settings.project.custom")}>
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-transform group-hover:scale-105"
+              style={
+                custom
+                  ? { background: form.theme, boxShadow: `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${form.theme}` }
+                  : { background: "conic-gradient(from 0deg, #ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)" }
+              }
+            >
+              {custom ? <Check className="h-4 w-4" strokeWidth={3} /> : <Plus className="h-4 w-4" strokeWidth={2.5} />}
+              <input
+                type="color"
+                value={custom ? form.theme : "#c2603a"}
+                onChange={(e) => pickTheme(e.target.value)}
+                className="sr-only"
+                aria-label={t("settings.project.custom")}
+              />
+            </span>
+            <span className={`text-[10px] font-medium ${custom ? "text-foreground" : "text-muted-foreground"}`}>{t("settings.project.custom")}</span>
+          </label>
+        </div>
+
+        {/* Live preview */}
+        <div className="mt-5 rounded-xl border border-border bg-background/50 p-4">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{t("settings.project.accentPreview")}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="btn-primary px-3 py-1.5 text-xs">{active.name || "Fennex"}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary">
+              <Sparkles className="h-3 w-3" /> {custom ? t("settings.project.custom") : t(`settings.project.palettes.${currentTheme}`, { defaultValue: currentTheme })}
+            </span>
+            <a className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2">{active.domain || "example.com"}</a>
+            <span className="h-2 w-24 overflow-hidden rounded-full bg-muted"><span className="block h-full w-2/3 rounded-full gradient-brand" /></span>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Appearance ────────────────────────────────────────────────────────────────
+
+/** A tiny app-shell mock used inside the theme preview cards. */
+function ThemeMock({ light }: { light: boolean }) {
+  const bg = light ? "#f6f0e7" : "#171310";
+  const rail = light ? "#e9dccb" : "#241b15";
+  const line = light ? "#d8cbb9" : "#2c231d";
+  return (
+    <span className="flex h-full w-full">
+      <span className="h-full w-1/3" style={{ background: rail }} />
+      <span className="flex-1 p-1.5" style={{ background: bg }}>
+        <span className="block h-1.5 w-7 rounded-full" style={{ background: "#c2603a" }} />
+        <span className="mt-1.5 block h-1 w-full rounded-full" style={{ background: line }} />
+        <span className="mt-1 block h-1 w-2/3 rounded-full" style={{ background: line }} />
+      </span>
+    </span>
+  );
+}
+
+function AppearanceSection() {
+  const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const current = mounted ? (theme ?? "system") : "system";
+
+  const options: { id: "light" | "dark" | "system"; Icon: LucideIcon }[] = [
+    { id: "light", Icon: Sun },
+    { id: "dark", Icon: Moon },
+    { id: "system", Icon: Monitor },
+  ];
+
+  return (
+    <div>
+      <SectionHeader icon={Palette} title={t("settings.appearance.title")} description={t("settings.appearance.subtitle")} />
+      <Field label={t("settings.appearance.theme")} hint={t("settings.appearance.themeHint")}>
+        <div className="grid grid-cols-3 gap-3">
+          {options.map(({ id, Icon }) => {
+            const active = current === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTheme(id)}
+                aria-pressed={active}
+                className={`group flex flex-col items-center gap-2.5 rounded-xl border p-2.5 transition-all active:scale-[0.98] ${
+                  active ? "border-primary bg-primary/[0.05] ring-2 ring-inset ring-primary/25" : "border-border hover:border-primary/30 hover:bg-accent/40"
+                }`}
+              >
+                <span className="flex h-16 w-full overflow-hidden rounded-lg border border-border">
+                  {id === "system" ? (
+                    <>
+                      <span className="w-1/2 overflow-hidden"><ThemeMock light /></span>
+                      <span className="w-1/2 overflow-hidden"><ThemeMock light={false} /></span>
+                    </>
+                  ) : (
+                    <ThemeMock light={id === "light"} />
+                  )}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.9} /> {t(`settings.appearance.${id}`)}
+                  {active && <Check className="h-3.5 w-3.5 text-primary" />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      <p className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+        <Palette className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> {t("settings.appearance.accentNote")}
+      </p>
     </div>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const NAV_IDS = NAV_ITEMS.map((i) => i.id) as readonly string[];
+
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<SectionId>("account");
+  const [query, setQuery] = useState("");
+
+  // Deep-link sections via the URL hash (bookmarkable + back/forward friendly).
+  useEffect(() => {
+    const apply = () => {
+      const h = window.location.hash.replace("#", "");
+      if (h && NAV_IDS.includes(h)) setActiveSection(h as SectionId);
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, []);
+
+  function selectSection(id: SectionId) {
+    setActiveSection(id);
+    if (typeof window !== "undefined") window.history.replaceState(null, "", `#${id}`);
+  }
 
   const { data: me, isLoading } = useQuery({
     queryKey: ["me"],
@@ -1293,13 +1507,14 @@ export default function SettingsPage() {
     if (isLoading || !me) return (
       <div className="flex flex-col gap-4">
         <div className="h-6 w-32 rounded-lg bg-muted/40 animate-pulse" />
-        <div className="h-48 rounded-xl border bg-muted/20 animate-pulse" />
-        <div className="h-32 rounded-xl border bg-muted/20 animate-pulse" />
+        <div className="h-48 rounded-2xl border bg-muted/20 animate-pulse" />
+        <div className="h-32 rounded-2xl border bg-muted/20 animate-pulse" />
       </div>
     );
 
     switch (activeSection) {
       case "account": return <AccountSection me={me} />;
+      case "appearance": return <AppearanceSection />;
       case "organization": return <OrganizationSection me={me} />;
       case "project": return <ProjectSection />;
       case "team": return <TeamSection orgId={me.org_id} myId={me.id} myRole={me.role} />;
@@ -1310,40 +1525,89 @@ export default function SettingsPage() {
     }
   };
 
+  const q = query.trim().toLowerCase();
+  const matches = (navKey: string) => !q || t(`settings.nav.${navKey}`).toLowerCase().includes(q);
+  const anyMatch = NAV_ITEMS.some((it) => matches(it.navKey));
+
   return (
-    <div className="flex h-full gap-8">
-      {/* Sidebar nav */}
-      <aside className="w-52 shrink-0">
-        <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Settings
-        </p>
-        <nav className="flex flex-col gap-0.5">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-            const active = activeSection === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setActiveSection(id)}
-                className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
-                <span className="flex-1 text-left">{label}</span>
-                {active && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
-              </button>
-            );
-          })}
-        </nav>
+    <div className="flex flex-col gap-5 animate-fade-in">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 px-5 py-4">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(600px 160px at 8% -40%, hsl(var(--primary) / 0.14), transparent 60%)" }}
+        />
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-brand glow-primary">
+            <SettingsIcon className="h-5 w-5 text-white" strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">{t("settings.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("settings.subtitle")}</p>
+          </div>
+        </div>
+      </div>
 
-      </aside>
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        {/* Nav rail */}
+        <aside className="shrink-0 self-start lg:sticky lg:top-4 lg:w-60">
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("settings.searchPlaceholder")}
+              className="w-full rounded-xl border border-border bg-input py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+          </div>
 
-      {/* Main content */}
-      <main className="flex-1 min-w-0 max-w-2xl">
-        {renderSection()}
-      </main>
+          {!anyMatch ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">{t("settings.noResults")}</p>
+          ) : (
+            <nav className="flex flex-col gap-4">
+              {NAV_GROUPS.map((group) => {
+                const items = NAV_ITEMS.filter((it) => it.group === group && matches(it.navKey));
+                if (items.length === 0) return null;
+                return (
+                  <div key={group}>
+                    <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
+                      {t(`settings.groups.${group}`)}
+                    </p>
+                    <div className="flex flex-col gap-0.5">
+                      {items.map(({ id, navKey, icon: Icon, tone }) => {
+                        const active = activeSection === id;
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => selectSection(id)}
+                            className={`group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium transition-all ${
+                              active
+                                ? "bg-primary/10 text-foreground ring-1 ring-inset ring-primary/20"
+                                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                            }`}
+                          >
+                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+                              <Icon className="h-4 w-4" strokeWidth={1.9} />
+                            </span>
+                            <span className="flex-1 text-left">{t(`settings.nav.${navKey}`)}</span>
+                            {active && <ChevronRight className="h-3.5 w-3.5 text-primary/70" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </nav>
+          )}
+        </aside>
+
+        {/* Main content */}
+        <main key={activeSection} className="min-w-0 flex-1 animate-fade-in lg:max-w-2xl">
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 }

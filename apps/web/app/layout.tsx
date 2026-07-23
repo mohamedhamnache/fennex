@@ -29,7 +29,7 @@ export default function RootLayout({
         {/* Apply the saved per-project palette before paint to avoid a flash of the default. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var p=localStorage.getItem('fx-palette');if(p)document.documentElement.setAttribute('data-palette',p);}catch(e){}`,
+            __html: `try{var p=localStorage.getItem('fx-palette');if(p){var d=document.documentElement;if(p.charAt(0)==='#'){var x=p.slice(1);if(/^[0-9a-fA-F]{6}$/.test(x)){var n=parseInt(x,16),r=((n>>16)&255)/255,g=((n>>8)&255)/255,b=(n&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,s=0,h=0;if(mx!==mn){var e=mx-mn;s=l>0.5?e/(2-mx-mn):e/(mx+mn);h=mx===r?(g-b)/e+(g<b?6:0):mx===g?(b-r)/e+2:(r-g)/e+4;h/=6;}var H=Math.round(h*360),S=Math.round(s*100),L=Math.round(l*100),P=H+' '+S+'% '+L+'%';d.style.setProperty('--primary',P);d.style.setProperty('--ring',P);d.style.setProperty('--primary-accent',H+' '+Math.min(S+4,100)+'% '+Math.min(L+7,92)+'%');d.style.setProperty('--primary-foreground',L>65?'26 30% 12%':'40 44% 98%');}}else{d.setAttribute('data-palette',p);}}}catch(e){}`,
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>

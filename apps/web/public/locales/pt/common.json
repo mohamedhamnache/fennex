@@ -883,7 +883,13 @@
         "brandVoices": "Vozes de marca",
         "audits": "Execuções de auditoria",
         "backlinks": "Análises de backlinks"
-      }
+      },
+      "title": "Cobrança",
+      "subtitle": "Gerencie seu plano e acompanhe o uso deste mês.",
+      "popular": "Popular",
+      "perMonth": "/mês",
+      "billedAnnually": "cobrado anualmente",
+      "free": "Grátis"
     },
     "project": {
       "title": "Projeto",
@@ -909,17 +915,79 @@
         "freelancer": "Freelancer"
       },
       "palette": "Paleta de destaque",
-      "paletteHint": "Define a cor de destaque deste projeto em todo o app. Salvo instantaneamente.",
+      "paletteHint": "Define a cor de destaque do projeto em todo o app — aplicada na hora.",
       "paletteSaved": "Paleta atualizada",
       "palettes": {
         "desert": "Deserto",
         "indigo": "Índigo",
-        "teal": "Azul-petróleo",
+        "teal": "Turquesa",
         "forest": "Floresta",
         "amber": "Âmbar",
         "rose": "Rosa",
         "plum": "Ameixa"
-      }
+      },
+      "custom": "Personalizado",
+      "accentPreview": "Pré-visualização"
+    },
+    "title": "Configurações",
+    "subtitle": "Gerencie sua conta, espaço de trabalho e preferências.",
+    "searchPlaceholder": "Buscar configurações…",
+    "noResults": "Nenhuma configuração corresponde.",
+    "groups": {
+      "account": "Conta",
+      "workspace": "Espaço de trabalho"
+    },
+    "nav": {
+      "account": "Conta",
+      "appearance": "Aparência",
+      "organization": "Organização",
+      "billing": "Cobrança",
+      "project": "Projeto",
+      "team": "Equipe",
+      "brandKit": "Kit de marca",
+      "aiKeys": "Chaves de IA",
+      "social": "Contas sociais"
+    },
+    "appearance": {
+      "title": "Aparência",
+      "subtitle": "Escolha como o Fennex aparece neste dispositivo.",
+      "theme": "Tema",
+      "themeHint": "Aplica-se na hora e é lembrado neste dispositivo.",
+      "light": "Claro",
+      "dark": "Escuro",
+      "system": "Sistema",
+      "accentNote": "As cores de destaque são definidas por projeto nas configurações do projeto."
+    },
+    "brandKit": {
+      "title": "Kit de marca",
+      "subtitle": "Sua identidade é injetada automaticamente nos prompts de imagem quando “Usar kit de marca” está ativo no estúdio.",
+      "preview": "Pré-visualização",
+      "brandName": "Sua marca",
+      "specimen": "A rápida raposa marrom",
+      "logo": "Logo",
+      "replace": "Substituir",
+      "uploadCta": "Enviar logo",
+      "uploadHint": "PNG, JPG ou SVG · máx 5 MB",
+      "uploading": "Enviando…",
+      "noLogo": "Ainda sem logo",
+      "colors": "Cores da marca",
+      "addColor": "Adicionar cor",
+      "noColors": "Adicione as cores da sua marca",
+      "typography": "Tipografia",
+      "primaryFont": "Fonte principal",
+      "secondaryFont": "Fonte secundária",
+      "primaryFontPlaceholder": "ex. Inter",
+      "secondaryFontPlaceholder": "ex. Playfair Display",
+      "addFonts": "Adicione suas fontes abaixo",
+      "voice": "Voz e estilo",
+      "styleRules": "Regras de estilo",
+      "styleRulesPlaceholder": "ex. Fundos brancos limpos, minimalista, premium",
+      "tone": "Tom / clima",
+      "tonePlaceholder": "ex. Premium, confiante, discreto",
+      "save": "Salvar kit de marca",
+      "saving": "Salvando…",
+      "saved": "Salvo",
+      "saveError": "Falha ao salvar — tente novamente."
     }
   },
   "billing": {
