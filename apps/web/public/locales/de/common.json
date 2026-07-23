@@ -883,7 +883,13 @@
         "brandVoices": "Markenstimmen",
         "audits": "Audit-Durchläufe",
         "backlinks": "Backlink-Analysen"
-      }
+      },
+      "title": "Abrechnung",
+      "subtitle": "Verwalte deinen Tarif und behalte den Verbrauch dieses Monats im Blick.",
+      "popular": "Beliebt",
+      "perMonth": "/Mon.",
+      "billedAnnually": "jährlich abgerechnet",
+      "free": "Kostenlos"
     },
     "project": {
       "title": "Projekt",

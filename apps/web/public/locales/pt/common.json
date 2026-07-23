@@ -883,7 +883,13 @@
         "brandVoices": "Vozes de marca",
         "audits": "Execuções de auditoria",
         "backlinks": "Análises de backlinks"
-      }
+      },
+      "title": "Cobrança",
+      "subtitle": "Gerencie seu plano e acompanhe o uso deste mês.",
+      "popular": "Popular",
+      "perMonth": "/mês",
+      "billedAnnually": "cobrado anualmente",
+      "free": "Grátis"
     },
     "project": {
       "title": "Projeto",

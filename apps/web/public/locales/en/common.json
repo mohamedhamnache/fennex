@@ -980,7 +980,13 @@
         "brandVoices": "Brand voices",
         "audits": "Audit runs",
         "backlinks": "Backlink analyses"
-      }
+      },
+      "title": "Billing",
+      "subtitle": "Manage your plan and track this month's usage.",
+      "popular": "Popular",
+      "perMonth": "/mo",
+      "billedAnnually": "billed annually",
+      "free": "Free"
     },
     "project": {
       "title": "Project",

@@ -11,6 +11,7 @@ import {
   UserX, UserPlus, Copy, Check, ChevronRight,
   Shield, AtSign, Calendar, CreditCard, Palette, Globe,
   Sun, Moon, Monitor, Search, Brush, Settings as SettingsIcon,
+  FileText, Image as ImageIcon, Gauge, Mic2, Sparkles, Star,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -146,6 +147,16 @@ const RESOURCE_LABELS: Record<string, string> = {
   brand_voices: "Brand voices",
   audits: "Audit runs",
   backlinks: "Backlink analyses",
+};
+
+const RESOURCE_ICON: Record<string, LucideIcon> = {
+  articles: FileText,
+  images: ImageIcon,
+  social: Share2,
+  keywords: Search,
+  brand_voices: Mic2,
+  audits: Gauge,
+  backlinks: Link2,
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -959,24 +970,38 @@ function BillingSection() {
     : null;
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Current plan card */}
-      <div className="glass rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("settings.billing.currentPlan")}</p>
-            <p className="mt-1 text-2xl font-bold capitalize">{currentTier}</p>
-            {trialDaysLeft !== null && trialDaysLeft > 0 && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
-                {t("settings.billing.trialEnds", { n: trialDaysLeft })}
-              </span>
-            )}
+    <div className="flex flex-col gap-6">
+      <SectionHeader icon={CreditCard} title={t("settings.billing.title")} description={t("settings.billing.subtitle")} />
+
+      {/* Current plan hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-card/60 p-5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(560px 200px at 10% -30%, hsl(var(--primary) / 0.18), transparent 60%), radial-gradient(420px 160px at 100% 120%, hsl(var(--primary-accent) / 0.12), transparent 60%)" }}
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl gradient-brand text-white glow-primary">
+              <Sparkles className="h-6 w-6" strokeWidth={1.9} />
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{t("settings.billing.currentPlan")}</p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
+                <p className="font-display text-3xl font-bold capitalize leading-none text-foreground">{currentTier}</p>
+                {trialDaysLeft !== null && trialDaysLeft > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-warning/12 px-2.5 py-0.5 text-xs font-medium text-warning">
+                    {t("settings.billing.trialEnds", { n: trialDaysLeft })}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           {currentTier !== "free" && (
             <button
               onClick={() => portalMutation.mutate()}
               disabled={portalMutation.isPending}
-              className="btn-aurora px-4 py-2 text-sm"
+              className="btn-primary px-4 py-2 text-sm"
             >
               {portalMutation.isPending ? t("settings.billing.opening") : t("settings.billing.managePlan")}
             </button>
@@ -986,47 +1011,59 @@ function BillingSection() {
 
       {/* Usage meters */}
       {billing && Object.keys(billing.usage).length > 0 && (
-        <div className="glass rounded-xl p-6">
-          <p className="mb-4 text-sm font-semibold">{t("settings.billing.usageThisMonth")}</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {Object.entries(billing.usage).map(([resource, { used, limit, pct }]) => (
-              <div key={resource}>
-                <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-muted-foreground">{t(`settings.billing.resources.${resource}`) || RESOURCE_LABELS[resource] || resource}</span>
-                  <span className={pct >= 1 ? "text-destructive" : pct >= 0.8 ? "text-warning" : "text-foreground"}>
-                    {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
+        <Card className="p-5">
+          <p className="mb-4 flex items-center gap-2 text-sm font-semibold">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary"><Gauge className="h-3.5 w-3.5" strokeWidth={2} /></span>
+            {t("settings.billing.usageThisMonth")}
+          </p>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            {Object.entries(billing.usage).map(([resource, { used, limit, pct }]) => {
+              const RIcon = RESOURCE_ICON[resource] ?? Sparkles;
+              const over = pct >= 1;
+              const near = pct >= 0.8 && pct < 1;
+              return (
+                <div key={resource} className="flex items-center gap-3">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${over ? "bg-destructive/12 text-destructive" : near ? "bg-warning/12 text-warning" : "bg-muted text-muted-foreground"}`}>
+                    <RIcon className="h-4 w-4" strokeWidth={1.9} />
                   </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-muted-foreground">{t(`settings.billing.resources.${resource}`) || RESOURCE_LABELS[resource] || resource}</span>
+                      <span className={`shrink-0 font-medium tabular-nums ${over ? "text-destructive" : near ? "text-warning" : "text-foreground"}`}>
+                        {limit === -1 ? `${used} / ∞` : `${used} / ${limit}`}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full transition-all ${over ? "bg-destructive" : near ? "bg-warning" : "gradient-brand"}`}
+                        style={{ width: `${Math.max(Math.min(pct * 100, 100), pct > 0 ? 4 : 0)}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      pct >= 1 ? "bg-destructive" : pct >= 0.8 ? "bg-warning" : "bg-primary"
-                    }`}
-                    style={{ width: `${Math.min(pct * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Pricing table */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm font-semibold">{t("settings.billing.plans")}</p>
-          <div className="flex items-center gap-2 rounded-lg border border-border p-1">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground">{t("settings.billing.plans")}</p>
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
             <button
               onClick={() => setAnnual(false)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${!annual ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${!annual ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/15" : "text-muted-foreground hover:text-foreground"}`}
             >
               {t("settings.billing.monthly")}
             </button>
             <button
               onClick={() => setAnnual(true)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${annual ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${annual ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/15" : "text-muted-foreground hover:text-foreground"}`}
             >
-              {t("settings.billing.annual")} <span className="text-success">{t("settings.billing.annualDiscount")}</span>
+              {t("settings.billing.annual")}
+              <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success">{t("settings.billing.annualDiscount")}</span>
             </button>
           </div>
         </div>
@@ -1035,37 +1072,52 @@ function BillingSection() {
             const planIdx = tierOrder.indexOf(plan.id);
             const isCurrent = plan.id === currentTier;
             const isUpgrade = planIdx > currentIdx;
+            const popular = plan.id === "pro";
 
             return (
               <div
                 key={plan.id}
-                className={`glass rounded-xl p-5 flex flex-col gap-4 ${isCurrent ? "border-primary/50" : ""}`}
+                className={`relative flex flex-col gap-4 rounded-2xl border p-5 transition-all ${
+                  isCurrent
+                    ? "border-primary bg-primary/[0.04] ring-1 ring-inset ring-primary/20"
+                    : popular
+                      ? "border-primary/40 bg-card/60 hover:-translate-y-0.5 hover:shadow-lg"
+                      : "border-border bg-card/60 hover:-translate-y-0.5 hover:border-primary/25"
+                }`}
               >
+                {popular && !isCurrent && (
+                  <span className="absolute -top-2.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full gradient-brand px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                    <Star className="h-2.5 w-2.5 fill-current" /> {t("settings.billing.popular")}
+                  </span>
+                )}
                 <div>
-                  <p className="font-bold text-lg">{plan.name}</p>
-                  <p className="mt-1 text-2xl font-bold">
-                    {plan.monthlyPrice === 0 ? "Free" : (
-                      <>${annual ? plan.annualPrice : plan.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">/mo</span></>
+                  <p className="font-display text-lg font-bold text-foreground">{plan.name}</p>
+                  <p className="mt-1 font-display text-3xl font-bold tracking-tight text-foreground">
+                    {plan.monthlyPrice === 0 ? t("settings.billing.free") : (
+                      <>${annual ? plan.annualPrice : plan.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">{t("settings.billing.perMonth")}</span></>
                     )}
                   </p>
+                  {annual && plan.monthlyPrice > 0 && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{t("settings.billing.billedAnnually")}</p>
+                  )}
                 </div>
-                <ul className="flex flex-col gap-1.5 flex-1">
+                <ul className="flex flex-1 flex-col gap-2">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
+                    <li key={f} className="flex items-start gap-2 text-xs text-foreground/80">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.4} />
                       {f}
                     </li>
                   ))}
                 </ul>
                 {isCurrent ? (
-                  <button disabled className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground cursor-default">
-                    {t("settings.billing.currentPlan")}
-                  </button>
+                  <span className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary/10 py-2 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+                    <Check className="h-3.5 w-3.5" /> {t("settings.billing.currentPlan")}
+                  </span>
                 ) : isUpgrade ? (
                   <button
                     onClick={() => checkoutMutation.mutate({ tier: plan.id, annual })}
                     disabled={checkoutMutation.isPending}
-                    className="btn-aurora w-full py-2 text-xs"
+                    className="btn-primary w-full py-2 text-xs"
                   >
                     {t("settings.billing.upgrade")}
                   </button>
@@ -1073,7 +1125,7 @@ function BillingSection() {
                   <button
                     onClick={() => portalMutation.mutate()}
                     disabled={portalMutation.isPending}
-                    className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-full rounded-lg border border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     {t("settings.billing.downgrade")}
                   </button>
