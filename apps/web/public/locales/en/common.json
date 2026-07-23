@@ -69,7 +69,8 @@
     "noUpcoming": "Nothing scheduled yet — add your first piece.",
     "dragHint": "Drag any entry to another day to reschedule.",
     "rescheduled": "Rescheduled",
-    "scheduledCount": "{{count}} scheduled"
+    "scheduledCount": "{{count}} scheduled",
+    "noPast": "Pick a time in the future."
   },
   "personaHome": {
     "quickActions": "Quick actions",

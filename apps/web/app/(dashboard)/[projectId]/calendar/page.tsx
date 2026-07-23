@@ -50,7 +50,16 @@ function monthMatrix(year: number, month: number): Date[][] {
   return weeks;
 }
 function ymd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
-function dayDefaultDateTime(d: Date): string { return `${ymd(d)}T09:00`; }
+function localDateTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+/** Default schedule time for a day: 9:00, but never in the past (→ ~now for today). */
+function dayDefaultDateTime(d: Date): string {
+  const base = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0);
+  const now = new Date();
+  return localDateTime(base.getTime() < now.getTime() ? new Date(now.getTime() + 5 * 60_000) : base);
+}
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 
 export default function CalendarPage({ params }: { params: { projectId: string } }) {
@@ -131,8 +140,11 @@ export default function CalendarPage({ params }: { params: { projectId: string }
     const old = new Date(entry.scheduled_at);
     if (ymd(old) === ymd(day)) return;
     const next = new Date(day.getFullYear(), day.getMonth(), day.getDate(), old.getHours(), old.getMinutes());
+    // Keep the original time of day, but never land in the past (e.g. dragging
+    // to today when the entry's time has already passed).
+    const ms = Math.max(next.getTime(), Date.now() + 5 * 60_000);
     try {
-      await updateCalendarEntry(entry.id, { scheduled_at: next.toISOString() });
+      await updateCalendarEntry(entry.id, { scheduled_at: new Date(ms).toISOString() });
       await queryClient.invalidateQueries({ queryKey: ["calendar", projectId] });
       toast.success(t("calendar.rescheduled"));
     } catch (err) {
@@ -279,25 +291,28 @@ export default function CalendarPage({ params }: { params: { projectId: string }
                 const items = byDay[key] ?? [];
                 const dim = day.getMonth() !== month;
                 const isToday = key === todayKey;
+                const past = startOfDay(day).getTime() < startOfDay(new Date()).getTime();
                 const weekend = day.getDay() === 0 || day.getDay() === 6;
-                const isDropTarget = dragOverKey === key && dragId !== null;
+                const isDropTarget = dragOverKey === key && dragId !== null && !past;
                 return (
                   <div
                     key={i}
-                    onClick={() => openAdd(day)}
-                    onDragOver={(e) => { if (dragId) { e.preventDefault(); setDragOverKey(key); } }}
+                    onClick={() => { if (!past) openAdd(day); }}
+                    onDragOver={(e) => { if (dragId && !past) { e.preventDefault(); setDragOverKey(key); } }}
                     onDragLeave={() => setDragOverKey((k) => (k === key ? null : k))}
                     onDrop={(e) => {
                       e.preventDefault();
                       const entry = entries.find((x) => x.id === dragId);
-                      if (entry) rescheduleTo(entry, day);
+                      if (entry && !past) rescheduleTo(entry, day);
                       setDragId(null); setDragOverKey(null);
                     }}
                     className={cn(
-                      "group relative min-h-[116px] cursor-pointer border-b border-r border-border p-1.5 transition-colors",
-                      weekend && !dim && "bg-muted/[0.15]",
+                      "group relative min-h-[116px] border-b border-r border-border p-1.5 transition-colors",
+                      past ? "cursor-default" : "cursor-pointer",
+                      weekend && !dim && !past && "bg-muted/[0.15]",
                       dim && "bg-muted/25",
-                      isDropTarget ? "bg-primary/[0.08] ring-2 ring-inset ring-primary/40" : "hover:bg-accent/40",
+                      past && !dim && "bg-muted/[0.12]",
+                      isDropTarget ? "bg-primary/[0.08] ring-2 ring-inset ring-primary/40" : !past && "hover:bg-accent/40",
                     )}
                   >
                     <div className="mb-1 flex items-center justify-between">
@@ -309,13 +324,15 @@ export default function CalendarPage({ params }: { params: { projectId: string }
                       >
                         {day.getDate()}
                       </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openAdd(day); }}
-                        className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-primary/15 hover:text-primary group-hover:opacity-100"
-                        aria-label={t("calendar.addContent")}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+                      {!past && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openAdd(day); }}
+                          className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-primary/15 hover:text-primary group-hover:opacity-100"
+                          aria-label={t("calendar.addContent")}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
                       {items.slice(0, 3).map((e) => <EntryChip key={e.id} entry={e} />)}

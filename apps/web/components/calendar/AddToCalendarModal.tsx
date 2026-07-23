@@ -38,6 +38,14 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
   const [connectionId, setConnectionId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Can't schedule in the past: constrain the picker and re-derive on open.
+  const nowLocal = useMemo(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
+  const isPast = scheduledAt.length > 0 && new Date(scheduledAt).getTime() < Date.now();
+
   const { data: articles = [] } = useQuery({
     queryKey: ["calendar-articles", projectId],
     queryFn: () => listArticles(projectId),
@@ -90,7 +98,7 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
     setConnectionId("");
   }
 
-  const canSubmit = contentId.length > 0 && scheduledAt.length > 0 && !submitting;
+  const canSubmit = contentId.length > 0 && scheduledAt.length > 0 && !isPast && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -204,9 +212,11 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
             <input
               type="datetime-local"
               value={scheduledAt}
+              min={nowLocal}
               onChange={(e) => setScheduledAt(e.target.value)}
-              className={inputClass}
+              className={cn(inputClass, isPast && "border-destructive/60")}
             />
+            {isPast && <p className="mt-1 text-[11px] text-destructive">{t("calendar.noPast")}</p>}
           </div>
 
           {contentType !== "social" && (

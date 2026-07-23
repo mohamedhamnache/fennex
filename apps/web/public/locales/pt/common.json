@@ -2125,6 +2125,7 @@
     "noUpcoming": "Nada agendado ainda — adicione seu primeiro conteúdo.",
     "dragHint": "Arraste uma entrada para outro dia para reagendar.",
     "rescheduled": "Reagendado",
-    "scheduledCount": "{{count}} agendado(s)"
+    "scheduledCount": "{{count}} agendado(s)",
+    "noPast": "Escolha uma data futura."
   }
 }

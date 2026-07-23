@@ -2125,6 +2125,7 @@
     "noUpcoming": "Rien de planifié — ajoutez votre premier contenu.",
     "dragHint": "Glissez une entrée vers un autre jour pour la reprogrammer.",
     "rescheduled": "Reprogrammé",
-    "scheduledCount": "{{count}} planifié(s)"
+    "scheduledCount": "{{count}} planifié(s)",
+    "noPast": "Choisissez une date à venir."
   }
 }

@@ -2125,6 +2125,7 @@
     "noUpcoming": "Noch nichts geplant – füge deinen ersten Beitrag hinzu.",
     "dragHint": "Ziehe einen Eintrag auf einen anderen Tag, um ihn neu zu planen.",
     "rescheduled": "Neu geplant",
-    "scheduledCount": "{{count}} geplant"
+    "scheduledCount": "{{count}} geplant",
+    "noPast": "Wähle einen Zeitpunkt in der Zukunft."
   }
 }

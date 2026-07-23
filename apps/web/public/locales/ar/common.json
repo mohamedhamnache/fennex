@@ -2125,6 +2125,7 @@
     "noUpcoming": "لا شيء مجدول بعد — أضف أول محتوى لك.",
     "dragHint": "اسحب أي عنصر إلى يوم آخر لإعادة جدولته.",
     "rescheduled": "أُعيدت الجدولة",
-    "scheduledCount": "{{count}} مجدول"
+    "scheduledCount": "{{count}} مجدول",
+    "noPast": "اختر وقتًا في المستقبل."
   }
 }
