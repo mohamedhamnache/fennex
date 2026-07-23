@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,6 +10,8 @@ import {
   Trash2, Plus, Eye, EyeOff, Link2, Link2Off,
   UserX, UserPlus, Copy, Check, ChevronRight,
   Shield, AtSign, Calendar, CreditCard, Palette, Globe,
+  Sun, Moon, Monitor, Search, Brush, Settings as SettingsIcon,
+  type LucideIcon,
 } from "lucide-react";
 import {
   getMe,
@@ -76,16 +79,20 @@ const SOCIAL_PLATFORMS = [
 
 type PlatformId = (typeof SOCIAL_PLATFORMS)[number]["id"];
 
+// Grouped nav. `navKey` maps to settings.nav.<navKey>; `tone` colors the icon chip.
 const NAV_ITEMS = [
-  { id: "account", label: "Account", icon: User },
-  { id: "organization", label: "Organization", icon: Building2 },
-  { id: "project", label: "Project", icon: Globe },
-  { id: "team", label: "Team", icon: Users },
-  { id: "ai-keys", label: "AI Keys", icon: KeyRound },
-  { id: "brand-kit", label: "Brand Kit", icon: Palette },
-  { id: "social", label: "Social Accounts", icon: Share2 },
-  { id: "billing", label: "Billing", icon: CreditCard },
+  { id: "account", navKey: "account", icon: User, group: "account", tone: "bg-primary/12 text-primary" },
+  { id: "appearance", navKey: "appearance", icon: Palette, group: "account", tone: "bg-violet-500/12 text-violet-500" },
+  { id: "organization", navKey: "organization", icon: Building2, group: "account", tone: "bg-sky-500/12 text-sky-500" },
+  { id: "billing", navKey: "billing", icon: CreditCard, group: "account", tone: "bg-emerald-500/12 text-emerald-500" },
+  { id: "project", navKey: "project", icon: Globe, group: "workspace", tone: "bg-primary/12 text-primary" },
+  { id: "team", navKey: "team", icon: Users, group: "workspace", tone: "bg-amber-500/12 text-amber-500" },
+  { id: "brand-kit", navKey: "brandKit", icon: Brush, group: "workspace", tone: "bg-rose-500/12 text-rose-500" },
+  { id: "ai-keys", navKey: "aiKeys", icon: KeyRound, group: "workspace", tone: "bg-sky-500/12 text-sky-500" },
+  { id: "social", navKey: "social", icon: Share2, group: "workspace", tone: "bg-violet-500/12 text-violet-500" },
 ] as const;
+
+const NAV_GROUPS = ["account", "workspace"] as const;
 
 const PROJECT_LANGS = [
   { code: "en", label: "English" },
@@ -143,11 +150,18 @@ const RESOURCE_LABELS: Record<string, string> = {
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function SectionHeader({ title, description }: { title: string; description?: string }) {
+function SectionHeader({ icon: Icon, title, description }: { icon?: LucideIcon; title: string; description?: string }) {
   return (
-    <div className="mb-6">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="mb-6 flex items-start gap-3">
+      {Icon && (
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" strokeWidth={1.9} />
+        </span>
+      )}
+      <div className="min-w-0">
+        <h2 className="font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
+        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+      </div>
     </div>
   );
 }
@@ -168,7 +182,7 @@ function InfoRow({ icon: Icon, label, value, mono = false }: { icon: React.Eleme
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border bg-card ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-border bg-card/60 backdrop-blur-sm ${className}`}>{children}</div>
   );
 }
 
@@ -242,7 +256,7 @@ function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnT
 
   return (
     <div>
-      <SectionHeader title={t("settings.account.title")} description={t("settings.account.subtitle")} />
+      <SectionHeader icon={User} title={t("settings.account.title")} description={t("settings.account.subtitle")} />
 
       {/* Avatar block */}
       <div className="mb-6 flex items-center gap-4">
@@ -299,7 +313,7 @@ function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<Re
 
   return (
     <div>
-      <SectionHeader title={t("settings.organization.title")} description={t("settings.organization.subtitle")} />
+      <SectionHeader icon={Building2} title={t("settings.organization.title")} description={t("settings.organization.subtitle")} />
 
       <Card>
         <div className="px-5">
@@ -1278,10 +1292,105 @@ function ProjectSection() {
   );
 }
 
+// ─── Appearance ────────────────────────────────────────────────────────────────
+
+/** A tiny app-shell mock used inside the theme preview cards. */
+function ThemeMock({ light }: { light: boolean }) {
+  const bg = light ? "#f6f0e7" : "#171310";
+  const rail = light ? "#e9dccb" : "#241b15";
+  const line = light ? "#d8cbb9" : "#2c231d";
+  return (
+    <span className="flex h-full w-full">
+      <span className="h-full w-1/3" style={{ background: rail }} />
+      <span className="flex-1 p-1.5" style={{ background: bg }}>
+        <span className="block h-1.5 w-7 rounded-full" style={{ background: "#c2603a" }} />
+        <span className="mt-1.5 block h-1 w-full rounded-full" style={{ background: line }} />
+        <span className="mt-1 block h-1 w-2/3 rounded-full" style={{ background: line }} />
+      </span>
+    </span>
+  );
+}
+
+function AppearanceSection() {
+  const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const current = mounted ? (theme ?? "system") : "system";
+
+  const options: { id: "light" | "dark" | "system"; Icon: LucideIcon }[] = [
+    { id: "light", Icon: Sun },
+    { id: "dark", Icon: Moon },
+    { id: "system", Icon: Monitor },
+  ];
+
+  return (
+    <div>
+      <SectionHeader icon={Palette} title={t("settings.appearance.title")} description={t("settings.appearance.subtitle")} />
+      <Field label={t("settings.appearance.theme")} hint={t("settings.appearance.themeHint")}>
+        <div className="grid grid-cols-3 gap-3">
+          {options.map(({ id, Icon }) => {
+            const active = current === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTheme(id)}
+                aria-pressed={active}
+                className={`group flex flex-col items-center gap-2.5 rounded-xl border p-2.5 transition-all active:scale-[0.98] ${
+                  active ? "border-primary bg-primary/[0.05] ring-2 ring-inset ring-primary/25" : "border-border hover:border-primary/30 hover:bg-accent/40"
+                }`}
+              >
+                <span className="flex h-16 w-full overflow-hidden rounded-lg border border-border">
+                  {id === "system" ? (
+                    <>
+                      <span className="w-1/2 overflow-hidden"><ThemeMock light /></span>
+                      <span className="w-1/2 overflow-hidden"><ThemeMock light={false} /></span>
+                    </>
+                  ) : (
+                    <ThemeMock light={id === "light"} />
+                  )}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.9} /> {t(`settings.appearance.${id}`)}
+                  {active && <Check className="h-3.5 w-3.5 text-primary" />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      <p className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+        <Palette className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> {t("settings.appearance.accentNote")}
+      </p>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const NAV_IDS = NAV_ITEMS.map((i) => i.id) as readonly string[];
+
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<SectionId>("account");
+  const [query, setQuery] = useState("");
+
+  // Deep-link sections via the URL hash (bookmarkable + back/forward friendly).
+  useEffect(() => {
+    const apply = () => {
+      const h = window.location.hash.replace("#", "");
+      if (h && NAV_IDS.includes(h)) setActiveSection(h as SectionId);
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, []);
+
+  function selectSection(id: SectionId) {
+    setActiveSection(id);
+    if (typeof window !== "undefined") window.history.replaceState(null, "", `#${id}`);
+  }
 
   const { data: me, isLoading } = useQuery({
     queryKey: ["me"],
@@ -1293,13 +1402,14 @@ export default function SettingsPage() {
     if (isLoading || !me) return (
       <div className="flex flex-col gap-4">
         <div className="h-6 w-32 rounded-lg bg-muted/40 animate-pulse" />
-        <div className="h-48 rounded-xl border bg-muted/20 animate-pulse" />
-        <div className="h-32 rounded-xl border bg-muted/20 animate-pulse" />
+        <div className="h-48 rounded-2xl border bg-muted/20 animate-pulse" />
+        <div className="h-32 rounded-2xl border bg-muted/20 animate-pulse" />
       </div>
     );
 
     switch (activeSection) {
       case "account": return <AccountSection me={me} />;
+      case "appearance": return <AppearanceSection />;
       case "organization": return <OrganizationSection me={me} />;
       case "project": return <ProjectSection />;
       case "team": return <TeamSection orgId={me.org_id} myId={me.id} myRole={me.role} />;
@@ -1310,40 +1420,89 @@ export default function SettingsPage() {
     }
   };
 
+  const q = query.trim().toLowerCase();
+  const matches = (navKey: string) => !q || t(`settings.nav.${navKey}`).toLowerCase().includes(q);
+  const anyMatch = NAV_ITEMS.some((it) => matches(it.navKey));
+
   return (
-    <div className="flex h-full gap-8">
-      {/* Sidebar nav */}
-      <aside className="w-52 shrink-0">
-        <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Settings
-        </p>
-        <nav className="flex flex-col gap-0.5">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-            const active = activeSection === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setActiveSection(id)}
-                className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
-                <span className="flex-1 text-left">{label}</span>
-                {active && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
-              </button>
-            );
-          })}
-        </nav>
+    <div className="flex flex-col gap-5 animate-fade-in">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 px-5 py-4">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(600px 160px at 8% -40%, hsl(var(--primary) / 0.14), transparent 60%)" }}
+        />
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl gradient-brand glow-primary">
+            <SettingsIcon className="h-5 w-5 text-white" strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">{t("settings.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("settings.subtitle")}</p>
+          </div>
+        </div>
+      </div>
 
-      </aside>
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        {/* Nav rail */}
+        <aside className="shrink-0 self-start lg:sticky lg:top-4 lg:w-60">
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("settings.searchPlaceholder")}
+              className="w-full rounded-xl border border-border bg-input py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+          </div>
 
-      {/* Main content */}
-      <main className="flex-1 min-w-0 max-w-2xl">
-        {renderSection()}
-      </main>
+          {!anyMatch ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">{t("settings.noResults")}</p>
+          ) : (
+            <nav className="flex flex-col gap-4">
+              {NAV_GROUPS.map((group) => {
+                const items = NAV_ITEMS.filter((it) => it.group === group && matches(it.navKey));
+                if (items.length === 0) return null;
+                return (
+                  <div key={group}>
+                    <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
+                      {t(`settings.groups.${group}`)}
+                    </p>
+                    <div className="flex flex-col gap-0.5">
+                      {items.map(({ id, navKey, icon: Icon, tone }) => {
+                        const active = activeSection === id;
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => selectSection(id)}
+                            className={`group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium transition-all ${
+                              active
+                                ? "bg-primary/10 text-foreground ring-1 ring-inset ring-primary/20"
+                                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                            }`}
+                          >
+                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+                              <Icon className="h-4 w-4" strokeWidth={1.9} />
+                            </span>
+                            <span className="flex-1 text-left">{t(`settings.nav.${navKey}`)}</span>
+                            {active && <ChevronRight className="h-3.5 w-3.5 text-primary/70" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </nav>
+          )}
+        </aside>
+
+        {/* Main content */}
+        <main key={activeSection} className="min-w-0 flex-1 animate-fade-in lg:max-w-2xl">
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 }

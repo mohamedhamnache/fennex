@@ -920,6 +920,35 @@
         "rose": "Rose",
         "plum": "Prune"
       }
+    },
+    "title": "Paramètres",
+    "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",
+    "searchPlaceholder": "Rechercher des paramètres…",
+    "noResults": "Aucun paramètre correspondant.",
+    "groups": {
+      "account": "Compte",
+      "workspace": "Espace de travail"
+    },
+    "nav": {
+      "account": "Compte",
+      "appearance": "Apparence",
+      "organization": "Organisation",
+      "billing": "Facturation",
+      "project": "Projet",
+      "team": "Équipe",
+      "brandKit": "Kit de marque",
+      "aiKeys": "Clés IA",
+      "social": "Comptes sociaux"
+    },
+    "appearance": {
+      "title": "Apparence",
+      "subtitle": "Choisissez l'apparence de Fennex sur cet appareil.",
+      "theme": "Thème",
+      "themeHint": "S'applique instantanément et est mémorisé sur cet appareil.",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système",
+      "accentNote": "Les couleurs d'accent se règlent par projet dans les paramètres du projet."
     }
   },
   "billing": {

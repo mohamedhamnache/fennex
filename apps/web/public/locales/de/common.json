@@ -920,6 +920,35 @@
         "rose": "Rosé",
         "plum": "Pflaume"
       }
+    },
+    "title": "Einstellungen",
+    "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",
+    "searchPlaceholder": "Einstellungen suchen…",
+    "noResults": "Keine Einstellung gefunden.",
+    "groups": {
+      "account": "Konto",
+      "workspace": "Arbeitsbereich"
+    },
+    "nav": {
+      "account": "Konto",
+      "appearance": "Darstellung",
+      "organization": "Organisation",
+      "billing": "Abrechnung",
+      "project": "Projekt",
+      "team": "Team",
+      "brandKit": "Marken-Kit",
+      "aiKeys": "KI-Schlüssel",
+      "social": "Soziale Konten"
+    },
+    "appearance": {
+      "title": "Darstellung",
+      "subtitle": "Lege fest, wie Fennex auf diesem Gerät aussieht.",
+      "theme": "Design",
+      "themeHint": "Wird sofort angewendet und auf diesem Gerät gespeichert.",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "System",
+      "accentNote": "Akzentfarben werden pro Projekt in den Projekteinstellungen festgelegt."
     }
   },
   "billing": {

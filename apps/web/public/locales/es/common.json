@@ -920,6 +920,35 @@
         "rose": "Rosa",
         "plum": "Ciruela"
       }
+    },
+    "title": "Ajustes",
+    "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",
+    "searchPlaceholder": "Buscar ajustes…",
+    "noResults": "Ningún ajuste coincide.",
+    "groups": {
+      "account": "Cuenta",
+      "workspace": "Espacio de trabajo"
+    },
+    "nav": {
+      "account": "Cuenta",
+      "appearance": "Apariencia",
+      "organization": "Organización",
+      "billing": "Facturación",
+      "project": "Proyecto",
+      "team": "Equipo",
+      "brandKit": "Kit de marca",
+      "aiKeys": "Claves IA",
+      "social": "Cuentas sociales"
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "subtitle": "Elige cómo se ve Fennex en este dispositivo.",
+      "theme": "Tema",
+      "themeHint": "Se aplica al instante y se recuerda en este dispositivo.",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema",
+      "accentNote": "Los colores de acento se definen por proyecto en los ajustes del proyecto."
     }
   },
   "billing": {

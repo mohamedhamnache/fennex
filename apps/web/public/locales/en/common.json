@@ -1017,6 +1017,35 @@
         "rose": "Rose",
         "plum": "Plum"
       }
+    },
+    "title": "Settings",
+    "subtitle": "Manage your account, workspace, and preferences.",
+    "searchPlaceholder": "Search settings…",
+    "noResults": "No settings match.",
+    "groups": {
+      "account": "Account",
+      "workspace": "Workspace"
+    },
+    "nav": {
+      "account": "Account",
+      "appearance": "Appearance",
+      "organization": "Organization",
+      "billing": "Billing",
+      "project": "Project",
+      "team": "Team",
+      "brandKit": "Brand Kit",
+      "aiKeys": "AI Keys",
+      "social": "Social Accounts"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "subtitle": "Choose how Fennex looks on this device.",
+      "theme": "Theme",
+      "themeHint": "Applies instantly and is remembered on this device.",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "accentNote": "Accent colors are set per project in Project settings."
     }
   },
   "billing": {
