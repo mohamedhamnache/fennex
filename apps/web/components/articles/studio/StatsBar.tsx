@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Type, Clock } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 function Spinner({ size = 12 }: { size?: number }) {
   return (
@@ -23,18 +24,32 @@ function Spinner({ size = 12 }: { size?: number }) {
   );
 }
 
-function seoColor(score: number | null): string {
-  if (score === null) return "text-muted-foreground";
-  if (score >= 80) return "text-emerald-500";
-  if (score >= 60) return "text-amber-500";
-  return "text-red-500";
+// Score band → chip classes (dot + tinted background). Colour is paired with a
+// text label ("SEO 86") so meaning never rests on colour alone.
+function seoBand(score: number | null): string {
+  if (score === null) return "bg-muted/60 text-muted-foreground";
+  if (score >= 80) return "bg-emerald-500/12 text-emerald-500";
+  if (score >= 60) return "bg-amber-500/12 text-amber-500";
+  return "bg-red-500/12 text-red-500";
 }
 
-function geoColor(score: number | null): string {
-  if (score === null) return "text-muted-foreground";
-  if (score >= 50) return "text-emerald-500";
-  if (score >= 35) return "text-amber-500";
-  return "text-red-500";
+function geoBand(score: number | null): string {
+  if (score === null) return "bg-muted/60 text-muted-foreground";
+  if (score >= 50) return "bg-emerald-500/12 text-emerald-500";
+  if (score >= 35) return "bg-amber-500/12 text-amber-500";
+  return "bg-red-500/12 text-red-500";
+}
+
+function ScoreChip({ label, score, band, title }: { label: string; score: number | null; band: string; title: string }) {
+  return (
+    <span
+      title={title}
+      className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums", band)}
+    >
+      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", score === null ? "bg-current opacity-40" : "bg-current")} />
+      {score !== null ? `${label} ${score}` : label}
+    </span>
+  );
 }
 
 interface StatsBarProps {
@@ -46,57 +61,48 @@ interface StatsBarProps {
 }
 
 /**
- * Inline stats cluster shown in the editor toolbar: live word count, reading
- * time, SEO score chip, and the autosave state. Actions (revision / publish /
- * save) live in the editor header.
+ * Inline stats cluster shown in the editor toolbar: live word count with an
+ * optional goal meter, reading time, SEO/GEO score chips, and the autosave
+ * state. Actions (revision / publish / save) live in the editor header.
  */
 export function StatsBar({ wordCount, wordTarget, seoScore, geoScore, saveState }: StatsBarProps) {
   const { t } = useTranslation();
   const readingMinutes = Math.ceil(wordCount / 200);
   const goalPct = wordTarget ? Math.min(100, Math.round((wordCount / wordTarget) * 100)) : null;
+  const goalMet = goalPct !== null && goalPct >= 100;
 
   return (
     <div className="flex items-center gap-2 text-xs">
+      {/* Word count (+ goal meter) */}
       <span
-        className="inline-flex flex-col gap-0.5 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums"
+        className="inline-flex items-center gap-2 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums"
         title={wordTarget ? t("articleStudio.goal", { count: wordTarget }) : undefined}
       >
-        <span>{t("articleStudio.words", { count: wordCount })}</span>
+        <Type className="h-3 w-3 shrink-0" />
+        <span className={goalMet ? "font-semibold text-success" : undefined}>
+          {t("articleStudio.words", { count: wordCount })}
+        </span>
         {goalPct !== null && (
-          <span className="h-0.5 w-full overflow-hidden rounded-full bg-muted">
+          <span className="h-1 w-10 overflow-hidden rounded-full bg-muted" aria-hidden>
             <span
-              className={`block h-full rounded-full transition-all ${goalPct >= 100 ? "bg-success" : "gradient-brand"}`}
+              className={cn("block h-full rounded-full transition-all", goalMet ? "bg-success" : "gradient-brand")}
               style={{ width: `${goalPct}%` }}
             />
           </span>
         )}
       </span>
-      <span className="hidden items-center rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums sm:inline-flex">
+
+      {/* Reading time */}
+      <span className="hidden items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-muted-foreground tabular-nums sm:inline-flex">
+        <Clock className="h-3 w-3 shrink-0" />
         {t("articleStudio.readingTime", { min: readingMinutes })}
       </span>
 
-      <span
-        title={t("articles.editor.seoScore")}
-        className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 transition-colors"
-      >
-        {seoScore !== null ? (
-          <span className={`font-semibold tabular-nums ${seoColor(seoScore)}`}>SEO {seoScore}</span>
-        ) : (
-          <span className="text-muted-foreground">SEO</span>
-        )}
-      </span>
+      {/* Scores */}
+      <ScoreChip label="SEO" score={seoScore} band={seoBand(seoScore)} title={t("articles.editor.seoScore")} />
+      <ScoreChip label="GEO" score={geoScore} band={geoBand(geoScore)} title={t("articles.editor.geoScore")} />
 
-      <span
-        title={t("articles.editor.geoScore")}
-        className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 transition-colors"
-      >
-        {geoScore !== null ? (
-          <span className={`font-semibold tabular-nums ${geoColor(geoScore)}`}>GEO {geoScore}</span>
-        ) : (
-          <span className="text-muted-foreground">GEO</span>
-        )}
-      </span>
-
+      {/* Autosave state */}
       {saveState === "saving" && (
         <span className="flex items-center gap-1 text-muted-foreground">
           <Spinner size={11} /> {t("articles.editor.saving")}

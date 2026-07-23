@@ -1507,7 +1507,9 @@
         "faq": "Add an FAQ section with 3-5 real long-tail questions and tight, useful answers. Keep the rest of the article unchanged.",
         "intro": "Rewrite only the introduction so it hooks faster: strong first sentence, keyword in the first 100 words, clear promise. Keep every other section identical.",
         "meta": "Write an optimized meta title (max 60 characters) and meta description (max 160 characters) for this article and set them."
-      }
+      },
+      "newChat": "New chat",
+      "enterHint": "Enter to send · Shift+Enter for a new line"
     },
     "overview": {
       "heading": "Your articles",

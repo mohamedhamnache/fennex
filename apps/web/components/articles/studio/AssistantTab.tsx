@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Send, User, CornerDownLeft, ListTree, BarChart3, Sparkles, ListOrdered, Wand2, Check,
-  Gauge, ShieldCheck, HelpCircle, Tags, Zap,
+  Gauge, ShieldCheck, HelpCircle, Tags, Zap, RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -101,6 +101,7 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
   });
   const [pending, setPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     try {
@@ -113,6 +114,23 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, pending]);
+
+  // Grow the composer with its content, up to a cap.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [input]);
+
+  function clearChat() {
+    setHistory([]);
+    try {
+      window.sessionStorage.removeItem(storageKey);
+    } catch {
+      // storage unavailable - nothing to clear
+    }
+  }
 
   /** Visible portion of a streaming reply: hide skill tags (<article>, <draft>,
    *  <meta_*>) and any trailing partial tag so raw markup never flashes. */
@@ -274,10 +292,10 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
                 <div className={cn("flex min-w-0 flex-col gap-1.5", msg.role === "user" ? "items-end" : "items-start")}>
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed",
+                      "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed",
                       msg.role === "user"
                         ? "gradient-brand whitespace-pre-wrap rounded-tr-md text-white shadow-sm"
-                        : "rounded-tl-md border border-border bg-card text-foreground",
+                        : "rounded-tl-md border border-border bg-card text-foreground shadow-sm",
                     )}
                   >
                     {msg.role === "user" ? msg.content : <MarkdownLite text={msg.content} />}
@@ -356,9 +374,20 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
 
       {/* ── Skills row ── */}
       <div className="shrink-0 pt-3">
-        <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-          {t("articleStudio.assistant.skillsTitle")}
-        </p>
+        <div className="mb-1.5 flex items-center justify-between px-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            {t("articleStudio.assistant.skillsTitle")}
+          </p>
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={clearChat}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" /> {t("articleStudio.assistant.newChat")}
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {SKILLS.map(({ id, Icon }) => (
             <button
@@ -380,23 +409,25 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
       <div className="shrink-0 pt-2.5">
         <div className="flex items-end gap-2 rounded-2xl border border-border bg-input p-1.5 transition-all focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t("articleStudio.assistant.placeholder")}
-            rows={2}
-            className="flex-1 resize-none bg-transparent px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+            rows={1}
+            className="min-h-[36px] flex-1 resize-none bg-transparent px-2.5 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:!border-transparent focus:!shadow-none"
           />
           <button
             type="button"
             disabled={!input.trim() || pending}
             onClick={() => submit(input)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl gradient-brand text-white shadow-sm transition-all hover:brightness-110 disabled:opacity-40 disabled:brightness-100"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl gradient-brand text-white shadow-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:brightness-100"
             aria-label={t("articleStudio.assistant.send")}
           >
             <Send className="h-3.5 w-3.5" />
           </button>
         </div>
+        <p className="mt-1.5 px-1 text-[10px] text-muted-foreground/50">{t("articleStudio.assistant.enterHint")}</p>
       </div>
     </div>
   );

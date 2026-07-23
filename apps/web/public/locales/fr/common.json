@@ -1412,7 +1412,9 @@
         "faq": "Ajoute une section FAQ avec 3 à 5 vraies questions longue traîne et des réponses utiles et concises. Ne change rien d'autre.",
         "intro": "Réécris uniquement l'introduction pour accrocher plus vite : première phrase forte, mot-clé dans les 100 premiers mots, promesse claire. Garde toutes les autres sections identiques.",
         "meta": "Rédige un meta title optimisé (60 caractères max) et une meta description (160 caractères max) pour cet article et applique-les."
-      }
+      },
+      "newChat": "Nouveau chat",
+      "enterHint": "Entrée pour envoyer · Maj+Entrée pour un saut de ligne"
     },
     "overview": {
       "heading": "Vos articles",

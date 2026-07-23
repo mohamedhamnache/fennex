@@ -21,7 +21,13 @@ import {
   Download,
   Copy,
   Sparkles,
+  ListChecks,
+  GitCompare,
+  LayoutGrid,
+  BarChart2,
+  type LucideIcon,
 } from "lucide-react";
+import { FENNEX_AGENTS } from "@/lib/agents";
 import { useProjectStore } from "@/lib/store";
 import {
   listArticles,
@@ -101,6 +107,16 @@ const WORD_COUNTS = [800, 1200, 1500, 2000, 2500] as const;
 /** Content-template ids shared with the backend's TEMPLATE_BRIEFS. */
 const TEMPLATES = ["howto", "listicle", "comparison", "roundup", "casestudy"] as const;
 type TemplateId = (typeof TEMPLATES)[number];
+
+/** Icon per template (plus `none`) for the New Article picker. */
+const TEMPLATE_ICON: Record<TemplateId | "none", LucideIcon> = {
+  none: PenLine,
+  howto: ListChecks,
+  listicle: List,
+  comparison: GitCompare,
+  roundup: LayoutGrid,
+  casestudy: BarChart2,
+};
 
 // ─── Spinner ───────────────────────────────────────────────────────────────
 
@@ -189,23 +205,36 @@ function NewArticleModal({
     }
   }
 
+  const dune = FENNEX_AGENTS.dune;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">{t("articles.newArticleModal.title")}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {t("articles.newArticleModal.hint")}
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="animate-scale-in relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        {/* Warm glow behind the header */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-28"
+          style={{ background: "radial-gradient(420px 120px at 50% -30%, hsl(var(--primary) / 0.18), transparent 70%)" }}
+        />
+        <div className="relative flex items-center gap-3 border-b border-border px-6 py-5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl gradient-brand glow-primary">
+            <dune.Icon className="h-5 w-5 text-white" strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{t("articles.newArticleModal.title")}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {t("articles.newArticleModal.hint")}
+            </p>
+          </div>
         </div>
 
         {phase === "generating" ? (
-          <div className="p-10 flex flex-col items-center gap-4">
-            <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-              <Spinner size={28} />
-            </div>
-            <p className="text-sm font-medium text-foreground">Dune is writing your article…</p>
-            <p className="text-xs text-muted-foreground text-center">
+          <div className="flex flex-col items-center gap-4 p-10">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary animate-pulse-dot">
+              <PenLine className="h-6 w-6 text-white" strokeWidth={1.9} />
+            </span>
+            <p className="text-sm font-semibold text-foreground">{t("articleStudio.writing")}</p>
+            <p className="text-center text-xs text-muted-foreground">
               {t("articles.newArticleModal.generatingHint")}
             </p>
           </div>
@@ -262,32 +291,27 @@ function NewArticleModal({
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("articleStudio.templates.label")}
               </label>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setTemplate(null)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                    template === null
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  {t("articleStudio.templates.none")}
-                </button>
-                {TEMPLATES.map((tpl) => (
-                  <button
-                    key={tpl}
-                    type="button"
-                    onClick={() => setTemplate(tpl)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      template === tpl
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                    }`}
-                  >
-                    {t(`articleStudio.templates.${tpl}`)}
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-1.5">
+                {(["none", ...TEMPLATES] as const).map((tpl) => {
+                  const selected = tpl === "none" ? template === null : template === tpl;
+                  const Icon = TEMPLATE_ICON[tpl];
+                  return (
+                    <button
+                      key={tpl}
+                      type="button"
+                      onClick={() => setTemplate(tpl === "none" ? null : tpl)}
+                      aria-pressed={selected}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-center text-[11px] font-medium transition-all active:scale-[0.98] ${
+                        selected
+                          ? "border-primary/40 bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
+                          : "border-border text-muted-foreground hover:border-primary/25 hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.9} />
+                      <span className="leading-tight">{t(`articleStudio.templates.${tpl}`)}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -375,10 +399,18 @@ function PublishModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">{t("articles.publishModal.title")}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="animate-scale-in relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-28"
+          style={{ background: "radial-gradient(420px 120px at 50% -30%, hsl(var(--primary) / 0.18), transparent 70%)" }}
+        />
+        <div className="relative flex items-center gap-3 border-b border-border px-6 py-5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl gradient-brand glow-primary">
+            <Send className="h-5 w-5 text-white" strokeWidth={1.9} />
+          </span>
+          <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{t("articles.publishModal.title")}</h2>
         </div>
 
         <div className="p-6 flex flex-col gap-4">
@@ -390,8 +422,8 @@ function PublishModal({
 
           {result !== null ? (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
-                <CheckCircle2 className="h-6 w-6 text-success" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success/15 ring-1 ring-success/25">
+                <CheckCircle2 className="h-7 w-7 text-success" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">{t("articles.publishModal.publishedSuccess")}</p>
@@ -442,20 +474,25 @@ function PublishModal({
                 <label className="block text-sm font-medium text-foreground mb-2">
                   {t("articles.publishModal.publishAs")}
                 </label>
-                <div className="flex gap-4">
-                  {(["draft", "publish"] as const).map((opt) => (
-                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="publish_status"
-                        value={opt}
-                        checked={publishStatus === opt}
-                        onChange={() => setPublishStatus(opt)}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm text-foreground capitalize">{opt}</span>
-                    </label>
-                  ))}
+                <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/40 p-1">
+                  {(["draft", "publish"] as const).map((opt) => {
+                    const active = publishStatus === opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPublishStatus(opt)}
+                        aria-pressed={active}
+                        className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-all active:scale-[0.98] ${
+                          active
+                            ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/20"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1086,7 +1123,7 @@ function ArticleEditor({
       </div>
 
       {/* Toolbar: live stats + model / regenerate / images */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-5 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-card/30 px-5 py-2.5">
         <StatsBar
           wordCount={wordCount}
           wordTarget={article.word_count_target}
@@ -1119,6 +1156,7 @@ function ArticleEditor({
               <span className="hidden sm:inline">{t("articleStudio.preview.tab")}</span>
             </button>
           </div>
+          <span className="mx-0.5 hidden h-5 w-px bg-border sm:block" aria-hidden />
           {preEditBody !== null && (
             <button
               onClick={toggleChanges}
@@ -1229,8 +1267,8 @@ function ArticleEditor({
       <div className="relative flex min-h-0 flex-1 flex-col">
         {typing || generating || article.status === "generating" ? (
           /* Live writing surface: real streamed tokens (or the replay reveal) */
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" ref={typewriterRef}>
-            <div className="mx-auto w-full max-w-3xl whitespace-pre-wrap text-[15px] leading-[1.8] text-foreground">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8" ref={typewriterRef}>
+            <div className="mx-auto w-full max-w-[720px] whitespace-pre-wrap text-[15.5px] leading-[1.85] text-foreground/95">
               {(body.match(/\S+\s*/g) ?? []).map((tok, i) => (
                 <span key={i} className="word-in">{tok}</span>
               ))}
