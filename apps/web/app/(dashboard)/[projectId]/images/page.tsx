@@ -22,6 +22,11 @@ import {
   Crop,
   Layers,
   Check,
+  ArrowUpDown,
+  LayoutGrid,
+  Grid3x3,
+  CalendarClock,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useProjectStore } from "@/lib/store";
@@ -41,7 +46,6 @@ import {
   type Article,
   type SocialPost,
 } from "@/lib/api";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { FolderSidebar } from "@/components/studio/FolderSidebar";
 import { PublishModal } from "@/components/studio/PublishModal";
 import { ResizeModal } from "@/components/studio/ResizeModal";
@@ -152,6 +156,7 @@ function ImageCard({
   selected = false,
   anySelected = false,
   onToggleSelect,
+  compact = false,
 }: {
   image: GeneratedImage;
   projectId: string;
@@ -162,6 +167,7 @@ function ImageCard({
   selected?: boolean;
   anySelected?: boolean;
   onToggleSelect?: () => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -171,7 +177,7 @@ function ImageCard({
   const [resizeOpen, setResizeOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const aspectClass = "aspect-[4/3]";
+  const aspectClass = compact ? "aspect-square" : "aspect-[4/3]";
 
   const currentFolder = image.folder_id ? folders.find((f) => f.id === image.folder_id) : null;
 
@@ -206,10 +212,12 @@ function ImageCard({
     ? articles.find((a) => a.id === image.article_id)
     : null;
 
+  const platformLabel = image.social_platform ? SOCIAL_PLATFORMS[image.social_platform]?.label : STYLE_LABELS[image.style];
+
   return (
     <div className={cn(
-      "group rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-shadow",
-      selected ? "border-primary ring-2 ring-primary/30" : "border-border",
+      "group relative overflow-hidden rounded-2xl border bg-card transition-all",
+      selected ? "border-primary ring-2 ring-primary/30" : "border-border hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg",
     )}>
       {/* Image preview — whole thumbnail toggles selection while selecting */}
       <div
@@ -218,7 +226,7 @@ function ImageCard({
       >
         {/* Dim non-selected cards while a selection is active */}
         {anySelected && !selected && (
-          <div className="absolute inset-0 z-[5] bg-black/25 pointer-events-none transition-opacity" />
+          <div className="absolute inset-0 z-[5] bg-black/30 pointer-events-none transition-opacity" />
         )}
         {/* Selection checkbox — image-safe colours that read in light AND dark mode */}
         {onToggleSelect && (
@@ -253,7 +261,7 @@ function ImageCard({
           <img
             src={image.image_url}
             alt={image.prompt}
-            className="absolute inset-0 w-full h-full object-contain"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -276,12 +284,19 @@ function ImageCard({
             </button>
           </div>
         )}
+
+        {/* Style / platform label — reads on any image, fades on hover */}
+        {image.status === "ready" && platformLabel && (
+          <span className="absolute bottom-2 left-2 z-[6] inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm transition-opacity group-hover:opacity-0">
+            {platformLabel}
+          </span>
+        )}
       </div>
 
       {/* Card body */}
-      <div className="p-3 flex flex-col gap-2">
+      <div className={cn("flex flex-col gap-2", compact ? "p-2" : "p-3")}>
         {/* Prompt preview */}
-        <p className="text-xs text-foreground line-clamp-2 leading-relaxed">
+        <p className={cn("text-foreground leading-relaxed", compact ? "line-clamp-1 text-[11px]" : "line-clamp-2 text-xs")}>
           {image.prompt || "—"}
         </p>
 
@@ -655,6 +670,8 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [compact, setCompact] = useState(false);
 
   // Reset selection when the visible set changes
   useEffect(() => {
@@ -701,10 +718,35 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
     queryFn: listImageFolders,
   });
 
+  // Project-wide set for the hero stats (independent of the active filters).
+  const { data: allImages = [] } = useQuery<GeneratedImage[]>({
+    queryKey: ["images", projectId, "stats"],
+    queryFn: () => listImages(projectId),
+    staleTime: 60_000,
+  });
+  const now = new Date();
+  const stats = {
+    total: allImages.length,
+    thisMonth: allImages.filter((i) => {
+      const d = new Date(i.created_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length,
+    collections: folders.length,
+  };
+
   const filteredImages =
     styleFilter === "all"
       ? images
       : images.filter((img) => img.style === styleFilter);
+
+  const sortedImages = [...filteredImages].sort((a, b) => {
+    const diff = +new Date(a.created_at) - +new Date(b.created_at);
+    return sort === "newest" ? -diff : diff;
+  });
+
+  const gridColsClass = compact
+    ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3"
+    : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4";
 
   function handleAttached() {
     setAttachingImage(null);
@@ -751,46 +793,45 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
 
   return (
     <div className="flex flex-col h-full -m-6 animate-fade-in">
-      {/* Page header */}
+      {/* Hero header */}
       <div className="px-6 pt-6 shrink-0">
-        <PageHeader
-          title={t("images.title")}
-          icon={ImageIcon}
-          breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: t("images.title") }]}
-          description={t("images.subtitle")}
-          actions={
-            <>
-              {!isSearching && (
-                <select
-                  value={styleFilter}
-                  onChange={(e) => setStyleFilter(e.target.value as ImageStyle | "all")}
-                  className="rounded-lg border border-border bg-input px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="all">{t("images.allStyles")}</option>
-                  {STYLES.map((s) => (
-                    <option key={s} value={s}>
-                      {STYLE_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              )}
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 px-5 py-4">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "radial-gradient(600px 160px at 8% -40%, hsl(var(--primary) / 0.14), transparent 60%)" }}
+          />
+          <div className="relative flex flex-wrap items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl gradient-brand glow-primary">
+              <ImageIcon className="h-6 w-6 text-white" strokeWidth={1.9} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h1 className="font-display text-xl font-bold tracking-tight text-foreground">{t("images.studioTitle")}</h1>
+              <p className="text-xs text-muted-foreground">{t("images.subtitle")}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1"><ImageIcon className="h-3 w-3" /> <span className="font-semibold tabular-nums text-foreground">{stats.total}</span> {t("images.stats.total")}</span>
+                <span className="opacity-40">·</span>
+                <span className="inline-flex items-center gap-1"><CalendarClock className="h-3 w-3" /> <span className="font-semibold tabular-nums text-foreground">{stats.thisMonth}</span> {t("images.stats.thisMonth")}</span>
+                <span className="opacity-40">·</span>
+                <span className="inline-flex items-center gap-1"><Layers className="h-3 w-3" /> <span className="font-semibold tabular-nums text-foreground">{stats.collections}</span> {t("images.stats.collections")}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <Link
                 href={`/${projectId}/images/collections`}
-                className="flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                className="flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
               >
-                <Layers className="h-3.5 w-3.5" />
-                Collections
+                <Layers className="h-3.5 w-3.5" /> Collections
               </Link>
               <Link
                 href={`/${projectId}/images/studio`}
-                className="btn-primary flex items-center gap-2 px-3.5 py-2 text-xs"
+                className="btn-primary flex items-center gap-2 px-4 py-2 text-xs"
               >
-                <Plus className="h-3.5 w-3.5" />
-                {t("images.generate")}
+                <Sparkles className="h-3.5 w-3.5" /> {t("images.generate")}
               </Link>
-            </>
-          }
-        />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Body: folder sidebar on the left, scrollable content on the right */}
@@ -806,20 +847,73 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
             </>
           )}
 
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("images.searchPlaceholder")}
-              className="w-full rounded-lg border border-border bg-input pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
+          {/* Toolbar: search + filters + sort + density */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[200px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t("images.searchPlaceholder")}
+                  className="w-full rounded-xl border border-border bg-input py-2 pl-9 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+              </div>
 
-          {/* Usage tabs — hidden during search */}
-          {!isSearching && <UsageTabs active={usageFilter} onChange={setUsageFilter} />}
+              {!isSearching && (
+                <select
+                  value={styleFilter}
+                  onChange={(e) => setStyleFilter(e.target.value as ImageStyle | "all")}
+                  className="rounded-xl border border-border bg-input px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                >
+                  <option value="all">{t("images.allStyles")}</option>
+                  {STYLES.map((s) => (
+                    <option key={s} value={s}>{STYLE_LABELS[s]}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Sort */}
+              <div className="relative">
+                <ArrowUpDown className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as "newest" | "oldest")}
+                  aria-label={t("images.sort.label")}
+                  className="rounded-xl border border-border bg-input py-2 pl-8 pr-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                >
+                  <option value="newest">{t("images.sort.newest")}</option>
+                  <option value="oldest">{t("images.sort.oldest")}</option>
+                </select>
+              </div>
+
+              {/* Density toggle */}
+              <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => setCompact(false)}
+                  aria-label={t("images.density.comfortable")}
+                  title={t("images.density.comfortable")}
+                  className={cn("flex h-7 w-7 items-center justify-center rounded-lg transition-all", !compact ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCompact(true)}
+                  aria-label={t("images.density.compact")}
+                  title={t("images.density.compact")}
+                  className={cn("flex h-7 w-7 items-center justify-center rounded-lg transition-all", compact ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Grid3x3 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Usage tabs — hidden during search */}
+            {!isSearching && <UsageTabs active={usageFilter} onChange={setUsageFilter} />}
+          </div>
 
           {/* Content */}
           {isLoading ? (
@@ -850,14 +944,15 @@ export default function ImagesPage({ params }: { params: { projectId: string } }
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {filteredImages.map((image) => (
+            <div className={cn("grid", gridColsClass)}>
+              {sortedImages.map((image) => (
                 <ImageCard
                   key={image.id}
                   image={image}
                   projectId={projectId}
                   articles={articles}
                   folders={folders}
+                  compact={compact}
                   onAttach={setAttachingImage}
                   onMoved={handleMoved}
                   selected={selectedIds.has(image.id)}

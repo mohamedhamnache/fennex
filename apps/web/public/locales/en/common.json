@@ -556,7 +556,23 @@
       "delete": "Delete",
       "free": "free"
     },
-    "searchPlaceholder": "Search by prompt, alt text, or caption..."
+    "searchPlaceholder": "Search by prompt, alt text, or caption...",
+    "studioTitle": "Image Studio",
+    "stats": {
+      "total": "Total images",
+      "thisMonth": "This month",
+      "collections": "Collections",
+      "ready": "Ready"
+    },
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "oldest": "Oldest"
+    },
+    "density": {
+      "comfortable": "Comfortable view",
+      "compact": "Compact view"
+    }
   },
   "social": {
     "title": "Social Studio",
