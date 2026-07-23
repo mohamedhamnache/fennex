@@ -28,13 +28,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           src="/fennec-white.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[6%] w-[60%] max-w-[320px] -translate-x-1/2 opacity-[0.42]"
-          style={{ mixBlendMode: "screen" }}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.72]"
+          style={{ transform: "scale(0.85)", mixBlendMode: "screen" }}
         />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ background: "linear-gradient(180deg, rgba(18,11,7,0.35) 0%, rgba(18,11,7,0) 40%, rgba(18,11,7,0.9) 100%)" }}
+          style={{ background: "linear-gradient(180deg, rgba(18,11,7,0.45) 0%, rgba(18,11,7,0.05) 42%, rgba(18,11,7,0.9) 100%)" }}
         />
         {/* warm rim glow */}
         <div className="orb-1 pointer-events-none absolute -bottom-24 -left-20 h-[360px] w-[360px] rounded-full blur-[90px] opacity-70" />
