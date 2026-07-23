@@ -459,7 +459,23 @@
       "delete": "Excluir",
       "free": "grátis"
     },
-    "searchPlaceholder": "Pesquisar por prompt, texto alternativo ou legenda..."
+    "searchPlaceholder": "Pesquisar por prompt, texto alternativo ou legenda...",
+    "studioTitle": "Estúdio de imagens",
+    "stats": {
+      "total": "Imagens no total",
+      "thisMonth": "Este mês",
+      "collections": "Coleções",
+      "ready": "Prontas"
+    },
+    "sort": {
+      "label": "Ordenar",
+      "newest": "Recentes",
+      "oldest": "Antigas"
+    },
+    "density": {
+      "comfortable": "Visão confortável",
+      "compact": "Visão compacta"
+    }
   },
   "social": {
     "title": "Estúdio social",

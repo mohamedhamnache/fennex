@@ -459,7 +459,23 @@
       "delete": "Supprimer",
       "free": "gratuit"
     },
-    "searchPlaceholder": "Rechercher par prompt, texte alternatif ou légende..."
+    "searchPlaceholder": "Rechercher par prompt, texte alternatif ou légende...",
+    "studioTitle": "Studio d'images",
+    "stats": {
+      "total": "Images au total",
+      "thisMonth": "Ce mois-ci",
+      "collections": "Collections",
+      "ready": "Prêtes"
+    },
+    "sort": {
+      "label": "Trier",
+      "newest": "Récentes",
+      "oldest": "Anciennes"
+    },
+    "density": {
+      "comfortable": "Vue confortable",
+      "compact": "Vue compacte"
+    }
   },
   "social": {
     "title": "Studio social",

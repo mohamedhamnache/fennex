@@ -459,7 +459,23 @@
       "delete": "حذف",
       "free": "مجاني"
     },
-    "searchPlaceholder": "ابحث بالوصف أو النص البديل أو التعليق..."
+    "searchPlaceholder": "ابحث بالوصف أو النص البديل أو التعليق...",
+    "studioTitle": "استوديو الصور",
+    "stats": {
+      "total": "إجمالي الصور",
+      "thisMonth": "هذا الشهر",
+      "collections": "المجموعات",
+      "ready": "جاهزة"
+    },
+    "sort": {
+      "label": "ترتيب",
+      "newest": "الأحدث",
+      "oldest": "الأقدم"
+    },
+    "density": {
+      "comfortable": "عرض مريح",
+      "compact": "عرض مضغوط"
+    }
   },
   "social": {
     "title": "الاستوديو الاجتماعي",

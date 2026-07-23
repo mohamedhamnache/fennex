@@ -459,7 +459,23 @@
       "delete": "Eliminar",
       "free": "gratis"
     },
-    "searchPlaceholder": "Buscar por prompt, texto alternativo o pie de foto..."
+    "searchPlaceholder": "Buscar por prompt, texto alternativo o pie de foto...",
+    "studioTitle": "Estudio de imágenes",
+    "stats": {
+      "total": "Imágenes totales",
+      "thisMonth": "Este mes",
+      "collections": "Colecciones",
+      "ready": "Listas"
+    },
+    "sort": {
+      "label": "Ordenar",
+      "newest": "Recientes",
+      "oldest": "Antiguas"
+    },
+    "density": {
+      "comfortable": "Vista cómoda",
+      "compact": "Vista compacta"
+    }
   },
   "social": {
     "title": "Estudio social",

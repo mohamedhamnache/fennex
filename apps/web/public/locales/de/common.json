@@ -459,7 +459,23 @@
       "delete": "Löschen",
       "free": "kostenlos"
     },
-    "searchPlaceholder": "Nach Prompt, Alt-Text oder Bildunterschrift suchen..."
+    "searchPlaceholder": "Nach Prompt, Alt-Text oder Bildunterschrift suchen...",
+    "studioTitle": "Bild-Studio",
+    "stats": {
+      "total": "Bilder gesamt",
+      "thisMonth": "Diesen Monat",
+      "collections": "Sammlungen",
+      "ready": "Fertig"
+    },
+    "sort": {
+      "label": "Sortieren",
+      "newest": "Neueste",
+      "oldest": "Älteste"
+    },
+    "density": {
+      "comfortable": "Komfortable Ansicht",
+      "compact": "Kompakte Ansicht"
+    }
   },
   "social": {
     "title": "Social Studio",
