@@ -915,17 +915,19 @@
         "freelancer": "Freelance"
       },
       "palette": "Palette d'accent",
-      "paletteHint": "Définit la couleur d'accent de ce projet dans toute l'app. Enregistré instantanément.",
+      "paletteHint": "Définit la couleur d'accent du projet dans toute l'app — appliquée instantanément.",
       "paletteSaved": "Palette mise à jour",
       "palettes": {
         "desert": "Désert",
         "indigo": "Indigo",
-        "teal": "Sarcelle",
+        "teal": "Turquoise",
         "forest": "Forêt",
         "amber": "Ambre",
         "rose": "Rose",
         "plum": "Prune"
-      }
+      },
+      "custom": "Personnalisé",
+      "accentPreview": "Aperçu"
     },
     "title": "Paramètres",
     "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",

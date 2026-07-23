@@ -914,18 +914,20 @@
         "ecommerce": "E-Commerce",
         "freelancer": "Freelancer"
       },
-      "palette": "Akzent-Palette",
-      "paletteHint": "Legt die Akzentfarbe dieses Projekts in der ganzen App fest. Sofort gespeichert.",
+      "palette": "Akzentpalette",
+      "paletteHint": "Legt die Akzentfarbe des Projekts in der ganzen App fest – sofort angewendet.",
       "paletteSaved": "Palette aktualisiert",
       "palettes": {
         "desert": "Wüste",
         "indigo": "Indigo",
-        "teal": "Petrol",
+        "teal": "Türkis",
         "forest": "Wald",
         "amber": "Bernstein",
         "rose": "Rosé",
         "plum": "Pflaume"
-      }
+      },
+      "custom": "Benutzerdefiniert",
+      "accentPreview": "Vorschau"
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",

@@ -23,6 +23,7 @@ import {
   listProjects, updateProject, type ProjectPersona,
 } from "@/lib/api";
 import { BrandKitSection } from "@/components/settings/BrandKitSection";
+import { applyPalette, isCustomTheme } from "@/lib/palette";
 import { useProjectStore } from "@/lib/store";
 import { useUsageStore } from "@/lib/billing-store";
 import { Badge } from "@/components/ui/Badge";
@@ -1234,10 +1235,19 @@ function ProjectSection() {
   }
 
   const knownLang = PROJECT_LANGS.some((l) => l.code === form.locale);
+  const currentTheme = active.theme || "desert";
+  const custom = isCustomTheme(active.theme);
+
+  // Apply instantly (whole app recolors), remember it, then persist.
+  function pickTheme(theme: string) {
+    applyPalette(theme);
+    try { localStorage.setItem("fx-palette", theme); } catch { /* ignore */ }
+    themeMutation.mutate(theme);
+  }
 
   return (
-    <div>
-      <SectionHeader title={t("settings.project.title")} description={t("settings.project.subtitle")} />
+    <div className="flex flex-col gap-5">
+      <SectionHeader icon={Globe} title={t("settings.project.title")} description={t("settings.project.subtitle")} />
 
       <Card className="flex flex-col gap-4 p-5">
         {projects.length > 1 && (
@@ -1305,39 +1315,84 @@ function ProjectSection() {
           </button>
         </div>
 
-        <Field
-          label={t("settings.project.palette", { defaultValue: "Accent palette" })}
-          hint={t("settings.project.paletteHint", { defaultValue: "Sets this project's accent color across the whole app. Saved instantly." })}
-        >
-          <div className="flex flex-wrap gap-2">
-            {PALETTES.map((p) => {
-              const on = (active.theme || "desert") === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => themeMutation.mutate(p.id)}
-                  disabled={themeMutation.isPending}
-                  title={p.label}
-                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                    on ? "border-primary ring-1 ring-primary/40 text-foreground" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  <span className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10" style={{ background: p.color }} />
-                  {t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
-                  {on && <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />}
-                </button>
-              );
-            })}
-          </div>
-        </Field>
-
         {saveMutation.isError && <ErrorMsg>{t("settings.project.saveError")}</ErrorMsg>}
 
         <div>
           <PrimaryBtn onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
             {saveMutation.isPending ? t("settings.project.saving") : t("settings.project.save")}
           </PrimaryBtn>
+        </div>
+      </Card>
+
+      {/* Accent palette */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><Palette className="h-3.5 w-3.5" strokeWidth={2} /></span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{t("settings.project.palette")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.project.paletteHint")}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {PALETTES.map((p) => {
+            const on = !custom && currentTheme === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => pickTheme(p.id)}
+                disabled={themeMutation.isPending}
+                title={t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
+                className="group flex flex-col items-center gap-1.5 disabled:opacity-60"
+              >
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-105 ${on ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
+                  style={{ background: p.color, ...(on ? { boxShadow: `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${p.color}` } : {}) }}
+                >
+                  {on && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
+                </span>
+                <span className={`text-[10px] font-medium ${on ? "text-foreground" : "text-muted-foreground"}`}>
+                  {t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Custom color */}
+          <label className="group flex cursor-pointer flex-col items-center gap-1.5" title={t("settings.project.custom")}>
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-transform group-hover:scale-105"
+              style={
+                custom
+                  ? { background: active.theme as string, boxShadow: `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${active.theme}` }
+                  : { background: "conic-gradient(from 0deg, #ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)" }
+              }
+            >
+              {custom ? <Check className="h-4 w-4" strokeWidth={3} /> : <Plus className="h-4 w-4" strokeWidth={2.5} />}
+              <input
+                type="color"
+                value={custom ? (active.theme as string) : "#c2603a"}
+                onChange={(e) => pickTheme(e.target.value)}
+                className="sr-only"
+                aria-label={t("settings.project.custom")}
+              />
+            </span>
+            <span className={`text-[10px] font-medium ${custom ? "text-foreground" : "text-muted-foreground"}`}>{t("settings.project.custom")}</span>
+          </label>
+        </div>
+
+        {/* Live preview */}
+        <div className="mt-5 rounded-xl border border-border bg-background/50 p-4">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{t("settings.project.accentPreview")}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="btn-primary px-3 py-1.5 text-xs">{active.name || "Fennex"}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary">
+              <Sparkles className="h-3 w-3" /> {custom ? t("settings.project.custom") : t(`settings.project.palettes.${currentTheme}`, { defaultValue: currentTheme })}
+            </span>
+            <a className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2">{active.domain || "example.com"}</a>
+            <span className="h-2 w-24 overflow-hidden rounded-full bg-muted"><span className="block h-full w-2/3 rounded-full gradient-brand" /></span>
+          </div>
         </div>
       </Card>
     </div>

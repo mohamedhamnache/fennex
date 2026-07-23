@@ -11,6 +11,7 @@ import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { getBillingUsage, isAuthenticated, ApiError, listProjects } from "@/lib/api";
 import { useUsageStore } from "@/lib/billing-store";
 import { useProjectStore } from "@/lib/store";
+import { applyPalette } from "@/lib/palette";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // there's no flash of the default palette on refresh) and remember it.
   useLayoutEffect(() => {
     if (!projects.length) return; // wait until the real theme is known
-    document.documentElement.setAttribute("data-palette", activePalette);
+    applyPalette(activePalette);
     try { localStorage.setItem("fx-palette", activePalette); } catch { /* ignore */ }
   }, [activePalette, projects.length]);
   const setUsage = useUsageStore((s) => s.setUsage);

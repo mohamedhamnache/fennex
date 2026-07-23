@@ -1012,7 +1012,7 @@
         "freelancer": "Freelancer"
       },
       "palette": "Accent palette",
-      "paletteHint": "Sets this project's accent color across the whole app. Saved instantly.",
+      "paletteHint": "Sets this project's accent across the whole app — applied instantly.",
       "paletteSaved": "Palette updated",
       "palettes": {
         "desert": "Desert",
@@ -1022,7 +1022,9 @@
         "amber": "Amber",
         "rose": "Rose",
         "plum": "Plum"
-      }
+      },
+      "custom": "Custom",
+      "accentPreview": "Preview"
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",
