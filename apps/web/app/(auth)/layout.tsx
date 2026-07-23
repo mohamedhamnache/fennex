@@ -29,12 +29,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           alt=""
           aria-hidden
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-        />
-        {/* warm tint + legibility scrims layered over the image */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(120% 80% at 50% 30%, rgba(217,120,72,0.28), transparent 62%)", mixBlendMode: "overlay" }}
+          style={{ filter: "invert(1) brightness(1.05) sepia(0.35) saturate(1.4) hue-rotate(-12deg)" }}
         />
         <div
           aria-hidden
