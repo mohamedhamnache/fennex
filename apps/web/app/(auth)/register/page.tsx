@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { User, Building2, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
 import { ApiError, authRegister } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [form, setForm] = useState({ email: "", password: "", fullName: "", orgName: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,47 +32,80 @@ export default function RegisterPage() {
     }
   }
 
-  const field = "w-full rounded-lg border border-border bg-input px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all";
+  const field =
+    "w-full rounded-xl border border-border bg-input py-3 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all focus:border-primary/50";
+  const iconCls = "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70";
 
   return (
     <div className="space-y-7">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("auth.createAccount")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("auth.registerSubtitle")}</p>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">{t("auth.createAccount")}</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">{t("auth.registerSubtitle")}</p>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/15 dark:text-red-400">
-          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {error}
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive animate-fade-in"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground" htmlFor="fullName">{t("auth.fullName")}</label>
-            <input id="fullName" type="text" required value={form.fullName} onChange={set("fullName")} className={field} placeholder="Jane Smith" />
+            <div className="relative">
+              <User className={iconCls} />
+              <input id="fullName" type="text" required value={form.fullName} onChange={set("fullName")} className={field} placeholder="Jane Smith" />
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground" htmlFor="orgName">{t("auth.company")}</label>
-            <input id="orgName" type="text" required value={form.orgName} onChange={set("orgName")} className={field} placeholder="Acme Inc." />
+            <div className="relative">
+              <Building2 className={iconCls} />
+              <input id="orgName" type="text" required value={form.orgName} onChange={set("orgName")} className={field} placeholder="Acme Inc." />
+            </div>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-foreground" htmlFor="email">{t("auth.workEmail")}</label>
-          <input id="email" type="email" autoComplete="email" required value={form.email} onChange={set("email")} className={field} placeholder="you@company.com" />
+          <div className="relative">
+            <Mail className={iconCls} />
+            <input id="email" type="email" autoComplete="email" required value={form.email} onChange={set("email")} className={field} placeholder="you@company.com" />
+          </div>
         </div>
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-foreground" htmlFor="password">{t("auth.password")}</label>
-          <input id="password" type="password" autoComplete="new-password" required minLength={6} value={form.password} onChange={set("password")} className={field} placeholder={t("auth.passwordHint")} />
+          <div className="relative">
+            <Lock className={iconCls} />
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              minLength={6}
+              value={form.password}
+              onChange={set("password")}
+              className={`${field} pr-11`}
+              placeholder={t("auth.passwordHint")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
-        <button type="submit" disabled={loading} className="btn-primary w-full px-4 py-2.5 text-sm">
+        <button type="submit" disabled={loading} className="btn-primary group w-full px-4 py-3 text-sm">
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -79,10 +114,15 @@ export default function RegisterPage() {
               </svg>
               {t("auth.creatingAccount")}
             </span>
-          ) : t("auth.getStarted")}
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              {t("auth.getStarted")}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          )}
         </button>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
           {t("auth.termsText")}
         </p>
       </form>
@@ -92,11 +132,12 @@ export default function RegisterPage() {
         <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground">{t("auth.haveAccount")}</span></div>
       </div>
 
-      <p className="text-center text-sm">
-        <Link href="/login" className="font-semibold text-primary hover:underline underline-offset-4">
-          {t("auth.signInInstead")}
-        </Link>
-      </p>
+      <Link
+        href="/login"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:bg-accent"
+      >
+        {t("auth.signInInstead")}
+      </Link>
     </div>
   );
 }

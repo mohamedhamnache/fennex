@@ -7,10 +7,16 @@ import { FennecMark } from "@fennex/ui";
 import { TrendingUp, PenLine, Send, BarChart2 } from "lucide-react";
 
 const features = [
-  { icon: TrendingUp, title: "Keyword Research", desc: "Find high-ROI opportunities with AI clustering" },
-  { icon: PenLine, title: "AI Article Generation", desc: "SEO-optimized long-form content in minutes" },
-  { icon: Send, title: "Auto-Publish", desc: "Push to WordPress, Shopify, Ghost & more" },
-  { icon: BarChart2, title: "Rank Tracking", desc: "Monitor positions & traffic in real-time" },
+  { icon: TrendingUp, title: "Keyword research", desc: "Find high-ROI opportunities with AI clustering" },
+  { icon: PenLine, title: "AI article generation", desc: "SEO-optimized long-form content in minutes" },
+  { icon: Send, title: "Auto-publish", desc: "Push to WordPress, Shopify, Ghost & more" },
+  { icon: BarChart2, title: "Rank tracking", desc: "Monitor positions & traffic in real time" },
+];
+
+const stats = [
+  { value: "1,200+", label: "teams" },
+  { value: "750M+", label: "organic views" },
+  { value: "7", label: "AI specialists" },
 ];
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -22,47 +28,67 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* ── Left: dark brand panel ── */}
-      <div className="auth-panel relative hidden overflow-hidden lg:flex lg:w-[46%] flex-col justify-between p-10 xl:p-14">
-        {/* floating orbs */}
+      {/* ── Left: warm dusk brand panel ── */}
+      <div className="auth-panel relative hidden overflow-hidden lg:flex lg:w-[48%] flex-col justify-between p-10 xl:p-14">
+        {/* floating warm orbs */}
         <div className="orb-1 pointer-events-none absolute -top-32 -left-32 h-[480px] w-[480px] rounded-full blur-[80px]" />
-        <div className="orb-2 pointer-events-none absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full blur-[80px]" />
+        <div className="orb-2 pointer-events-none absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full blur-[80px]" />
         <div className="orb-3 pointer-events-none absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[60px]" />
+        {/* fine dot texture */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.18]"
+          style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px)", backgroundSize: "22px 22px" }}
+        />
 
         {/* Logo */}
-        <div className="relative flex items-center gap-2.5">
-          <div className="gradient-brand flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-indigo">
-            <FennecMark className="h-5 w-5 brightness-0 invert" />
+        <div className="relative flex items-center gap-3">
+          <div className="gradient-brand glow-primary flex h-10 w-10 items-center justify-center rounded-xl text-white">
+            <FennecMark className="h-6 w-6 brightness-0 invert" />
           </div>
-          <span className="text-lg font-bold tracking-tight text-white">Fennex</span>
+          <span className="font-display text-xl font-bold tracking-tight text-white">Fennex</span>
         </div>
 
         {/* Hero */}
-        <div className="relative space-y-8">
-          <div className="space-y-4">
-            <div className="badge bg-white/10 text-white/80 backdrop-blur-sm border border-white/10">
-              <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-green-400" />
-              AI-Powered SEO Growth Platform
-            </div>
-            <h1 className="text-4xl font-extrabold leading-tight text-white xl:text-5xl">
-              Grow organic traffic<br />
-              <span style={{ background: "linear-gradient(135deg, #a5b4fc 0%, #c4b5fd 50%, #f0abfc 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                on auto-pilot
+        <div className="relative space-y-9">
+          <div className="space-y-5">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.07] px-3 py-1 text-[11px] font-medium text-white/75 backdrop-blur-sm">
+              <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              A virtual marketing agency of AI agents
+            </span>
+            <h1 className="font-display text-[2.75rem] font-semibold leading-[1.08] tracking-tight text-white xl:text-[3.25rem]">
+              Grow organic traffic
+              <br />
+              <span
+                style={{
+                  background: "linear-gradient(120deg, #e8a06a 0%, #d97848 45%, #e9c37a 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                on autopilot
               </span>
             </h1>
-            <p className="max-w-sm text-base leading-relaxed text-white/60">
-              Research keywords, generate articles, publish content, and track rankings — all driven by your own AI models.
+            <p className="max-w-md text-base leading-relaxed text-white/55">
+              Research keywords, write ranking articles, publish everywhere, and measure what
+              works — driven by your own AI models.
             </p>
           </div>
 
           {/* Feature list */}
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-2.5">
             {features.map((f) => (
-              <div key={f.title} className="flex items-start gap-3 rounded-xl bg-white/5 border border-white/8 p-3.5 backdrop-blur-sm">
-                <f.icon size={16} className="mt-0.5 shrink-0 text-white/70" />
+              <div
+                key={f.title}
+                className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-white/[0.04] p-3.5 backdrop-blur-sm transition-colors hover:border-white/15 hover:bg-white/[0.06]"
+              >
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.07] text-[#e8a06a]">
+                  <f.icon size={15} strokeWidth={1.9} />
+                </span>
                 <div>
                   <p className="text-sm font-semibold text-white">{f.title}</p>
-                  <p className="text-xs text-white/50 mt-0.5">{f.desc}</p>
+                  <p className="mt-0.5 text-xs text-white/45">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -70,32 +96,34 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         {/* Social proof */}
-        <div className="relative">
-          <div className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/8 p-4 backdrop-blur-sm">
-            <div className="flex -space-x-2">
-              {["#b5522f","#c47a3d","#cf9142","#c9764a"].map((c, i) => (
-                <div key={i} className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#1a1065] text-xs font-bold text-white" style={{ background: c }}>
-                  {["A","B","C","D"][i]}
-                </div>
-              ))}
+        <div className="relative flex items-center gap-6 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-5 py-4 backdrop-blur-sm">
+          {stats.map((s, i) => (
+            <div key={s.label} className="flex items-center gap-6">
+              {i > 0 && <span className="h-8 w-px bg-white/10" />}
+              <div>
+                <p className="font-display text-lg font-bold leading-none text-white">{s.value}</p>
+                <p className="mt-1 text-[11px] text-white/45">{s.label}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-white">Trusted by 1,200+ teams</p>
-              <p className="text-xs text-white/50">750M+ organic views generated</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* ── Right: form panel ── */}
-      <div className="flex flex-1 items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-[400px] animate-slide-up">
+      <div className="relative flex flex-1 items-center justify-center p-6 lg:p-12">
+        {/* warm ambient wash */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(620px 260px at 70% -10%, hsl(var(--primary) / 0.10), transparent 62%)" }}
+        />
+        <div className="relative w-full max-w-[400px] animate-slide-up">
           {/* Mobile logo */}
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <div className="gradient-brand flex h-7 w-7 items-center justify-center rounded-md">
-              <FennecMark className="h-4 w-4 brightness-0 invert" />
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <div className="gradient-brand glow-primary flex h-9 w-9 items-center justify-center rounded-xl">
+              <FennecMark className="h-5 w-5 brightness-0 invert" />
             </div>
-            <span className="font-bold">Fennex</span>
+            <span className="font-display text-lg font-bold tracking-tight">Fennex</span>
           </div>
           {children}
         </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
 import { ApiError, authLogin } from "@/lib/api";
 
 export default function LoginPage() {
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,48 +30,66 @@ export default function LoginPage() {
     }
   }
 
+  const inputCls =
+    "w-full rounded-xl border border-border bg-input py-3 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all focus:border-primary/50";
+
   return (
     <div className="space-y-7">
       {/* Heading */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("auth.welcomeBack")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("auth.signInSubtitle")}</p>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">{t("auth.welcomeBack")}</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">{t("auth.signInSubtitle")}</p>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-900/15 dark:text-red-400">
-          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {error}
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive animate-fade-in"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Email */}
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-foreground" htmlFor="email">{t("auth.email")}</label>
-          <input
-            id="email" type="email" autoComplete="email" required
-            value={email} onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-border bg-input px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all"
-            placeholder={t("auth.emailPlaceholder")}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-foreground" htmlFor="password">{t("auth.password")}</label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+            <input
+              id="email" type="email" autoComplete="email" required
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              className={inputCls}
+              placeholder={t("auth.emailPlaceholder")}
+            />
           </div>
-          <input
-            id="password" type="password" autoComplete="current-password" required
-            value={password} onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-border bg-input px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all"
-            placeholder="••••••••"
-          />
         </div>
 
-        <button type="submit" disabled={loading} className="btn-primary w-full px-4 py-2.5 text-sm">
+        {/* Password */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-foreground" htmlFor="password">{t("auth.password")}</label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+            <input
+              id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              className={`${inputCls} pr-11`}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" disabled={loading} className="btn-primary group w-full px-4 py-3 text-sm">
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -78,7 +98,12 @@ export default function LoginPage() {
               </svg>
               {t("auth.signingIn")}
             </span>
-          ) : t("auth.signIn")}
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              {t("auth.signIn")}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          )}
         </button>
       </form>
 
@@ -87,11 +112,12 @@ export default function LoginPage() {
         <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground">{t("auth.newToFennex")}</span></div>
       </div>
 
-      <p className="text-center text-sm">
-        <Link href="/register" className="font-semibold text-primary hover:underline underline-offset-4">
-          {t("auth.createFreeAccount")}
-        </Link>
-      </p>
+      <Link
+        href="/register"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:bg-accent"
+      >
+        {t("auth.createFreeAccount")}
+      </Link>
     </div>
   );
 }
