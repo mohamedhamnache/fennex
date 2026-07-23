@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
@@ -1187,6 +1187,13 @@ function ProjectSection() {
       });
     }
   }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Discard any unsaved accent preview when leaving: restore the app's real
+  // active-project theme (the picker only persists via Save).
+  const appActiveTheme = (projects.find((p) => p.id === currentProjectId) ?? projects[0])?.theme || "desert";
+  const appThemeRef = useRef(appActiveTheme);
+  appThemeRef.current = appActiveTheme;
+  useEffect(() => () => { applyPalette(appThemeRef.current); }, []);
 
   const saveMutation = useMutation({
     mutationFn: () =>
