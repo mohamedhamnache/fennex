@@ -132,15 +132,17 @@ export function BrandKitSection() {
             <p className="mt-0.5 truncate text-sm text-muted-foreground" style={{ fontFamily: secondaryFont || undefined }}>
               {fontLine || t("settings.brandKit.addFonts")}
             </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {colors.length > 0
-                ? colors.map((c, i) => (
-                    <span key={i} className="h-6 w-6 rounded-md border border-border shadow-sm" style={{ background: c }} title={c} />
-                  ))
-                : [...Array(4)].map((_, i) => (
-                    <span key={i} className="h-6 w-6 rounded-md border border-dashed border-border" />
-                  ))}
-            </div>
+            {colors.length > 0 ? (
+              <div className="mt-3 inline-flex h-7 overflow-hidden rounded-lg border border-border shadow-sm">
+                {colors.map((c, i) => (
+                  <span key={i} className="h-full w-9" style={{ background: c }} title={c} />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 inline-flex h-7 items-center rounded-lg border border-dashed border-border px-3 text-[11px] font-medium text-muted-foreground">
+                {t("settings.brandKit.noColors")}
+              </div>
+            )}
           </div>
         </div>
       </div>
