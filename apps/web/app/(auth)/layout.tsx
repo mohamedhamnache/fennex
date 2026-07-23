@@ -25,11 +25,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* The fennec, filling the panel */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/fennec-bg.png"
+          src="/fennec-white.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          style={{ filter: "invert(1) brightness(1.05) sepia(0.35) saturate(1.4) hue-rotate(-12deg)" }}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.78]"
         />
         <div
           aria-hidden
