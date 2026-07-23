@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { X, FileText, Share2, Image as ImageIcon, Loader2 } from "lucide-react";
+import { X, FileText, Share2, Image as ImageIcon, Loader2, CalendarPlus } from "lucide-react";
 import {
   createCalendarEntry,
   listArticles,
@@ -124,9 +124,19 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative flex w-full max-w-lg flex-col rounded-2xl border border-border bg-card shadow-lg animate-scale-in max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-border p-5">
-          <h2 className="text-lg font-semibold text-foreground">{t("calendar.addContent")}</h2>
+      <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg animate-scale-in max-h-[90vh]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-24"
+          style={{ background: "radial-gradient(420px 110px at 50% -30%, hsl(var(--primary) / 0.16), transparent 70%)" }}
+        />
+        <div className="relative flex items-center justify-between border-b border-border p-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl gradient-brand glow-primary">
+              <CalendarPlus className="h-5 w-5 text-white" strokeWidth={1.9} />
+            </span>
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{t("calendar.addContent")}</h2>
+          </div>
           <button
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

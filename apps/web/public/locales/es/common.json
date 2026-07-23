@@ -2112,5 +2112,19 @@
       "terms": "Términos",
       "status": "Estado"
     }
+  },
+  "calendar": {
+    "view": {
+      "month": "Mes",
+      "agenda": "Agenda"
+    },
+    "allTypes": "Todo",
+    "upcoming": "Próximos",
+    "tomorrow": "Mañana",
+    "thisMonth": "Este mes",
+    "noUpcoming": "Nada programado aún: añade tu primer contenido.",
+    "dragHint": "Arrastra una entrada a otro día para reprogramarla.",
+    "rescheduled": "Reprogramado",
+    "scheduledCount": "{{count}} programado(s)"
   }
 }

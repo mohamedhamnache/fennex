@@ -2112,5 +2112,19 @@
       "terms": "Conditions",
       "status": "Statut"
     }
+  },
+  "calendar": {
+    "view": {
+      "month": "Mois",
+      "agenda": "Agenda"
+    },
+    "allTypes": "Tout",
+    "upcoming": "À venir",
+    "tomorrow": "Demain",
+    "thisMonth": "Ce mois-ci",
+    "noUpcoming": "Rien de planifié — ajoutez votre premier contenu.",
+    "dragHint": "Glissez une entrée vers un autre jour pour la reprogrammer.",
+    "rescheduled": "Reprogrammé",
+    "scheduledCount": "{{count}} planifié(s)"
   }
 }

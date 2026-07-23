@@ -2112,5 +2112,19 @@
       "terms": "الشروط",
       "status": "الحالة"
     }
+  },
+  "calendar": {
+    "view": {
+      "month": "الشهر",
+      "agenda": "الأجندة"
+    },
+    "allTypes": "الكل",
+    "upcoming": "القادمة",
+    "tomorrow": "غدًا",
+    "thisMonth": "هذا الشهر",
+    "noUpcoming": "لا شيء مجدول بعد — أضف أول محتوى لك.",
+    "dragHint": "اسحب أي عنصر إلى يوم آخر لإعادة جدولته.",
+    "rescheduled": "أُعيدت الجدولة",
+    "scheduledCount": "{{count}} مجدول"
   }
 }

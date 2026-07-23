@@ -57,7 +57,19 @@
     "pickDate": "Date & time",
     "save": "Save",
     "cancel": "Cancel",
-    "needTarget": "Choose a publish target to schedule this."
+    "needTarget": "Choose a publish target to schedule this.",
+    "view": {
+      "month": "Month",
+      "agenda": "Agenda"
+    },
+    "allTypes": "All",
+    "upcoming": "Upcoming",
+    "tomorrow": "Tomorrow",
+    "thisMonth": "This month",
+    "noUpcoming": "Nothing scheduled yet — add your first piece.",
+    "dragHint": "Drag any entry to another day to reschedule.",
+    "rescheduled": "Rescheduled",
+    "scheduledCount": "{{count}} scheduled"
   },
   "personaHome": {
     "quickActions": "Quick actions",
