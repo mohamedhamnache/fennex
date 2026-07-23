@@ -1412,7 +1412,9 @@
         "faq": "Füge eine FAQ-Sektion mit 3-5 echten Long-Tail-Fragen und knappen, nützlichen Antworten hinzu. Lass den Rest unverändert.",
         "intro": "Schreibe nur die Einleitung neu: starker erster Satz, Keyword in den ersten 100 Wörtern, klares Versprechen. Alle anderen Abschnitte bleiben identisch.",
         "meta": "Schreibe einen optimierten Meta-Titel (max. 60 Zeichen) und eine Meta-Beschreibung (max. 160 Zeichen) und übernimm sie."
-      }
+      },
+      "newChat": "Neuer Chat",
+      "enterHint": "Enter zum Senden · Umschalt+Enter für neue Zeile"
     },
     "overview": {
       "heading": "Deine Artikel",
