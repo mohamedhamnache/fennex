@@ -231,17 +231,22 @@ export default function StudioPage({ params }: { params: { projectId: string } }
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 60px)" }}>
       {/* Studio header with mode switcher */}
-      <div className="flex items-center justify-between border-b border-border px-5 py-3 shrink-0">
+      <div className="flex items-center justify-between border-b border-border bg-card/30 px-5 py-3 shrink-0">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => router.push(`/${projectId}/images`)}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" /> Library
           </button>
           <span className="text-muted-foreground/40">/</span>
-          <span className="text-sm font-semibold text-foreground">Studio</span>
+          <span className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg gradient-brand text-white">
+              <Sparkles className="h-4 w-4" strokeWidth={1.9} />
+            </span>
+            <span className="font-display text-base font-bold tracking-tight text-foreground">Image Studio</span>
+          </span>
         </div>
 
         {/* Segmented mode switcher */}
@@ -252,9 +257,9 @@ export default function StudioPage({ params }: { params: { projectId: string } }
               type="button"
               onClick={() => setMode(id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
                 mode === id
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-card text-primary shadow-sm ring-1 ring-inset ring-primary/15"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -265,7 +270,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
         </div>
 
         {/* Spacer to balance the flex layout so the switcher stays centered-ish */}
-        <div className="w-[120px]" />
+        <div className="hidden w-[120px] lg:block" />
       </div>
 
       {/* Body — one of three front doors */}
