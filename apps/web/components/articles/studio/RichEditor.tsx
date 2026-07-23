@@ -188,17 +188,21 @@ interface SlashState {
   anchor: number;
 }
 
+// Editorial writing surface: the editor mirrors the published Preview so drafting
+// feels like the finished piece — Fraunces display serif for headings, a generous
+// reading measure, a warm caret and selection tint.
 const PROSE_CLASS =
-  "prose-editor min-h-full text-[15px] leading-[1.8] text-foreground focus:outline-none " +
-  "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:mt-8 [&_h1]:mb-3 " +
-  "[&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:mt-7 [&_h2]:mb-2 " +
-  "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-1.5 " +
-  "[&_p]:my-2.5 [&_strong]:font-semibold [&_em]:italic " +
-  "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-1 " +
-  "[&_a]:text-primary [&_a]:underline " +
-  "[&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground " +
-  "[&_code]:font-mono [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded " +
-  "[&_pre]:bg-muted [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_pre]:overflow-x-auto";
+  "prose-editor min-h-full text-[15.5px] leading-[1.85] text-foreground/95 focus:outline-none caret-primary selection:bg-primary/20 " +
+  "[&_h1]:font-display [&_h1]:text-[2rem] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:leading-[1.15] [&_h1]:mt-8 [&_h1]:mb-3 [&_h1]:text-foreground " +
+  "[&_h2]:font-display [&_h2]:text-[1.5rem] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:leading-snug [&_h2]:mt-8 [&_h2]:mb-2.5 [&_h2]:text-foreground " +
+  "[&_h3]:font-display [&_h3]:text-[1.2rem] [&_h3]:font-semibold [&_h3]:leading-snug [&_h3]:mt-6 [&_h3]:mb-1.5 [&_h3]:text-foreground " +
+  "[&_p]:my-3.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_em]:italic " +
+  "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_li]:my-1.5 [&_li]:pl-1 [&_li]:marker:text-primary/70 " +
+  "[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-2 hover:[&_a]:decoration-primary " +
+  "[&_blockquote]:my-5 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-5 [&_blockquote]:font-display [&_blockquote]:text-lg [&_blockquote]:italic [&_blockquote]:text-foreground/80 " +
+  "[&_hr]:my-8 [&_hr]:border-border " +
+  "[&_code]:font-mono [&_code]:text-[0.85em] [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-foreground " +
+  "[&_pre]:bg-muted [&_pre]:rounded-lg [&_pre]:p-3.5 [&_pre]:text-xs [&_pre]:overflow-x-auto [&_pre]:my-4";
 
 /**
  * WYSIWYG article editor (TipTap). Markdown stays the source of truth: content
@@ -401,7 +405,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Formatting toolbar */}
       {editable && (
-        <div className="flex items-center gap-0.5 border-b border-border px-5 py-1.5">
+        <div className="flex items-center gap-0.5 bg-card/20 px-5 pb-1 pt-2">
           {TOOLBAR.map(({ action, Icon, run, active }, i) => (
             <span key={action} className="flex items-center">
               {(i === 3 || i === 5) && <span className="mx-1 h-4 w-px bg-border" />}
@@ -442,9 +446,9 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
 
       {/* Dune rewrite bar — always visible; acts on the current selection */}
       {editable && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 py-1.5">
-          <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-            <Wand2 className="h-3.5 w-3.5 text-primary" /> Dune
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card/20 px-5 pb-2 pt-1">
+          <span className="mr-1 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+            <Wand2 className="h-3 w-3" /> Dune
           </span>
           {REWRITE_MODES.map((mode) => (
             <button
@@ -471,8 +475,8 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function
       )}
 
       {/* Editor surface */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" onScroll={() => setSlash(null)}>
-        <div className="mx-auto w-full max-w-3xl">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8" onScroll={() => setSlash(null)}>
+        <div className="mx-auto w-full max-w-[720px]">
           <EditorContent editor={editor} />
         </div>
       </div>

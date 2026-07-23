@@ -1267,8 +1267,8 @@ function ArticleEditor({
       <div className="relative flex min-h-0 flex-1 flex-col">
         {typing || generating || article.status === "generating" ? (
           /* Live writing surface: real streamed tokens (or the replay reveal) */
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6" ref={typewriterRef}>
-            <div className="mx-auto w-full max-w-3xl whitespace-pre-wrap text-[15px] leading-[1.8] text-foreground">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8" ref={typewriterRef}>
+            <div className="mx-auto w-full max-w-[720px] whitespace-pre-wrap text-[15.5px] leading-[1.85] text-foreground/95">
               {(body.match(/\S+\s*/g) ?? []).map((tok, i) => (
                 <span key={i} className="word-in">{tok}</span>
               ))}
