@@ -1169,7 +1169,7 @@ function ProjectSection() {
 
   const [form, setForm] = useState({
     name: "", domain: "", locale: "en", target_country: "", industry: "", persona: "" as ProjectPersona | "",
-    autopilot_enabled: false,
+    autopilot_enabled: false, theme: "desert",
   });
 
   // Re-seed the form whenever the selected project changes.
@@ -1183,6 +1183,7 @@ function ProjectSection() {
         industry: active.industry ?? "",
         persona: active.persona ?? "",
         autopilot_enabled: active.autopilot_enabled ?? false,
+        theme: active.theme || "desert",
       });
     }
   }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1197,21 +1198,13 @@ function ProjectSection() {
         industry: form.industry.trim() || null,
         persona: form.persona || undefined,
         autopilot_enabled: form.autopilot_enabled,
+        theme: form.theme,
       }),
     onSuccess: () => {
       // Refreshing projects also lets I18nProvider pick up a new project
       // language and update the default interface language.
       qc.invalidateQueries({ queryKey: ["projects"] });
       success(t("settings.project.saved"));
-    },
-    onError: () => error(t("settings.project.saveError")),
-  });
-
-  const themeMutation = useMutation({
-    mutationFn: (theme: string) => updateProject(active!.id, { theme }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      success(t("settings.project.paletteSaved", { defaultValue: "Palette updated" }));
     },
     onError: () => error(t("settings.project.saveError")),
   });
@@ -1235,14 +1228,13 @@ function ProjectSection() {
   }
 
   const knownLang = PROJECT_LANGS.some((l) => l.code === form.locale);
-  const currentTheme = active.theme || "desert";
-  const custom = isCustomTheme(active.theme);
+  const currentTheme = form.theme || "desert";
+  const custom = isCustomTheme(form.theme);
 
-  // Apply instantly (whole app recolors), remember it, then persist.
+  // Live preview only: recolor the app now, but it's definitive on Save.
   function pickTheme(theme: string) {
     applyPalette(theme);
-    try { localStorage.setItem("fx-palette", theme); } catch { /* ignore */ }
-    themeMutation.mutate(theme);
+    setForm((f) => ({ ...f, theme }));
   }
 
   return (
@@ -1342,9 +1334,8 @@ function ProjectSection() {
                 key={p.id}
                 type="button"
                 onClick={() => pickTheme(p.id)}
-                disabled={themeMutation.isPending}
                 title={t(`settings.project.palettes.${p.id}`, { defaultValue: p.label })}
-                className="group flex flex-col items-center gap-1.5 disabled:opacity-60"
+                className="group flex flex-col items-center gap-1.5"
               >
                 <span
                   className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-105 ${on ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
@@ -1365,14 +1356,14 @@ function ProjectSection() {
               className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-transform group-hover:scale-105"
               style={
                 custom
-                  ? { background: active.theme as string, boxShadow: `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${active.theme}` }
+                  ? { background: form.theme, boxShadow: `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${form.theme}` }
                   : { background: "conic-gradient(from 0deg, #ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)" }
               }
             >
               {custom ? <Check className="h-4 w-4" strokeWidth={3} /> : <Plus className="h-4 w-4" strokeWidth={2.5} />}
               <input
                 type="color"
-                value={custom ? (active.theme as string) : "#c2603a"}
+                value={custom ? form.theme : "#c2603a"}
                 onChange={(e) => pickTheme(e.target.value)}
                 className="sr-only"
                 aria-label={t("settings.project.custom")}
