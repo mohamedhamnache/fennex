@@ -415,7 +415,7 @@ export function AssistantTab({ articleId, body, onInsert, onApplyRevision, onApp
             onKeyDown={handleKeyDown}
             placeholder={t("articleStudio.assistant.placeholder")}
             rows={1}
-            className="min-h-[36px] flex-1 resize-none bg-transparent px-2.5 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="min-h-[36px] flex-1 resize-none bg-transparent px-2.5 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:!border-transparent focus:!shadow-none"
           />
           <button
             type="button"
