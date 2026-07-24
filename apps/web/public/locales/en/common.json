@@ -26,7 +26,8 @@
     "moreTools": "More tools",
     "calendar": "Calendar",
     "home": "Home",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "chat": "Chat"
   },
   "calendar": {
     "title": "Content calendar",
@@ -2284,5 +2285,173 @@
       "terms": "Terms",
       "status": "Status"
     }
+  },
+  "company": {
+    "title": "Your AI company",
+    "subtitle": "Specialists organised by department. Give them a goal and they assemble the team.",
+    "loading": "Reading the registry...",
+    "error": "The employee registry could not be reached.",
+    "memberCount": "{{count}} member",
+    "memberCount_plural": "{{count}} members",
+    "stats": {
+      "employees": "employees",
+      "departments": "departments",
+      "actions": "actions",
+      "capabilities": "skills"
+    },
+    "health": {
+      "ready": "Ready",
+      "blocked": "Blocked"
+    },
+    "status": {
+      "active": "Active",
+      "beta": "Beta",
+      "deprecated": "Deprecated",
+      "disabled": "Disabled"
+    },
+    "weight": {
+      "light": "Fast",
+      "heavy": "Deep"
+    },
+    "scope": {
+      "self": "Private",
+      "department": "Department",
+      "project": "Project",
+      "org": "Company-wide"
+    },
+    "card": {
+      "open": "Open {{name}}'s profile",
+      "skills": "skills",
+      "actions": "actions",
+      "apps": "apps"
+    },
+    "delegate": {
+      "title": "Delegate a goal",
+      "subtitle": "Describe the outcome you want. The orchestrator picks the specialists and the order of work.",
+      "label": "Your goal",
+      "placeholder": "e.g. Launch our new ceramic mug line",
+      "cta": "Assemble team",
+      "examples": [
+        "Launch our new product line",
+        "Grow organic traffic this quarter",
+        "Find clients on LinkedIn"
+      ],
+      "planTitle": "Execution plan",
+      "stepCount": "{{count}} step",
+      "stepCount_plural": "{{count}} steps",
+      "layerCount": "{{count}} stage",
+      "layerCount_plural": "{{count}} stages",
+      "parallel": "Runs in parallel",
+      "previewNote": "This is a preview. Nothing has run and no credits were used.",
+      "unstaffed": "No one in the company covers this request yet.",
+      "error": "The plan could not be built. Check that an AI key is configured in Settings."
+    },
+    "sheet": {
+      "goals": "Standing goals",
+      "actions": "What they can do",
+      "capabilities": "Skills",
+      "tools": "Tools",
+      "apps": "Connected apps",
+      "knowledge": "Knowledge and memory",
+      "memoryScope": "Memory scope",
+      "sources": "Sources",
+      "io": "Input / output",
+      "permissions": "Permissions",
+      "needsApproval": "Needs approval",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "plannedHint": "Planned -- no action bound yet",
+      "plannedNote": "{{count}} skill is declared but not yet wired to an action.",
+      "plannedNote_plural": "{{count}} skills are declared but not yet wired to an action."
+    },
+    "filterLabel": "Filter by department",
+    "allDepartments": "All"
+  },
+  "chat": {
+    "title": "Fennex Assistant",
+    "subtitle": "Ask for anything. The right specialist takes over.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "Finding the right specialist...",
+    "working": "{{name}} is working",
+    "new": "New chat",
+    "send": "Send",
+    "stop": "Stop",
+    "inputLabel": "Message",
+    "placeholder": "Ask for anything...",
+    "hint": "Enter to send, Shift+Enter for a new line",
+    "confidenceHint": "How confident the router was",
+    "emptyTitle": "What do you need?",
+    "emptyBody": "Type naturally. Fennex picks the right specialist, brings in others when the work needs them, and keeps everything in one conversation.",
+    "examples": [
+      "Write an SEO article about homemade lemonade",
+      "Analyze my competitors",
+      "Generate Pinterest images",
+      "Who are my ideal customers?"
+    ],
+    "team": {
+      "progress": "Step {{step}} of {{of}}"
+    },
+    "approval": {
+      "title": "Needs your approval",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approved": "Approved.",
+      "rejected": "Rejected.",
+      "proposalTitle": "Ready when you are",
+      "goAhead": "Yes, go ahead",
+      "produces": "Produces: {{what}}"
+    },
+    "runningAction": "{{name}} is running {{action}}",
+    "history": {
+      "title": "History",
+      "empty": "No conversations yet.",
+      "untitled": "Untitled",
+      "delete": "Delete conversation"
+    },
+    "actions": {
+      "title": "What would you like?",
+      "hint": "Nothing runs until you choose.",
+      "external": "Leaves Fennex",
+      "takesLonger": "Takes longer"
+    },
+    "workflow": {
+      "title": "The plan",
+      "run": "Run",
+      "started": "Running the workflow...",
+      "progress": "{{done}} of {{total}} done",
+      "runAll": "Run remaining {{count}}",
+      "retry": "Retry",
+      "why": "Why?",
+      "stepHint": "Or validate each step on its own.",
+      "lockedHint": "Runs once the previous step is done.",
+      "state": {
+        "locked": "Waiting",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed"
+      }
+    },
+    "jumpToLatest": "Jump to latest",
+    "copy": "Copy",
+    "artifact": {
+      "done": "Done",
+      "view": "Open it",
+      "generic": "Result",
+      "kind": {
+        "article": "Article created",
+        "image": "Image created",
+        "image_plural": "{{count}} images created",
+        "social": "{{count}} social post created",
+        "social_plural": "{{count}} social posts created",
+        "campaign": "Campaign created",
+        "report": "Report created"
+      }
+    },
+    "followOn": {
+      "title": "What's next",
+      "hint": "Pick one, or just say what you want."
+    },
+    "teamBehind": "{{count}} specialists behind this chat",
+    "tryOne": "Try one"
   }
 }

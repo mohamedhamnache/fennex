@@ -26,7 +26,8 @@
     "moreTools": "Plus d'outils",
     "calendar": "Calendrier",
     "home": "Accueil",
-    "integrations": "Intégrations"
+    "integrations": "Intégrations",
+    "chat": "Chat"
   },
   "common": {
     "save": "Enregistrer",
@@ -2211,5 +2212,173 @@
     "rescheduled": "Reprogrammé",
     "scheduledCount": "{{count}} planifié(s)",
     "noPast": "Choisissez une date à venir."
+  },
+  "company": {
+    "title": "Votre entreprise IA",
+    "subtitle": "Des specialistes organises par departement. Donnez-leur un objectif, ils forment l'equipe.",
+    "loading": "Lecture du registre...",
+    "error": "Le registre des employes est inaccessible.",
+    "memberCount": "{{count}} membre",
+    "memberCount_plural": "{{count}} membres",
+    "stats": {
+      "employees": "employes",
+      "departments": "departements",
+      "actions": "actions",
+      "capabilities": "competences"
+    },
+    "health": {
+      "ready": "Pret",
+      "blocked": "Bloque"
+    },
+    "status": {
+      "active": "Actif",
+      "beta": "Beta",
+      "deprecated": "Obsolete",
+      "disabled": "Desactive"
+    },
+    "weight": {
+      "light": "Rapide",
+      "heavy": "Approfondi"
+    },
+    "scope": {
+      "self": "Prive",
+      "department": "Departement",
+      "project": "Projet",
+      "org": "Toute l'entreprise"
+    },
+    "card": {
+      "open": "Ouvrir le profil de {{name}}",
+      "skills": "competences",
+      "actions": "actions",
+      "apps": "apps"
+    },
+    "delegate": {
+      "title": "Deleguer un objectif",
+      "subtitle": "Decrivez le resultat souhaite. L'orchestrateur choisit les specialistes et l'ordre du travail.",
+      "label": "Votre objectif",
+      "placeholder": "ex. Lancer notre nouvelle gamme de mugs",
+      "cta": "Former l'equipe",
+      "examples": [
+        "Lancer notre nouvelle gamme",
+        "Augmenter le trafic organique ce trimestre",
+        "Trouver des clients sur LinkedIn"
+      ],
+      "planTitle": "Plan d'execution",
+      "stepCount": "{{count}} etape",
+      "stepCount_plural": "{{count}} etapes",
+      "layerCount": "{{count}} phase",
+      "layerCount_plural": "{{count}} phases",
+      "parallel": "En parallele",
+      "previewNote": "Ceci est un apercu. Rien n'a ete execute, aucun credit utilise.",
+      "unstaffed": "Personne dans l'entreprise ne couvre encore cette demande.",
+      "error": "Le plan n'a pas pu etre construit. Verifiez qu'une cle IA est configuree dans les Reglages."
+    },
+    "sheet": {
+      "goals": "Objectifs permanents",
+      "actions": "Ce qu'il sait faire",
+      "capabilities": "Competences",
+      "tools": "Outils",
+      "apps": "Apps connectees",
+      "knowledge": "Connaissances et memoire",
+      "memoryScope": "Portee memoire",
+      "sources": "Sources",
+      "io": "Entree / sortie",
+      "permissions": "Permissions",
+      "needsApproval": "Validation requise",
+      "connected": "Connecte",
+      "notConnected": "Non connecte",
+      "plannedHint": "Prevu -- aucune action associee",
+      "plannedNote": "{{count}} competence declaree n'est pas encore reliee a une action.",
+      "plannedNote_plural": "{{count}} competences declarees ne sont pas encore reliees a une action."
+    },
+    "filterLabel": "Filtrer par departement",
+    "allDepartments": "Tous"
+  },
+  "chat": {
+    "title": "Assistant Fennex",
+    "subtitle": "Demandez ce que vous voulez. Le bon specialiste prend le relais.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "Recherche du bon specialiste...",
+    "working": "{{name}} travaille",
+    "new": "Nouveau chat",
+    "send": "Envoyer",
+    "stop": "Arreter",
+    "inputLabel": "Message",
+    "placeholder": "Demandez ce que vous voulez...",
+    "hint": "Entree pour envoyer, Maj+Entree pour une nouvelle ligne",
+    "confidenceHint": "Niveau de confiance du routeur",
+    "emptyTitle": "De quoi avez-vous besoin ?",
+    "emptyBody": "Ecrivez naturellement. Fennex choisit le bon specialiste, en appelle d'autres si besoin, et garde tout dans une seule conversation.",
+    "examples": [
+      "Redige un article SEO sur la limonade maison",
+      "Analyse mes concurrents",
+      "Genere des images Pinterest",
+      "Qui sont mes clients ideaux ?"
+    ],
+    "team": {
+      "progress": "Etape {{step}} sur {{of}}"
+    },
+    "approval": {
+      "title": "Votre validation est requise",
+      "approve": "Approuver",
+      "reject": "Refuser",
+      "approved": "Approuve.",
+      "rejected": "Refuse.",
+      "proposalTitle": "Pret quand vous voulez",
+      "goAhead": "Oui, allez-y",
+      "produces": "Produit : {{what}}"
+    },
+    "runningAction": "{{name}} execute {{action}}",
+    "history": {
+      "title": "Historique",
+      "empty": "Aucune conversation.",
+      "untitled": "Sans titre",
+      "delete": "Supprimer la conversation"
+    },
+    "actions": {
+      "title": "Que souhaitez-vous ?",
+      "hint": "Rien ne s'execute avant votre choix.",
+      "external": "Sort de Fennex",
+      "takesLonger": "Plus long"
+    },
+    "workflow": {
+      "title": "Le plan",
+      "run": "Lancer",
+      "started": "Execution du workflow...",
+      "progress": "{{done}} sur {{total}} termine",
+      "runAll": "Lancer les {{count}} restantes",
+      "retry": "Reessayer",
+      "why": "Pourquoi ?",
+      "stepHint": "Ou validez chaque etape separement.",
+      "lockedHint": "S'execute une fois l'etape precedente terminee.",
+      "state": {
+        "locked": "En attente",
+        "running": "En cours",
+        "done": "Termine",
+        "failed": "Echec"
+      }
+    },
+    "jumpToLatest": "Aller au plus recent",
+    "copy": "Copier",
+    "artifact": {
+      "done": "Termine",
+      "view": "Ouvrir",
+      "generic": "Resultat",
+      "kind": {
+        "article": "Article cree",
+        "image": "Image creee",
+        "image_plural": "{{count}} images creees",
+        "social": "{{count}} publication creee",
+        "social_plural": "{{count}} publications creees",
+        "campaign": "Campagne creee",
+        "report": "Rapport cree"
+      }
+    },
+    "followOn": {
+      "title": "Et ensuite",
+      "hint": "Choisissez, ou dites simplement ce que vous voulez."
+    },
+    "teamBehind": "{{count}} specialistes derriere ce chat",
+    "tryOne": "Essayez"
   }
 }

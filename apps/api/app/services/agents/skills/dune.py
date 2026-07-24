@@ -1,4 +1,5 @@
 from app.services.agents.spec import Skill, AgentResult
+from app.services.llm_service import ARTICLE_MAX_TOKENS
 from app.services.agents.skills._common import brief_block, feedback_block, parse_json
 from app.models.article import Article, ArticleStatus
 from app.services.article_service import compute_seo_score, _markdown_to_html
@@ -27,23 +28,58 @@ def _write_article_prompt(brief, inputs, td):
 
 
 async def _persist_article(raw_markdown, campaign, brief, db):
+    from app.services.writing_service import ensure_seo_quality
+    from app.services.geo_service import ensure_geo_quality
+
+    rt = brief.runtime or {}
+    inputs = rt.get("inputs") or {}
     parsed = _parse_llm_response(raw_markdown, "Article")
-    title = parsed["meta_title"] or "Article"
-    keyword = None
+    # Prefer the brief's title: the model's meta_title is a search snippet, not
+    # necessarily the headline the user asked for.
+    title = (str(inputs.get("title") or "").strip()
+             or parsed["meta_title"] or "Article")[:200]
+    # The keyword was previously dropped here, so SEO scoring ran blind and
+    # every chat-written article came out with a poor score.
+    keyword = (str(inputs.get("keyword") or "").strip()
+               or str(inputs.get("primary_keyword") or "").strip() or None)
+
     art = Article(org_id=brief.org_id, project_id=brief.project_id, title=title,
                   target_keyword=keyword, status=ArticleStatus.generating)
     db.add(art); await db.flush()
-    art.body_markdown = parsed["body_markdown"]
-    art.body_html = _markdown_to_html(parsed["body_markdown"])
+
+    body_md = parsed["body_markdown"]
+    meta_description = parsed["meta_description"]
+    seo_score, geo_score = None, None
+
+    # Same repair pass the article generator uses -- it lengthens thin drafts
+    # and fixes structure, which is the difference between a stub and a piece.
+    if rt.get("provider") and rt.get("api_key"):
+        try:
+            body_md, seo_score = await ensure_seo_quality(
+                rt["provider"], rt.get("model"), rt["api_key"], title, keyword,
+                body_md, meta_description, brief.locale)
+            body_md, geo_score, _ = await ensure_geo_quality(
+                rt["provider"], rt.get("model"), rt["api_key"], title, keyword,
+                body_md, meta_description, brief.locale)
+        except Exception:  # noqa: BLE001 -- a failed repair must not lose the draft
+            seo_score = None
+
+    art.body_markdown = body_md
+    art.body_html = _markdown_to_html(body_md)
     art.meta_title = parsed["meta_title"]
-    art.meta_description = parsed["meta_description"]
-    art.word_count = len(parsed["body_markdown"].split())
-    art.seo_score, _ = compute_seo_score(title, parsed["body_markdown"], keyword, parsed["meta_description"])
+    art.meta_description = meta_description
+    art.word_count = len(body_md.split())
+    art.geo_score = geo_score
+    if seo_score is None:
+        seo_score, _ = compute_seo_score(title, body_md, keyword, meta_description)
+    art.seo_score = seo_score
     art.status = ArticleStatus.ready
     await db.commit()
-    return AgentResult(ok=True, summary=f"Article: {title}", artifact_type="article",
-                       artifact_ids=[str(art.id)], structured={"article_id": str(art.id), "title": title,
-                       "seo_score": art.seo_score, "word_count": art.word_count})
+    return AgentResult(ok=True, summary=f"Article: {title} ({art.word_count} words)",
+                       artifact_type="article", artifact_ids=[str(art.id)],
+                       structured={"article_id": str(art.id), "title": title,
+                                   "keyword": keyword, "seo_score": art.seo_score,
+                                   "word_count": art.word_count})
 
 
 WRITE_ARTICLE = Skill(
@@ -51,6 +87,9 @@ WRITE_ARTICLE = Skill(
     build_prompt=_write_article_prompt, output="markdown", parse=lambda raw: raw,
     persist=_persist_article, label="Write the article",
     description="Write an SEO article on the chosen angle.",
+    # A 1600-word article does not fit in the default budget; without this the
+    # draft is truncated mid-flow and lands as a stub.
+    max_tokens=ARTICLE_MAX_TOKENS,
 )
 
 

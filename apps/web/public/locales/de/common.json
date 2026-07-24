@@ -26,7 +26,8 @@
     "moreTools": "Weitere Tools",
     "calendar": "Kalender",
     "home": "Startseite",
-    "integrations": "Integrationen"
+    "integrations": "Integrationen",
+    "chat": "Chat"
   },
   "common": {
     "save": "Speichern",
@@ -2211,5 +2212,173 @@
     "rescheduled": "Neu geplant",
     "scheduledCount": "{{count}} geplant",
     "noPast": "Wähle einen Zeitpunkt in der Zukunft."
+  },
+  "company": {
+    "title": "Ihr KI-Unternehmen",
+    "subtitle": "Spezialisten nach Abteilungen. Geben Sie ein Ziel vor, das Team stellt sich zusammen.",
+    "loading": "Registry wird gelesen...",
+    "error": "Das Mitarbeiterregister ist nicht erreichbar.",
+    "memberCount": "{{count}} Mitglied",
+    "memberCount_plural": "{{count}} Mitglieder",
+    "stats": {
+      "employees": "Mitarbeiter",
+      "departments": "Abteilungen",
+      "actions": "Aktionen",
+      "capabilities": "Faehigkeiten"
+    },
+    "health": {
+      "ready": "Bereit",
+      "blocked": "Blockiert"
+    },
+    "status": {
+      "active": "Aktiv",
+      "beta": "Beta",
+      "deprecated": "Veraltet",
+      "disabled": "Deaktiviert"
+    },
+    "weight": {
+      "light": "Schnell",
+      "heavy": "Tiefgehend"
+    },
+    "scope": {
+      "self": "Privat",
+      "department": "Abteilung",
+      "project": "Projekt",
+      "org": "Unternehmensweit"
+    },
+    "card": {
+      "open": "Profil von {{name}} oeffnen",
+      "skills": "Faehigkeiten",
+      "actions": "Aktionen",
+      "apps": "Apps"
+    },
+    "delegate": {
+      "title": "Ziel delegieren",
+      "subtitle": "Beschreiben Sie das gewuenschte Ergebnis. Der Orchestrator waehlt Spezialisten und Reihenfolge.",
+      "label": "Ihr Ziel",
+      "placeholder": "z. B. Unsere neue Tassenkollektion einfuehren",
+      "cta": "Team bilden",
+      "examples": [
+        "Unsere neue Produktlinie einfuehren",
+        "Organischen Traffic steigern",
+        "Kunden auf LinkedIn finden"
+      ],
+      "planTitle": "Ausfuehrungsplan",
+      "stepCount": "{{count}} Schritt",
+      "stepCount_plural": "{{count}} Schritte",
+      "layerCount": "{{count}} Phase",
+      "layerCount_plural": "{{count}} Phasen",
+      "parallel": "Laeuft parallel",
+      "previewNote": "Dies ist eine Vorschau. Nichts wurde ausgefuehrt, keine Credits verbraucht.",
+      "unstaffed": "Niemand im Unternehmen deckt diese Anfrage bisher ab.",
+      "error": "Der Plan konnte nicht erstellt werden. Pruefen Sie den KI-Schluessel in den Einstellungen."
+    },
+    "sheet": {
+      "goals": "Staendige Ziele",
+      "actions": "Was er kann",
+      "capabilities": "Faehigkeiten",
+      "tools": "Werkzeuge",
+      "apps": "Verbundene Apps",
+      "knowledge": "Wissen und Gedaechtnis",
+      "memoryScope": "Gedaechtnisbereich",
+      "sources": "Quellen",
+      "io": "Eingabe / Ausgabe",
+      "permissions": "Berechtigungen",
+      "needsApproval": "Freigabe noetig",
+      "connected": "Verbunden",
+      "notConnected": "Nicht verbunden",
+      "plannedHint": "Geplant -- keine Aktion hinterlegt",
+      "plannedNote": "{{count}} Faehigkeit ist deklariert, aber noch keiner Aktion zugeordnet.",
+      "plannedNote_plural": "{{count}} Faehigkeiten sind deklariert, aber noch keiner Aktion zugeordnet."
+    },
+    "filterLabel": "Nach Abteilung filtern",
+    "allDepartments": "Alle"
+  },
+  "chat": {
+    "title": "Fennex Assistent",
+    "subtitle": "Fragen Sie nach allem. Der passende Spezialist uebernimmt.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "Passender Spezialist wird gesucht...",
+    "working": "{{name}} arbeitet",
+    "new": "Neuer Chat",
+    "send": "Senden",
+    "stop": "Stopp",
+    "inputLabel": "Nachricht",
+    "placeholder": "Fragen Sie nach allem...",
+    "hint": "Enter zum Senden, Umschalt+Enter fuer neue Zeile",
+    "confidenceHint": "Sicherheit des Routers",
+    "emptyTitle": "Was brauchen Sie?",
+    "emptyBody": "Schreiben Sie ganz normal. Fennex waehlt den passenden Spezialisten, holt bei Bedarf weitere dazu und haelt alles in einer Unterhaltung.",
+    "examples": [
+      "Schreibe einen SEO-Artikel ueber selbstgemachte Limonade",
+      "Analysiere meine Wettbewerber",
+      "Erstelle Pinterest-Bilder",
+      "Wer sind meine idealen Kunden?"
+    ],
+    "team": {
+      "progress": "Schritt {{step}} von {{of}}"
+    },
+    "approval": {
+      "title": "Ihre Freigabe noetig",
+      "approve": "Freigeben",
+      "reject": "Ablehnen",
+      "approved": "Freigegeben.",
+      "rejected": "Abgelehnt.",
+      "proposalTitle": "Bereit, wenn Sie es sind",
+      "goAhead": "Ja, loslegen",
+      "produces": "Ergebnis: {{what}}"
+    },
+    "runningAction": "{{name}} fuehrt {{action}} aus",
+    "history": {
+      "title": "Verlauf",
+      "empty": "Noch keine Unterhaltungen.",
+      "untitled": "Ohne Titel",
+      "delete": "Unterhaltung loeschen"
+    },
+    "actions": {
+      "title": "Was moechten Sie?",
+      "hint": "Nichts laeuft, bevor Sie waehlen.",
+      "external": "Verlaesst Fennex",
+      "takesLonger": "Dauert laenger"
+    },
+    "workflow": {
+      "title": "Der Plan",
+      "run": "Ausfuehren",
+      "started": "Workflow laeuft...",
+      "progress": "{{done}} von {{total}} erledigt",
+      "runAll": "Restliche {{count}} ausfuehren",
+      "retry": "Erneut versuchen",
+      "why": "Warum?",
+      "stepHint": "Oder jeden Schritt einzeln freigeben.",
+      "lockedHint": "Laeuft, sobald der vorherige Schritt fertig ist.",
+      "state": {
+        "locked": "Wartet",
+        "running": "Laeuft",
+        "done": "Fertig",
+        "failed": "Fehlgeschlagen"
+      }
+    },
+    "jumpToLatest": "Zum Neuesten",
+    "copy": "Kopieren",
+    "artifact": {
+      "done": "Fertig",
+      "view": "Oeffnen",
+      "generic": "Ergebnis",
+      "kind": {
+        "article": "Artikel erstellt",
+        "image": "Bild erstellt",
+        "image_plural": "{{count}} Bilder erstellt",
+        "social": "{{count}} Beitrag erstellt",
+        "social_plural": "{{count}} Beitraege erstellt",
+        "campaign": "Kampagne erstellt",
+        "report": "Bericht erstellt"
+      }
+    },
+    "followOn": {
+      "title": "Als Naechstes",
+      "hint": "Waehlen Sie eine, oder sagen Sie einfach, was Sie wollen."
+    },
+    "teamBehind": "{{count}} Spezialisten hinter diesem Chat",
+    "tryOne": "Probieren Sie"
   }
 }

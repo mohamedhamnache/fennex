@@ -26,7 +26,8 @@
     "moreTools": "Mais ferramentas",
     "calendar": "Calendário",
     "home": "Início",
-    "integrations": "Integrações"
+    "integrations": "Integrações",
+    "chat": "Chat"
   },
   "common": {
     "save": "Salvar",
@@ -2211,5 +2212,173 @@
     "rescheduled": "Reagendado",
     "scheduledCount": "{{count}} agendado(s)",
     "noPast": "Escolha uma data futura."
+  },
+  "company": {
+    "title": "A sua empresa de IA",
+    "subtitle": "Especialistas organizados por departamento. Dê um objetivo e a equipa forma-se.",
+    "loading": "A ler o registo...",
+    "error": "Nao foi possivel aceder ao registo de colaboradores.",
+    "memberCount": "{{count}} membro",
+    "memberCount_plural": "{{count}} membros",
+    "stats": {
+      "employees": "colaboradores",
+      "departments": "departamentos",
+      "actions": "acoes",
+      "capabilities": "competencias"
+    },
+    "health": {
+      "ready": "Pronto",
+      "blocked": "Bloqueado"
+    },
+    "status": {
+      "active": "Ativo",
+      "beta": "Beta",
+      "deprecated": "Obsoleto",
+      "disabled": "Desativado"
+    },
+    "weight": {
+      "light": "Rapido",
+      "heavy": "Aprofundado"
+    },
+    "scope": {
+      "self": "Privado",
+      "department": "Departamento",
+      "project": "Projeto",
+      "org": "Toda a empresa"
+    },
+    "card": {
+      "open": "Abrir o perfil de {{name}}",
+      "skills": "competencias",
+      "actions": "acoes",
+      "apps": "apps"
+    },
+    "delegate": {
+      "title": "Delegar um objetivo",
+      "subtitle": "Descreva o resultado pretendido. O orquestrador escolhe os especialistas e a ordem.",
+      "label": "O seu objetivo",
+      "placeholder": "ex. Lancar a nossa nova linha de canecas",
+      "cta": "Formar equipa",
+      "examples": [
+        "Lancar a nossa nova linha",
+        "Aumentar o trafego organico este trimestre",
+        "Encontrar clientes no LinkedIn"
+      ],
+      "planTitle": "Plano de execucao",
+      "stepCount": "{{count}} passo",
+      "stepCount_plural": "{{count}} passos",
+      "layerCount": "{{count}} fase",
+      "layerCount_plural": "{{count}} fases",
+      "parallel": "Em paralelo",
+      "previewNote": "Isto e uma pre-visualizacao. Nada foi executado nem foram usados creditos.",
+      "unstaffed": "Ninguem na empresa cobre ainda este pedido.",
+      "error": "Nao foi possivel construir o plano. Verifique a chave de IA nas Definicoes."
+    },
+    "sheet": {
+      "goals": "Objetivos permanentes",
+      "actions": "O que sabe fazer",
+      "capabilities": "Competencias",
+      "tools": "Ferramentas",
+      "apps": "Apps ligadas",
+      "knowledge": "Conhecimento e memoria",
+      "memoryScope": "Ambito de memoria",
+      "sources": "Fontes",
+      "io": "Entrada / saida",
+      "permissions": "Permissoes",
+      "needsApproval": "Requer aprovacao",
+      "connected": "Ligado",
+      "notConnected": "Nao ligado",
+      "plannedHint": "Previsto -- sem acao associada",
+      "plannedNote": "{{count}} competencia declarada ainda nao esta ligada a uma acao.",
+      "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao."
+    },
+    "filterLabel": "Filtrar por departamento",
+    "allDepartments": "Todos"
+  },
+  "chat": {
+    "title": "Assistente Fennex",
+    "subtitle": "Peca o que precisar. O especialista certo assume.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "A procurar o especialista certo...",
+    "working": "{{name}} esta a trabalhar",
+    "new": "Novo chat",
+    "send": "Enviar",
+    "stop": "Parar",
+    "inputLabel": "Mensagem",
+    "placeholder": "Peca o que precisar...",
+    "hint": "Enter para enviar, Shift+Enter para nova linha",
+    "confidenceHint": "Confianca do encaminhador",
+    "emptyTitle": "Do que precisa?",
+    "emptyBody": "Escreva naturalmente. O Fennex escolhe o especialista certo, chama outros quando o trabalho exige, e mantem tudo numa conversa.",
+    "examples": [
+      "Escreve um artigo SEO sobre limonada caseira",
+      "Analisa os meus concorrentes",
+      "Gera imagens para Pinterest",
+      "Quem sao os meus clientes ideais?"
+    ],
+    "team": {
+      "progress": "Passo {{step}} de {{of}}"
+    },
+    "approval": {
+      "title": "Precisa da sua aprovacao",
+      "approve": "Aprovar",
+      "reject": "Rejeitar",
+      "approved": "Aprovado.",
+      "rejected": "Rejeitado.",
+      "proposalTitle": "Pronto quando quiser",
+      "goAhead": "Sim, avance",
+      "produces": "Produz: {{what}}"
+    },
+    "runningAction": "{{name}} esta a executar {{action}}",
+    "history": {
+      "title": "Historico",
+      "empty": "Ainda sem conversas.",
+      "untitled": "Sem titulo",
+      "delete": "Eliminar conversa"
+    },
+    "actions": {
+      "title": "O que prefere?",
+      "hint": "Nada corre ate escolher.",
+      "external": "Sai do Fennex",
+      "takesLonger": "Demora mais"
+    },
+    "workflow": {
+      "title": "O plano",
+      "run": "Executar",
+      "started": "A executar o fluxo...",
+      "progress": "{{done}} de {{total}} concluido",
+      "runAll": "Executar os {{count}} restantes",
+      "retry": "Tentar de novo",
+      "why": "Porque?",
+      "stepHint": "Ou valide cada passo separadamente.",
+      "lockedHint": "Corre assim que o passo anterior terminar.",
+      "state": {
+        "locked": "A aguardar",
+        "running": "Em curso",
+        "done": "Concluido",
+        "failed": "Falhou"
+      }
+    },
+    "jumpToLatest": "Ir para o mais recente",
+    "copy": "Copiar",
+    "artifact": {
+      "done": "Concluido",
+      "view": "Abrir",
+      "generic": "Resultado",
+      "kind": {
+        "article": "Artigo criado",
+        "image": "Imagem criada",
+        "image_plural": "{{count}} imagens criadas",
+        "social": "{{count}} publicacao criada",
+        "social_plural": "{{count}} publicacoes criadas",
+        "campaign": "Campanha criada",
+        "report": "Relatorio criado"
+      }
+    },
+    "followOn": {
+      "title": "A seguir",
+      "hint": "Escolha uma, ou diga simplesmente o que quer."
+    },
+    "teamBehind": "{{count}} especialistas por tras deste chat",
+    "tryOne": "Experimente"
   }
 }
