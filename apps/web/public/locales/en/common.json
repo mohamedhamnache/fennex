@@ -1046,7 +1046,8 @@
       "accentPreview": "Preview",
       "description": "What this project is",
       "descriptionPlaceholder": "A WordPress blog sharing home-cooking recipes",
-      "descriptionHint": "Used to judge competitors and to keep every employee on-brand. Say what the site is and who it is for."
+      "descriptionHint": "Used to judge competitors and to keep every employee on-brand. Say what the site is and who it is for.",
+      "descriptionUsedBy": "Read by every employee, and used to tell a real competitor from a site that just ranks for the same words."
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",

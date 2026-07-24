@@ -213,6 +213,7 @@ export async function createProject(data: {
   domain: string;
   locale?: string;
   target_country?: string;
+  description?: string;
   persona?: ProjectPersona;
   persona_data?: Record<string, unknown>;
 }): Promise<Project> {

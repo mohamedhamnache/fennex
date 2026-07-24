@@ -1200,6 +1200,26 @@ function ProjectSection() {
           <Input value={form.domain} onChange={(v) => setForm((f) => ({ ...f, domain: v }))} placeholder="example.com" />
         </Field>
 
+        {/* Full width and directly under the domain: this is what the site IS,
+            and every employee reads it. Cramped into a half column next to the
+            country it read as an afterthought. */}
+        <Field label={t("settings.project.description")} hint={t("settings.project.descriptionHint")}>
+          <textarea
+            rows={2}
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            placeholder={t("settings.project.descriptionPlaceholder")}
+            maxLength={400}
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+          />
+          <p className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>{t("settings.project.descriptionUsedBy")}</span>
+            <span className={form.description.length > 360 ? "text-warning" : ""}>
+              {form.description.length}/400
+            </span>
+          </p>
+        </Field>
+
         <Field label={t("settings.project.language")} hint={t("settings.project.languageHint")}>
           <select value={form.locale} onChange={(e) => setForm((f) => ({ ...f, locale: e.target.value }))} className={SELECT_CLS}>
             {!knownLang && <option value={form.locale}>{form.locale}</option>}
@@ -1212,22 +1232,6 @@ function ProjectSection() {
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("settings.project.country")}>
             <Input value={form.target_country} onChange={(v) => setForm((f) => ({ ...f, target_country: v }))} placeholder="US" />
-          </Field>
-          <Field label={t("settings.project.description")}>
-            {/* What the site actually is. Brand DNA and the competitor scout
-                both read it -- without it a rival can only be judged on
-                keyword overlap, which is how a dictionary ends up looking
-                like competition. */}
-            <textarea
-              rows={2}
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder={t("settings.project.descriptionPlaceholder")}
-              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {t("settings.project.descriptionHint")}
-            </p>
           </Field>
           <Field label={t("settings.project.industry")}>
             <Input value={form.industry} onChange={(v) => setForm((f) => ({ ...f, industry: v }))} />

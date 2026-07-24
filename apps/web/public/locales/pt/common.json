@@ -949,7 +949,8 @@
       "accentPreview": "Pré-visualização",
       "description": "O que e este projeto",
       "descriptionPlaceholder": "Um blog WordPress de partilha de receitas caseiras",
-      "descriptionHint": "Serve para avaliar concorrentes e manter cada colaborador no tom. Diga o que e o site e para quem."
+      "descriptionHint": "Serve para avaliar concorrentes e manter cada colaborador no tom. Diga o que e o site e para quem.",
+      "descriptionUsedBy": "Lido por cada colaborador e serve para distinguir um concorrente real de um site que apenas posiciona nas mesmas palavras."
     },
     "title": "Configurações",
     "subtitle": "Gerencie sua conta, espaço de trabalho e preferências.",
