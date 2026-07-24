@@ -2376,7 +2376,13 @@
       "words": "{{count}} كلمة",
       "expand": "قراءة الكل",
       "collapse": "عرض أقل",
-      "download": "تنزيل"
+      "download": "تنزيل",
+      "hide": "إخفاء",
+      "show": "إظهار",
+      "hidden": "{{title}} — مخفي",
+      "save": "حفظ",
+      "saved": "تم الحفظ",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "الخطوة التالية",

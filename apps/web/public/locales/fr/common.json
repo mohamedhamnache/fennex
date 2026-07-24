@@ -2376,7 +2376,13 @@
       "words": "{{count}} mots",
       "expand": "Tout lire",
       "collapse": "Reduire",
-      "download": "Telecharger"
+      "download": "Telecharger",
+      "hide": "Masquer",
+      "show": "Afficher",
+      "hidden": "{{title}} — masque",
+      "save": "Enregistrer",
+      "saved": "Enregistre",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "Et ensuite",

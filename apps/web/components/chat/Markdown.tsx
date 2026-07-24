@@ -167,3 +167,96 @@ function inline(text: string): React.ReactNode {
     return <Fragment key={i}>{part}</Fragment>;
   });
 }
+
+/** The same markdown, as an HTML string.
+ *
+ *  The on-screen renderer returns React, which cannot be handed to a print
+ *  window. This mirrors the same subset so a printed report matches what was
+ *  displayed rather than being a second, drifting implementation.
+ */
+export function markdownToHtml(text: string): string {
+  const lines = (text || "").replace(/\r\n/g, "\n").split("\n");
+  const out: string[] = [];
+  let paragraph: string[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+
+  const flushParagraph = () => {
+    if (paragraph.length) out.push(`<p>${inlineHtml(paragraph.join(" "))}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!list) return;
+    const tag = list.ordered ? "ol" : "ul";
+    out.push(`<${tag}>${list.items.map((i) => `<li>${inlineHtml(i)}</li>`).join("")}</${tag}>`);
+    list = null;
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) { flushParagraph(); flushList(); continue; }
+
+    if (trimmed.startsWith("|") && /^\|[\s:|-]+\|?$/.test((lines[i + 1] ?? "").trim())) {
+      flushParagraph(); flushList();
+      const header = splitCells(trimmed);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        rows.push(splitCells(lines[i].trim()));
+        i += 1;
+      }
+      i -= 1;
+      out.push(
+        `<table><thead><tr>${header.map((h) => `<th>${inlineHtml(h)}</th>`).join("")}</tr></thead>` +
+        `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${inlineHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`,
+      );
+      continue;
+    }
+
+    const heading = /^(#{1,6})\s+(.*)$/.exec(trimmed);
+    if (heading) {
+      flushParagraph(); flushList();
+      const level = Math.min(heading[1].length + 1, 4);
+      out.push(`<h${level}>${inlineHtml(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    const bullet = /^[-*+]\s+(.*)$/.exec(trimmed);
+    const numbered = /^\d+[.)]\s+(.*)$/.exec(trimmed);
+    if (bullet || numbered) {
+      flushParagraph();
+      const ordered = !!numbered;
+      if (!list || list.ordered !== ordered) { flushList(); list = { ordered, items: [] }; }
+      list.items.push((bullet ?? numbered)![1]);
+      continue;
+    }
+
+    if (/^([-*_])\1{2,}$/.test(trimmed)) {
+      flushParagraph(); flushList();
+      out.push("<hr />");
+      continue;
+    }
+    paragraph.push(trimmed);
+  }
+  flushParagraph();
+  flushList();
+  return out.join("\n");
+}
+
+function splitCells(row: string): string[] {
+  return row.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+function inlineHtml(text: string): string {
+  let html = escapeHtml(text);
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+  return html;
+}

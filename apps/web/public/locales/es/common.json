@@ -2376,7 +2376,13 @@
       "words": "{{count}} palabras",
       "expand": "Leer todo",
       "collapse": "Ver menos",
-      "download": "Descargar"
+      "download": "Descargar",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "hidden": "{{title}} — oculto",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "Que sigue",

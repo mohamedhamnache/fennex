@@ -2449,7 +2449,13 @@
       "words": "{{count}} words",
       "expand": "Read all",
       "collapse": "Show less",
-      "download": "Download"
+      "download": "Download",
+      "hide": "Hide",
+      "show": "Show",
+      "hidden": "{{title}} — hidden",
+      "save": "Save",
+      "saved": "Saved",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "What's next",

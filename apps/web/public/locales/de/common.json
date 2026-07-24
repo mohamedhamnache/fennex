@@ -2376,7 +2376,13 @@
       "words": "{{count}} Woerter",
       "expand": "Alles lesen",
       "collapse": "Weniger",
-      "download": "Herunterladen"
+      "download": "Herunterladen",
+      "hide": "Ausblenden",
+      "show": "Anzeigen",
+      "hidden": "{{title}} — ausgeblendet",
+      "save": "Speichern",
+      "saved": "Gespeichert",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "Als Naechstes",

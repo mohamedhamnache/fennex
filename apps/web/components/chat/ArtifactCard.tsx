@@ -4,13 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowUpRight, Check, ChevronDown, Copy, Download, FileText,
-  Image as ImageIcon, Megaphone, Share2, Sparkles, type LucideIcon,
+  ArrowUpRight, Bookmark, BookmarkCheck, Check, ChevronDown, Copy, Download,
+  EyeOff, FileText, Image as ImageIcon, Megaphone, Printer, Share2, Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ChatMessage } from "@/lib/chat";
 import { departmentAccent, employeeIcon, type Employee } from "@/lib/employees";
-import { Markdown } from "./Markdown";
+import { Markdown, markdownToHtml } from "./Markdown";
+import { saveDocument } from "@/lib/documents";
+import { printDocument } from "@/lib/printDocument";
 
 /** What an employee actually produced, and where to go and see it.
  *
@@ -28,7 +31,10 @@ export function ArtifactCard({
   // A report or plan has no saved record -- the document IS the result, so it
   // is rendered here rather than reduced to a one-line summary.
   if (structured.body) {
-    return <DocumentCard message={message} employee={employee} body={structured.body} />;
+    return (
+      <DocumentCard message={message} employee={employee} body={structured.body}
+                    projectId={projectId} />
+    );
   }
   const { Icon, href, tone } = artifactMeta(kind, ids, projectId);
   const EmployeeIcon = employee ? employeeIcon(employee.icon) : Sparkles;
@@ -89,11 +95,16 @@ export function ArtifactCard({
 
 /** A written deliverable: rendered in full, collapsible, copyable. */
 function DocumentCard({
-  message, employee, body,
-}: { message: ChatMessage; employee?: Employee; body: string }) {
+  message, employee, body, projectId,
+}: {
+  message: ChatMessage; employee?: Employee; body: string; projectId: string;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const EmployeeIcon = employee ? employeeIcon(employee.icon) : Sparkles;
   const label = (message.structured as { label?: string } | null)?.label;
   const words = body.trim().split(/\s+/).length;
@@ -109,6 +120,26 @@ function DocumentCard({
     }
   };
 
+  const title = (message.content || t("chat.artifact.generic")).slice(0, 120);
+
+  const save = async () => {
+    if (saved || saving) return;
+    setSaving(true);
+    try {
+      await saveDocument({
+        project_id: projectId, title, body,
+        employee_id: employee?.id ?? null, kind: "report",
+      });
+      setSaved(true);
+    } catch {
+      // Leave the button actionable so the user can try again.
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toPdf = () => printDocument(title, markdownToHtml(body));
+
   const download = () => {
     const blob = new Blob([body], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -118,6 +149,20 @@ function DocumentCard({
     anchor.click();
     URL.revokeObjectURL(url);
   };
+
+  if (hidden) {
+    return (
+      <button
+        type="button"
+        onClick={() => setHidden(false)}
+        className="flex cursor-pointer items-center gap-2 self-start rounded-full border border-border px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+      >
+        <EmployeeIcon className="h-3 w-3" strokeWidth={2} />
+        {t("chat.artifact.hidden", { title: title.slice(0, 60) })}
+        <span className="text-[10px] underline">{t("chat.artifact.show")}</span>
+      </button>
+    );
+  }
 
   return (
     <div className="flex gap-3 animate-slide-up">
@@ -161,8 +206,37 @@ function DocumentCard({
             )}
             <button
               type="button"
-              onClick={copy}
+              onClick={() => setHidden(true)}
               className="ml-auto flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <EyeOff className="h-3 w-3" />
+              {t("chat.artifact.hide")}
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className={cn(
+                "flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50",
+                saved ? "text-success" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {saved ? <BookmarkCheck className="h-3 w-3" strokeWidth={2.5} />
+                     : <Bookmark className="h-3 w-3" />}
+              {saved ? t("chat.artifact.saved") : t("chat.artifact.save")}
+            </button>
+            <button
+              type="button"
+              onClick={toPdf}
+              className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Printer className="h-3 w-3" />
+              {t("chat.artifact.pdf")}
+            </button>
+            <button
+              type="button"
+              onClick={copy}
+              className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {copied ? <Check className="h-3 w-3 text-success" strokeWidth={2.5} />
                       : <Copy className="h-3 w-3" />}
