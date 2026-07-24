@@ -2372,7 +2372,11 @@
         "social_plural": "تم إنشاء {{count}} منشورات",
         "campaign": "تم إنشاء الحملة",
         "report": "تم إنشاء التقرير"
-      }
+      },
+      "words": "{{count}} كلمة",
+      "expand": "قراءة الكل",
+      "collapse": "عرض أقل",
+      "download": "تنزيل"
     },
     "followOn": {
       "title": "الخطوة التالية",

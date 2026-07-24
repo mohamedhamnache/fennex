@@ -330,7 +330,11 @@ class BaseEmployee:
             if structured is not None:
                 return Outcome(ok=True, summary=_summarise_structured(structured),
                                content=structured, structured=structured)
-        return Outcome(ok=True, summary=text[:400], content=text)
+        # A deliverable with no artifact record -- a market report, an outreach
+        # plan -- IS the text. Keep the whole thing: the summary is for the
+        # transcript line, `body` is the document itself.
+        return Outcome(ok=True, summary=_headline(text), content=text,
+                       structured={"body": text, "format": "markdown"})
 
     def _structured_from(self, text: str, action) -> Optional[dict]:
         """Parse a JSON-shaped skill's output into a dict, or None.
@@ -392,6 +396,15 @@ class BaseEmployee:
 # --- result shapes ------------------------------------------------------------
 # The SDK's event and result shapes are not a stable contract, so these read
 # defensively and degrade to empty rather than raising mid-turn.
+
+
+def _headline(text: str) -> str:
+    """A one-line summary for the transcript: the first heading, or first line."""
+    for line in (text or "").splitlines():
+        stripped = line.strip().lstrip("#").strip()
+        if stripped:
+            return stripped[:200]
+    return (text or "")[:200]
 
 
 def _braces(text: str) -> str:

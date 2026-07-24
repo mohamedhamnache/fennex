@@ -2372,7 +2372,11 @@
         "social_plural": "{{count}} Beitraege erstellt",
         "campaign": "Kampagne erstellt",
         "report": "Bericht erstellt"
-      }
+      },
+      "words": "{{count}} Woerter",
+      "expand": "Alles lesen",
+      "collapse": "Weniger",
+      "download": "Herunterladen"
     },
     "followOn": {
       "title": "Als Naechstes",

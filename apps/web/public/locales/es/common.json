@@ -2372,7 +2372,11 @@
         "social_plural": "{{count}} publicaciones creadas",
         "campaign": "Campana creada",
         "report": "Informe creado"
-      }
+      },
+      "words": "{{count}} palabras",
+      "expand": "Leer todo",
+      "collapse": "Ver menos",
+      "download": "Descargar"
     },
     "followOn": {
       "title": "Que sigue",

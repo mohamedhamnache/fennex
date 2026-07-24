@@ -2445,7 +2445,11 @@
         "social_plural": "{{count}} social posts created",
         "campaign": "Campaign created",
         "report": "Report created"
-      }
+      },
+      "words": "{{count}} words",
+      "expand": "Read all",
+      "collapse": "Show less",
+      "download": "Download"
     },
     "followOn": {
       "title": "What's next",

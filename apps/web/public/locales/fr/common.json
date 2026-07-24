@@ -2372,7 +2372,11 @@
         "social_plural": "{{count}} publications creees",
         "campaign": "Campagne creee",
         "report": "Rapport cree"
-      }
+      },
+      "words": "{{count}} mots",
+      "expand": "Tout lire",
+      "collapse": "Reduire",
+      "download": "Telecharger"
     },
     "followOn": {
       "title": "Et ensuite",

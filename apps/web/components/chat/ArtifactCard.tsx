@@ -1,14 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowUpRight, FileText, Image as ImageIcon, Megaphone, Share2, Sparkles,
-  type LucideIcon,
+  ArrowUpRight, Check, ChevronDown, Copy, Download, FileText,
+  Image as ImageIcon, Megaphone, Share2, Sparkles, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ChatMessage } from "@/lib/chat";
 import { departmentAccent, employeeIcon, type Employee } from "@/lib/employees";
+import { Markdown } from "./Markdown";
 
 /** What an employee actually produced, and where to go and see it.
  *
@@ -20,7 +22,14 @@ export function ArtifactCard({
   const { t } = useTranslation();
   const kind = message.artifactType ?? "result";
   const ids = message.artifactIds ?? [];
-  const structured = (message.structured ?? {}) as { label?: string };
+  const structured = (message.structured ?? {}) as {
+    label?: string; body?: string; format?: string;
+  };
+  // A report or plan has no saved record -- the document IS the result, so it
+  // is rendered here rather than reduced to a one-line summary.
+  if (structured.body) {
+    return <DocumentCard message={message} employee={employee} body={structured.body} />;
+  }
   const { Icon, href, tone } = artifactMeta(kind, ids, projectId);
   const EmployeeIcon = employee ? employeeIcon(employee.icon) : Sparkles;
 
@@ -71,6 +80,103 @@ export function ArtifactCard({
               <ArrowUpRight className="h-3 w-3" />
             </Link>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/** A written deliverable: rendered in full, collapsible, copyable. */
+function DocumentCard({
+  message, employee, body,
+}: { message: ChatMessage; employee?: Employee; body: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const EmployeeIcon = employee ? employeeIcon(employee.icon) : Sparkles;
+  const label = (message.structured as { label?: string } | null)?.label;
+  const words = body.trim().split(/\s+/).length;
+  const long = words > 180;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(body);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard can be blocked; not worth an error state here.
+    }
+  };
+
+  const download = () => {
+    const blob = new Blob([body], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${(message.content || "report").slice(0, 60).replace(/[^\w-]+/g, "-")}.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="flex gap-3 animate-slide-up">
+      <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
+        departmentAccent(employee?.department ?? ""))}>
+        <EmployeeIcon className="h-4 w-4" strokeWidth={1.8} />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="mb-1 flex flex-wrap items-baseline gap-2">
+          <span className="font-display text-xs font-bold text-foreground">
+            {employee?.name ?? t("chat.artifact.done")}
+          </span>
+          {label && <span className="text-[10px] text-muted-foreground">{label}</span>}
+          <span className="text-[10px] text-muted-foreground">
+            {t("chat.artifact.words", { count: words })}
+          </span>
+        </p>
+
+        <div className="overflow-hidden rounded-2xl rounded-tl-md border border-success/30 bg-success/[0.04]">
+          <div className={cn("relative px-4 py-3", long && !open && "max-h-72 overflow-hidden")}>
+            <Markdown text={body} />
+            {long && !open && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent"
+              />
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 border-t border-success/20 px-3 py-2">
+            {long && (
+              <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-success/10"
+              >
+                <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+                {open ? t("chat.artifact.collapse") : t("chat.artifact.expand")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={copy}
+              className="ml-auto flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {copied ? <Check className="h-3 w-3 text-success" strokeWidth={2.5} />
+                      : <Copy className="h-3 w-3" />}
+              {t("chat.copy")}
+            </button>
+            <button
+              type="button"
+              onClick={download}
+              className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Download className="h-3 w-3" />
+              {t("chat.artifact.download")}
+            </button>
+          </div>
         </div>
       </div>
     </div>
