@@ -849,7 +849,9 @@
       "password": "كلمة المرور",
       "connect": "توصيل",
       "connected": "متصل",
-      "remove": "إزالة"
+      "remove": "إزالة",
+      "movedHint": "يُدار الآن في التكاملات.",
+      "openIntegrations": "فتح التكاملات"
     },
     "socialAccounts": {
       "title": "الحسابات الاجتماعية",
@@ -1819,6 +1821,20 @@
         "unreachable": "تعذّر الوصول إلى رابط المتجر. تأكد أنه عام ويستخدم HTTPS.",
         "generic": "تعذّر الاتصال بـ WooCommerce. حاول مجددًا."
       }
+    },
+    "seo": {
+      "title": "توصيل DataForSEO",
+      "subtitle": "يشغّل نتائج البحث الحية وتتبع الترتيب والمصادر التي يستشهد بها كتّابك.",
+      "login": "معرّف الـ API (بريدك الإلكتروني)",
+      "password": "كلمة مرور الـ API",
+      "reveal": "إظهار",
+      "hide": "إخفاء",
+      "connectAndTest": "توصيل واختبار",
+      "connected": "متصل",
+      "disconnect": "فصل",
+      "testFailed": "تم رفض بيانات الاعتماد. تحقق منها في لوحة DataForSEO.",
+      "saveFailed": "تعذر حفظ بيانات الاعتماد.",
+      "hint": "الصق كلمة المرور كما تظهر في DataForSEO، نصًا عاديًا أو base64. كلاهما مقبول."
     }
   },
   "productTab": {

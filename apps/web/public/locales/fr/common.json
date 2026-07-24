@@ -849,7 +849,9 @@
       "password": "Mot de passe",
       "connect": "Connecter",
       "connected": "Connecté",
-      "remove": "Supprimer"
+      "remove": "Supprimer",
+      "movedHint": "Desormais gere dans Integrations.",
+      "openIntegrations": "Ouvrir Integrations"
     },
     "socialAccounts": {
       "title": "Comptes sociaux",
@@ -1819,6 +1821,20 @@
         "unreachable": "Impossible d'atteindre cette URL. Vérifiez qu'elle est publique et en HTTPS.",
         "generic": "Connexion à WooCommerce impossible. Réessayez."
       }
+    },
+    "seo": {
+      "title": "Connecter DataForSEO",
+      "subtitle": "Alimente les resultats de recherche, le suivi de position et les sources citees par vos redacteurs.",
+      "login": "Identifiant API (votre email)",
+      "password": "Mot de passe API",
+      "reveal": "Afficher",
+      "hide": "Masquer",
+      "connectAndTest": "Connecter et tester",
+      "connected": "Connecte",
+      "disconnect": "Deconnecter",
+      "testFailed": "Identifiants refuses. Verifiez-les sur le tableau de bord DataForSEO.",
+      "saveFailed": "Impossible d'enregistrer les identifiants.",
+      "hint": "Collez le mot de passe affiche par DataForSEO, en clair ou en base64. Les deux sont acceptes."
     }
   },
   "productTab": {

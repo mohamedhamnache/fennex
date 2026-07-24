@@ -2566,3 +2566,8 @@ export async function runArticleChecks(articleId: string): Promise<{ seo: SeoChe
 export async function runPlagiarismScan(articleId: string): Promise<PlagiarismReport> {
   return apiClient.post<PlagiarismReport>(`/articles/${articleId}/plagiarism`, {});
 }
+
+/** Verify the stored SEO provider credentials against the provider. */
+export async function testDataForSeo(): Promise<{ ok: boolean; error?: string; results?: number }> {
+  return apiClient.post("/api-keys/dataforseo/test", {});
+}

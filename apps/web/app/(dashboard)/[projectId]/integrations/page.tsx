@@ -14,6 +14,7 @@ import {
 import { LinkedInIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "@/components/studio/SocialIcons";
 import { ShopifyConnectModal } from "@/components/integrations/ShopifyConnectModal";
 import { WooConnectModal } from "@/components/integrations/WooConnectModal";
+import { SeoProviderModal } from "@/components/integrations/SeoProviderModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
@@ -37,7 +38,7 @@ interface Connector {
   Icon: IconCmp;
   status: (d: HubData) => { state: ConnState; detail?: string };
   href?: (projectId: string) => string; // where to connect/manage
-  modal?: "shopify" | "woo"; // opens an in-app connect modal instead of navigating
+  modal?: "shopify" | "woo" | "seo"; // opens an in-app connect modal instead of navigating
 }
 
 const GROUPS: { id: Connector["group"]; icon: LucideIcon }[] = [
@@ -56,11 +57,16 @@ const CONNECTORS: Connector[] = [
     href: (p) => `/${p}/analytics`,
   },
   {
-    id: "seoProvider", group: "search", name: "SEO data provider", Icon: Radar,
-    status: (d) => d.seo?.connected
-      ? { state: "connected", detail: d.seo.source ?? undefined }
-      : { state: "off" },
-    href: () => `/settings`,
+    // Connected here rather than in Settings: it is an integration, not an AI key.
+    id: "seoProvider", group: "search", name: "DataForSEO", Icon: Radar,
+    status: (d) => {
+      const key = d.keys?.find((k) => k.provider === "dataforseo");
+      if (key) return { state: "connected", detail: d.seo?.source ?? undefined };
+      return d.seo?.connected
+        ? { state: "connected", detail: d.seo.source ?? undefined }
+        : { state: "off" };
+    },
+    modal: "seo",
   },
   {
     id: "wordpress", group: "publishing", name: "WordPress", Icon: Globe,
@@ -156,6 +162,11 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [modal, setModal] = useState<NonNullable<Connector["modal"]> | null>(null);
+  // The hub summary reports only whether a provider is connected; the modal
+  // needs the key itself to show and remove it.
+  const { data: apiKeys = [] } = useQuery({
+    queryKey: ["api-keys"], queryFn: listApiKeys, staleTime: 60_000,
+  });
 
   const { data: publishing } = useQuery({ queryKey: ["publishing-connections", projectId], queryFn: () => listPublishingConnections(projectId), enabled: !!projectId });
   const { data: gsc } = useQuery({ queryKey: ["gsc-status", projectId], queryFn: () => getGscStatus(projectId), enabled: !!projectId });
@@ -210,6 +221,13 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
           status={shopify ?? { connected: false, shop_domain: null, shop_name: null }}
           onClose={() => setModal(null)}
           onChanged={() => queryClient.invalidateQueries({ queryKey: ["shopify-status", projectId] })}
+        />
+      )}
+
+      {modal === "seo" && (
+        <SeoProviderModal
+          existing={apiKeys.find((k) => k.provider === "dataforseo")}
+          onClose={() => setModal(null)}
         />
       )}
 

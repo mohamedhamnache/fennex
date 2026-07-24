@@ -9,6 +9,26 @@ from app.services.api_keys_service import create_key, delete_key, list_keys
 router = APIRouter()
 
 
+@router.post("/dataforseo/test")
+async def test_dataforseo(current_user: CurrentUser, db: DB) -> dict:
+    """Check the stored SEO credentials actually work.
+
+    Connecting used to fail silently at the point of first use -- a keyword
+    lookup would just return nothing. This makes a bad credential visible at
+    the moment it is entered.
+    """
+    from app.integrations.seo_apis import get_seo_provider_for_org
+
+    provider = await get_seo_provider_for_org(current_user.org_id, db)
+    if provider is None:
+        return {"ok": False, "error": "No SEO credentials are connected."}
+    try:
+        items = await provider.serp("seo", language_code="en", location_code=2840)
+        return {"ok": True, "results": len(items or [])}
+    except Exception as exc:   # noqa: BLE001
+        return {"ok": False, "error": str(exc)[:300]}
+
+
 class ApiKeyOut(BaseModel):
     id: str
     provider: str

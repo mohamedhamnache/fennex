@@ -946,7 +946,9 @@
       "password": "Password",
       "connect": "Connect",
       "connected": "Connected",
-      "remove": "Remove"
+      "remove": "Remove",
+      "movedHint": "Now managed in Integrations.",
+      "openIntegrations": "Open Integrations"
     },
     "socialAccounts": {
       "title": "Social Accounts",
@@ -1907,6 +1909,20 @@
         "unreachable": "Couldn't reach that store URL. Check it's public and uses HTTPS.",
         "generic": "Couldn't connect to WooCommerce. Try again."
       }
+    },
+    "seo": {
+      "title": "Connect DataForSEO",
+      "subtitle": "Powers live search results, rank tracking and the sources your writers cite.",
+      "login": "API login (your email)",
+      "password": "API password",
+      "reveal": "Show",
+      "hide": "Hide",
+      "connectAndTest": "Connect and test",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "testFailed": "Those credentials were rejected. Check them on the DataForSEO dashboard.",
+      "saveFailed": "Could not save the credentials.",
+      "hint": "Paste whichever password the DataForSEO dashboard shows — plain or base64. Both are accepted."
     }
   },
   "productTab": {
