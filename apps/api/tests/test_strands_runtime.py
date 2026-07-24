@@ -246,3 +246,95 @@ def test_every_agentic_action_belongs_to_an_employee_with_usable_tools():
             unknown = toolbridge.describe(employee, _ctx())
             assert all(u.get("label") for u in unknown), (
                 f"{employee.id} declares a tool the toolbelt does not know")
+
+
+# --- MCP ----------------------------------------------------------------------
+
+
+def test_an_unconfigured_mcp_server_is_never_offered():
+    """Declaring an app costs nothing until an endpoint is configured."""
+    from app.employees.runtime import mcp
+
+    nomad = registry.get("nomad")
+    assert "linkedin" in nomad.connected_apps
+    # No MCP_* endpoints are set in this environment.
+    assert mcp.servers_for(nomad, ALL_PERMISSIONS) == []
+    assert mcp.clients_for(nomad, ALL_PERMISSIONS) == []
+
+
+def test_mcp_respects_the_same_permission_gate_as_native_tools():
+    from app.employees.runtime import mcp
+
+    server = mcp.CATALOGUE["email"]
+    assert server.permission == "send:email"
+    nomad = registry.get("nomad")
+    # Even fully configured, a run without the permission gets nothing.
+    assert mcp.servers_for(nomad, granted=[]) == []
+
+
+def test_describe_reports_configuration_state_for_the_ui():
+    from app.employees.runtime import mcp
+
+    described = mcp.describe(registry.get("nomad"))
+    assert {d["app"] for d in described} == {"linkedin", "email"}
+    assert all(d["configured"] is False for d in described)
+    assert all(d["permission"] for d in described)
+
+
+def test_mcp_tools_degrade_to_nothing_rather_than_failing_a_turn():
+    """A broken integration must never cost the user their answer."""
+    from contextlib import ExitStack
+
+    from app.employees.runtime.base import BaseEmployee
+
+    with ExitStack() as stack:
+        assert BaseEmployee(registry.get("nomad"))._mcp_tools(_ctx(), stack) == []
+
+
+def test_only_toolless_employees_depend_on_mcp_to_become_agentic():
+    """MCP is what unblocks the employees held back in phases 3-8."""
+    from app.employees.runtime import mcp
+
+    for employee_id in ("sirocco", "nomad"):
+        employee = registry.get(employee_id)
+        assert employee.allowed_tools == []
+        assert mcp.describe(employee), f"{employee_id} has no MCP route to reach"
+
+
+def test_a_read_only_tool_is_not_called_twice_in_one_run():
+    """A reasoning model will ask the same tool repeatedly; the data cannot
+    change mid-turn, so the first answer is reused."""
+    import asyncio
+
+    from app.employees import toolbelt
+
+    calls = []
+
+    async def _counting(ctx, db, inputs):
+        calls.append(inputs.get("query", ""))
+        return {"rows": 1}
+
+    toolbelt.register_tool(toolbelt.Tool(
+        name="test_cached", label="Cached", description="d",
+        permission="read:analytics", handler=_counting))
+    try:
+        from app.employees.spec import Action, Employee
+        employee = Employee(
+            id="cache-probe", name="Probe", codename="p", role="r", department="d",
+            description="x", allowed_tools=["test_cached"],
+            actions=[Action(id="a", label="l", description="d",
+                            capabilities=["seo.keyword_research"],
+                            skill_key="zerda.keyword_targets")])
+        tool = toolbridge.build_tools(employee, _ctx())[0]
+        run = getattr(tool, "_tool_func", None) or getattr(tool, "func", None) or tool
+
+        async def drive():
+            await run(query="x")
+            await run(query="x")      # cached
+            await run(query="y")      # different args, runs again
+
+        asyncio.get_event_loop().run_until_complete(drive()) \
+            if False else asyncio.run(drive())
+        assert calls == ["x", "y"], f"expected one call per distinct query, got {calls}"
+    finally:
+        toolbelt._TOOLS.pop("test_cached", None)

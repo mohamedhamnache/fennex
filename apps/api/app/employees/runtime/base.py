@@ -12,8 +12,10 @@ hook only when the default cannot express what it needs.
 from __future__ import annotations
 
 import logging
+from contextlib import ExitStack
 from typing import Any, AsyncIterator, Optional
 
+from app.employees.runtime import mcp as mcp_layer
 from app.employees.runtime import models as model_provider
 from app.employees.runtime import toolbridge
 from app.employees.runtime.telemetry import Execution
@@ -120,10 +122,20 @@ class BaseEmployee:
 
         await self.load_context(ctx)
         visual = any(c.startswith("image.") for c in action.capabilities)
-        tools = toolbridge.build_tools(self.employee, ctx, on_call=metrics.record_tool)
-
         prompt = self.build_prompt(action, task, ctx)
         last_error: Optional[str] = None
+
+        # MCP clients are context managers; one stack owns them for the whole
+        # execution so retries reuse the same open sessions.
+        with ExitStack() as stack:
+            tools = toolbridge.build_tools(self.employee, ctx, on_call=metrics.record_tool)
+            tools += self._mcp_tools(ctx, stack)
+            return await self._attempt(action, task, ctx, model, tools, prompt,
+                                       metrics, visual, last_error)
+
+    async def _attempt(self, action, task, ctx, model, tools, prompt, metrics,
+                       visual, last_error) -> Outcome:
+        from strands import Agent
 
         for attempt in range(MAX_RETRIES + 1):
             metrics.retries = attempt
@@ -175,7 +187,9 @@ class BaseEmployee:
 
         await self.load_context(ctx)
         visual = any(c.startswith("image.") for c in action.capabilities)
+        stack = ExitStack()
         tools = toolbridge.build_tools(self.employee, ctx, on_call=metrics.record_tool)
+        tools += self._mcp_tools(ctx, stack)
 
         agent = Agent(
             model=model, tools=tools,
@@ -200,7 +214,29 @@ class BaseEmployee:
             logger.exception("agentic stream failed: %s", self.employee.id)
             yield {"type": "error", "employeeId": self.employee.id, "message": str(exc)}
             return
+        finally:
+            stack.close()
         yield {"type": "telemetry", "metrics": metrics.finish(ok=True).to_dict()}
+
+    def _mcp_tools(self, ctx, stack) -> list:
+        """Tools from every MCP server this employee is entitled to use.
+
+        A server that will not start is skipped: a broken integration must
+        never cost the user their answer.
+        """
+        tools: list = []
+        for server, client in mcp_layer.clients_for(self.employee,
+                                                    ctx.granted_permissions):
+            try:
+                stack.enter_context(client)
+                found = client.list_tools_sync()
+                tools.extend(found)
+                logger.info("mcp %s attached %d tools for %s",
+                            server.app, len(found), self.employee.id)
+            except Exception:
+                logger.warning("mcp server %s unavailable for %s",
+                               server.app, self.employee.id, exc_info=True)
+        return tools
 
     # -- overridable hooks ---------------------------------------------------
 

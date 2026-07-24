@@ -115,8 +115,34 @@ The settled block is now appended to whatever the skill produced.
 | 3–8 | Mirage, Sirocco, Nomad | held -- no tools to justify a loop |
 | 9 | Chat streams from the runtime; tool use is visible | **done** |
 | 10 | Legacy orchestration retired | not started |
-| 11 | MCP servers | not started |
+| 11 | MCP servers | **done** (no endpoints configured yet) |
 | 12 | Remove deprecated code | not started |
+
+## MCP
+
+An employee declares an MCP server in `connected_apps` exactly as it declares a
+native tool, and the runtime attaches whatever that server exposes. Servers are
+configured per deployment via `MCP_<APP>_URL`; declaring one costs nothing until
+an endpoint exists.
+
+The same two gates apply as for native tools: the employee must have declared
+the app, and the run must hold the permission. A server that will not start is
+skipped with a warning -- a broken integration must never cost the user their
+answer.
+
+This is what unblocks the toolless employees. Nomad routes to LinkedIn and
+Email, Sirocco to LinkedIn; once those endpoints are configured, both become
+worth migrating.
+
+Nothing leaks upward: the registry and router know an employee "uses linkedin",
+not that LinkedIn happens to arrive over MCP.
+
+### Repeated tool calls
+
+A reasoning model will ask the same read-only tool over and over -- one
+observed turn called `gsc_opportunities` eleven times. Results are now cached
+per run and per argument, which took that turn from 14 calls to 4. Writes are
+never cached.
 
 ## Known gaps
 

@@ -53,6 +53,8 @@ def build_tools(employee, ctx, *, on_call: Callable[[str, bool], None] | None = 
     from strands import tool
 
     built: list = []
+    # One cache per run, shared by every tool built for it.
+    cache: dict[tuple[str, str], str] = {}
     for name in employee.allowed_tools:
         spec = toolbelt.get_tool(name)
         if spec is None:
@@ -63,11 +65,11 @@ def build_tools(employee, ctx, *, on_call: Callable[[str, bool], None] | None = 
             logger.info("tool %s withheld from %s: %s not granted",
                         name, employee.id, spec.permission)
             continue
-        built.append(_make(spec, ctx, on_call))
+        built.append(_make(spec, ctx, on_call, cache))
     return built
 
 
-def _make(spec, ctx, on_call):
+def _make(spec, ctx, on_call, cache):
     """Wrap one Fennex tool as a Strands tool bound to this context."""
     from strands import tool
 
@@ -79,6 +81,16 @@ def _make(spec, ctx, on_call):
     @tool(name=safe_name, description=description)
     async def _run(query: str = "") -> str:
         """Execute the underlying Fennex tool and return its data as text."""
+        # A model that is reasoning will happily ask the same read-only tool a
+        # dozen times in one turn. The data cannot change mid-turn, so the
+        # first answer is reused -- it saves the latency and the tokens, and it
+        # stops the loop that repetition tends to become.
+        key = (spec.name, query or "")
+        if key in cache:
+            if on_call:
+                on_call(spec.name, True)
+            return cache[key]
+
         async with _session_for(ctx) as db:
             result = await toolbelt.run(spec.name, ctx, db, {"query": query},
                                         granted=ctx.granted_permissions)
@@ -88,7 +100,12 @@ def _make(spec, ctx, on_call):
             return f"Refused: {result.error}"
         if not result.ok:
             return f"Unavailable: {result.error}"
-        return _summarise(result.data)
+
+        rendered = _summarise(result.data)
+        # Only successful reads are cached; a write must always run.
+        if not spec.writes:
+            cache[key] = rendered
+        return rendered
 
     return _run
 
