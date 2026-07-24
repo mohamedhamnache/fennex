@@ -75,6 +75,7 @@ EMPLOYEE = Employee(
             inputs=["angle", "upstream"],
             outputs=["posts"],
             requires_permissions=[P_WRITE_SOCIAL],
+            agentic=True,
         ),
         Action(
             id="generate_visual",
@@ -86,6 +87,7 @@ EMPLOYEE = Employee(
             inputs=["angle", "topic"],
             outputs=["image"],
             requires_permissions=[P_WRITE_IMAGES, P_SPEND_CREDITS],
+            agentic=True,
         ),
     ],
 

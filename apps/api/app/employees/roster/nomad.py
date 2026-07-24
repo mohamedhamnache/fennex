@@ -70,6 +70,7 @@ EMPLOYEE = Employee(
             inputs=["goal", "segments"],
             outputs=["posts", "dm_templates"],
             requires_permissions=[P_WRITE_SOCIAL, P_WRITE_CONTENT],
+            agentic=True,
         ),
         Action(
             id="testimonial_content",
@@ -82,6 +83,7 @@ EMPLOYEE = Employee(
             inputs=["testimonial"],
             outputs=["posts"],
             requires_permissions=[P_WRITE_SOCIAL],
+            agentic=True,
         ),
     ],
 

@@ -73,7 +73,7 @@ its own session.
 `Action.agentic = True` opts one action onto the runtime. Everything else runs
 the proven legacy path untouched, so a regression is contained to one action.
 
-Migrated so far -- only employees whose work is grounded by tools:
+All seven employees, all 14 actions, run on the runtime:
 
 | Employee | Actions | Tools it can now reach for itself |
 |---|---|---|
@@ -82,15 +82,20 @@ Migrated so far -- only employees whose work is grounded by tools:
 | Oasis | `market_report`, `define_icp` | market data, insights, GSC, products |
 | Dune | `write_article`, `regenerate_article`, `product_copy` | article context, SEO grounding, store products |
 
-**Sirocco and Nomad are deliberately not migrated.** They declare no tools, so
-an agentic loop could never call anything on their behalf -- it would be risk
-with no benefit. They stay on the legacy generator until MCP (phase 11) gives
-them something to reach for. A test enforces this: an agentic employee must
-have tools.
+| Mirage | `product_shot`, `editorial_image` | store products |
+| Sirocco | `multi_network_social`, `generate_visual` | none yet -- MCP route to LinkedIn |
+| Nomad | `outreach_plan`, `testimonial_content` | none yet -- MCP route to LinkedIn, Email |
 
-Mirage is held back too: its only tool is the product catalogue and both of its
-actions persist an image, so the gain does not yet justify re-verifying the
-persist path.
+An earlier revision of this plan held Sirocco, Nomad and Mirage back on the
+argument that an agentic loop with no tools is cost without benefit. That was a
+cost/benefit judgement standing in for a stated requirement, and it was wrong.
+An agent with no tools simply generates -- exactly what those employees did
+before -- and unification has value the argument ignored: one execution path,
+telemetry everywhere, MCP-ready the moment endpoints land, and, decisively, the
+legacy path can never be retired while anyone still lives on it.
+
+The real concern was narrower and testable: those actions persist artifacts.
+Each was verified end to end.
 
 ### Two things the migration itself taught
 
@@ -111,12 +116,11 @@ The settled block is now appended to whatever the skill produced.
 |---|---|---|
 | 1 | Install, BaseEmployee, registry, wrap one, validate | **done** |
 | 2 | Zerda | **done** |
-| 3–8 | Dune, Sable, Oasis | **done** |
-| 3–8 | Mirage, Sirocco, Nomad | held -- no tools to justify a loop |
+| 3–8 | Dune, Mirage, Sirocco, Sable, Oasis, Nomad | **done** |
 | 9 | Chat streams from the runtime; tool use is visible | **done** |
-| 10 | Legacy orchestration retired | not started |
+| 10 | Legacy orchestration retired | unblocked -- nobody left on it |
 | 11 | MCP servers | **done** (no endpoints configured yet) |
-| 12 | Remove deprecated code | not started |
+| 12 | Remove deprecated code | unblocked -- see note below |
 
 ## MCP
 

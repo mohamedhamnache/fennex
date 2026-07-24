@@ -193,18 +193,17 @@ async def test_a_run_without_a_provider_fails_cleanly():
 # --- migration state -----------------------------------------------------------
 
 
-def test_only_employees_with_tools_are_migrated():
-    """An agentic loop with no tools is risk without benefit.
+def test_every_employee_runs_on_the_runtime():
+    """The migration's success criterion: every AI employee is on Strands.
 
-    Sirocco and Nomad declare no tools, so the runtime could never call
-    anything on their behalf -- they stay on the proven legacy path until MCP
-    gives them something to reach for.
+    An employee with no tools still runs -- the agent simply generates without
+    a tool loop, which is exactly what it did before. Tools are an upgrade to
+    the runtime, not a precondition for it.
     """
     for employee in registry.all_employees():
-        migrated = [a.id for a in employee.actions if a.agentic]
-        if migrated:
-            assert employee.allowed_tools, (
-                f"{employee.id} is agentic but has no tools to call")
+        assert employee.actions, f"{employee.id} has no actions"
+        unmigrated = [a.id for a in employee.actions if not a.agentic]
+        assert not unmigrated, f"{employee.id} still on the legacy path: {unmigrated}"
 
 
 def test_migrated_actions_are_flagged_and_the_rest_are_untouched():
@@ -214,15 +213,8 @@ def test_migrated_actions_are_flagged_and_the_rest_are_untouched():
         for action in employee.actions:
             (agentic if action.agentic else legacy).append(f"{employee.id}.{action.id}")
 
-    for migrated in ("zerda.pick_angle", "zerda.keyword_targets",
-                     "sable.competitor_scan", "oasis.market_report",
-                     "oasis.define_icp", "dune.write_article"):
-        assert migrated in agentic
-
-    # Toolless employees remain on the legacy generator.
-    for untouched in ("sirocco.multi_network_social", "sirocco.generate_visual",
-                      "nomad.outreach_plan", "mirage.product_shot"):
-        assert untouched in legacy
+    assert not legacy, f"still on the legacy generator: {legacy}"
+    assert len(agentic) == 14
 
 
 def test_an_agentic_action_bound_to_a_skill_inherits_its_prompts():
@@ -291,8 +283,8 @@ def test_mcp_tools_degrade_to_nothing_rather_than_failing_a_turn():
         assert BaseEmployee(registry.get("nomad"))._mcp_tools(_ctx(), stack) == []
 
 
-def test_only_toolless_employees_depend_on_mcp_to_become_agentic():
-    """MCP is what unblocks the employees held back in phases 3-8."""
+def test_toolless_employees_have_an_mcp_route_to_gain_tools():
+    """They run on the runtime already; MCP is how they gain reach."""
     from app.employees.runtime import mcp
 
     for employee_id in ("sirocco", "nomad"):
