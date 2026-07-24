@@ -2415,7 +2415,8 @@
       "workflow": "{{names}} estan listos. Ejecuta cada paso cuando te convenza.",
       "actions": "{{name}} puede continuar. Que prefieres?",
       "followOn": "Hecho. {{names}} puede continuar.",
-      "clarify": "Quiero asignar esto al especialista adecuado. Puedes precisar que necesitas?"
+      "clarify": "Quiero asignar esto al especialista adecuado. Puedes precisar que necesitas?",
+      "actionDone": "{{action}}: hecho."
     }
   },
   "connectors": {

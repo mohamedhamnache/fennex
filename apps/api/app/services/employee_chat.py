@@ -610,7 +610,9 @@ async def run_step(convo: Conversation, steps: list[dict], index: int, db,
             content=outcome.summary or f"{action.label} is done.",
             artifact_type=outcome.artifact_type, artifact_ids=outcome.artifact_ids,
             structured={**(outcome.structured or {}), "actionId": action.id,
-                        "stepIndex": index, "label": action.label})
+                        "stepIndex": index, "label": action.label,
+                        **({} if outcome.summary
+                           else _t("chat.notice.actionDone", action=action.label))})
         try:
             await employee.learn(task, outcome,
                                  await employee.evaluate(outcome, task, ctx), ctx)
@@ -933,7 +935,9 @@ async def run_approved(approval: PendingApproval, db) -> AsyncIterator[dict]:
             convo, db, role="employee", employee_id=employee.id, event="result",
             content=outcome.summary or f"{action.label} is done.",
             artifact_type=outcome.artifact_type, artifact_ids=outcome.artifact_ids,
-            structured={**(outcome.structured or {}), "actionId": action.id})
+            structured={**(outcome.structured or {}), "actionId": action.id,
+                        **({} if outcome.summary
+                           else _t("chat.notice.actionDone", action=action.label))})
         try:
             await employee.learn(task, outcome, await employee.evaluate(outcome, task, ctx), ctx)
         except Exception:

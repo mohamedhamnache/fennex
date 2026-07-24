@@ -42,6 +42,10 @@ class Tool:
     app: str = ""                                  # "wordpress" | "shopify" | ...
     permission: str = P_READ_CONTENT
     handler: Optional[Callable[..., Awaitable[Any]]] = None
+    # The input key this tool reads. Adapted legacy tools expect their own name
+    # ("competitor_url", "article_id"); the bridge hands the model's argument
+    # under both this key and "query" so either convention works.
+    arg: str = "query"
     # (project_id, org_id, db) -> bool ; app tools only
     availability: Optional[Callable[..., Awaitable[bool]]] = None
     writes: bool = False                           # mutates something outside Fennex
@@ -109,7 +113,8 @@ def _adopt_legacy_data_tools() -> None:
                         P_READ_ANALYTICS),
         "tracked_keywords": ("Tracked keywords", "Keywords this project is tracking.",
                              P_READ_ANALYTICS),
-        "crawl_competitor": ("Crawl a competitor", "Fetch and analyse a competitor page.",
+        "crawl_competitor": ("Crawl a competitor",
+                             "Fetch and analyse a competitor page. Give the full URL.",
                              P_READ_COMPETITORS),
         "our_demand": ("Our demand", "The topics this project already earns impressions on.",
                        P_READ_ANALYTICS),
@@ -121,6 +126,11 @@ def _adopt_legacy_data_tools() -> None:
                           P_READ_CONTENT),
     }
     register_tool(Tool(
+        name="known_competitors", label="Known competitors",
+        description="The competitors already tracked for this project. Start here "
+                    "before searching for new ones.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_known_competitors))
+    register_tool(Tool(
         name="serp_lookup", label="Search the web",
         description="Search a keyword and return the real ranking pages: title, URL and "
                     "domain. Use this to find sources you can actually cite.",
@@ -131,13 +141,57 @@ def _adopt_legacy_data_tools() -> None:
                     "what the page actually says before you cite it.",
         kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_fetch_page))
 
+    # Input key each adapted tool reads, where it is not "query".
+    args = {"crawl_competitor": "competitor_url",
+            "article_context": "article_id",
+            "seo_grounding": "article_id"}
+
     for name, fn in legacy.TOOLS.items():
         label, desc, perm = meta.get(name, (name.replace("_", " ").title(), "", P_READ_CONTENT))
         register_tool(Tool(name=name, label=label, description=desc, kind=KIND_DATA,
-                           permission=perm, handler=fn))
+                           permission=perm, handler=fn, arg=args.get(name, "query")))
 
 
 # --- connected apps -----------------------------------------------------------
+
+
+async def _known_competitors(ctx, db, inputs):
+    """Competitors already tracked for this project.
+
+    Sable could previously only crawl a URL it was handed, so a request like
+    "analyse my competitors" left it with nothing to look at. This is the
+    starting point: who we already know about.
+    """
+    from sqlalchemy import select
+
+    found: list[dict] = []
+    try:
+        from app.models.seo_intel import Competitor
+        rows = (await db.execute(
+            select(Competitor).where(Competitor.project_id == ctx.project_id).limit(25)
+        )).scalars().all()
+        found += [{"domain": r.domain, "source": "tracked"} for r in rows if r.domain]
+    except Exception:
+        pass
+    try:
+        from app.models.monitoring import WatchedCompetitor
+        rows = (await db.execute(
+            select(WatchedCompetitor).where(
+                WatchedCompetitor.project_id == ctx.project_id).limit(25)
+        )).scalars().all()
+        for r in rows:
+            domain = getattr(r, "domain", None) or getattr(r, "url", None)
+            if domain and not any(f["domain"] == domain for f in found):
+                found.append({"domain": domain, "source": "watched"})
+    except Exception:
+        pass
+
+    if not found:
+        return {"competitors": [],
+                "note": "None are tracked for this project. Use the search tool on a "
+                        "topic this project targets and treat the ranking domains as "
+                        "the competitors."}
+    return {"competitors": found}
 
 
 async def _serp_lookup(ctx, db, inputs):
@@ -155,10 +209,28 @@ async def _serp_lookup(ctx, db, inputs):
     project = await db.get(Project, ctx.project_id)
     if project is None:
         return {"results": []}
-    data = await fetch_serp(project, keyword, db)
+    try:
+        data = await fetch_serp(project, keyword, db)
+    except Exception as exc:   # noqa: BLE001
+        # A provider rejection is actionable information, not a dead end -- the
+        # employee should be able to tell the user why it could not look, and a
+        # raised exception here just becomes "unavailable".
+        detail = str(exc)
+        if "403" in detail or "401" in detail:
+            return {"results": [],
+                    "error": "The SEO provider rejected the request. Check that the "
+                             "DataForSEO account is funded and its plan includes the "
+                             "SERP API."}
+        return {"results": [], "error": f"The search provider failed: {detail[:200]}"}
+
     if not data:
         return {"results": [],
-                "note": "No SEO provider is configured, so live results are unavailable."}
+                "note": "No SEO provider is connected, so live results are unavailable. "
+                        "Connect one in Integrations."}
+    if not data.get("top10"):
+        return {"keyword": keyword, "results": [],
+                "note": "The provider returned no organic results for this keyword in "
+                        "this market."}
     return {"keyword": keyword,
             "results": [{"rank": r["rank"], "title": r["title"], "url": r["url"],
                          "domain": r["domain"]} for r in data.get("top10", [])],

@@ -2415,7 +2415,8 @@
       "workflow": "{{names}} estao prontos. Execute cada passo quando estiver satisfeito.",
       "actions": "{{name}} pode continuar. O que prefere?",
       "followOn": "Feito. {{names}} pode continuar.",
-      "clarify": "Quero encaminhar isto para o especialista certo. Pode precisar o que precisa?"
+      "clarify": "Quero encaminhar isto para o especialista certo. Pode precisar o que precisa?",
+      "actionDone": "{{action}}: concluido."
     }
   },
   "connectors": {

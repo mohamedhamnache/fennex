@@ -2488,7 +2488,8 @@
       "workflow": "{{names}} are ready. Run each step when you are happy with it.",
       "actions": "{{name}} can take it from here. What would you like?",
       "followOn": "That's done. {{names}} could take it from here.",
-      "clarify": "I want to route this to the right specialist. Could you say a little more about what you need?"
+      "clarify": "I want to route this to the right specialist. Could you say a little more about what you need?",
+      "actionDone": "{{action}} is done."
     }
   },
   "connectors": {

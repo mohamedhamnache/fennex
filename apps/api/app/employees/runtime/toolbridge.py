@@ -105,8 +105,11 @@ def _make(spec, ctx, on_call, cache, budget):
                     "already have -- do not request more data.")
         budget["spent"] += 1
 
+        # Pass the argument under both the tool's own key and "query", so an
+        # adapted legacy tool reading `competitor_url` sees it too.
+        payload = {"query": query, spec.arg: query}
         async with _session_for(ctx) as db:
-            result = await toolbelt.run(spec.name, ctx, db, {"query": query},
+            result = await toolbelt.run(spec.name, ctx, db, payload,
                                         granted=ctx.granted_permissions)
         if on_call:
             on_call(spec.name, result.ok)

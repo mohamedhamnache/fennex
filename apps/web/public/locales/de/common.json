@@ -2415,7 +2415,8 @@
       "workflow": "{{names}} sind bereit. Starten Sie jeden Schritt, wenn er passt.",
       "actions": "{{name}} kann uebernehmen. Was moechten Sie?",
       "followOn": "Erledigt. {{names}} kann uebernehmen.",
-      "clarify": "Ich moechte das an den richtigen Spezialisten geben. Koennen Sie praezisieren, was Sie brauchen?"
+      "clarify": "Ich moechte das an den richtigen Spezialisten geben. Koennen Sie praezisieren, was Sie brauchen?",
+      "actionDone": "{{action}}: fertig."
     }
   },
   "connectors": {

@@ -413,13 +413,25 @@ def _braces(text: str) -> str:
     return text[start:end + 1] if 0 <= start < end else ""
 
 
+# Keys whose value is prose a person can read. Field names are English by
+# contract -- the parser depends on them -- so falling back to dumping them was
+# how an otherwise French result surfaced as "scorecard: {}, gaps: []".
+_READABLE_KEYS = ("insights", "summary", "rationale", "analysis", "recommendation",
+                  "topic", "angle", "title", "description",
+                  "primary_keyword", "primary", "keyword")
+
+
 def _summarise_structured(data: dict) -> str:
     """A one-line summary of a structured result, for the transcript."""
-    for key in ("topic", "angle", "title", "summary", "primary_keyword", "keyword"):
+    for key in _READABLE_KEYS:
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()[:300]
-    return ", ".join(f"{k}: {str(v)[:60]}" for k, v in list(data.items())[:3])[:300]
+    # Nothing readable: prefer the first prose value anywhere over field names.
+    for value in data.values():
+        if isinstance(value, str) and len(value.strip()) > 30:
+            return value.strip()[:300]
+    return ""
 
 
 def _text_of(result: Any) -> str:
