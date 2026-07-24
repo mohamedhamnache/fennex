@@ -92,9 +92,9 @@ export type ChatEvent =
   | { type: "actions"; employeeId: string; actions: OfferedAction[]; message: ChatMessage }
   | { type: "workflow"; steps: WorkflowStep[]; message: ChatMessage }
   | { type: "working"; employeeId: string; action: string }
-  | { type: "result"; message: ChatMessage; artifactType: string | null; artifactIds: string[] | null }
+  | { type: "result"; stepIndex?: number; message: ChatMessage; artifactType: string | null; artifactIds: string[] | null }
   | { type: "clarify"; message: ChatMessage; routing: RoutingInfo }
-  | { type: "error"; message: string; employeeId?: string }
+  | { type: "error"; message: string; employeeId?: string; stepIndex?: number }
   | { type: "done" };
 
 /** Send a message and consume the turn. Returns an abort handle so the user can
@@ -119,11 +119,20 @@ export interface OfferedAction {
 
 /** One specialist's turn inside an approved multi-employee workflow. */
 export interface WorkflowStep {
+  index: number;
   employeeId: string;
   employeeName: string;
+  employeeRole: string;
   actionId: string;
   label: string;
+  description: string;
   outputs: string[];
+  weight: "light" | "heavy";
+  permissions: string[];
+  capability: string;
+  /** Plain-language rationale for putting this specialist on this step. */
+  why: string;
+  dependsOnPrevious: boolean;
   icon: string;
   department: string;
 }
@@ -134,6 +143,14 @@ export function runWorkflow(
   onEvent: (event: ChatEvent) => void,
 ): { done: Promise<void>; cancel: () => void } {
   return streamTurn("/chat/workflow/run", body, onEvent);
+}
+
+/** Run a single approved step, inheriting whatever earlier steps produced. */
+export function runWorkflowStep(
+  body: { conversation_id: string; steps: WorkflowStep[]; index: number },
+  onEvent: (event: ChatEvent) => void,
+): { done: Promise<void>; cancel: () => void } {
+  return streamTurn("/chat/workflow/step", body, onEvent);
 }
 
 /** Run the action the user picked. Nothing runs until they press a button. */

@@ -164,6 +164,40 @@ class RunWorkflowRequest(BaseModel):
     steps: list[dict]
 
 
+class RunStepRequest(BaseModel):
+    conversation_id: uuid.UUID
+    steps: list[dict]
+    index: int
+
+
+@router.post("/workflow/step")
+async def run_workflow_step(body: RunStepRequest, current_user: CurrentUser, db: DB):
+    """Run one approved step of a workflow, streaming its progress."""
+    convo = await db.get(Conversation, body.conversation_id)
+    if convo is None or convo.org_id != current_user.org_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+
+    conversation_id, org_id, user_id = convo.id, current_user.org_id, current_user.id
+
+    async def event_stream():
+        try:
+            async with async_session_factory() as session:
+                thread = await session.get(Conversation, conversation_id)
+                if thread is None or thread.org_id != org_id:
+                    yield _sse({"type": "error", "message": "Conversation not found"})
+                    return
+                async for event in employee_chat.run_step(
+                        thread, body.steps, body.index, session, user_id=user_id):
+                    yield _sse(event)
+        except Exception as exc:   # noqa: BLE001
+            logger.exception("workflow step failed")
+            yield _sse({"type": "error", "message": str(exc)})
+            yield _sse({"type": "done"})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                             headers=SSE_HEADERS)
+
+
 @router.post("/workflow/run")
 async def run_workflow(body: RunWorkflowRequest, current_user: CurrentUser, db: DB):
     """Execute an approved multi-specialist workflow, streaming each step."""

@@ -4,17 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowRight, Check, CornerDownLeft, History, Loader2, Play, Send, Sparkles,
-  Square, Trash2, X,
+  ArrowDown, ArrowRight, Check, Copy, CornerDownLeft, History, Loader2, Send,
+  Sparkles, Square, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   approveAndRun, decideApproval, deleteConversation, getConversation,
-  listConversations, runAction, runWorkflow, sendMessage,
+  listConversations, runAction, runWorkflow, runWorkflowStep, sendMessage,
   type ChatEvent, type ChatMessage, type Conversation, type OfferedAction,
   type TeamStep, type WorkflowStep,
 } from "@/lib/chat";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
+import { WorkflowCard, type StepState } from "./WorkflowCard";
+import { ArtifactCard } from "./ArtifactCard";
 
 /** A turn in flight: the employee currently speaking and their partial text. */
 interface Live {
@@ -35,8 +37,15 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState<{ employeeId: string; action: string } | null>(null);
   const [decisions, setDecisions] = useState<Record<string, string>>({});
+  // Per-workflow step outcomes, keyed by the workflow message id.
+  const [stepStates, setStepStates] = useState<Record<string, Record<number, StepState>>>({});
+  const [activeStep, setActiveStep] = useState<{ messageId: string; index: number } | null>(null);
+  const [atBottom, setAtBottom] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
+  // Read inside the streaming callback, so it must not go stale.
+  const activeStepRef = useRef<{ messageId: string; index: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data: registry } = useQuery({
@@ -51,10 +60,22 @@ export function MainChat({ projectId }: { projectId: string }) {
     staleTime: 30_000,
   });
 
-  // Keep the newest turn in view while text streams in.
+  // Follow the stream only while the user is already at the bottom; yanking
+  // them away from something they scrolled up to read is worse than a gap.
   useEffect(() => {
+    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, live, routing, atBottom]);
+
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, live, routing]);
+    setAtBottom(true);
+  }, []);
 
   const loadConversation = useCallback(async (id: string) => {
     cancelRef.current?.();
@@ -78,6 +99,30 @@ export function MainChat({ projectId }: { projectId: string }) {
       setOwner(null);
     }
   }, [conversationId, conversations]);
+
+  /** Record how a workflow step ended, against the workflow it belongs to. */
+  const markStep = useCallback((index: number, state: StepState) => {
+    const active = activeStepRef.current;
+    if (!active) return;
+    setStepStates((prev) => ({
+      ...prev,
+      [active.messageId]: { ...(prev[active.messageId] ?? {}), [index]: state },
+    }));
+  }, []);
+
+  /** A step is locked until every step before it has succeeded -- later steps
+   *  consume what earlier ones produced, so running them out of order would
+   *  give the specialist nothing to work from. */
+  const stepStateFor = useCallback((messageId: string, index: number): StepState => {
+    const states = stepStates[messageId] ?? {};
+    if (states[index]) return states[index];
+    const active = activeStep;
+    if (active && active.messageId === messageId && active.index === index) return "running";
+    for (let i = 0; i < index; i += 1) {
+      if (states[i] !== "done") return "locked";
+    }
+    return "ready";
+  }, [stepStates, activeStep]);
 
   const handleEvent = useCallback((event: ChatEvent) => {
     switch (event.type) {
@@ -127,10 +172,12 @@ export function MainChat({ projectId }: { projectId: string }) {
       case "result":
         setWorking(null);
         setMessages((prev) => [...prev, event.message]);
+        if (event.stepIndex !== undefined) markStep(event.stepIndex, "done");
         break;
       case "error":
         setRouting(false);
         setLive(null);
+        if (event.stepIndex !== undefined) markStep(event.stepIndex, "failed");
         setMessages((prev) => [...prev, {
           id: `err-${Date.now()}`, seq: prev.length + 1, role: "system",
           employeeId: event.employeeId ?? null, event: "error", content: event.message,
@@ -145,7 +192,7 @@ export function MainChat({ projectId }: { projectId: string }) {
         setBusy(false);
         break;
     }
-  }, []);
+  }, [markStep]);
 
   const submit = useCallback(() => {
     const text = input.trim();
@@ -189,6 +236,27 @@ export function MainChat({ projectId }: { projectId: string }) {
       handleEvent,
     );
     cancelRef.current = cancel;
+  }, [busy, conversationId, handleEvent]);
+
+  /** The user validated one step. Only that step runs. */
+  const runOneStep = useCallback((
+    messageId: string, steps: WorkflowStep[], index: number,
+  ) => {
+    if (busy || !conversationId) return;
+    setBusy(true);
+    activeStepRef.current = { messageId, index };
+    setActiveStep({ messageId, index });
+    setStepStates((prev) => ({
+      ...prev,
+      [messageId]: { ...(prev[messageId] ?? {}), [index]: "running" },
+    }));
+    const { cancel, done } = runWorkflowStep(
+      { conversation_id: conversationId, steps, index }, handleEvent);
+    cancelRef.current = cancel;
+    done.then(() => {
+      activeStepRef.current = null;
+      setActiveStep(null);
+    });
   }, [busy, conversationId, handleEvent]);
 
   /** The user approved the whole squad's workflow. */
@@ -246,7 +314,7 @@ export function MainChat({ projectId }: { projectId: string }) {
         onClose={() => setShowHistory(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <ChatHeader
           owner={owner ? byId.get(owner) : undefined}
           active={activeEmployee ?? workingEmployee}
@@ -261,7 +329,7 @@ export function MainChat({ projectId }: { projectId: string }) {
           hasThread={messages.length > 0}
         />
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
             {messages.length === 0 && !routing && <EmptyState onPick={setInput} />}
 
@@ -274,7 +342,12 @@ export function MainChat({ projectId }: { projectId: string }) {
                 onReject={reject}
                 onRunAction={runChosenAction}
                 onRunWorkflow={runApprovedWorkflow}
+                onRunStep={runOneStep}
+                stepStateFor={stepStateFor}
+                runningStep={activeStep}
                 byId={byId}
+                projectId={projectId}
+                busy={busy}
                 decisions={decisions}
               />
             ))}
@@ -299,6 +372,18 @@ export function MainChat({ projectId }: { projectId: string }) {
             <div ref={bottomRef} />
           </div>
         </div>
+
+        {!atBottom && messages.length > 0 && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            aria-label={t("chat.jumpToLatest")}
+            className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-foreground shadow-lg transition-colors hover:bg-accent animate-fade-in"
+          >
+            <ArrowDown className="h-3 w-3" />
+            {t("chat.jumpToLatest")}
+          </button>
+        )}
 
         <Composer
           value={input}
@@ -494,8 +579,8 @@ function ChatHeader({
 // --- messages -----------------------------------------------------------------
 
 function MessageRow({
-  message, employee, onApprove, onReject, onRunAction, onRunWorkflow, byId,
-  decisions,
+  message, employee, onApprove, onReject, onRunAction, onRunWorkflow, onRunStep,
+  stepStateFor, runningStep, byId, projectId, busy, decisions,
 }: {
   message: ChatMessage;
   employee?: Employee;
@@ -503,7 +588,12 @@ function MessageRow({
   onReject: (id: string) => void;
   onRunAction: (messageId: string, employeeId: string, actionId: string) => void;
   onRunWorkflow: (messageId: string, steps: WorkflowStep[]) => void;
+  onRunStep: (messageId: string, steps: WorkflowStep[], index: number) => void;
+  stepStateFor: (messageId: string, index: number) => StepState;
+  runningStep: { messageId: string; index: number } | null;
   byId: Map<string, Employee>;
+  projectId: string;
+  busy: boolean;
   decisions: Record<string, string>;
 }) {
   if (message.role === "user") return <UserBubble content={message.content} />;
@@ -519,8 +609,11 @@ function MessageRow({
           message={message}
           steps={structured.workflow}
           byId={byId}
-          onRun={onRunWorkflow}
-          started={!!decisions[message.id]}
+          stateOf={(index) => stepStateFor(message.id, index)}
+          runningIndex={runningStep?.messageId === message.id ? runningStep.index : null}
+          onRunStep={onRunStep}
+          onRunAll={onRunWorkflow}
+          busy={busy}
         />
       );
     }
@@ -549,6 +642,9 @@ function MessageRow({
   if (message.role === "system") {
     return <SystemNotice message={message} employee={employee} />;
   }
+  if (message.event === "result") {
+    return <ArtifactCard message={message} employee={employee} projectId={projectId} />;
+  }
   if (!employee) return <UnknownBubble content={message.content} />;
   return <EmployeeBubble employee={employee} content={message.content} />;
 }
@@ -574,9 +670,22 @@ function UnknownBubble({ content }: { content: string }) {
 function EmployeeBubble({
   employee, content, streaming = false,
 }: { employee: Employee; content: string; streaming?: boolean }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
   const Icon = employeeIcon(employee.icon);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard can be blocked; failing silently beats an error modal here.
+    }
+  };
+
   return (
-    <div className="flex gap-3 animate-slide-up">
+    <div className="group/msg flex gap-3 animate-slide-up">
       <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
         departmentAccent(employee.department))}>
         <Icon className="h-4 w-4" strokeWidth={1.8} />
@@ -585,6 +694,18 @@ function EmployeeBubble({
         <p className="mb-1 flex items-baseline gap-2">
           <span className="font-display text-xs font-bold text-foreground">{employee.name}</span>
           <span className="text-[10px] text-muted-foreground">{employee.role}</span>
+          {!streaming && content && (
+            <button
+              type="button"
+              onClick={copy}
+              aria-label={t("chat.copy")}
+              className="ml-auto cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/msg:opacity-100"
+            >
+              {copied
+                ? <Check className="h-3 w-3 text-success" strokeWidth={2.5} />
+                : <Copy className="h-3 w-3" />}
+            </button>
+          )}
         </p>
         <div className="whitespace-pre-wrap rounded-2xl rounded-tl-md border border-border bg-card px-4 py-2.5 text-sm leading-relaxed text-foreground">
           {content}
@@ -634,80 +755,6 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
 }
 
 // --- approvals ----------------------------------------------------------------
-
-/** The whole squad, offered as one button. Approving runs every step for real. */
-function WorkflowCard({
-  message, steps, byId, onRun, started,
-}: {
-  message: ChatMessage;
-  steps: WorkflowStep[];
-  byId: Map<string, Employee>;
-  onRun: (messageId: string, steps: WorkflowStep[]) => void;
-  started: boolean;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4 animate-slide-up">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-        {t("chat.workflow.title")}
-      </p>
-      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
-
-      <ol className="mt-3 flex flex-col gap-1.5">
-        {steps.map((step, index) => {
-          const employee = byId.get(step.employeeId);
-          const Icon = employeeIcon(employee?.icon ?? step.icon ?? "sparkles");
-          return (
-            <li key={`${step.employeeId}-${step.actionId}-${index}`}
-                className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
-              <span className="w-4 shrink-0 text-[10px] font-bold text-muted-foreground">
-                {index + 1}
-              </span>
-              <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                departmentAccent(employee?.department ?? step.department ?? ""))}>
-                <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-foreground">
-                  {step.employeeName}
-                </span>
-                <span className="block truncate text-[11px] text-muted-foreground">
-                  {step.label}
-                </span>
-              </span>
-              {step.outputs.length > 0 && (
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                  {step.outputs.join(", ")}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      {started ? (
-        <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Check className="h-3 w-3 text-success" strokeWidth={2.5} />
-          {t("chat.workflow.started")}
-        </p>
-      ) : (
-        <>
-          <button
-            type="button"
-            onClick={() => onRun(message.id, steps)}
-            className="btn-primary mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
-          >
-            <Play className="h-3.5 w-3.5" strokeWidth={2.5} />
-            {t("chat.workflow.run", { count: steps.length })}
-          </button>
-          <p className="mt-2 text-[10px] text-muted-foreground">
-            {t("chat.actions.hint")}
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
 
 /** What the employee is offering to do, as buttons. Nothing runs until pressed. */
 function ActionChoices({

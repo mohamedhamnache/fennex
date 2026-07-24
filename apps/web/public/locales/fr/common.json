@@ -2342,9 +2342,37 @@
       "takesLonger": "Plus long"
     },
     "workflow": {
-      "title": "L'equipe est prete",
-      "run": "Lancer les {{count}} etapes",
-      "started": "Execution du workflow..."
+      "title": "Le plan",
+      "run": "Lancer",
+      "started": "Execution du workflow...",
+      "progress": "{{done}} sur {{total}} termine",
+      "runAll": "Lancer les {{count}} restantes",
+      "retry": "Reessayer",
+      "why": "Pourquoi ?",
+      "stepHint": "Ou validez chaque etape separement.",
+      "lockedHint": "S'execute une fois l'etape precedente terminee.",
+      "state": {
+        "locked": "En attente",
+        "running": "En cours",
+        "done": "Termine",
+        "failed": "Echec"
+      }
+    },
+    "jumpToLatest": "Aller au plus recent",
+    "copy": "Copier",
+    "artifact": {
+      "done": "Termine",
+      "view": "Ouvrir",
+      "generic": "Resultat",
+      "kind": {
+        "article": "Article cree",
+        "image": "Image creee",
+        "image_plural": "{{count}} images creees",
+        "social": "{{count}} publication creee",
+        "social_plural": "{{count}} publications creees",
+        "campaign": "Campagne creee",
+        "report": "Rapport cree"
+      }
     }
   }
 }

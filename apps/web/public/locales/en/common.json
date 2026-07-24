@@ -2415,9 +2415,37 @@
       "takesLonger": "Takes longer"
     },
     "workflow": {
-      "title": "The team is ready",
-      "run": "Run all {{count}} steps",
-      "started": "Running the workflow..."
+      "title": "The plan",
+      "run": "Run",
+      "started": "Running the workflow...",
+      "progress": "{{done}} of {{total}} done",
+      "runAll": "Run remaining {{count}}",
+      "retry": "Retry",
+      "why": "Why?",
+      "stepHint": "Or validate each step on its own.",
+      "lockedHint": "Runs once the previous step is done.",
+      "state": {
+        "locked": "Waiting",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed"
+      }
+    },
+    "jumpToLatest": "Jump to latest",
+    "copy": "Copy",
+    "artifact": {
+      "done": "Done",
+      "view": "Open it",
+      "generic": "Result",
+      "kind": {
+        "article": "Article created",
+        "image": "Image created",
+        "image_plural": "{{count}} images created",
+        "social": "{{count}} social post created",
+        "social_plural": "{{count}} social posts created",
+        "campaign": "Campaign created",
+        "report": "Report created"
+      }
     }
   }
 }

@@ -2342,9 +2342,37 @@
       "takesLonger": "Tarda mas"
     },
     "workflow": {
-      "title": "El equipo esta listo",
-      "run": "Ejecutar los {{count}} pasos",
-      "started": "Ejecutando el flujo..."
+      "title": "El plan",
+      "run": "Ejecutar",
+      "started": "Ejecutando el flujo...",
+      "progress": "{{done}} de {{total}} hecho",
+      "runAll": "Ejecutar los {{count}} restantes",
+      "retry": "Reintentar",
+      "why": "Por que?",
+      "stepHint": "O valida cada paso por separado.",
+      "lockedHint": "Se ejecuta cuando termine el paso anterior.",
+      "state": {
+        "locked": "En espera",
+        "running": "En curso",
+        "done": "Hecho",
+        "failed": "Fallo"
+      }
+    },
+    "jumpToLatest": "Ir a lo mas reciente",
+    "copy": "Copiar",
+    "artifact": {
+      "done": "Hecho",
+      "view": "Abrir",
+      "generic": "Resultado",
+      "kind": {
+        "article": "Articulo creado",
+        "image": "Imagen creada",
+        "image_plural": "{{count}} imagenes creadas",
+        "social": "{{count}} publicacion creada",
+        "social_plural": "{{count}} publicaciones creadas",
+        "campaign": "Campana creada",
+        "report": "Informe creado"
+      }
     }
   }
 }

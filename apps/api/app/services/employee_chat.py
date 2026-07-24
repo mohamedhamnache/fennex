@@ -341,24 +341,159 @@ async def _run_team(convo: Conversation, decision, ctx: WorkContext,
 
 async def _offer_workflow(convo: Conversation, lead: Employee, team: list[dict],
                           db) -> dict:
-    """Offer the whole multi-specialist workflow as one button."""
+    """Offer the workflow with a button per step, each explaining itself."""
     steps = []
-    for step in team:
+    for index, step in enumerate(team):
         employee = registry.get(step["employeeId"])
         action = employee.action(step["actionId"]) if employee else None
+        capability = step.get("capability", "")
         steps.append({
+            "index": index,
             "employeeId": step["employeeId"], "employeeName": step["employeeName"],
+            "employeeRole": employee.role if employee else "",
             "actionId": step["actionId"], "icon": step.get("icon", "sparkles"),
             "department": step.get("department", ""),
             "label": action.label if action else step["actionId"],
+            "description": action.description if action else "",
             "outputs": list(action.outputs) if action else [],
+            "weight": action.weight if action else "light",
+            "permissions": list(action.requires_permissions) if action else [],
+            "capability": capability,
+            # Why this specialist, in the user's terms.
+            "why": _why(employee, action, capability, index),
+            "dependsOnPrevious": index > 0,
         })
     names = ", ".join(s["employeeName"] for s in steps)
     row = await add_message(
         convo, db, role="approval", employee_id=lead.id, event="workflow",
-        content=f"{names} are ready to run this. Shall I start?",
+        content=f"{names} are ready. Run each step when you are happy with it.",
         structured={"workflow": steps})
     return {"type": "workflow", "steps": steps, "message": message_dict(row)}
+
+
+def _why(employee: Optional[Employee], action, capability: str, index: int) -> str:
+    """Plain-language rationale for putting this employee on this step."""
+    if employee is None or action is None:
+        return ""
+    skill = capability.split(".", 1)[-1].replace("_", " ") if capability else action.label.lower()
+    produces = ", ".join(action.outputs) or "the result"
+    why = (f"{employee.name} is the {employee.role.lower()} and owns {skill}. "
+           f"This step produces {produces}.")
+    if index > 0:
+        why += " It builds on what the previous step produced."
+    if action.weight == "heavy":
+        why += " It is a deep task, so it takes longer and costs more."
+    return why
+
+
+_INHERITED_KEYS = ("topic", "keyword", "angle", "rationale", "title", "article_id",
+                   "image_id", "product_id", "primary_keyword")
+
+
+async def _prior_outputs(convo: Conversation, db) -> dict:
+    """What earlier steps in this thread already produced.
+
+    Per-step runs arrive as separate requests, so the chain cannot be held in
+    memory. The thread itself is the state: every completed step left a result
+    message, and its structured payload is what the next specialist inherits.
+    """
+    inherited: dict = {}
+    for row in await history(convo.id, db, limit=60):
+        if row.event != "result" or not row.structured:
+            continue
+        for key in _INHERITED_KEYS:
+            value = row.structured.get(key)
+            if value:
+                inherited[key] = value
+        if row.artifact_ids:
+            inherited.setdefault("upstream_artifacts", []).extend(row.artifact_ids)
+        if row.content:
+            inherited["upstream"] = row.content[:600]
+    return inherited
+
+
+async def run_step(convo: Conversation, steps: list[dict], index: int, db,
+                   user_id=None) -> AsyncIterator[dict]:
+    """Run one approved step of a workflow, inheriting from the steps before it."""
+    if index < 0 or index >= len(steps):
+        yield {"type": "error", "message": "That step is no longer available."}
+        yield {"type": "done"}
+        return
+
+    step = steps[index]
+    employee = registry.get(step.get("employeeId", ""))
+    action = employee.action(step.get("actionId", "")) if employee else None
+    if employee is None or action is None:
+        yield {"type": "error", "message": "That step is no longer available."}
+        yield {"type": "done"}
+        return
+
+    goal = convo.title or ""
+    ctx = await _build_context(convo, goal, db)
+    if not ctx.available_providers():
+        yield {"type": "error",
+               "message": "No AI key configured. Add an Anthropic or OpenAI key in Settings."}
+        yield {"type": "done"}
+        return
+
+    if convo.owner_employee_id and convo.owner_employee_id != employee.id:
+        handing = registry.get(convo.owner_employee_id)
+        note = await add_message(
+            convo, db, role="system", event="handoff", employee_id=employee.id,
+            content=(f"{handing.name} handed this to {employee.name}."
+                     if handing else f"{employee.name} took the next step."),
+            structured={"step": index + 1, "of": len(steps)})
+        yield {"type": "handoff", "from": convo.owner_employee_id,
+               "employee": {"id": employee.id, "name": employee.name,
+                            "role": employee.role, "department": employee.department,
+                            "icon": employee.icon, "codename": employee.codename},
+               "message": message_dict(note)}
+
+    await _remember_participant(convo, employee.id, db)
+    yield {"type": "stage", "step": index + 1, "of": len(steps),
+           "employeeId": employee.id,
+           "capability": step.get("capability", "")}
+    yield {"type": "working", "employeeId": employee.id, "action": action.label}
+
+    task = Task(id=f"step-{index}", goal=goal, capabilities=list(action.capabilities),
+                employee_id=employee.id, action_id=action.id,
+                inputs=await _prior_outputs(convo, db))
+    await ctx.load_memory(employee)
+
+    try:
+        outcome = await employee.execute(action, task, ctx)
+    except Exception as exc:   # noqa: BLE001
+        logger.exception("workflow step failed: %s.%s", employee.id, action.id)
+        outcome, error = None, str(exc)
+    else:
+        error = None if outcome.ok else outcome.error
+
+    if outcome is not None and outcome.ok:
+        row = await add_message(
+            convo, db, role="employee", employee_id=employee.id, event="result",
+            content=outcome.summary or f"{action.label} is done.",
+            artifact_type=outcome.artifact_type, artifact_ids=outcome.artifact_ids,
+            structured={**(outcome.structured or {}), "actionId": action.id,
+                        "stepIndex": index, "label": action.label})
+        try:
+            await employee.learn(task, outcome,
+                                 await employee.evaluate(outcome, task, ctx), ctx)
+        except Exception:
+            logger.exception("learn() failed after step")
+        convo.owner_employee_id = employee.id
+        await db.commit()
+        yield {"type": "result", "stepIndex": index, "message": message_dict(row),
+               "artifactType": outcome.artifact_type,
+               "artifactIds": outcome.artifact_ids}
+    else:
+        row = await add_message(
+            convo, db, role="system", employee_id=employee.id, event="error",
+            content=f"{action.label} could not be completed.", error=error,
+            structured={"stepIndex": index})
+        yield {"type": "error", "stepIndex": index, "employeeId": employee.id,
+               "message": error or "The step failed.", "messageRow": message_dict(row)}
+
+    yield {"type": "done"}
 
 
 async def run_workflow(convo: Conversation, steps: list[dict], db,
