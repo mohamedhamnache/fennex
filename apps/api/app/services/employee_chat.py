@@ -242,6 +242,18 @@ async def run_turn(convo: Conversation, message: str, db,
     decision = await ai_router.route(message, ctx, history=_turns(past),
                                      current_owner=convo.owner_employee_id)
 
+    # Turn the request into a real brief before anyone works from it. Without
+    # this the specialists receive the raw instruction and title their output
+    # with it.
+    if decision.mode != ai_router.MODE_CLARIFY:
+        brief = await ai_router.extract_brief(message, ctx, decision.intent)
+        await _store_brief(convo, brief, db)
+        if brief.get("title"):
+            ctx.goal = brief["title"]
+            if not convo.title or convo.title == message[:80]:
+                convo.title = brief["title"][:200]
+                await db.commit()
+
     # The Router is not sure enough to hand over silently.
     if decision.mode == ai_router.MODE_CLARIFY:
         row = await add_message(
@@ -390,14 +402,41 @@ _INHERITED_KEYS = ("topic", "keyword", "angle", "rationale", "title", "article_i
                    "image_id", "product_id", "primary_keyword")
 
 
+def _stored_brief(convo: Conversation) -> dict:
+    return dict((convo.meta or {}).get("brief") or {})
+
+
+async def _store_brief(convo: Conversation, brief: dict, db) -> None:
+    """Keep the extracted brief on the thread.
+
+    Per-step runs are separate requests, so the brief has to outlive the turn
+    that produced it -- otherwise the second specialist falls back to the raw
+    instruction, which is how an article ended up titled with the whole prompt.
+    """
+    meta = dict(convo.meta or {})
+    meta["brief"] = brief
+    convo.meta = meta
+    await db.commit()
+
+
 async def _prior_outputs(convo: Conversation, db) -> dict:
-    """What earlier steps in this thread already produced.
+    """Everything a step should start from: the brief, then what ran before it.
 
     Per-step runs arrive as separate requests, so the chain cannot be held in
     memory. The thread itself is the state: every completed step left a result
     message, and its structured payload is what the next specialist inherits.
     """
     inherited: dict = {}
+
+    # The brief comes first so a later step always knows the real subject.
+    brief = _stored_brief(convo)
+    for key in ("topic", "title", "keyword", "rationale"):
+        if brief.get(key):
+            inherited[key] = brief[key]
+    if brief.get("title"):
+        # The image skill reads `topic`; the writer reads `angle`/`title`.
+        inherited.setdefault("angle", brief["title"])
+
     for row in await history(convo.id, db, limit=60):
         if row.event != "result" or not row.structured:
             continue
@@ -409,6 +448,11 @@ async def _prior_outputs(convo: Conversation, db) -> dict:
             inherited.setdefault("upstream_artifacts", []).extend(row.artifact_ids)
         if row.content:
             inherited["upstream"] = row.content[:600]
+
+    # A produced article defines the subject for everything downstream -- the
+    # featured image must match the piece that was actually written.
+    if inherited.get("title"):
+        inherited["topic"] = inherited["title"]
     return inherited
 
 
@@ -428,7 +472,8 @@ async def run_step(convo: Conversation, steps: list[dict], index: int, db,
         yield {"type": "done"}
         return
 
-    goal = convo.title or ""
+    brief = _stored_brief(convo)
+    goal = brief.get("title") or convo.title or ""
     ctx = await _build_context(convo, goal, db)
     if not ctx.available_providers():
         yield {"type": "error",
@@ -504,7 +549,8 @@ async def run_workflow(convo: Conversation, steps: list[dict], db,
     artisan works from the article the writer just produced rather than from
     the original one-line request.
     """
-    goal = convo.title or ""
+    brief = _stored_brief(convo)
+    goal = brief.get("title") or convo.title or ""
     ctx = await _build_context(convo, goal, db)
     if not ctx.available_providers():
         yield {"type": "error",
@@ -542,6 +588,7 @@ async def run_workflow(convo: Conversation, steps: list[dict], db,
 
         task = Task(id=f"w{index}", goal=goal, capabilities=list(action.capabilities),
                     employee_id=employee.id, action_id=action.id,
+                    inputs=await _prior_outputs(convo, db),
                     depends_on=[previous_task] if previous_task else [])
         await ctx.load_memory(employee)
 
@@ -721,7 +768,8 @@ async def run_approved(approval: PendingApproval, db) -> AsyncIterator[dict]:
         yield {"type": "done"}
         return
 
-    request = (approval.payload or {}).get("message", convo.title or "")
+    stored = _stored_brief(convo)
+    request = stored.get("title") or (approval.payload or {}).get("message", convo.title or "")
     ctx = await _build_context(convo, request, db)
     if not ctx.available_providers():
         yield {"type": "error",
@@ -733,7 +781,7 @@ async def run_approved(approval: PendingApproval, db) -> AsyncIterator[dict]:
 
     task = Task(id=f"approval-{approval.id}", goal=request,
                 capabilities=list(action.capabilities), employee_id=employee.id,
-                action_id=action.id, inputs={})
+                action_id=action.id, inputs=await _prior_outputs(convo, db))
     await ctx.load_memory(employee)
 
     try:

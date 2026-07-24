@@ -283,6 +283,122 @@ def _primary_capability(employee, message: str) -> Optional[str]:
     return employee.capabilities[0] if employee.capabilities else None
 
 
+# A quoted span is the user telling us the subject verbatim -- the single most
+# reliable signal there is, and it must survive intact into the title.
+_QUOTED_RE = re.compile(
+    r'[“”«»"‘’\']\s*(.{4,160}?)\s*'
+    r'[“”«»"‘’\']')
+
+# Leading instructions to strip when no quoted subject is given, so
+# "crée un article sur X avec une image" reduces to "X".
+# Longer alternatives must come first throughout: regex alternation takes the
+# first match, so "a" before "an" would leave a stray "n" on "an article".
+_DETERMINER = r"(?:une|un|les|le|la|des|du|some|the|an|a)"
+
+_LEAD_RE = re.compile(
+    r"^\s*(?:please\s+|s'?il\s+vous\s+pla[iî]t\s+)?"
+    r"(?:cr[ée]{1,2}e?z?|r[ée]dige[sz]?|[ée]cri[sz]?|g[ée]n[èe]re[sz]?|fai[ts]|"
+    r"write|create|draft|generate|make|produce|prepare|build)\s+"
+    r"(?:me\s+|moi\s+|us\s+|nous\s+)?"
+    rf"{_DETERMINER}?\s*"
+    r"(?:nouvel|nouveau|new)?\s*"
+    # Qualifiers that sit between the determiner and the noun ("an SEO article").
+    r"(?:seo|long[-\s]?form|in[-\s]?depth|detailed|complete|short|"
+    r"d[ée]taill[ée]?|complet|court|long|optimis[ée]?)?\s*"
+    r"(?:articles?|blog\s*posts?|posts?|billets?|pages?|papiers?|pieces?)?\s*"
+    r"(?:de\s+blog\s*)?"
+    r"(?:au\s+sujet\s+de|concernant|about|sur|on|pour)?\s*",
+    re.IGNORECASE)
+
+# Trailing add-ons that are a separate deliverable, not part of the subject.
+# The conjunction may be followed by its own verb ("et génère une image").
+_TRAILING_RE = re.compile(
+    r"\s*(?:,\s*)?(?:et|and|with|avec|plus|\+)\s*"
+    r"(?:g[ée]n[èe]re[sz]?|cr[ée]{1,2}e?z?|ajoute[sz]?|add|include|inclus|"
+    r"generate|create|make)?\s*"
+    rf"{_DETERMINER}?\s*"
+    r"(?:featured|cover|hero|editorial|en\s+vedette|mise\s+en\s+avant)?\s*"
+    r"(?:images?|photos?|visuels?|visuals?|illustrations?|pictures?|"
+    r"couvertures?|covers?)\b.*$",
+    re.IGNORECASE)
+
+
+def quoted_subject(message: str) -> Optional[str]:
+    """The subject the user put in quotes, if any."""
+    match = _QUOTED_RE.search(message or "")
+    if not match:
+        return None
+    subject = match.group(1).strip(" .:-—–")
+    return subject if len(subject) >= 4 else None
+
+
+def strip_instruction(message: str) -> str:
+    """Reduce a request to its subject when nothing is quoted."""
+    text = (message or "").strip()
+    text = _TRAILING_RE.sub("", text)
+    text = _LEAD_RE.sub("", text)
+    return text.strip(" .:-—–\"'").strip()
+
+
+async def extract_brief(message: str, ctx, intent: Optional[Intent] = None) -> dict:
+    """Turn the request into the brief the specialists actually need.
+
+    Without this, a writer receives the raw sentence as its title -- which is
+    how "Crée un article "X" avec une image" ended up titled with the whole
+    instruction. A quoted subject is taken verbatim; otherwise the instruction
+    is stripped, and an LLM refines it into a title and primary keyword.
+    """
+    quoted = quoted_subject(message)
+    stripped = strip_instruction(message)
+    topic = quoted or stripped or (message or "").strip()
+
+    brief = {"topic": topic, "title": topic, "keyword": topic,
+             "rationale": "", "source": "quoted" if quoted else "stripped"}
+
+    providers = ctx.available_providers()
+    if not providers or not topic:
+        return brief
+
+    from app.services.agents.tiers import resolve_model
+    from app.services.llm_service import call_llm
+
+    provider, model = resolve_model(ctx.tier, "light", providers)
+    system = (
+        "You turn a user's request into a content brief. Return ONLY JSON:\n"
+        '{"title": "...", "keyword": "...", "rationale": "..."}\n\n'
+        "RULES:\n"
+        "- title: the finished piece's headline. Write it in the SAME LANGUAGE as the request. "
+        "If the user already gave a title (often in quotes), keep it essentially as-is -- do not "
+        "restate their instruction, and never include words like 'write an article about'.\n"
+        "- keyword: the single primary search keyword, 2-5 words, lowercase, no quotes.\n"
+        "- rationale: one sentence on the angle worth taking.\n"
+        "- Mention nothing about images or other deliverables; the title is about the text only."
+    )
+    user = f"REQUEST: {message}\nSUBJECT DETECTED: {topic}"
+    if ctx.dna.project_profile:
+        user += f"\nPROJECT: {ctx.dna.project_profile[:400]}"
+
+    try:
+        raw = await call_llm(provider, model, ctx.keys[provider], system, user,
+                             locale=ctx.locale)
+        parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
+        title = str(parsed.get("title") or "").strip()
+        keyword = str(parsed.get("keyword") or "").strip()
+        # A quoted title is the user's own wording -- never let the model
+        # overwrite it, only fill in what was missing.
+        if quoted:
+            title = quoted
+        if title:
+            brief["title"] = brief["topic"] = title[:200]
+        if keyword:
+            brief["keyword"] = keyword[:120]
+        brief["rationale"] = str(parsed.get("rationale") or "")[:400]
+        brief["source"] = "llm" if not quoted else "quoted+llm"
+    except Exception:
+        logger.exception("brief extraction failed; using the stripped subject")
+    return brief
+
+
 def _best_action(employee, message: str):
     """Which of this employee's actions the message is actually asking for.
 
