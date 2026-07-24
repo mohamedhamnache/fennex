@@ -83,15 +83,16 @@ function artifactMeta(
   const first = ids[0];
   switch (kind) {
     case "article":
+      // There is no per-article route -- articles are opened from the list.
       return {
         Icon: FileText,
-        href: first ? `/${projectId}/articles/${first}` : `/${projectId}/articles`,
+        href: `/${projectId}/articles`,
         tone: "bg-amber-500/12 text-amber-500",
       };
     case "image":
       return {
         Icon: ImageIcon,
-        href: `/${projectId}/images`,
+        href: first ? `/${projectId}/images/edit/${first}` : `/${projectId}/images`,
         tone: "bg-violet-500/12 text-violet-500",
       };
     case "social":
