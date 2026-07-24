@@ -18,7 +18,9 @@ editing the employees that will use it.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
@@ -210,108 +212,110 @@ _NOT_COMPETITORS = {
 }
 
 
-# Words that say nothing about what a project competes on.
-_SCOPE_STOPWORDS = {
-    "blog", "site", "website", "wordpress", "shopify", "page", "pages", "web",
-    "the", "and", "for", "with", "une", "des", "les", "pour", "avec", "sur",
-    "partage", "sharing", "maison", "online", "ligne",
-}
+async def _plan_competitor_search(project, ctx, topics: list[str]) -> dict:
+    """Work out what this project IS, then how to find its peers.
 
-
-def _scope_terms(project, limit: int = 2) -> list[str]:
-    """A couple of words describing what the project is about.
-
-    Drawn from its description and industry, with platform words dropped --
-    "WordPress" and "blog" say how it is built, not what it competes on.
+    Gluing the project's words onto its keywords produces keyword soup and
+    finds whoever ranks for the terms -- for a cosmetics brand that is blogs
+    reviewing cosmetics and wholesalers selling ingredients, none of which
+    compete with it. A peer is a business of the SAME KIND serving the SAME
+    buyers, and working that out is a judgement, not string concatenation.
     """
-    import re as _re
+    fallback = {
+        "business_type": (getattr(project, "industry", None) or "").strip() or "website",
+        "sells": "",
+        "queries": [t for t in topics[:2] if t],
+        "source": "fallback",
+    }
+    providers = list((ctx.keys or {}).keys())
+    if not providers:
+        return fallback
 
-    text = " ".join(str(x) for x in (
-        getattr(project, "description", None),
-        getattr(project, "industry", None),
-    ) if x)
-    seen: list[str] = []
-    for word in _re.findall(r"[^\W\d_]{4,}", text.lower(), flags=_re.UNICODE):
-        if word in _SCOPE_STOPWORDS or word in seen:
-            continue
-        seen.append(word)
-    return seen[:limit]
+    from app.services.agents.tiers import resolve_model
+    from app.services.llm_service import call_llm
 
+    try:
+        provider, model = resolve_model(getattr(ctx, "tier", "balanced"), "light", providers)
+    except Exception:
+        return fallback
 
-def _qualified(topic: str, scope_terms: list[str]) -> str:
-    """Qualify a bare topic with the project's subject matter."""
-    topic = (topic or "").strip()
-    if not scope_terms or len(topic.split()) > 1:
-        return topic
-    extra = [t for t in scope_terms if t not in topic.lower()]
-    return f"{topic} {extra[0]}" if extra else topic
+    system = (
+        "You identify a business's real competitors. Given a website, decide what KIND "
+        "of business it is and write the searches that would surface its PEERS.\n\n"
+        "A peer is the same kind of business serving the same buyers. A cosmetics brand "
+        "competes with other cosmetics brands -- not with blogs reviewing cosmetics, "
+        "marketplaces reselling them, or suppliers of raw ingredients. A recipe blog "
+        "competes with other recipe blogs -- not with supermarkets or appliance makers.\n\n"
+        "Write 2-3 searches a shopper or reader would type to find businesses LIKE this "
+        "one -- the category plus its qualifiers, in the site's own language. Do not "
+        "search the brand's own name, and do not simply repeat its keywords.\n\n"
+        'Return ONLY JSON: {"business_type": "...", "sells": "...", "queries": ["...", "..."]}'
+    )
+    user = (
+        f"NAME: {getattr(project, 'name', '')}\n"
+        f"DOMAIN: {getattr(project, 'domain', '')}\n"
+        f"DESCRIPTION: {getattr(project, 'description', '') or '(none given)'}\n"
+        f"INDUSTRY: {getattr(project, 'industry', '') or '(none given)'}\n"
+        f"MARKET: {getattr(project, 'target_country', '') or ''} "
+        f"({getattr(project, 'locale', 'en')})\n"
+        f"TOPICS IT RANKS FOR: {', '.join(topics[:6]) or '(none yet)'}"
+    )
+    try:
+        raw = await call_llm(provider, model, ctx.keys[provider], system, user,
+                             locale=getattr(ctx, "locale", "en"))
+        parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
+        queries = [str(q).strip() for q in (parsed.get("queries") or []) if str(q).strip()]
+        if not queries:
+            return fallback
+        return {
+            "business_type": str(parsed.get("business_type") or fallback["business_type"])[:120],
+            "sells": str(parsed.get("sells") or "")[:200],
+            "queries": queries[:3],
+            "source": "planned",
+        }
+    except Exception:
+        logger.warning("competitor search planning failed; using raw topics", exc_info=True)
+        return fallback
 
 
 async def _discover_competitors(ctx, db, inputs):
-    """Who competes with THIS project, derived from its own demand.
+    """Find businesses of the same kind as this project.
 
-    Letting the model pick a keyword to search produces whoever ranks for
-    something it guessed, which is how an unrelated site ends up being
-    "analysed". This instead takes the topics the project actually earns
-    impressions on, sees who ranks against it there, and counts the domains
-    that recur -- a site appearing across several of our topics is a
-    competitor; one appearing on a single query is noise.
+    Returns candidates with the title the search engine showed, so the employee
+    can judge what each site actually is rather than guessing from a domain.
     """
     from app.models.project import Project
     from app.services.analytics_service import get_market_insights
-    from app.services.serp_service import (
-        _norm_domain, _project_domain, fetch_serp, language_for_project,
-        location_for_project,
-    )
+    from app.services.serp_service import _norm_domain, _project_domain, fetch_serp
 
     project = await db.get(Project, ctx.project_id)
     if project is None:
         return {"competitors": [], "error": "Project not found."}
 
-    scope_terms = _scope_terms(project)
-
-    # The project's real topics, best first. Real search queries are preferred
-    # over cluster labels: a label is often a single word ("pure", "dinde"),
-    # and searching one returns dictionaries and app stores rather than rivals.
+    # What this project already ranks for, as evidence for the planner.
     topics: list[str] = []
     try:
         insights = await get_market_insights(ctx.project_id, ctx.org_id, db)
-        multi = [i.query for i in (insights.ideas or []) if i.query and len(i.query.split()) > 1]
-        topics = multi[:3]
-        if len(topics) < 3:
-            labels = [c.topic for c in (insights.clusters or []) if c.topic]
-            topics += [t for t in labels if t not in topics][:3 - len(topics)]
+        topics = [i.query for i in (insights.ideas or []) if i.query][:6]
+        topics += [c.topic for c in (insights.clusters or []) if c.topic][:4]
     except Exception:
         topics = []
-    # Fall back to what the caller asked about, then the project's niche.
-    if not topics:
-        seed = str((inputs or {}).get("query") or "").strip()
-        niche = getattr(project, "industry", None) or getattr(project, "niche", None)
-        topics = [t for t in (seed, niche) if t][:2]
-    if not topics:
+    seed = str((inputs or {}).get("query") or "").strip()
+    if seed:
+        topics.insert(0, seed)
+
+    plan = await _plan_competitor_search(project, ctx, topics)
+    if not plan["queries"]:
         return {"competitors": [],
-                "note": "This project has no Search Console demand and no niche set, "
-                        "so there is nothing to measure competitors against. Connect "
-                        "Search Console or name the competitor to analyse."}
+                "note": "This project has no description, industry or search demand, so "
+                        "there is nothing to identify peers from. Describe the site in "
+                        "its settings, or name the competitor to analyse."}
 
     ours = _project_domain(project)
-    # What this project IS, so a candidate can be judged on kind and not only
-    # on keyword overlap: a recipe blog does not compete with a supermarket
-    # that happens to rank for the same ingredient.
-    scope = " ".join(str(x) for x in (
-        getattr(project, "description", None),
-        getattr(project, "industry", None),
-    ) if x).strip()
-
     tally: dict[str, dict] = {}
     checked: list[str] = []
 
-    # Capped deliberately: each lookup is a paid call.
-    for topic in topics[:3]:
-        # A bare topic is ambiguous -- "pure" is a dictionary entry, "pure
-        # recette" is this project's territory. Qualify it with what the
-        # project is, so the results are rivals rather than coincidences.
-        query = _qualified(topic, scope_terms)
+    for query in plan["queries"][:3]:
         try:
             data = await fetch_serp(project, query, db)
         except Exception:
@@ -321,41 +325,42 @@ async def _discover_competitors(ctx, db, inputs):
         checked.append(query)
         for row in (data.get("top10") or [])[:10]:
             domain = _norm_domain(row.get("domain") or "")
-            # Our own site is not a competitor.
             if not domain or domain == ours or domain.endswith("." + ours):
                 continue
-            entry = tally.setdefault(domain, {"domain": domain, "topics": [],
-                                              "best_rank": 99, "url": row.get("url") or ""})
-            if topic not in entry["topics"]:
-                entry["topics"].append(topic)
-            entry["best_rank"] = min(entry["best_rank"], int(row.get("rank") or 99))
+            if any(domain == g or domain.endswith("." + g) for g in _NOT_COMPETITORS):
+                continue
+            entry = tally.setdefault(domain, {
+                "domain": domain, "queries": [], "best_rank": 99,
+                "url": row.get("url") or "", "title": row.get("title") or "",
+            })
+            if query not in entry["queries"]:
+                entry["queries"].append(query)
+            if int(row.get("rank") or 99) < entry["best_rank"]:
+                entry["best_rank"] = int(row.get("rank") or 99)
+                entry["title"] = row.get("title") or entry["title"]
+                entry["url"] = row.get("url") or entry["url"]
 
     if not checked:
-        return {"competitors": [],
-                "error": "The search provider returned nothing for this project's "
-                         "topics. Check the DataForSEO plan and balance."}
+        return {"competitors": [], "businessType": plan["business_type"],
+                "error": "The search provider returned nothing. Check the DataForSEO "
+                         "plan and balance."}
 
-    # Platforms and marketplaces rank for everything and compete with nobody
-    # in particular. Excluding them here saves the employee judging each one.
-    for domain in list(tally):
-        if any(domain == g or domain.endswith("." + g) for g in _NOT_COMPETITORS):
-            tally.pop(domain, None)
-
-    # Recurring across topics beats ranking once, then rank breaks ties.
-    ranked = sorted(tally.values(), key=lambda e: (-len(e["topics"]), e["best_rank"]))
+    ranked = sorted(tally.values(), key=lambda e: (-len(e["queries"]), e["best_rank"]))
     return {
         "ourDomain": ours,
-        "projectScope": scope or None,
-        "topicsChecked": checked,
-        "competitors": ranked[:8],
-        "note": ("Ranked by how many of this project's own topics each domain competes "
-                 "on. Prefer those appearing on more than one. "
-                 + (f"This project is: {scope}. Judge each candidate against that -- a "
-                    "site of a different kind is not a competitor even when it ranks "
-                    "for the same terms."
-                    if scope else
-                    "This project has no description set, so candidates can only be "
-                    "judged on keyword overlap. Adding one would sharpen this.")),
+        "businessType": plan["business_type"],
+        "sells": plan["sells"],
+        "searches": checked,
+        "planning": plan["source"],
+        "candidates": ranked[:10],
+        "note": (f"This project is: {plan['business_type']}"
+                 + (f", selling {plan['sells']}" if plan["sells"] else "")
+                 + ". These are the sites ranking for searches that should surface "
+                   "businesses like it. Each has the title the search engine showed -- "
+                   "use it to judge what the site actually IS. Keep only businesses of "
+                   "the same kind serving the same buyers; a blog, a marketplace, a "
+                   "supplier or a directory is not a peer even when it ranks well. Say "
+                   "which you rejected and why."),
     }
 
 

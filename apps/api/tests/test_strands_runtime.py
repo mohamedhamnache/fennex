@@ -513,33 +513,42 @@ def test_an_unusable_model_choice_falls_back_to_the_tier():
     assert choice.provider == "openai"
 
 
-def test_a_bare_topic_is_qualified_with_the_project_scope():
-    """"pure" is a dictionary entry; "pure recettes" is this project's
-    territory. Searching the bare label is how a dictionary and an app store
-    ended up looking like competitors."""
-    from app.employees.toolbelt import _qualified, _scope_terms
+def test_competitor_search_is_planned_from_what_the_business_is():
+    """Concatenating scope words onto keywords finds whoever ranks for the
+    terms -- for a cosmetics brand that is blogs and wholesalers. Planning must
+    describe the business and search for its peers."""
+    import inspect
 
-    class _Project:
-        description = "Un blog WordPress de partage de recettes de cuisine maison."
-        industry = "Food"
+    from app.employees import toolbelt
 
-    terms = _scope_terms(_Project())
-    # Platform words describe how it is built, not what it competes on.
-    assert "wordpress" not in terms and "blog" not in terms
-    assert _qualified("pure", terms) != "pure"
-    # A phrase is already specific enough to leave alone.
-    assert _qualified("substituts oeufs", terms) == "substituts oeufs"
+    source = inspect.getsource(toolbelt._plan_competitor_search)
+    assert "business_type" in source and "queries" in source
+    # The superseded string-concatenation helpers must not come back.
+    assert not hasattr(toolbelt, "_qualified")
+    assert not hasattr(toolbelt, "_scope_terms")
 
 
-def test_without_a_scope_the_topic_is_left_alone():
-    from app.employees.toolbelt import _qualified, _scope_terms
+def test_a_project_with_no_context_is_told_so_rather_than_guessed_at():
+    import asyncio
+
+    from app.employees import toolbelt
 
     class _Bare:
+        name = ""
+        domain = ""
         description = None
         industry = None
+        target_country = None
+        locale = "en"
 
-    assert _scope_terms(_Bare()) == []
-    assert _qualified("pure", []) == "pure"
+    class _Ctx:
+        keys: dict = {}
+        tier = "balanced"
+        locale = "en"
+
+    plan = asyncio.run(toolbelt._plan_competitor_search(_Bare(), _Ctx(), []))
+    assert plan["queries"] == []
+    assert plan["source"] == "fallback"
 
 
 def test_platforms_are_never_returned_as_competitors():
