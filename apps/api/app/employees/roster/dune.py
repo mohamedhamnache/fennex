@@ -90,7 +90,6 @@ EMPLOYEE = Employee(
             outputs=["article"],
             requires_permissions=[P_WRITE_CONTENT, P_READ_CONTENT],
             # Agentic: the writer re-reads the article and its grounding itself.
-            agentic=True,
         ),
         Action(
             id="product_copy",

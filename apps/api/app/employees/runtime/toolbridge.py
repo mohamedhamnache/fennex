@@ -30,6 +30,12 @@ logger = logging.getLogger(__name__)
 # and description are used so a new integration needs no wording here.
 _MAX_RESULT_CHARS = 6000
 
+# A hard ceiling on tool calls per run. The loop is the expensive part of the
+# agentic runtime -- every call adds a round trip and carries the whole growing
+# transcript -- and a model that is unsure will happily keep asking. One
+# observed run made 14 calls before caching; this stops the tail outright.
+MAX_TOOL_CALLS = 8
+
 
 def _summarise(data: Any) -> str:
     """Render a tool result compactly enough to sit in a model context."""
@@ -53,8 +59,9 @@ def build_tools(employee, ctx, *, on_call: Callable[[str, bool], None] | None = 
     from strands import tool
 
     built: list = []
-    # One cache per run, shared by every tool built for it.
+    # One cache and one budget per run, shared by every tool built for it.
     cache: dict[tuple[str, str], str] = {}
+    budget = {"spent": 0}
     for name in employee.allowed_tools:
         spec = toolbelt.get_tool(name)
         if spec is None:
@@ -65,11 +72,11 @@ def build_tools(employee, ctx, *, on_call: Callable[[str, bool], None] | None = 
             logger.info("tool %s withheld from %s: %s not granted",
                         name, employee.id, spec.permission)
             continue
-        built.append(_make(spec, ctx, on_call, cache))
+        built.append(_make(spec, ctx, on_call, cache, budget))
     return built
 
 
-def _make(spec, ctx, on_call, cache):
+def _make(spec, ctx, on_call, cache, budget):
     """Wrap one Fennex tool as a Strands tool bound to this context."""
     from strands import tool
 
@@ -90,6 +97,13 @@ def _make(spec, ctx, on_call, cache):
             if on_call:
                 on_call(spec.name, True)
             return cache[key]
+
+        # Cached repeats are free; only real calls draw down the budget.
+        if budget["spent"] >= MAX_TOOL_CALLS:
+            logger.info("tool budget spent for %s; refusing %s", spec.name, query[:40])
+            return ("Tool budget for this task is spent. Answer now with what you "
+                    "already have -- do not request more data.")
+        budget["spent"] += 1
 
         async with _session_for(ctx) as db:
             result = await toolbelt.run(spec.name, ctx, db, {"query": query},

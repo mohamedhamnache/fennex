@@ -118,9 +118,9 @@ The settled block is now appended to whatever the skill produced.
 | 2 | Zerda | **done** |
 | 3–8 | Dune, Mirage, Sirocco, Sable, Oasis, Nomad | **done** |
 | 9 | Chat streams from the runtime; tool use is visible | **done** |
-| 10 | Legacy orchestration retired | unblocked -- nobody left on it |
+| 10 | Legacy orchestration retired | **not planned** -- both paths stay, see cost rule |
 | 11 | MCP servers | **done** (no endpoints configured yet) |
-| 12 | Remove deprecated code | unblocked -- see note below |
+| 12 | Remove deprecated code | partial -- the legacy generator is kept deliberately |
 
 ## MCP
 
@@ -147,6 +147,47 @@ A reasoning model will ask the same read-only tool over and over -- one
 observed turn called `gsc_opportunities` eleven times. Results are now cached
 per run and per argument, which took that turn from 14 calls to 4. Writes are
 never cached.
+
+## Cost, and which actions pay for a loop
+
+The loop is the expensive part. Legacy is one call with pre-fetched data;
+agentic is N+1 calls, each carrying the growing transcript plus every tool
+result, so input tokens compound. Measured on this deployment:
+
+| Run | Tokens | Tool calls | Latency |
+|---|---|---|---|
+| `zerda.pick_angle` | 4,821 | 3 | 6.4s |
+| `zerda.keyword_targets` | 2,840 | 2 | — |
+| `sable.competitor_scan` | 2,992 | 3 | — |
+| `dune.write_article` | 6,011 | 2 | 17.1s |
+
+There is no clean before/after multiple because the legacy path never recorded
+telemetry -- a real gap in the comparison, not an estimate to be dressed up.
+
+**The rule: an action is agentic only when it must decide what to fetch.**
+An action with no tools, or whose tools the legacy skill already pre-fetched,
+learns nothing from looping and pays N+1 round trips for it. A test enforces
+both halves.
+
+| Path | Actions |
+|---|---|
+| Agentic | `zerda.pick_angle`, `zerda.keyword_targets`, `sable.competitor_scan`, `oasis.market_report`, `oasis.define_icp`, `dune.write_article`, `dune.product_copy` |
+| Legacy | `dune.regenerate_article` (legacy already pre-fetched its tools), `mirage.*`, `sirocco.*`, `nomad.*` (no tools to call) |
+
+Both paths stay live permanently. This is not an unfinished migration -- it is
+the cost rule applied. Phase 12 therefore does not mean deleting the legacy
+generator.
+
+### Three cost controls
+
+- **Per-run result cache.** A reasoning model asks the same read-only tool
+  repeatedly; one run called `gsc_opportunities` eleven times. Cached per run
+  and per argument: 14 calls to 4. Writes are never cached.
+- **Hard tool budget.** `MAX_TOOL_CALLS = 8` per run. Beyond it, tools return
+  "budget spent, answer with what you have" rather than executing. Cached
+  repeats are free and do not draw it down.
+- **Result truncation** at 6,000 characters, so one large payload cannot
+  balloon every subsequent round.
 
 ## Known gaps
 

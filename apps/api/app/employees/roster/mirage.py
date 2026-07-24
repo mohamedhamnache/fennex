@@ -75,7 +75,6 @@ EMPLOYEE = Employee(
             inputs=["product_id", "style"],
             outputs=["image"],
             requires_permissions=[P_WRITE_IMAGES, P_SPEND_CREDITS],
-            agentic=True,
         ),
         Action(
             id="editorial_image",
@@ -91,7 +90,6 @@ EMPLOYEE = Employee(
             inputs=["topic", "angle"],
             outputs=["image"],
             requires_permissions=[P_WRITE_IMAGES, P_SPEND_CREDITS],
-            agentic=True,
         ),
     ],
 

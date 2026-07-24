@@ -193,17 +193,25 @@ async def test_a_run_without_a_provider_fails_cleanly():
 # --- migration state -----------------------------------------------------------
 
 
-def test_every_employee_runs_on_the_runtime():
-    """The migration's success criterion: every AI employee is on Strands.
-
-    An employee with no tools still runs -- the agent simply generates without
-    a tool loop, which is exactly what it did before. Tools are an upgrade to
-    the runtime, not a precondition for it.
+def test_the_loop_is_only_paid_for_where_it_can_pay_off():
+    """Cost rule: the agentic loop costs N+1 round trips, each carrying the
+    growing transcript. It is only worth that when the employee must decide
+    what to fetch. An action with no tools, or whose tools the legacy path
+    already pre-fetched, learns nothing from looping -- so it stays legacy.
     """
+    from app.services.agents.registry import get_skill
+
     for employee in registry.all_employees():
-        assert employee.actions, f"{employee.id} has no actions"
-        unmigrated = [a.id for a in employee.actions if not a.agentic]
-        assert not unmigrated, f"{employee.id} still on the legacy path: {unmigrated}"
+        for action in employee.actions:
+            if not action.agentic:
+                continue
+            assert employee.allowed_tools, (
+                f"{employee.id}.{action.id} loops with no tools to call")
+            skill = get_skill(action.skill_key) if action.skill_key else None
+            prefetched = set(skill.tools) if skill else set()
+            assert not prefetched >= set(employee.allowed_tools), (
+                f"{employee.id}.{action.id} loops for data the legacy path "
+                f"already pre-fetched")
 
 
 def test_migrated_actions_are_flagged_and_the_rest_are_untouched():
@@ -213,8 +221,15 @@ def test_migrated_actions_are_flagged_and_the_rest_are_untouched():
         for action in employee.actions:
             (agentic if action.agentic else legacy).append(f"{employee.id}.{action.id}")
 
-    assert not legacy, f"still on the legacy generator: {legacy}"
-    assert len(agentic) == 14
+    # Both paths are live and that is deliberate: the loop is paid for only
+    # where it buys something.
+    assert agentic and legacy
+    for expected in ("zerda.pick_angle", "sable.competitor_scan",
+                     "oasis.market_report", "dune.write_article"):
+        assert expected in agentic
+    for expected in ("sirocco.multi_network_social", "nomad.outreach_plan",
+                     "mirage.product_shot"):
+        assert expected in legacy
 
 
 def test_an_agentic_action_bound_to_a_skill_inherits_its_prompts():
@@ -330,3 +345,41 @@ def test_a_read_only_tool_is_not_called_twice_in_one_run():
         assert calls == ["x", "y"], f"expected one call per distinct query, got {calls}"
     finally:
         toolbelt._TOOLS.pop("test_cached", None)
+
+
+def test_a_run_cannot_spend_more_than_its_tool_budget():
+    """A model that is unsure keeps asking; one observed run made 14 calls."""
+    import asyncio
+
+    from app.employees import toolbelt
+    from app.employees.spec import Action, Employee
+
+    calls = []
+
+    async def _counting(ctx, db, inputs):
+        calls.append(inputs.get("query", ""))
+        return {"n": len(calls)}
+
+    toolbelt.register_tool(toolbelt.Tool(
+        name="test_budget", label="Budget", description="d",
+        permission="read:analytics", handler=_counting))
+    try:
+        employee = Employee(
+            id="budget-probe", name="Probe", codename="p", role="r", department="d",
+            description="x", allowed_tools=["test_budget"],
+            actions=[Action(id="a", label="l", description="d",
+                            capabilities=["seo.keyword_research"],
+                            skill_key="zerda.keyword_targets")])
+        tool = toolbridge.build_tools(employee, _ctx())[0]
+        run = getattr(tool, "_tool_func", None) or getattr(tool, "func", None) or tool
+
+        async def drive():
+            # Distinct queries, so the cache never absorbs them.
+            for i in range(toolbridge.MAX_TOOL_CALLS + 4):
+                await run(query=f"q{i}")
+
+        asyncio.run(drive())
+        assert len(calls) == toolbridge.MAX_TOOL_CALLS, (
+            f"budget not enforced: {len(calls)} calls")
+    finally:
+        toolbelt._TOOLS.pop("test_budget", None)
