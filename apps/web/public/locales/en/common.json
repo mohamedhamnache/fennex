@@ -2413,6 +2413,11 @@
       "hint": "Nothing runs until you choose.",
       "external": "Leaves Fennex",
       "takesLonger": "Takes longer"
+    },
+    "workflow": {
+      "title": "The team is ready",
+      "run": "Run all {{count}} steps",
+      "started": "Running the workflow..."
     }
   }
 }

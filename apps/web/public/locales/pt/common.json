@@ -2340,6 +2340,11 @@
       "hint": "Nada corre ate escolher.",
       "external": "Sai do Fennex",
       "takesLonger": "Demora mais"
+    },
+    "workflow": {
+      "title": "A equipa esta pronta",
+      "run": "Executar os {{count}} passos",
+      "started": "A executar o fluxo..."
     }
   }
 }

@@ -90,6 +90,7 @@ export type ChatEvent =
   | { type: "message"; message: ChatMessage }
   | { type: "approval"; approvalId: string; kind?: "approval" | "proposal"; preview: Record<string, unknown>; message: ChatMessage }
   | { type: "actions"; employeeId: string; actions: OfferedAction[]; message: ChatMessage }
+  | { type: "workflow"; steps: WorkflowStep[]; message: ChatMessage }
   | { type: "working"; employeeId: string; action: string }
   | { type: "result"; message: ChatMessage; artifactType: string | null; artifactIds: string[] | null }
   | { type: "clarify"; message: ChatMessage; routing: RoutingInfo }
@@ -114,6 +115,25 @@ export interface OfferedAction {
   permissions: string[];
   weight: "light" | "heavy";
   destructive: boolean;
+}
+
+/** One specialist's turn inside an approved multi-employee workflow. */
+export interface WorkflowStep {
+  employeeId: string;
+  employeeName: string;
+  actionId: string;
+  label: string;
+  outputs: string[];
+  icon: string;
+  department: string;
+}
+
+/** Run the whole approved workflow: every specialist, in order, for real. */
+export function runWorkflow(
+  body: { conversation_id: string; steps: WorkflowStep[] },
+  onEvent: (event: ChatEvent) => void,
+): { done: Promise<void>; cancel: () => void } {
+  return streamTurn("/chat/workflow/run", body, onEvent);
 }
 
 /** Run the action the user picked. Nothing runs until they press a button. */

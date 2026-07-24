@@ -2340,6 +2340,11 @@
       "hint": "Rien ne s'execute avant votre choix.",
       "external": "Sort de Fennex",
       "takesLonger": "Plus long"
+    },
+    "workflow": {
+      "title": "L'equipe est prete",
+      "run": "Lancer les {{count}} etapes",
+      "started": "Execution du workflow..."
     }
   }
 }

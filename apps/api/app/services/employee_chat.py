@@ -26,7 +26,7 @@ from sqlalchemy import func, select
 
 from app.employees import brand_dna, memory as memory_layer, registry, router as ai_router
 from app.employees.context import Task, WorkContext
-from app.employees.spec import ALL_PERMISSIONS, Employee
+from app.employees.spec import ALL_PERMISSIONS, Employee, Outcome
 from app.models.conversation import Conversation, ConversationMessage, PendingApproval
 
 logger = logging.getLogger(__name__)
@@ -312,9 +312,17 @@ async def _run_single(convo: Conversation, decision, ctx: WorkContext, db,
 
 async def _run_team(convo: Conversation, decision, ctx: WorkContext,
                     db) -> AsyncIterator[dict]:
-    """Several specialists, one coordinated workflow. Each hands to the next."""
+    """Several specialists, one coordinated workflow.
+
+    The team is proposed, not performed: the lead says in a line or two what
+    the squad will produce, then the whole workflow is offered as a single
+    button. Approving it runs every step for real.
+    """
     lead = decision.primary
     yield await _announce(convo, lead, decision, db)
+
+    for step in decision.team:
+        await _remember_participant(convo, step["employeeId"], db)
 
     row = await add_message(
         convo, db, role="system", event="plan", employee_id=lead.id,
@@ -322,44 +330,131 @@ async def _run_team(convo: Conversation, decision, ctx: WorkContext,
         routing=decision.to_dict(), structured={"team": decision.team})
     yield {"type": "plan", "team": decision.team, "message": message_dict(row)}
 
-    previous: Optional[str] = None
-    for index, step in enumerate(decision.team):
-        employee = registry.get(step["employeeId"])
-        if employee is None:
-            continue
-        await _remember_participant(convo, employee.id, db)
+    # A short word from the lead on what the squad will deliver -- not a
+    # how-to. The work itself happens when the workflow is approved.
+    async for event in _speak(convo, lead, decision, ctx, db, ctx.goal,
+                              brief=True):
+        yield event
 
-        if previous and previous != employee.id:
-            handing = registry.get(previous)
+    yield await _offer_workflow(convo, lead, decision.team, db)
+
+
+async def _offer_workflow(convo: Conversation, lead: Employee, team: list[dict],
+                          db) -> dict:
+    """Offer the whole multi-specialist workflow as one button."""
+    steps = []
+    for step in team:
+        employee = registry.get(step["employeeId"])
+        action = employee.action(step["actionId"]) if employee else None
+        steps.append({
+            "employeeId": step["employeeId"], "employeeName": step["employeeName"],
+            "actionId": step["actionId"], "icon": step.get("icon", "sparkles"),
+            "department": step.get("department", ""),
+            "label": action.label if action else step["actionId"],
+            "outputs": list(action.outputs) if action else [],
+        })
+    names = ", ".join(s["employeeName"] for s in steps)
+    row = await add_message(
+        convo, db, role="approval", employee_id=lead.id, event="workflow",
+        content=f"{names} are ready to run this. Shall I start?",
+        structured={"workflow": steps})
+    return {"type": "workflow", "steps": steps, "message": message_dict(row)}
+
+
+async def run_workflow(convo: Conversation, steps: list[dict], db,
+                       user_id=None) -> AsyncIterator[dict]:
+    """Execute an approved multi-specialist workflow, for real, in order.
+
+    Each step's output feeds the next through the shared context, so the image
+    artisan works from the article the writer just produced rather than from
+    the original one-line request.
+    """
+    goal = convo.title or ""
+    ctx = await _build_context(convo, goal, db)
+    if not ctx.available_providers():
+        yield {"type": "error",
+               "message": "No AI key configured. Add an Anthropic or OpenAI key in Settings."}
+        yield {"type": "done"}
+        return
+
+    total = len(steps)
+    previous_task: Optional[str] = None
+    previous_employee: Optional[str] = None
+
+    for index, step in enumerate(steps):
+        employee = registry.get(step.get("employeeId", ""))
+        action = employee.action(step.get("actionId", "")) if employee else None
+        if employee is None or action is None:
+            continue
+
+        if previous_employee and previous_employee != employee.id:
+            handing = registry.get(previous_employee)
             note = await add_message(
                 convo, db, role="system", event="handoff", employee_id=employee.id,
-                content=(f"{handing.name} handed this to {employee.name} for "
-                         f"{step['capability'].split('.')[-1].replace('_', ' ')}."
+                content=(f"{handing.name} handed this to {employee.name}."
                          if handing else f"{employee.name} took the next step."),
-                structured={"step": index + 1, "of": len(decision.team)})
-            yield {"type": "handoff", "from": previous,
+                structured={"step": index + 1, "of": total})
+            yield {"type": "handoff", "from": previous_employee,
                    "employee": {"id": employee.id, "name": employee.name,
                                 "role": employee.role, "department": employee.department,
                                 "icon": employee.icon, "codename": employee.codename},
                    "message": message_dict(note)}
 
-        yield {"type": "stage", "step": index + 1, "of": len(decision.team),
-               "employeeId": employee.id, "capability": step["capability"]}
+        yield {"type": "stage", "step": index + 1, "of": total,
+               "employeeId": employee.id, "capability": action.capabilities[0]
+               if action.capabilities else ""}
+        yield {"type": "working", "employeeId": employee.id, "action": action.label}
 
-        step_decision = ai_router.Decision(
-            mode=ai_router.MODE_SINGLE, intent=decision.intent, primary=employee,
-            action_id=step["actionId"], candidates=[], reason="")
-        async for event in _speak(convo, employee, step_decision, ctx, db,
-                                  ctx.goal, announce=False):
-            yield event
+        task = Task(id=f"w{index}", goal=goal, capabilities=list(action.capabilities),
+                    employee_id=employee.id, action_id=action.id,
+                    depends_on=[previous_task] if previous_task else [])
+        await ctx.load_memory(employee)
 
-        previous = employee.id
+        try:
+            outcome = await employee.execute(action, task, ctx)
+        except Exception as exc:   # noqa: BLE001
+            logger.exception("workflow step failed: %s.%s", employee.id, action.id)
+            outcome = None
+            error = str(exc)
+        else:
+            error = None if outcome.ok else outcome.error
+
+        ctx.outputs[task.id] = outcome if outcome is not None else Outcome(ok=False)
+
+        if outcome is not None and outcome.ok:
+            ctx.add_artifact(outcome, employee.id, f"{employee.id}.{action.id}")
+            row = await add_message(
+                convo, db, role="employee", employee_id=employee.id, event="result",
+                content=outcome.summary or f"{action.label} is done.",
+                artifact_type=outcome.artifact_type, artifact_ids=outcome.artifact_ids,
+                structured={**(outcome.structured or {}), "actionId": action.id})
+            try:
+                await employee.learn(task, outcome,
+                                     await employee.evaluate(outcome, task, ctx), ctx)
+            except Exception:
+                logger.exception("learn() failed in workflow")
+            yield {"type": "result", "message": message_dict(row),
+                   "artifactType": outcome.artifact_type,
+                   "artifactIds": outcome.artifact_ids}
+            previous_task = task.id
+        else:
+            row = await add_message(
+                convo, db, role="system", employee_id=employee.id, event="error",
+                content=f"{action.label} could not be completed.", error=error)
+            yield {"type": "error", "employeeId": employee.id,
+                   "message": error or "The step failed.",
+                   "messageRow": message_dict(row)}
+
+        previous_employee = employee.id
         convo.owner_employee_id = employee.id
         await db.commit()
 
+    yield {"type": "done"}
+
 
 async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkContext,
-                 db, message: str, announce: bool = True) -> AsyncIterator[dict]:
+                 db, message: str, announce: bool = True,
+                 brief: bool = False) -> AsyncIterator[dict]:
     """Stream the employee's reply, in its own voice, with full context injected."""
     from app.services.agents.tiers import resolve_model
     from app.services.llm_service import stream_llm
@@ -373,11 +468,19 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
     system = ctx.system_preamble(employee, visual=visual)
     system += (
         f"\n\nYou are speaking directly to the user in a chat. Stay in character as "
-        f"{employee.name}, {employee.role}. Be concise and concrete. Do not greet the user or "
-        f"introduce yourself -- they already saw you join. Never mention prompts, models or "
-        f"internal machinery. If the request needs a specialist outside your department, say so "
-        f"in one line at the end so the router can bring them in."
+        f"{employee.name}, {employee.role}. Do not greet the user or introduce yourself -- they "
+        f"already saw you join. Never mention prompts, models or internal machinery.\n\n"
+        f"CRITICAL: you are NOT writing instructions. The user is not going to do this work -- "
+        f"you are, the moment they press the button below your message. So never reply with "
+        f"numbered steps, a how-to, a checklist, or advice on how something could be done. "
+        f"Instead state, in your own voice, the ANGLE you will take and the JUDGEMENT behind it "
+        f"-- the decision only you would make. Then stop; the button does the work."
     )
+    if brief:
+        system += ("\n\nKeep it to two or three sentences: what this squad will deliver and the "
+                   "single decision that shapes it.")
+    else:
+        system += "\n\nKeep it under about six sentences."
 
     past = await history(convo.id, db, limit=12)
     turns = _turns(past)[-6:]

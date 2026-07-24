@@ -2340,6 +2340,11 @@
       "hint": "Nichts laeuft, bevor Sie waehlen.",
       "external": "Verlaesst Fennex",
       "takesLonger": "Dauert laenger"
+    },
+    "workflow": {
+      "title": "Das Team ist bereit",
+      "run": "Alle {{count}} Schritte ausfuehren",
+      "started": "Workflow laeuft..."
     }
   }
 }

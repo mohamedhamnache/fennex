@@ -2340,6 +2340,11 @@
       "hint": "Nada se ejecuta hasta que elijas.",
       "external": "Sale de Fennex",
       "takesLonger": "Tarda mas"
+    },
+    "workflow": {
+      "title": "El equipo esta listo",
+      "run": "Ejecutar los {{count}} pasos",
+      "started": "Ejecutando el flujo..."
     }
   }
 }

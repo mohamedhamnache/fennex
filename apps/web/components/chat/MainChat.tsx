@@ -4,15 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowRight, Check, CornerDownLeft, History, Loader2, Send, Sparkles, Square,
-  Trash2, X,
+  ArrowRight, Check, CornerDownLeft, History, Loader2, Play, Send, Sparkles,
+  Square, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   approveAndRun, decideApproval, deleteConversation, getConversation,
-  listConversations, runAction, sendMessage,
+  listConversations, runAction, runWorkflow, sendMessage,
   type ChatEvent, type ChatMessage, type Conversation, type OfferedAction,
-  type TeamStep,
+  type TeamStep, type WorkflowStep,
 } from "@/lib/chat";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
 
@@ -115,6 +115,7 @@ export function MainChat({ projectId }: { projectId: string }) {
         break;
       case "approval":
       case "actions":
+      case "workflow":
       case "clarify":
         setRouting(false);
         setLive(null);
@@ -190,6 +191,19 @@ export function MainChat({ projectId }: { projectId: string }) {
     cancelRef.current = cancel;
   }, [busy, conversationId, handleEvent]);
 
+  /** The user approved the whole squad's workflow. */
+  const runApprovedWorkflow = useCallback((messageId: string, steps: WorkflowStep[]) => {
+    if (busy || !conversationId) return;
+    setBusy(true);
+    setDecisions((prev) => ({ ...prev, [messageId]: "started" }));
+    setTeam(steps.map((s) => ({
+      capability: "", employeeId: s.employeeId, employeeName: s.employeeName,
+      actionId: s.actionId, icon: s.icon, department: s.department,
+    })));
+    const { cancel } = runWorkflow({ conversation_id: conversationId, steps }, handleEvent);
+    cancelRef.current = cancel;
+  }, [busy, conversationId, handleEvent]);
+
   const reject = useCallback(async (approvalId: string) => {
     setDecisions((prev) => ({ ...prev, [approvalId]: "rejected" }));
     try {
@@ -259,6 +273,8 @@ export function MainChat({ projectId }: { projectId: string }) {
                 onApprove={approve}
                 onReject={reject}
                 onRunAction={runChosenAction}
+                onRunWorkflow={runApprovedWorkflow}
+                byId={byId}
                 decisions={decisions}
               />
             ))}
@@ -478,13 +494,16 @@ function ChatHeader({
 // --- messages -----------------------------------------------------------------
 
 function MessageRow({
-  message, employee, onApprove, onReject, onRunAction, decisions,
+  message, employee, onApprove, onReject, onRunAction, onRunWorkflow, byId,
+  decisions,
 }: {
   message: ChatMessage;
   employee?: Employee;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onRunAction: (messageId: string, employeeId: string, actionId: string) => void;
+  onRunWorkflow: (messageId: string, steps: WorkflowStep[]) => void;
+  byId: Map<string, Employee>;
   decisions: Record<string, string>;
 }) {
   if (message.role === "user") return <UserBubble content={message.content} />;
@@ -492,7 +511,19 @@ function MessageRow({
     const structured = (message.structured ?? {}) as {
       approvalId?: string;
       actions?: OfferedAction[];
+      workflow?: WorkflowStep[];
     };
+    if (structured.workflow?.length) {
+      return (
+        <WorkflowCard
+          message={message}
+          steps={structured.workflow}
+          byId={byId}
+          onRun={onRunWorkflow}
+          started={!!decisions[message.id]}
+        />
+      );
+    }
     // An offer of work renders as buttons; a hard gate renders as approve/reject.
     if (structured.actions?.length) {
       return (
@@ -603,6 +634,80 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
 }
 
 // --- approvals ----------------------------------------------------------------
+
+/** The whole squad, offered as one button. Approving runs every step for real. */
+function WorkflowCard({
+  message, steps, byId, onRun, started,
+}: {
+  message: ChatMessage;
+  steps: WorkflowStep[];
+  byId: Map<string, Employee>;
+  onRun: (messageId: string, steps: WorkflowStep[]) => void;
+  started: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4 animate-slide-up">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+        {t("chat.workflow.title")}
+      </p>
+      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+
+      <ol className="mt-3 flex flex-col gap-1.5">
+        {steps.map((step, index) => {
+          const employee = byId.get(step.employeeId);
+          const Icon = employeeIcon(employee?.icon ?? step.icon ?? "sparkles");
+          return (
+            <li key={`${step.employeeId}-${step.actionId}-${index}`}
+                className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
+              <span className="w-4 shrink-0 text-[10px] font-bold text-muted-foreground">
+                {index + 1}
+              </span>
+              <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                departmentAccent(employee?.department ?? step.department ?? ""))}>
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold text-foreground">
+                  {step.employeeName}
+                </span>
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  {step.label}
+                </span>
+              </span>
+              {step.outputs.length > 0 && (
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                  {step.outputs.join(", ")}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      {started ? (
+        <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Check className="h-3 w-3 text-success" strokeWidth={2.5} />
+          {t("chat.workflow.started")}
+        </p>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => onRun(message.id, steps)}
+            className="btn-primary mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
+          >
+            <Play className="h-3.5 w-3.5" strokeWidth={2.5} />
+            {t("chat.workflow.run", { count: steps.length })}
+          </button>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            {t("chat.actions.hint")}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
 
 /** What the employee is offering to do, as buttons. Nothing runs until pressed. */
 function ActionChoices({
