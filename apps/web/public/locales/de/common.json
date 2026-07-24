@@ -849,7 +849,9 @@
       "password": "Passwort",
       "connect": "Verbinden",
       "connected": "Verbunden",
-      "remove": "Entfernen"
+      "remove": "Entfernen",
+      "movedHint": "Wird jetzt unter Integrationen verwaltet.",
+      "openIntegrations": "Integrationen oeffnen"
     },
     "socialAccounts": {
       "title": "Social-Konten",
@@ -944,7 +946,11 @@
         "plum": "Pflaume"
       },
       "custom": "Benutzerdefiniert",
-      "accentPreview": "Vorschau"
+      "accentPreview": "Vorschau",
+      "description": "Was dieses Projekt ist",
+      "descriptionPlaceholder": "Ein WordPress-Blog fuer hausgemachte Rezepte",
+      "descriptionHint": "Dient dazu, Wettbewerber zu beurteilen und alle Mitarbeiter markentreu zu halten. Sagen Sie, was die Seite ist und fuer wen.",
+      "descriptionUsedBy": "Wird von jedem Mitarbeiter gelesen und unterscheidet einen echten Wettbewerber von einer Seite, die nur fuer dieselben Woerter rankt."
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",
@@ -1819,6 +1825,20 @@
         "unreachable": "Store-URL nicht erreichbar. Prüfe, ob sie öffentlich ist und HTTPS nutzt.",
         "generic": "Verbindung zu WooCommerce fehlgeschlagen. Versuche es erneut."
       }
+    },
+    "seo": {
+      "title": "DataForSEO verbinden",
+      "subtitle": "Liefert Suchergebnisse, Rankingverfolgung und die Quellen, die Ihre Autoren zitieren.",
+      "login": "API-Login (Ihre E-Mail)",
+      "password": "API-Passwort",
+      "reveal": "Anzeigen",
+      "hide": "Ausblenden",
+      "connectAndTest": "Verbinden und testen",
+      "connected": "Verbunden",
+      "disconnect": "Trennen",
+      "testFailed": "Zugangsdaten abgelehnt. Pruefen Sie sie im DataForSEO-Dashboard.",
+      "saveFailed": "Zugangsdaten konnten nicht gespeichert werden.",
+      "hint": "Fuegen Sie das im Dashboard angezeigte Passwort ein, im Klartext oder als Base64. Beides wird akzeptiert."
     }
   },
   "productTab": {
@@ -2372,13 +2392,91 @@
         "social_plural": "{{count}} Beitraege erstellt",
         "campaign": "Kampagne erstellt",
         "report": "Bericht erstellt"
-      }
+      },
+      "words": "{{count}} Woerter",
+      "expand": "Alles lesen",
+      "collapse": "Weniger",
+      "download": "Herunterladen",
+      "hide": "Ausblenden",
+      "show": "Anzeigen",
+      "hidden": "{{title}} — ausgeblendet",
+      "save": "Speichern",
+      "saved": "Gespeichert",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "Als Naechstes",
-      "hint": "Waehlen Sie eine, oder sagen Sie einfach, was Sie wollen."
+      "hint": "Waehlen Sie eine, oder sagen Sie einfach, was Sie wollen.",
+      "dismiss": "Ausblenden"
     },
     "teamBehind": "{{count}} Spezialisten hinter diesem Chat",
-    "tryOne": "Probieren Sie"
+    "tryOne": "Probieren Sie",
+    "usingTool": "{{name}} prueft {{tool}}",
+    "notice": {
+      "joined": "{{name}} ist der Unterhaltung beigetreten.",
+      "handoff": "{{from_}} hat an {{to}} uebergeben.",
+      "plan": "{{count}} Spezialisten arbeiten daran.",
+      "workflow": "{{names}} sind bereit. Starten Sie jeden Schritt, wenn er passt.",
+      "actions": "{{name}} kann uebernehmen. Was moechten Sie?",
+      "followOn": "Erledigt. {{names}} kann uebernehmen.",
+      "clarify": "Ich moechte das an den richtigen Spezialisten geben. Koennen Sie praezisieren, was Sie brauchen?",
+      "actionDone": "{{action}}: fertig."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Nach Aufgabe gewaehlt: schnell oder tiefgehend.",
+      "fast": "Schnell",
+      "deep": "Tief"
+    }
+  },
+  "connectors": {
+    "title": "Verbundene Werkzeuge",
+    "subtitle": "Geben Sie den Mitarbeitern Zugriff. Eine Verbindung macht ein Werkzeug verfuegbar; jeder Mitarbeiter nutzt nur, wozu er berechtigt ist.",
+    "count": "{{live}} von {{total}} verbunden",
+    "loading": "Konnektoren werden geladen...",
+    "usedBy": "Genutzt von",
+    "noEmployee": "Noch nutzt es niemand.",
+    "connect": "Verbinden",
+    "edit": "Bearbeiten",
+    "test": "Verbindung testen",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "disconnect": "Trennen",
+    "url": "Server-URL",
+    "token": "Zugriffstoken",
+    "tokenStored": "(gespeichert — leer lassen zum Behalten)",
+    "tokenPlaceholder": "Optional",
+    "saveAndTest": "Speichern und testen",
+    "failed": "Verbindung fehlgeschlagen.",
+    "fromEnv": "Durch Ihr Deployment konfiguriert",
+    "hint": "Der Server wird beim Speichern kontaktiert, damit eine falsche URL hier auffaellt und nicht mitten im Gespraech.",
+    "status": {
+      "connected": "Verbunden",
+      "connectedWithTools": "{{count}} Werkzeuge",
+      "notConnected": "Nicht verbunden",
+      "paused": "Pausiert",
+      "failing": "Fehlerhaft",
+      "environment": "Aus der Umgebung"
+    }
+  },
+  "knowledge": {
+    "title": "Was das Team weiss",
+    "subtitle": "Geben Sie Ihrem KI-Team die Dokumente, nach denen es nie zweimal fragen sollte.",
+    "count": "{{docs}} Dokumente · {{words}} Woerter",
+    "digestTitle": "Staendiges Briefing, in jedem Gespraech dabei",
+    "addNote": "Notiz hinzufuegen",
+    "upload": "Datei hochladen",
+    "formats": ".txt .md .csv .json .html — alles andere als Notiz einfuegen",
+    "noteTitle": "Titel",
+    "noteTitlePlaceholder": "Markenrichtlinien",
+    "noteBody": "Inhalt",
+    "noteBodyPlaceholder": "Positionierung, Sortiment, Tonfall, was nie gesagt werden darf...",
+    "save": "Speichern",
+    "saveFailed": "Konnte nicht gespeichert werden.",
+    "loading": "Wird geladen...",
+    "empty": "Noch nichts. Fuegen Sie Richtlinien, Produktblaetter oder Regeln hinzu — das Team liest sie einmal und merkt sie sich.",
+    "meta": "{{words}} Woerter · {{chunks}} Passagen",
+    "noVectors": "gespeichert, nicht durchsuchbar (OpenAI-Schluessel noetig)",
+    "remove": "Entfernen"
   }
 }

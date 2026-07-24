@@ -4,16 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowDown, ArrowRight, Check, Copy, CornerDownLeft, History, Loader2, Send,
-  Sparkles, Square, Trash2, X,
+  ArrowDown, ArrowRight, Check, ChevronDown, Copy, CornerDownLeft, Cpu,
+  History, Loader2, Send, Sparkles, Square, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   approveAndRun, decideApproval, deleteConversation, getConversation,
-  listConversations, runAction, runWorkflow, runWorkflowStep, sendMessage,
-  type ChatEvent, type ChatMessage, type Conversation, type FollowOnAction,
+  listConversations, listModels, runAction, runWorkflow, runWorkflowStep,
+  sendMessage,
+  type ChatEvent, type ChatMessage, type ChatModel, type Conversation,
+  type FollowOnAction,
   type OfferedAction, type TeamStep, type WorkflowStep,
 } from "@/lib/chat";
+import { listProjects } from "@/lib/api";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
 import { WorkflowCard, type StepState } from "./WorkflowCard";
 import { ArtifactCard } from "./ArtifactCard";
@@ -37,12 +40,18 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [stage, setStage] = useState<{ step: number; of: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState<{ employeeId: string; action: string } | null>(null);
+  // Tools the employee is reaching for, shown while it thinks.
+  const [activeTools, setActiveTools] = useState<string[]>([]);
   const [decisions, setDecisions] = useState<Record<string, string>>({});
   // Per-workflow step outcomes, keyed by the workflow message id.
   const [stepStates, setStepStates] = useState<Record<string, Record<number, StepState>>>({});
   const [activeStep, setActiveStep] = useState<{ messageId: string; index: number } | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  // The model the user picked for this thread; null follows the org tier.
+  const [model, setModel] = useState<ChatModel | null>(null);
+  // Follow-on suggestions the user waved away; kept out of the way.
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const cancelRef = useRef<(() => void) | null>(null);
   // Read inside the streaming callback, so it must not go stale.
   const activeStepRef = useRef<{ messageId: string; index: number } | null>(null);
@@ -53,8 +62,19 @@ export function MainChat({ projectId }: { projectId: string }) {
     queryKey: ["employees"], queryFn: () => listEmployees(), staleTime: 300_000,
   });
   const byId = new Map((registry?.employees ?? []).map((e) => [e.id, e]));
+  // Notices follow the project's language, matching what the employees speak,
+  // so a French project never reads English notices between French replies.
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"], queryFn: listProjects, staleTime: 60_000,
+  });
+  const lng = projects.find((p) => p.id === projectId)?.locale;
 
   // Past conversations. Refetched whenever a thread starts or is deleted.
+  const { data: modelData } = useQuery({
+    queryKey: ["chat-models"], queryFn: listModels, staleTime: 300_000,
+  });
+  const models = modelData?.models ?? [];
+
   const conversations = useQuery({
     queryKey: ["conversations", projectId],
     queryFn: () => listConversations(projectId),
@@ -171,6 +191,12 @@ export function MainChat({ projectId }: { projectId: string }) {
       case "working":
         setWorking({ employeeId: event.employeeId, action: event.action });
         break;
+      case "tool":
+        setActiveTools((prev) => (prev.includes(event.tool) ? prev : [...prev, event.tool]));
+        break;
+      case "telemetry":
+        // Recorded server-side; the transcript does not need to show numbers.
+        break;
       case "result":
         setWorking(null);
         setMessages((prev) => [...prev, event.message]);
@@ -191,6 +217,7 @@ export function MainChat({ projectId }: { projectId: string }) {
         setRouting(false);
         setLive(null);
         setStage(null);
+        setActiveTools([]);
         setBusy(false);
         break;
     }
@@ -202,6 +229,7 @@ export function MainChat({ projectId }: { projectId: string }) {
     setInput("");
     setBusy(true);
     setTeam(null);
+    setActiveTools([]);
     setMessages((prev) => [...prev, {
       id: `local-${Date.now()}`, seq: prev.length + 1, role: "user", employeeId: null,
       event: null, content: text, routing: null, confidence: null, artifactType: null,
@@ -209,13 +237,16 @@ export function MainChat({ projectId }: { projectId: string }) {
       createdAt: new Date().toISOString(),
     }]);
     const { cancel, done } = sendMessage(
-      { message: text, project_id: projectId, conversation_id: conversationId },
+      {
+        message: text, project_id: projectId, conversation_id: conversationId,
+        model_provider: model?.provider ?? null, model_id: model?.id ?? null,
+      },
       handleEvent,
     );
     cancelRef.current = cancel;
     // A brand-new thread needs to appear in the history list.
     if (!conversationId) done.then(() => conversations.refetch());
-  }, [input, busy, projectId, conversationId, handleEvent, conversations]);
+  }, [input, busy, projectId, conversationId, handleEvent, conversations, model]);
 
   /** Validate a proposed action -- and actually run it. */
   const approve = useCallback((approvalId: string) => {
@@ -283,6 +314,10 @@ export function MainChat({ projectId }: { projectId: string }) {
     }
   }, []);
 
+  const dismissSuggestion = useCallback((messageId: string) => {
+    setDismissed((prev) => new Set(prev).add(messageId));
+  }, []);
+
   const stop = () => {
     cancelRef.current?.();
     setBusy(false);
@@ -327,6 +362,9 @@ export function MainChat({ projectId }: { projectId: string }) {
             .filter((e): e is Employee => !!e)}
           onNew={startNew}
           onToggleHistory={() => setShowHistory((v) => !v)}
+          models={models}
+          model={model}
+          onPickModel={setModel}
           historyCount={conversations.data?.conversations.length ?? 0}
           hasThread={messages.length > 0}
         />
@@ -352,6 +390,9 @@ export function MainChat({ projectId }: { projectId: string }) {
                 byId={byId}
                 projectId={projectId}
                 busy={busy}
+                lng={lng}
+                onDismiss={dismissSuggestion}
+                dismissedIds={dismissed}
                 decisions={decisions}
               />
             ))}
@@ -370,7 +411,7 @@ export function MainChat({ projectId }: { projectId: string }) {
               <EmployeeBubble employee={activeEmployee} content={live.text} streaming />
             )}
             {live && !live.text && activeEmployee && !working && (
-              <WorkingIndicator employee={activeEmployee} />
+              <WorkingIndicator employee={activeEmployee} tools={activeTools} />
             )}
 
             <div ref={bottomRef} />
@@ -503,6 +544,7 @@ function HistoryPanel({
 
 function ChatHeader({
   owner, active, participants, onNew, onToggleHistory, historyCount, hasThread,
+  models, model, onPickModel,
 }: {
   owner?: Employee;
   active?: Employee;
@@ -511,6 +553,9 @@ function ChatHeader({
   onToggleHistory: () => void;
   historyCount: number;
   hasThread: boolean;
+  models: ChatModel[];
+  model: ChatModel | null;
+  onPickModel: (m: ChatModel | null) => void;
 }) {
   const { t } = useTranslation();
   const current = active ?? owner;
@@ -567,6 +612,10 @@ function ChatHeader({
         </div>
       )}
 
+      {models.length > 0 && (
+        <ModelPicker models={models} model={model} onPick={onPickModel} />
+      )}
+
       {hasThread && (
         <button
           type="button"
@@ -580,11 +629,99 @@ function ChatHeader({
   );
 }
 
+/** Choose the model for this conversation.
+ *
+ *  Only models the organisation has a key for are offered, and the server
+ *  re-checks the choice — a picker must not be able to select something the
+ *  account cannot run, or bill for. */
+function ModelPicker({
+  models, model, onPick,
+}: { models: ChatModel[]; model: ChatModel | null; onPick: (m: ChatModel | null) => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <Cpu className="h-3 w-3" />
+        <span className="hidden sm:inline">{model?.label ?? t("chat.model.auto")}</span>
+        <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div className="popover absolute right-0 top-full z-20 mt-1 w-64 animate-scale-in p-1">
+            <button
+              type="button"
+              onClick={() => { onPick(null); setOpen(false); }}
+              className={cn(
+                "flex w-full cursor-pointer flex-col rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent",
+                !model && "bg-primary/10",
+              )}
+            >
+              <span className={cn("text-xs font-semibold",
+                !model ? "text-primary" : "text-foreground")}>
+                {t("chat.model.auto")}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {t("chat.model.autoHint")}
+              </span>
+            </button>
+
+            {models.map((option) => {
+              const active = model?.id === option.id;
+              return (
+                <button
+                  key={`${option.provider}:${option.id}`}
+                  type="button"
+                  onClick={() => { onPick(option); setOpen(false); }}
+                  className={cn(
+                    "flex w-full cursor-pointer flex-col rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent",
+                    active && "bg-primary/10",
+                  )}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className={cn("text-xs font-semibold",
+                      active ? "text-primary" : "text-foreground")}>
+                      {option.label}
+                    </span>
+                    <span className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase",
+                      option.grade === "deep"
+                        ? "bg-primary/12 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}>
+                      {t(`chat.model.${option.grade}`)}
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{option.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // --- messages -----------------------------------------------------------------
 
 function MessageRow({
   message, employee, onApprove, onReject, onRunAction, onRunWorkflow, onRunStep,
-  stepStateFor, runningStep, byId, projectId, busy, decisions,
+  stepStateFor, runningStep, byId, projectId, busy, decisions, lng,
+  onDismiss, dismissedIds,
 }: {
   message: ChatMessage;
   employee?: Employee;
@@ -593,6 +730,9 @@ function MessageRow({
   onRunAction: (messageId: string, employeeId: string, actionId: string,
                 decisionKey?: string) => void;
   onRunWorkflow: (messageId: string, steps: WorkflowStep[]) => void;
+  onDismiss: (messageId: string) => void;
+  dismissedIds?: Set<string>;
+  lng?: string;
   onRunStep: (messageId: string, steps: WorkflowStep[], index: number) => void;
   stepStateFor: (messageId: string, index: number) => StepState;
   runningStep: { messageId: string; index: number } | null;
@@ -610,6 +750,7 @@ function MessageRow({
       followOn?: FollowOnAction[];
     };
     if (structured.followOn?.length) {
+      if (dismissedIds?.has(message.id)) return null;
       return (
         <FollowOnCard
           message={message}
@@ -617,6 +758,7 @@ function MessageRow({
           byId={byId}
           onRun={(id, employeeId, actionId) =>
             onRunAction(id, employeeId, actionId, `${employeeId}:${actionId}`)}
+          onDismiss={onDismiss}
           chosen={decisions[message.id]}
         />
       );
@@ -643,6 +785,7 @@ function MessageRow({
           employee={employee}
           actions={structured.actions}
           onRun={onRunAction}
+          lng={lng}
           chosen={decisions[message.id]}
         />
       );
@@ -658,7 +801,7 @@ function MessageRow({
     );
   }
   if (message.role === "system") {
-    return <SystemNotice message={message} employee={employee} />;
+    return <SystemNotice message={message} employee={employee} lng={lng} />;
   }
   if (message.event === "result") {
     return <ArtifactCard message={message} employee={employee} projectId={projectId} />;
@@ -737,8 +880,15 @@ function EmployeeBubble({
 }
 
 /** Router notices: joins, handoffs, clarifications, errors. */
-function SystemNotice({ message, employee }: { message: ChatMessage; employee?: Employee }) {
+function SystemNotice({
+  message, employee, lng,
+}: { message: ChatMessage; employee?: Employee; lng?: string }) {
   const { t } = useTranslation();
+  // Notices are generated server-side in English. When one carries a
+  // translation key, render it in the project's language so the thread does
+  // not mix languages; the stored English stays as the fallback.
+  const i18n = (message.structured as { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
+  const text = i18n ? t(i18n.key, { ...i18n.params, lng, defaultValue: message.content }) : message.content;
   const Icon = employee ? employeeIcon(employee.icon) : Sparkles;
   const isError = message.event === "error";
   const isHandoff = message.event === "handoff";
@@ -758,7 +908,7 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
           <Icon className="h-3 w-3" strokeWidth={2} />
         </span>
       )}
-      <span>{message.content}</span>
+      <span>{text}</span>
       {isHandoff && <ArrowRight className="h-3 w-3 opacity-60" />}
       {message.confidence != null && !isError && (
         <span
@@ -776,12 +926,13 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
 
 /** What the employee is offering to do, as buttons. Nothing runs until pressed. */
 function ActionChoices({
-  message, employee, actions, onRun, chosen,
+  message, employee, actions, onRun, lng, chosen,
 }: {
   message: ChatMessage;
   employee?: Employee;
   actions: OfferedAction[];
   onRun: (messageId: string, employeeId: string, actionId: string) => void;
+  lng?: string;
   chosen?: string;
 }) {
   const { t } = useTranslation();
@@ -799,7 +950,7 @@ function ActionChoices({
         )}
         {t("chat.actions.title")}
       </p>
-      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t, lng)}</p>
 
       <div className="mt-3 flex flex-col gap-2">
         {actions.map((action, index) => {
@@ -864,12 +1015,13 @@ function ActionChoices({
 }
 
 function ApprovalCard({
-  message, employee, onApprove, onReject, decided,
+  message, employee, onApprove, onReject, lng, decided,
 }: {
   message: ChatMessage;
   employee?: Employee;
   onApprove: (approvalId: string) => void;
   onReject: (approvalId: string) => void;
+  lng?: string;
   decided?: string;
 }) {
   const { t } = useTranslation();
@@ -906,7 +1058,7 @@ function ApprovalCard({
         {isProposal ? t("chat.approval.proposalTitle") : t("chat.approval.title")}
       </p>
 
-      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t, lng)}</p>
       {preview.description && (
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{preview.description}</p>
       )}
@@ -1003,7 +1155,9 @@ function RoutingIndicator() {
   );
 }
 
-function WorkingIndicator({ employee, action }: { employee: Employee; action?: string }) {
+function WorkingIndicator({
+  employee, action, tools = [],
+}: { employee: Employee; action?: string; tools?: string[] }) {
   const { t } = useTranslation();
   const Icon = employeeIcon(employee.icon);
   return (
@@ -1016,7 +1170,9 @@ function WorkingIndicator({ employee, action }: { employee: Employee; action?: s
         <span className="text-xs text-muted-foreground">
           {action
             ? t("chat.runningAction", { name: employee.name, action })
-            : t("chat.working", { name: employee.name })}
+            : tools.length > 0
+              ? t("chat.usingTool", { name: employee.name, tool: prettyTool(tools[tools.length - 1]) })
+              : t("chat.working", { name: employee.name })}
         </span>
         <span className="flex gap-0.5">
           {[0, 1, 2].map((i) => (
@@ -1030,6 +1186,26 @@ function WorkingIndicator({ employee, action }: { employee: Employee; action?: s
       </div>
     </div>
   );
+}
+
+/** A server notice, in the project's language when it carries a key. */
+function noticeText(
+  message: ChatMessage,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  lng?: string,
+): string {
+  const i18n = (message.structured as
+    { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
+  // `lng` pins the render to the project's language: a French project must
+  // not read English notices between French replies, whatever UI language
+  // the viewer happens to use.
+  return i18n ? t(i18n.key, { ...i18n.params, lng, defaultValue: message.content })
+              : message.content;
+}
+
+/** Tool names are internal slugs; show them as something a person reads. */
+function prettyTool(name: string): string {
+  return name.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // --- empty state --------------------------------------------------------------

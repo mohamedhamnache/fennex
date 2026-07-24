@@ -85,7 +85,7 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=[],
+    allowed_tools=["project_knowledge"],
     connected_apps=["linkedin", "email"],
     permissions=[P_WRITE_SOCIAL, P_WRITE_CONTENT, P_READ_CONTENT, P_SEND_EMAIL],
     memory_scope=SCOPE_PROJECT,

@@ -43,10 +43,14 @@ class BrandDNA:
     # context
     locale: str = "en"
     project_profile: str = ""
+    # A cached ~120-word summary of the project's own documents. Carried
+    # always; the documents themselves are fetched only on request.
+    knowledge_digest: str = ""
 
     def is_empty(self) -> bool:
         return not any([self.mission, self.voice, self.tone, self.audience,
-                        self.products, self.colors, self.project_profile])
+                        self.products, self.colors, self.project_profile,
+                        self.knowledge_digest])
 
     def to_dict(self) -> dict:
         return {
@@ -81,7 +85,7 @@ class BrandDNA:
             if value:
                 lines.append(f"{label}: {value}")
 
-        add("Mission", self.mission)
+        add("What this project is", self.mission)
         add("Vision", self.vision)
         add("Audience", self.audience)
         add("Products", self.products[:12])
@@ -103,6 +107,11 @@ class BrandDNA:
         add("Hard constraints", self.constraints[:10])
         if self.project_profile:
             lines.append(f"Project profile: {self.project_profile}")
+        if self.knowledge_digest:
+            lines.append(
+                "WHAT THIS PROJECT'S OWN DOCUMENTS ESTABLISH (never contradict this; "
+                "use the project documents tool when you need the detail):\n"
+                + self.knowledge_digest)
         return "\n".join(lines)
 
 
@@ -138,6 +147,7 @@ async def build(project_id: uuid.UUID, org_id: uuid.UUID, db) -> BrandDNA:
     except Exception:
         project = None
     if project is not None:
+        dna.knowledge_digest = _attr(project, "knowledge_digest") or ""
         dna.mission = _attr(project, "description") or _attr(project, "goal") or ""
         dna.audience = _attr(project, "target_audience") or _attr(project, "audience") or ""
         niche = _attr(project, "niche") or _attr(project, "industry")

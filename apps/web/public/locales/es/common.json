@@ -849,7 +849,9 @@
       "password": "Contraseña",
       "connect": "Conectar",
       "connected": "Conectado",
-      "remove": "Eliminar"
+      "remove": "Eliminar",
+      "movedHint": "Ahora se gestiona en Integraciones.",
+      "openIntegrations": "Abrir Integraciones"
     },
     "socialAccounts": {
       "title": "Cuentas sociales",
@@ -944,7 +946,11 @@
         "plum": "Ciruela"
       },
       "custom": "Personalizado",
-      "accentPreview": "Vista previa"
+      "accentPreview": "Vista previa",
+      "description": "Que es este proyecto",
+      "descriptionPlaceholder": "Un blog WordPress para compartir recetas caseras",
+      "descriptionHint": "Sirve para juzgar competidores y mantener a cada empleado en tono. Di que es el sitio y para quien.",
+      "descriptionUsedBy": "Lo leen todos los empleados y sirve para distinguir un competidor real de un sitio que solo posiciona por las mismas palabras."
     },
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",
@@ -1819,6 +1825,20 @@
         "unreachable": "No se pudo acceder a esa URL. Comprueba que sea pública y use HTTPS.",
         "generic": "No se pudo conectar con WooCommerce. Inténtalo de nuevo."
       }
+    },
+    "seo": {
+      "title": "Conectar DataForSEO",
+      "subtitle": "Alimenta resultados de busqueda, seguimiento de posiciones y las fuentes que citan tus redactores.",
+      "login": "Login de API (tu email)",
+      "password": "Contrasena de API",
+      "reveal": "Mostrar",
+      "hide": "Ocultar",
+      "connectAndTest": "Conectar y probar",
+      "connected": "Conectado",
+      "disconnect": "Desconectar",
+      "testFailed": "Credenciales rechazadas. Compruebalas en el panel de DataForSEO.",
+      "saveFailed": "No se pudieron guardar las credenciales.",
+      "hint": "Pega la contrasena que muestre DataForSEO, en texto plano o base64. Ambas valen."
     }
   },
   "productTab": {
@@ -2372,13 +2392,91 @@
         "social_plural": "{{count}} publicaciones creadas",
         "campaign": "Campana creada",
         "report": "Informe creado"
-      }
+      },
+      "words": "{{count}} palabras",
+      "expand": "Leer todo",
+      "collapse": "Ver menos",
+      "download": "Descargar",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "hidden": "{{title}} — oculto",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "Que sigue",
-      "hint": "Elige una, o simplemente di lo que quieres."
+      "hint": "Elige una, o simplemente di lo que quieres.",
+      "dismiss": "Descartar"
     },
     "teamBehind": "{{count}} especialistas detras de este chat",
-    "tryOne": "Prueba uno"
+    "tryOne": "Prueba uno",
+    "usingTool": "{{name}} esta consultando {{tool}}",
+    "notice": {
+      "joined": "{{name}} se ha unido a la conversacion.",
+      "handoff": "{{from_}} lo ha pasado a {{to}}.",
+      "plan": "{{count}} especialistas trabajaran en esto.",
+      "workflow": "{{names}} estan listos. Ejecuta cada paso cuando te convenza.",
+      "actions": "{{name}} puede continuar. Que prefieres?",
+      "followOn": "Hecho. {{names}} puede continuar.",
+      "clarify": "Quiero asignar esto al especialista adecuado. Puedes precisar que necesitas?",
+      "actionDone": "{{action}}: hecho."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Elegido segun la tarea: rapido o profundo.",
+      "fast": "Rapido",
+      "deep": "Profundo"
+    }
+  },
+  "connectors": {
+    "title": "Herramientas conectadas",
+    "subtitle": "Da a los empleados donde actuar. Conectar una herramienta la hace disponible; cada empleado solo usa aquello a lo que tiene derecho.",
+    "count": "{{live}} de {{total}} conectadas",
+    "loading": "Cargando conectores...",
+    "usedBy": "Usada por",
+    "noEmployee": "Ningun empleado la usa todavia.",
+    "connect": "Conectar",
+    "edit": "Editar",
+    "test": "Probar conexion",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "disconnect": "Desconectar",
+    "url": "URL del servidor",
+    "token": "Token de acceso",
+    "tokenStored": "(guardado — deja vacio para conservar)",
+    "tokenPlaceholder": "Opcional",
+    "saveAndTest": "Guardar y probar",
+    "failed": "No se pudo conectar.",
+    "fromEnv": "Configurado por tu despliegue",
+    "hint": "El servidor se contacta al guardar, asi una URL incorrecta aparece aqui y no en plena conversacion.",
+    "status": {
+      "connected": "Conectado",
+      "connectedWithTools": "{{count}} herramientas",
+      "notConnected": "No conectado",
+      "paused": "Pausado",
+      "failing": "Con fallos",
+      "environment": "Del entorno"
+    }
+  },
+  "knowledge": {
+    "title": "Lo que el equipo sabe",
+    "subtitle": "Da a tu equipo de IA los documentos que no deberia tener que preguntar dos veces.",
+    "count": "{{docs}} documentos · {{words}} palabras",
+    "digestTitle": "Resumen permanente, presente en cada conversacion",
+    "addNote": "Anadir nota",
+    "upload": "Subir archivo",
+    "formats": ".txt .md .csv .json .html — pega lo demas como nota",
+    "noteTitle": "Titulo",
+    "noteTitlePlaceholder": "Guia de marca",
+    "noteBody": "Contenido",
+    "noteBodyPlaceholder": "Posicionamiento, gama, tono de voz, lo que nunca debe decirse...",
+    "save": "Guardar",
+    "saveFailed": "No se pudo guardar.",
+    "loading": "Cargando...",
+    "empty": "Nada todavia. Anade tu guia de marca, fichas de producto o reglas: el equipo las lee una vez y las recuerda.",
+    "meta": "{{words}} palabras · {{chunks}} pasajes",
+    "noVectors": "guardado, no buscable (requiere clave OpenAI)",
+    "remove": "Eliminar"
   }
 }

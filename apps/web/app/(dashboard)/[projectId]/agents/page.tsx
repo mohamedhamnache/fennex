@@ -13,6 +13,8 @@ import {
 import { DelegatePanel } from "@/components/employees/DelegatePanel";
 import { EmployeeCard } from "@/components/employees/EmployeeCard";
 import { EmployeeSheet } from "@/components/employees/EmployeeSheet";
+import { ConnectorsPanel } from "@/components/employees/ConnectorsPanel";
+import { KnowledgePanel } from "@/components/employees/KnowledgePanel";
 
 /** Deep links into the tool each employee actually drives. Keyed by employee id
  *  so a newly hired employee simply has no shortcut until one is added. */
@@ -191,6 +193,10 @@ export default function CompanyPage({ params }: { params: { projectId: string } 
           </div>
         </section>
       )}
+
+      {employees.length > 0 && <KnowledgePanel projectId={projectId} />}
+
+      {employees.length > 0 && <ConnectorsPanel />}
 
       <EmployeeSheet
         employee={selected}

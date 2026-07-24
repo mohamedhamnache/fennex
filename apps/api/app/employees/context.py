@@ -79,6 +79,11 @@ class WorkContext:
     runtime: dict = field(default_factory=dict)
     cost: dict = field(default_factory=lambda: {"calls": 0, "by_model": {}})
     approvals: dict[str, bool] = field(default_factory=dict)
+    # MCP connectors this organisation configured, keyed by app.
+    connectors: dict = field(default_factory=dict)
+    # A model the user picked for this conversation, if any.
+    model_provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
     # -- legacy Brief compatibility -------------------------------------------
 

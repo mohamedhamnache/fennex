@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
@@ -13,6 +14,7 @@ import {
   Sun, Moon, Monitor, Search, Brush, Settings as SettingsIcon,
   FileText, Image as ImageIcon, Gauge, Mic2, Sparkles, Star,
   type LucideIcon,
+  ArrowRight,
 } from "lucide-react";
 import {
   getMe,
@@ -388,28 +390,9 @@ function AIKeysSection() {
     onError: () => error("Couldn't remove key"),
   });
 
-  const [showSeoForm, setShowSeoForm] = useState(false);
-  const [seoLogin, setSeoLogin] = useState("");
-  const [seoPassword, setSeoPassword] = useState("");
-  const [showSeoPassword, setShowSeoPassword] = useState(false);
 
-  const seoKey = keys.find((k: ApiKey) => k.provider === "dataforseo");
 
-  const addSeoMutation = useMutation({
-    mutationFn: () => createApiKey("dataforseo", `${seoLogin}:${seoPassword}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["api-keys"] });
-      setSeoLogin(""); setSeoPassword(""); setShowSeoForm(false);
-      success(t("settings.seoData.connected"));
-    },
-    onError: () => error("Couldn't save key", { message: "Check the value and try again." }),
-  });
 
-  const deleteSeoMutation = useMutation({
-    mutationFn: (id: string) => deleteApiKey(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["api-keys"] }); success("Key removed"); },
-    onError: () => error("Couldn't remove key"),
-  });
 
   return (
     <div>
@@ -522,75 +505,22 @@ function AIKeysSection() {
         </PrimaryBtn>
       )}
 
-      {/* SEO data (DataForSEO) */}
+      {/* DataForSEO now lives in Integrations: it is a data connection, not an
+          AI key, and it was stranded here where nobody thought to look. */}
       <div className="mt-8">
         <SectionHeader
           title={t("settings.seoData.title")}
-          description={t("settings.seoData.hint")}
+          description={t("settings.seoData.movedHint")}
         />
-        {seoKey ? (
-          <Card className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary">
-                  <Check className="h-2.5 w-2.5 text-primary-foreground" />
-                </span>
-                <span className="text-sm font-semibold text-primary">{t("settings.seoData.connected")}</span>
-                <span className="font-mono text-sm text-muted-foreground">{seoKey.masked_value}</span>
-              </div>
-              <button
-                onClick={() => deleteSeoMutation.mutate(seoKey.id)}
-                disabled={deleteSeoMutation.isPending}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                title={t("settings.seoData.remove")}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </Card>
-        ) : showSeoForm ? (
-          <Card className="p-5">
-            <div className="mb-3">
-              <Input
-                placeholder={t("settings.seoData.login")}
-                value={seoLogin}
-                onChange={setSeoLogin}
-              />
-            </div>
-            <div className="relative mb-3">
-              <Input
-                type={showSeoPassword ? "text" : "password"}
-                placeholder={t("settings.seoData.password")}
-                value={seoPassword}
-                onChange={setSeoPassword}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSeoPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showSeoPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {addSeoMutation.isError && <ErrorMsg>{t("settings.aiKeys.saveError")}</ErrorMsg>}
-            <div className="flex gap-2 mt-4">
-              <PrimaryBtn
-                onClick={() => addSeoMutation.mutate()}
-                disabled={!seoLogin.trim() || !seoPassword.trim() || addSeoMutation.isPending}
-              >
-                {addSeoMutation.isPending ? t("settings.aiKeys.saving") : t("settings.seoData.connect")}
-              </PrimaryBtn>
-              <GhostBtn onClick={() => { setShowSeoForm(false); setSeoLogin(""); setSeoPassword(""); }}>
-                {t("common.cancel")}
-              </GhostBtn>
-            </div>
-          </Card>
-        ) : (
-          <PrimaryBtn onClick={() => setShowSeoForm(true)}>
-            <Plus className="h-3.5 w-3.5" /> {t("settings.seoData.connect")}
-          </PrimaryBtn>
-        )}
+        <Card className="p-5">
+          <Link
+            href="/integrations"
+            className="flex items-center gap-2 text-sm font-semibold text-primary transition-opacity hover:opacity-80"
+          >
+            {t("settings.seoData.openIntegrations")}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Card>
       </div>
     </div>
   );
@@ -1168,7 +1098,8 @@ function ProjectSection() {
   const active = projects.find((p) => p.id === (editId ?? currentProjectId)) ?? projects[0];
 
   const [form, setForm] = useState({
-    name: "", domain: "", locale: "en", target_country: "", industry: "", persona: "" as ProjectPersona | "",
+    name: "", domain: "", locale: "en", target_country: "", industry: "",
+    description: "", persona: "" as ProjectPersona | "",
     autopilot_enabled: false, theme: "desert",
   });
 
@@ -1181,6 +1112,7 @@ function ProjectSection() {
         locale: active.locale ?? "en",
         target_country: active.target_country ?? "",
         industry: active.industry ?? "",
+        description: active.description ?? "",
         persona: active.persona ?? "",
         autopilot_enabled: active.autopilot_enabled ?? false,
         theme: active.theme || "desert",
@@ -1203,6 +1135,7 @@ function ProjectSection() {
         locale: form.locale,
         target_country: form.target_country.trim() || null,
         industry: form.industry.trim() || null,
+        description: form.description.trim() || null,
         persona: form.persona || undefined,
         autopilot_enabled: form.autopilot_enabled,
         theme: form.theme,
@@ -1265,6 +1198,26 @@ function ProjectSection() {
 
         <Field label={t("settings.project.domain")}>
           <Input value={form.domain} onChange={(v) => setForm((f) => ({ ...f, domain: v }))} placeholder="example.com" />
+        </Field>
+
+        {/* Full width and directly under the domain: this is what the site IS,
+            and every employee reads it. Cramped into a half column next to the
+            country it read as an afterthought. */}
+        <Field label={t("settings.project.description")} hint={t("settings.project.descriptionHint")}>
+          <textarea
+            rows={2}
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            placeholder={t("settings.project.descriptionPlaceholder")}
+            maxLength={400}
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+          />
+          <p className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>{t("settings.project.descriptionUsedBy")}</span>
+            <span className={form.description.length > 360 ? "text-warning" : ""}>
+              {form.description.length}/400
+            </span>
+          </p>
         </Field>
 
         <Field label={t("settings.project.language")} hint={t("settings.project.languageHint")}>

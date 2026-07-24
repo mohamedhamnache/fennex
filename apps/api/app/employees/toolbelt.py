@@ -18,7 +18,9 @@ editing the employees that will use it.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
@@ -42,6 +44,10 @@ class Tool:
     app: str = ""                                  # "wordpress" | "shopify" | ...
     permission: str = P_READ_CONTENT
     handler: Optional[Callable[..., Awaitable[Any]]] = None
+    # The input key this tool reads. Adapted legacy tools expect their own name
+    # ("competitor_url", "article_id"); the bridge hands the model's argument
+    # under both this key and "query" so either convention works.
+    arg: str = "query"
     # (project_id, org_id, db) -> bool ; app tools only
     availability: Optional[Callable[..., Awaitable[bool]]] = None
     writes: bool = False                           # mutates something outside Fennex
@@ -109,7 +115,8 @@ def _adopt_legacy_data_tools() -> None:
                         P_READ_ANALYTICS),
         "tracked_keywords": ("Tracked keywords", "Keywords this project is tracking.",
                              P_READ_ANALYTICS),
-        "crawl_competitor": ("Crawl a competitor", "Fetch and analyse a competitor page.",
+        "crawl_competitor": ("Crawl a competitor",
+                             "Fetch and analyse a competitor page. Give the full URL.",
                              P_READ_COMPETITORS),
         "our_demand": ("Our demand", "The topics this project already earns impressions on.",
                        P_READ_ANALYTICS),
@@ -120,13 +127,337 @@ def _adopt_legacy_data_tools() -> None:
         "seo_grounding": ("SEO grounding", "SEO requirements for an article in progress.",
                           P_READ_CONTENT),
     }
+    register_tool(Tool(
+        name="project_knowledge", label="Read the project's documents",
+        description="Search the documents the user gave this project -- brand books, "
+                    "product sheets, guidelines. Consult it whenever a claim about "
+                    "this business, its products or its rules would otherwise be a "
+                    "guess.",
+        kind=KIND_DATA, permission=P_READ_CONTENT, handler=_project_knowledge))
+    register_tool(Tool(
+        name="discover_competitors", label="Find this project's competitors",
+        description="Find who competes with THIS project, worked out from the topics "
+                    "it actually ranks for. Use this before searching manually -- it "
+                    "excludes our own site and ranks rivals by how many of our topics "
+                    "they appear on.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_discover_competitors))
+    register_tool(Tool(
+        name="known_competitors", label="Known competitors",
+        description="The competitors already tracked for this project. Start here "
+                    "before searching for new ones.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_known_competitors))
+    register_tool(Tool(
+        name="serp_lookup", label="Search the web",
+        description="Search a keyword and return the real ranking pages: title, URL and "
+                    "domain. Use this to find sources you can actually cite.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_serp_lookup))
+    register_tool(Tool(
+        name="fetch_page", label="Read a page",
+        description="Fetch a URL and return its text, so a claim can be checked against "
+                    "what the page actually says before you cite it.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_fetch_page))
+
+    # Input key each adapted tool reads, where it is not "query".
+    args = {"crawl_competitor": "competitor_url",
+            "article_context": "article_id",
+            "seo_grounding": "article_id"}
+
     for name, fn in legacy.TOOLS.items():
         label, desc, perm = meta.get(name, (name.replace("_", " ").title(), "", P_READ_CONTENT))
         register_tool(Tool(name=name, label=label, description=desc, kind=KIND_DATA,
-                           permission=perm, handler=fn))
+                           permission=perm, handler=fn, arg=args.get(name, "query")))
 
 
 # --- connected apps -----------------------------------------------------------
+
+
+async def _known_competitors(ctx, db, inputs):
+    """Competitors already tracked for this project.
+
+    Sable could previously only crawl a URL it was handed, so a request like
+    "analyse my competitors" left it with nothing to look at. This is the
+    starting point: who we already know about.
+    """
+    from sqlalchemy import select
+
+    found: list[dict] = []
+    try:
+        from app.models.seo_intel import Competitor
+        rows = (await db.execute(
+            select(Competitor).where(Competitor.project_id == ctx.project_id).limit(25)
+        )).scalars().all()
+        found += [{"domain": r.domain, "source": "tracked"} for r in rows if r.domain]
+    except Exception:
+        pass
+    try:
+        from app.models.monitoring import WatchedCompetitor
+        rows = (await db.execute(
+            select(WatchedCompetitor).where(
+                WatchedCompetitor.project_id == ctx.project_id).limit(25)
+        )).scalars().all()
+        for r in rows:
+            domain = getattr(r, "domain", None) or getattr(r, "url", None)
+            if domain and not any(f["domain"] == domain for f in found):
+                found.append({"domain": domain, "source": "watched"})
+    except Exception:
+        pass
+
+    if not found:
+        return {"competitors": [],
+                "note": "None are tracked for this project. Use the search tool on a "
+                        "topic this project targets and treat the ranking domains as "
+                        "the competitors."}
+    return {"competitors": found}
+
+
+# Sites that rank across every topic and compete with no one in particular.
+_NOT_COMPETITORS = {
+    "youtube.com", "google.com", "wikipedia.org", "fr.wikipedia.org",
+    "facebook.com", "instagram.com", "pinterest.com", "pinterest.fr",
+    "tiktok.com", "linkedin.com", "x.com", "twitter.com", "reddit.com",
+    "amazon.com", "amazon.fr", "quora.com", "medium.com",
+}
+
+
+async def _project_knowledge(ctx, db, inputs):
+    """Search what the user gave this project to read.
+
+    A tool rather than an injection: passages reach the model only when an
+    employee decides it needs them, so a turn that never consults the library
+    pays nothing for it.
+    """
+    from app.services import knowledge_service
+
+    question = str((inputs or {}).get("query") or "").strip()
+    if not question:
+        return {"error": "Say what you need from the project's documents."}
+    try:
+        found = await knowledge_service.search(ctx.project_id, question, ctx.keys, db)
+    except Exception as exc:   # noqa: BLE001
+        logger.exception("knowledge search failed")
+        return {"passages": [], "error": f"Could not search the documents: {exc}"}
+    if not found:
+        return {"passages": [],
+                "note": "Nothing in this project's documents covers that. Do not "
+                        "invent an answer from them."}
+    return {"passages": found,
+            "note": "From this project's own documents. Treat them as settled fact and "
+                    "never contradict them."}
+
+
+async def _plan_competitor_search(project, ctx, topics: list[str]) -> dict:
+    """Work out what this project IS, then how to find its peers.
+
+    Gluing the project's words onto its keywords produces keyword soup and
+    finds whoever ranks for the terms -- for a cosmetics brand that is blogs
+    reviewing cosmetics and wholesalers selling ingredients, none of which
+    compete with it. A peer is a business of the SAME KIND serving the SAME
+    buyers, and working that out is a judgement, not string concatenation.
+    """
+    fallback = {
+        "business_type": (getattr(project, "industry", None) or "").strip() or "website",
+        "sells": "",
+        "queries": [t for t in topics[:2] if t],
+        "source": "fallback",
+    }
+    providers = list((ctx.keys or {}).keys())
+    if not providers:
+        return fallback
+
+    from app.services.agents.tiers import resolve_model
+    from app.services.llm_service import call_llm
+
+    try:
+        provider, model = resolve_model(getattr(ctx, "tier", "balanced"), "light", providers)
+    except Exception:
+        return fallback
+
+    system = (
+        "You identify a business's real competitors. Given a website, decide what KIND "
+        "of business it is and write the searches that would surface its PEERS.\n\n"
+        "A peer is the same kind of business serving the same buyers. A cosmetics brand "
+        "competes with other cosmetics brands -- not with blogs reviewing cosmetics, "
+        "marketplaces reselling them, or suppliers of raw ingredients. A recipe blog "
+        "competes with other recipe blogs -- not with supermarkets or appliance makers.\n\n"
+        "Write 2-3 searches a shopper or reader would type to find businesses LIKE this "
+        "one -- the category plus its qualifiers, in the site's own language. Do not "
+        "search the brand's own name, and do not simply repeat its keywords.\n\n"
+        'Return ONLY JSON: {"business_type": "...", "sells": "...", "queries": ["...", "..."]}'
+    )
+    user = (
+        f"NAME: {getattr(project, 'name', '')}\n"
+        f"DOMAIN: {getattr(project, 'domain', '')}\n"
+        f"DESCRIPTION: {getattr(project, 'description', '') or '(none given)'}\n"
+        f"INDUSTRY: {getattr(project, 'industry', '') or '(none given)'}\n"
+        f"MARKET: {getattr(project, 'target_country', '') or ''} "
+        f"({getattr(project, 'locale', 'en')})\n"
+        f"TOPICS IT RANKS FOR: {', '.join(topics[:6]) or '(none yet)'}"
+    )
+    try:
+        raw = await call_llm(provider, model, ctx.keys[provider], system, user,
+                             locale=getattr(ctx, "locale", "en"))
+        parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
+        queries = [str(q).strip() for q in (parsed.get("queries") or []) if str(q).strip()]
+        if not queries:
+            return fallback
+        return {
+            "business_type": str(parsed.get("business_type") or fallback["business_type"])[:120],
+            "sells": str(parsed.get("sells") or "")[:200],
+            "queries": queries[:3],
+            "source": "planned",
+        }
+    except Exception:
+        logger.warning("competitor search planning failed; using raw topics", exc_info=True)
+        return fallback
+
+
+async def _discover_competitors(ctx, db, inputs):
+    """Find businesses of the same kind as this project.
+
+    Returns candidates with the title the search engine showed, so the employee
+    can judge what each site actually is rather than guessing from a domain.
+    """
+    from app.models.project import Project
+    from app.services.analytics_service import get_market_insights
+    from app.services.serp_service import _norm_domain, _project_domain, fetch_serp
+
+    project = await db.get(Project, ctx.project_id)
+    if project is None:
+        return {"competitors": [], "error": "Project not found."}
+
+    # What this project already ranks for, as evidence for the planner.
+    topics: list[str] = []
+    try:
+        insights = await get_market_insights(ctx.project_id, ctx.org_id, db)
+        topics = [i.query for i in (insights.ideas or []) if i.query][:6]
+        topics += [c.topic for c in (insights.clusters or []) if c.topic][:4]
+    except Exception:
+        topics = []
+    seed = str((inputs or {}).get("query") or "").strip()
+    if seed:
+        topics.insert(0, seed)
+
+    plan = await _plan_competitor_search(project, ctx, topics)
+    if not plan["queries"]:
+        return {"competitors": [],
+                "note": "This project has no description, industry or search demand, so "
+                        "there is nothing to identify peers from. Describe the site in "
+                        "its settings, or name the competitor to analyse."}
+
+    ours = _project_domain(project)
+    tally: dict[str, dict] = {}
+    checked: list[str] = []
+
+    for query in plan["queries"][:3]:
+        try:
+            data = await fetch_serp(project, query, db)
+        except Exception:
+            continue
+        if not data:
+            continue
+        checked.append(query)
+        for row in (data.get("top10") or [])[:10]:
+            domain = _norm_domain(row.get("domain") or "")
+            if not domain or domain == ours or domain.endswith("." + ours):
+                continue
+            if any(domain == g or domain.endswith("." + g) for g in _NOT_COMPETITORS):
+                continue
+            entry = tally.setdefault(domain, {
+                "domain": domain, "queries": [], "best_rank": 99,
+                "url": row.get("url") or "", "title": row.get("title") or "",
+            })
+            if query not in entry["queries"]:
+                entry["queries"].append(query)
+            if int(row.get("rank") or 99) < entry["best_rank"]:
+                entry["best_rank"] = int(row.get("rank") or 99)
+                entry["title"] = row.get("title") or entry["title"]
+                entry["url"] = row.get("url") or entry["url"]
+
+    if not checked:
+        return {"competitors": [], "businessType": plan["business_type"],
+                "error": "The search provider returned nothing. Check the DataForSEO "
+                         "plan and balance."}
+
+    ranked = sorted(tally.values(), key=lambda e: (-len(e["queries"]), e["best_rank"]))
+    return {
+        "ourDomain": ours,
+        "businessType": plan["business_type"],
+        "sells": plan["sells"],
+        "searches": checked,
+        "planning": plan["source"],
+        "candidates": ranked[:10],
+        "note": (f"This project is: {plan['business_type']}"
+                 + (f", selling {plan['sells']}" if plan["sells"] else "")
+                 + ". These are the sites ranking for searches that should surface "
+                   "businesses like it. Each has the title the search engine showed -- "
+                   "use it to judge what the site actually IS. Keep only businesses of "
+                   "the same kind serving the same buyers; a blog, a marketplace, a "
+                   "supplier or a directory is not a peer even when it ranks well. Say "
+                   "which you rejected and why."),
+    }
+
+
+async def _serp_lookup(ctx, db, inputs):
+    """Real search results for a keyword: ranked URLs and titles.
+
+    This is what makes a citation checkable. Without it a writer asked for
+    sources invents plausible URLs, which is worse than no sources at all.
+    """
+    from app.models.project import Project
+    from app.services.serp_service import fetch_serp
+
+    keyword = str((inputs or {}).get("query") or "").strip()
+    if not keyword:
+        return {"error": "Give the keyword to search for."}
+    project = await db.get(Project, ctx.project_id)
+    if project is None:
+        return {"results": []}
+    try:
+        data = await fetch_serp(project, keyword, db)
+    except Exception as exc:   # noqa: BLE001
+        # A provider rejection is actionable information, not a dead end -- the
+        # employee should be able to tell the user why it could not look, and a
+        # raised exception here just becomes "unavailable".
+        detail = str(exc)
+        if "403" in detail or "401" in detail:
+            return {"results": [],
+                    "error": "The SEO provider rejected the request. Check that the "
+                             "DataForSEO account is funded and its plan includes the "
+                             "SERP API."}
+        return {"results": [], "error": f"The search provider failed: {detail[:200]}"}
+
+    if not data:
+        return {"results": [],
+                "note": "No SEO provider is connected, so live results are unavailable. "
+                        "Connect one in Integrations."}
+    if not data.get("top10"):
+        return {"keyword": keyword, "results": [],
+                "note": "The provider returned no organic results for this keyword in "
+                        "this market."}
+    return {"keyword": keyword,
+            "results": [{"rank": r["rank"], "title": r["title"], "url": r["url"],
+                         "domain": r["domain"]} for r in data.get("top10", [])],
+            "features": data.get("features", [])}
+
+
+async def _fetch_page(ctx, db, inputs):
+    """Fetch a page so a claim can be checked against what it actually says."""
+    from app.services.competitor_service import _crawl
+
+    url = str((inputs or {}).get("query") or "").strip()
+    if not url.startswith(("http://", "https://")):
+        return {"error": "Give a full URL beginning with http:// or https://."}
+    try:
+        page = await _crawl(url)
+    except Exception as exc:   # noqa: BLE001
+        return {"error": f"Could not fetch that page: {exc}"}
+    content = page.get("content") if isinstance(page, dict) else None
+    text = ""
+    if isinstance(content, dict):
+        text = str(content.get("text") or content.get("body") or "")
+    return {"url": url,
+            "title": (content or {}).get("title") if isinstance(content, dict) else None,
+            "text": text[:5000]}
 
 
 async def _shopify_available(project_id, org_id, db) -> bool:

@@ -93,7 +93,8 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=["store_products"],
+    allowed_tools=["store_products",
+                   "project_knowledge"],
     connected_apps=["shopify", "woocommerce", "pinterest", "instagram"],
     permissions=[P_WRITE_IMAGES, P_READ_PRODUCTS, P_SPEND_CREDITS],
     memory_scope=SCOPE_PROJECT,

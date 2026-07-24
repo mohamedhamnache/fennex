@@ -277,7 +277,7 @@ async def gsc_callback(
         return RedirectResponse(f"{settings.FRONTEND_URL}?gsc_error=invalid_state")
 
     # Exchange authorization code for access + refresh tokens.
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         token_resp = await client.post(
             "https://oauth2.googleapis.com/token",
             data={
@@ -301,7 +301,7 @@ async def gsc_callback(
     token_expiry = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
 
     # Fetch the authenticated Google account's email.
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         userinfo_resp = await client.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access_token}"},

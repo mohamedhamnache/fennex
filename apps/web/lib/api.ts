@@ -169,6 +169,7 @@ export interface Project {
   name: string;
   domain: string;
   locale: string;
+  description?: string | null;
   target_country: string | null;
   industry: string | null;
   persona?: ProjectPersona | null;
@@ -212,6 +213,7 @@ export async function createProject(data: {
   domain: string;
   locale?: string;
   target_country?: string;
+  description?: string;
   persona?: ProjectPersona;
   persona_data?: Record<string, unknown>;
 }): Promise<Project> {
@@ -224,7 +226,7 @@ export async function listProjects(): Promise<Project[]> {
 
 export async function updateProject(
   projectId: string,
-  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled" | "theme">>,
+  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "description" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled" | "theme">>,
 ): Promise<Project> {
   return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }
@@ -2565,4 +2567,9 @@ export async function runArticleChecks(articleId: string): Promise<{ seo: SeoChe
 
 export async function runPlagiarismScan(articleId: string): Promise<PlagiarismReport> {
   return apiClient.post<PlagiarismReport>(`/articles/${articleId}/plagiarism`, {});
+}
+
+/** Verify the stored SEO provider credentials against the provider. */
+export async function testDataForSeo(): Promise<{ ok: boolean; error?: string; results?: number }> {
+  return apiClient.post("/api-keys/dataforseo/test", {});
 }

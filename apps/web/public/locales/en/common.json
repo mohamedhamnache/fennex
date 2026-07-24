@@ -946,7 +946,9 @@
       "password": "Password",
       "connect": "Connect",
       "connected": "Connected",
-      "remove": "Remove"
+      "remove": "Remove",
+      "movedHint": "Now managed in Integrations.",
+      "openIntegrations": "Open Integrations"
     },
     "socialAccounts": {
       "title": "Social Accounts",
@@ -1041,7 +1043,11 @@
         "plum": "Plum"
       },
       "custom": "Custom",
-      "accentPreview": "Preview"
+      "accentPreview": "Preview",
+      "description": "What this project is",
+      "descriptionPlaceholder": "A WordPress blog sharing home-cooking recipes",
+      "descriptionHint": "Used to judge competitors and to keep every employee on-brand. Say what the site is and who it is for.",
+      "descriptionUsedBy": "Read by every employee, and used to tell a real competitor from a site that just ranks for the same words."
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",
@@ -1907,6 +1913,20 @@
         "unreachable": "Couldn't reach that store URL. Check it's public and uses HTTPS.",
         "generic": "Couldn't connect to WooCommerce. Try again."
       }
+    },
+    "seo": {
+      "title": "Connect DataForSEO",
+      "subtitle": "Powers live search results, rank tracking and the sources your writers cite.",
+      "login": "API login (your email)",
+      "password": "API password",
+      "reveal": "Show",
+      "hide": "Hide",
+      "connectAndTest": "Connect and test",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "testFailed": "Those credentials were rejected. Check them on the DataForSEO dashboard.",
+      "saveFailed": "Could not save the credentials.",
+      "hint": "Paste whichever password the DataForSEO dashboard shows — plain or base64. Both are accepted."
     }
   },
   "productTab": {
@@ -2445,13 +2465,91 @@
         "social_plural": "{{count}} social posts created",
         "campaign": "Campaign created",
         "report": "Report created"
-      }
+      },
+      "words": "{{count}} words",
+      "expand": "Read all",
+      "collapse": "Show less",
+      "download": "Download",
+      "hide": "Hide",
+      "show": "Show",
+      "hidden": "{{title}} — hidden",
+      "save": "Save",
+      "saved": "Saved",
+      "pdf": "PDF"
     },
     "followOn": {
       "title": "What's next",
-      "hint": "Pick one, or just say what you want."
+      "hint": "Pick one, or just say what you want.",
+      "dismiss": "Dismiss"
     },
     "teamBehind": "{{count}} specialists behind this chat",
-    "tryOne": "Try one"
+    "tryOne": "Try one",
+    "usingTool": "{{name}} is checking {{tool}}",
+    "notice": {
+      "joined": "{{name}} joined the conversation.",
+      "handoff": "{{from_}} handed this to {{to}}.",
+      "plan": "{{count}} specialists will work on this.",
+      "workflow": "{{names}} are ready. Run each step when you are happy with it.",
+      "actions": "{{name}} can take it from here. What would you like?",
+      "followOn": "That's done. {{names}} could take it from here.",
+      "clarify": "I want to route this to the right specialist. Could you say a little more about what you need?",
+      "actionDone": "{{action}} is done."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Picks by task: fast for quick work, deep for heavy.",
+      "fast": "Fast",
+      "deep": "Deep"
+    }
+  },
+  "connectors": {
+    "title": "Connected tools",
+    "subtitle": "Give the employees somewhere to reach. Connecting a tool makes it available; each employee still only uses what it is entitled to.",
+    "count": "{{live}} of {{total}} connected",
+    "loading": "Loading connectors...",
+    "usedBy": "Used by",
+    "noEmployee": "No employee uses this yet.",
+    "connect": "Connect",
+    "edit": "Edit",
+    "test": "Test connection",
+    "pause": "Pause",
+    "resume": "Resume",
+    "disconnect": "Disconnect",
+    "url": "Server URL",
+    "token": "Access token",
+    "tokenStored": "(stored — leave blank to keep)",
+    "tokenPlaceholder": "Optional",
+    "saveAndTest": "Save and test",
+    "failed": "Could not connect.",
+    "fromEnv": "Configured by your deployment",
+    "hint": "The server is contacted as soon as you save, so a wrong URL shows up here rather than mid-conversation.",
+    "status": {
+      "connected": "Connected",
+      "connectedWithTools": "{{count}} tools",
+      "notConnected": "Not connected",
+      "paused": "Paused",
+      "failing": "Failing",
+      "environment": "From environment"
+    }
+  },
+  "knowledge": {
+    "title": "What the team knows",
+    "subtitle": "Give your AI team the documents it should never have to be told twice.",
+    "count": "{{docs}} documents · {{words}} words",
+    "digestTitle": "Standing brief, carried into every conversation",
+    "addNote": "Add a note",
+    "upload": "Upload a file",
+    "formats": ".txt .md .csv .json .html — paste anything else as a note",
+    "noteTitle": "Title",
+    "noteTitlePlaceholder": "Brand guidelines",
+    "noteBody": "Content",
+    "noteBodyPlaceholder": "Positioning, product range, tone of voice, things never to say...",
+    "save": "Save",
+    "saveFailed": "Could not save that.",
+    "loading": "Loading...",
+    "empty": "Nothing yet. Add your brand guidelines, product sheets or house rules — the team reads them once and remembers.",
+    "meta": "{{words}} words · {{chunks}} passages",
+    "noVectors": "stored, not searchable (needs an OpenAI key)",
+    "remove": "Remove"
   }
 }

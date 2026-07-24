@@ -86,6 +86,9 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
   const [domain, setDomain] = useState("");
   const [locale, setLocale] = useState("en");
   const [targetCountry, setTargetCountry] = useState("");
+  // What the site actually is. Every employee reads this, and the
+  // competitor scout uses it to tell a rival from a coincidence.
+  const [description, setDescription] = useState("");
 
   // Persona-specific
   const [niche, setNiche] = useState("");
@@ -145,6 +148,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
         domain: domain.trim(),
         locale,
         ...(targetCountry.trim() ? { target_country: targetCountry.trim() } : {}),
+        ...(description.trim() ? { description: description.trim() } : {}),
         persona,
         persona_data,
       });

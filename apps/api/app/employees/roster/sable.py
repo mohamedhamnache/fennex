@@ -69,10 +69,18 @@ EMPLOYEE = Employee(
             inputs=["competitor_url"],
             outputs=["score", "gaps", "opportunities"],
             requires_permissions=[P_READ_COMPETITORS],
+            # Agentic: the scout can crawl a rival, read what it finds, then
+            # check our own demand against it before scoring the gap.
+            agentic=True,
         ),
     ],
 
-    allowed_tools=["crawl_competitor", "our_demand", "market_insights"],
+    # The scout must be able to FIND a competitor, not only crawl one it is
+    # handed: known_competitors lists who we track, serp_lookup discovers
+    # who actually ranks when nobody is tracked yet.
+    allowed_tools=["known_competitors", "discover_competitors", "serp_lookup",
+                   "crawl_competitor", "our_demand", "market_insights",
+                   "project_knowledge"],
     connected_apps=[],
     permissions=[P_READ_COMPETITORS, P_READ_ANALYTICS, P_READ_CONTENT],
     memory_scope=SCOPE_PROJECT,

@@ -24,6 +24,20 @@ def _write_article_prompt(brief, inputs, td):
         ctx.append(f"Chosen angle & why it wins: {inputs['rationale']}")
     user += ("\n\nCAMPAIGN CONTEXT (write specifically to this angle — do NOT drift into a generic "
              "keyword overview):\n- " + "\n- ".join(ctx) + feedback_block(inputs))
+    system += (
+        "\n\nSOURCES — a fabricated citation is worse than none at all:\n"
+        "- Use the search tool to find sources, and the page tool to read one before "
+        "you cite it. Cite only what you actually retrieved.\n"
+        "- Never write a URL you have not fetched. Never attribute a statistic to a "
+        "source that did not state it.\n"
+        "- Any figure, study, date or quote needs a source. If you cannot retrieve one, "
+        "write the claim without the number rather than inventing a citation.\n"
+        "- Close with a Sources section listing each cited page as "
+        "`[Publication — page title](url)`. Omit the section entirely if you cited "
+        "nothing; an empty or invented list is a defect.\n"
+        "- Prefer primary sources: the body that produced the data, not a blog "
+        "summarising it."
+    )
     return system, user
 
 
