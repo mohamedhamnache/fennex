@@ -2390,5 +2390,35 @@
       "followOn": "Hecho. {{names}} puede continuar.",
       "clarify": "Quiero asignar esto al especialista adecuado. Puedes precisar que necesitas?"
     }
+  },
+  "connectors": {
+    "title": "Herramientas conectadas",
+    "subtitle": "Da a los empleados donde actuar. Conectar una herramienta la hace disponible; cada empleado solo usa aquello a lo que tiene derecho.",
+    "count": "{{live}} de {{total}} conectadas",
+    "loading": "Cargando conectores...",
+    "usedBy": "Usada por",
+    "noEmployee": "Ningun empleado la usa todavia.",
+    "connect": "Conectar",
+    "edit": "Editar",
+    "test": "Probar conexion",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "disconnect": "Desconectar",
+    "url": "URL del servidor",
+    "token": "Token de acceso",
+    "tokenStored": "(guardado — deja vacio para conservar)",
+    "tokenPlaceholder": "Opcional",
+    "saveAndTest": "Guardar y probar",
+    "failed": "No se pudo conectar.",
+    "fromEnv": "Configurado por tu despliegue",
+    "hint": "El servidor se contacta al guardar, asi una URL incorrecta aparece aqui y no en plena conversacion.",
+    "status": {
+      "connected": "Conectado",
+      "connectedWithTools": "{{count}} herramientas",
+      "notConnected": "No conectado",
+      "paused": "Pausado",
+      "failing": "Con fallos",
+      "environment": "Del entorno"
+    }
   }
 }

@@ -2390,5 +2390,35 @@
       "followOn": "Erledigt. {{names}} kann uebernehmen.",
       "clarify": "Ich moechte das an den richtigen Spezialisten geben. Koennen Sie praezisieren, was Sie brauchen?"
     }
+  },
+  "connectors": {
+    "title": "Verbundene Werkzeuge",
+    "subtitle": "Geben Sie den Mitarbeitern Zugriff. Eine Verbindung macht ein Werkzeug verfuegbar; jeder Mitarbeiter nutzt nur, wozu er berechtigt ist.",
+    "count": "{{live}} von {{total}} verbunden",
+    "loading": "Konnektoren werden geladen...",
+    "usedBy": "Genutzt von",
+    "noEmployee": "Noch nutzt es niemand.",
+    "connect": "Verbinden",
+    "edit": "Bearbeiten",
+    "test": "Verbindung testen",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "disconnect": "Trennen",
+    "url": "Server-URL",
+    "token": "Zugriffstoken",
+    "tokenStored": "(gespeichert — leer lassen zum Behalten)",
+    "tokenPlaceholder": "Optional",
+    "saveAndTest": "Speichern und testen",
+    "failed": "Verbindung fehlgeschlagen.",
+    "fromEnv": "Durch Ihr Deployment konfiguriert",
+    "hint": "Der Server wird beim Speichern kontaktiert, damit eine falsche URL hier auffaellt und nicht mitten im Gespraech.",
+    "status": {
+      "connected": "Verbunden",
+      "connectedWithTools": "{{count}} Werkzeuge",
+      "notConnected": "Nicht verbunden",
+      "paused": "Pausiert",
+      "failing": "Fehlerhaft",
+      "environment": "Aus der Umgebung"
+    }
   }
 }

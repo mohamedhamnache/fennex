@@ -76,15 +76,19 @@ def configured() -> list[MCPServer]:
     return [s for s in CATALOGUE.values() if s.url or s.command]
 
 
-def servers_for(employee, granted: list[str]) -> list[MCPServer]:
+def servers_for(employee, granted: list[str],
+                configured: Optional[dict] = None) -> list[MCPServer]:
     """Which servers this employee may use on this run.
 
     Same two gates as native tools: the employee must have declared the app,
     and the run must hold the permission it needs.
+
+    `configured` carries the organisation's own connectors and takes priority
+    over the environment, so a connector added in the UI is live immediately.
     """
     out = []
     for app in employee.connected_apps:
-        server = CATALOGUE.get(app)
+        server = (configured or {}).get(app) or CATALOGUE.get(app)
         if server is None or not (server.url or server.command):
             continue
         if server.permission not in granted:
@@ -106,7 +110,7 @@ def _transport(server: MCPServer):
     return lambda: stdio_client(params)
 
 
-def clients_for(employee, granted: list[str]) -> list:
+def clients_for(employee, granted: list[str], configured: Optional[dict] = None) -> list:
     """Open MCP clients for this employee. Caller owns their lifetime.
 
     A server that cannot be reached is skipped with a warning rather than
@@ -116,7 +120,7 @@ def clients_for(employee, granted: list[str]) -> list:
     from strands.tools.mcp import MCPClient
 
     clients = []
-    for server in servers_for(employee, granted):
+    for server in servers_for(employee, granted, configured):
         try:
             clients.append((server, MCPClient(
                 _transport(server),

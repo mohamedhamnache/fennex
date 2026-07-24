@@ -247,8 +247,12 @@ class BaseEmployee:
         never cost the user their answer.
         """
         tools: list = []
+        # Connectors the organisation configured take priority over any
+        # environment defaults, so connecting one in the UI is live at once.
+        configured = getattr(ctx, "connectors", None) or {}
         for server, client in mcp_layer.clients_for(self.employee,
-                                                    ctx.granted_permissions):
+                                                    ctx.granted_permissions,
+                                                    configured):
             try:
                 stack.enter_context(client)
                 found = client.list_tools_sync()

@@ -2463,5 +2463,35 @@
       "followOn": "That's done. {{names}} could take it from here.",
       "clarify": "I want to route this to the right specialist. Could you say a little more about what you need?"
     }
+  },
+  "connectors": {
+    "title": "Connected tools",
+    "subtitle": "Give the employees somewhere to reach. Connecting a tool makes it available; each employee still only uses what it is entitled to.",
+    "count": "{{live}} of {{total}} connected",
+    "loading": "Loading connectors...",
+    "usedBy": "Used by",
+    "noEmployee": "No employee uses this yet.",
+    "connect": "Connect",
+    "edit": "Edit",
+    "test": "Test connection",
+    "pause": "Pause",
+    "resume": "Resume",
+    "disconnect": "Disconnect",
+    "url": "Server URL",
+    "token": "Access token",
+    "tokenStored": "(stored — leave blank to keep)",
+    "tokenPlaceholder": "Optional",
+    "saveAndTest": "Save and test",
+    "failed": "Could not connect.",
+    "fromEnv": "Configured by your deployment",
+    "hint": "The server is contacted as soon as you save, so a wrong URL shows up here rather than mid-conversation.",
+    "status": {
+      "connected": "Connected",
+      "connectedWithTools": "{{count}} tools",
+      "notConnected": "Not connected",
+      "paused": "Paused",
+      "failing": "Failing",
+      "environment": "From environment"
+    }
   }
 }

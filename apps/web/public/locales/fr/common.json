@@ -2390,5 +2390,35 @@
       "followOn": "C'est fait. {{names}} peut prendre la suite.",
       "clarify": "Je veux confier cela au bon specialiste. Pouvez-vous preciser ce dont vous avez besoin ?"
     }
+  },
+  "connectors": {
+    "title": "Outils connectes",
+    "subtitle": "Donnez aux employes de quoi agir. Connecter un outil le rend disponible ; chaque employe n'utilise que ce a quoi il a droit.",
+    "count": "{{live}} sur {{total}} connectes",
+    "loading": "Chargement des connecteurs...",
+    "usedBy": "Utilise par",
+    "noEmployee": "Aucun employe ne l'utilise encore.",
+    "connect": "Connecter",
+    "edit": "Modifier",
+    "test": "Tester la connexion",
+    "pause": "Suspendre",
+    "resume": "Reprendre",
+    "disconnect": "Deconnecter",
+    "url": "URL du serveur",
+    "token": "Jeton d'acces",
+    "tokenStored": "(enregistre — laissez vide pour conserver)",
+    "tokenPlaceholder": "Optionnel",
+    "saveAndTest": "Enregistrer et tester",
+    "failed": "Connexion impossible.",
+    "fromEnv": "Configure par votre deploiement",
+    "hint": "Le serveur est contacte des l'enregistrement : une URL erronee apparait ici plutot qu'en pleine conversation.",
+    "status": {
+      "connected": "Connecte",
+      "connectedWithTools": "{{count}} outils",
+      "notConnected": "Non connecte",
+      "paused": "Suspendu",
+      "failing": "En echec",
+      "environment": "Environnement"
+    }
   }
 }

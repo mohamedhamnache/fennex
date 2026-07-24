@@ -135,12 +135,15 @@ async def _build_context(convo: Conversation, goal: str, db) -> WorkContext:
     from app.services.agents.standalone import org_tier
     from app.services.llm_service import get_org_llm_keys
 
+    from app.services.connector_service import resolved_servers
+
     dna = await brand_dna.build(convo.project_id, convo.org_id, db)
     keys = await get_org_llm_keys(convo.org_id, db)
     return WorkContext(
         goal=goal, project_id=convo.project_id, org_id=convo.org_id, db=db, dna=dna,
         tier=await org_tier(convo.org_id, db), keys=keys,
         granted_permissions=list(ALL_PERMISSIONS),
+        connectors=await resolved_servers(convo.org_id, db),
         runtime={"conversation_id": str(convo.id)},
     )
 

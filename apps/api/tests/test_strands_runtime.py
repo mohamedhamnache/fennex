@@ -383,3 +383,48 @@ def test_a_run_cannot_spend_more_than_its_tool_budget():
             f"budget not enforced: {len(calls)} calls")
     finally:
         toolbelt._TOOLS.pop("test_budget", None)
+
+
+# --- connectors ---------------------------------------------------------------
+
+
+def test_a_connector_is_only_reachable_by_an_employee_that_declared_it():
+    """Connecting a tool makes it available, not accessible."""
+    from app.employees.runtime import mcp
+
+    configured = {"linkedin": mcp.MCPServer(
+        app="linkedin", label="LinkedIn", url="https://mcp.example.com",
+        permission="publish:external")}
+
+    # Nomad declares linkedin; Zerda does not.
+    assert mcp.servers_for(registry.get("nomad"), ALL_PERMISSIONS, configured)
+    assert mcp.servers_for(registry.get("zerda"), ALL_PERMISSIONS, configured) == []
+
+
+def test_a_connector_still_obeys_the_permission_gate():
+    from app.employees.runtime import mcp
+
+    configured = {"email": mcp.MCPServer(
+        app="email", label="Email", url="https://mcp.example.com",
+        permission="send:email")}
+    nomad = registry.get("nomad")
+    assert mcp.servers_for(nomad, ["send:email"], configured)
+    assert mcp.servers_for(nomad, ["read:content"], configured) == []
+
+
+def test_an_org_connector_overrides_the_environment_default():
+    from app.employees.runtime import mcp
+
+    configured = {"linkedin": mcp.MCPServer(
+        app="linkedin", label="LinkedIn", url="https://org-specific.example.com",
+        permission="publish:external")}
+    found = mcp.servers_for(registry.get("nomad"), ALL_PERMISSIONS, configured)
+    assert [s.url for s in found if s.app == "linkedin"] == ["https://org-specific.example.com"]
+
+
+def test_a_disabled_or_urlless_connector_is_not_offered():
+    from app.employees.runtime import mcp
+
+    configured = {"linkedin": mcp.MCPServer(
+        app="linkedin", label="LinkedIn", url="", permission="publish:external")}
+    assert mcp.servers_for(registry.get("nomad"), ALL_PERMISSIONS, configured) == []

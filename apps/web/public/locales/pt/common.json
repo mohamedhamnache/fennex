@@ -2390,5 +2390,35 @@
       "followOn": "Feito. {{names}} pode continuar.",
       "clarify": "Quero encaminhar isto para o especialista certo. Pode precisar o que precisa?"
     }
+  },
+  "connectors": {
+    "title": "Ferramentas ligadas",
+    "subtitle": "De aos colaboradores onde agir. Ligar uma ferramenta torna-a disponivel; cada colaborador so usa aquilo a que tem direito.",
+    "count": "{{live}} de {{total}} ligadas",
+    "loading": "A carregar conectores...",
+    "usedBy": "Usada por",
+    "noEmployee": "Ainda ninguem a usa.",
+    "connect": "Ligar",
+    "edit": "Editar",
+    "test": "Testar ligacao",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "disconnect": "Desligar",
+    "url": "URL do servidor",
+    "token": "Token de acesso",
+    "tokenStored": "(guardado — deixe vazio para manter)",
+    "tokenPlaceholder": "Opcional",
+    "saveAndTest": "Guardar e testar",
+    "failed": "Nao foi possivel ligar.",
+    "fromEnv": "Configurado pelo seu deployment",
+    "hint": "O servidor e contactado ao guardar, por isso um URL errado aparece aqui e nao a meio de uma conversa.",
+    "status": {
+      "connected": "Ligado",
+      "connectedWithTools": "{{count}} ferramentas",
+      "notConnected": "Nao ligado",
+      "paused": "Pausado",
+      "failing": "Com falhas",
+      "environment": "Do ambiente"
+    }
   }
 }
