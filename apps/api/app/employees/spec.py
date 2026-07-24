@@ -205,6 +205,10 @@ class Action:
     handler: Optional[Callable[..., Awaitable[Outcome]]] = None
     requires_permissions: list[str] = field(default_factory=list)
     requires_approval: bool = False            # human sign-off before it runs
+    # Run on the Strands runtime -- the model chooses and calls tools in a loop
+    # -- instead of the legacy single-shot generator. Migrated per action so a
+    # regression is contained to one action rather than the whole roster.
+    agentic: bool = False
 
     def __post_init__(self) -> None:
         unknown = caps.unknown(self.capabilities)
@@ -397,6 +401,11 @@ class Employee:
         """
         if action.handler is not None:
             return await action.handler(self, action, task, ctx)
+        if action.agentic:
+            # Wrapped, not replaced: the employee owns the runtime, never the
+            # other way round.
+            from app.employees.runtime.base import BaseEmployee
+            return await BaseEmployee(self).execute(action, task, ctx)
         return await ctx.run_skill(self, action, task)
 
     async def evaluate(self, outcome: Outcome, task: "Task", ctx: "WorkContext") -> Evaluation:
@@ -487,6 +496,7 @@ class Employee:
                     "inputs": list(a.inputs),
                     "outputs": list(a.outputs),
                     "requiresApproval": a.requires_approval,
+                    "agentic": a.agentic,
                     "requiresPermissions": list(a.requires_permissions),
                 }
                 for a in self.actions

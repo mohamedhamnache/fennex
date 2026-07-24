@@ -73,6 +73,10 @@ EMPLOYEE = Employee(
             inputs=["goal"],
             outputs=["angle", "keyword", "rationale"],
             requires_permissions=[P_READ_ANALYTICS],
+            # Phase 2 pilot: the strategist gains a real tool loop, so it can
+            # pull demand data, read what it finds, and dig further before
+            # committing to an angle.
+            agentic=True,
         ),
         Action(
             id="keyword_targets",
@@ -84,6 +88,7 @@ EMPLOYEE = Employee(
             inputs=["angle"],
             outputs=["primary_keyword", "supporting_keywords"],
             requires_permissions=[P_READ_ANALYTICS],
+            agentic=True,
         ),
     ],
 
