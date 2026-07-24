@@ -56,6 +56,12 @@ EMPLOYEE = Employee(
         "create visuals",
         "make a picture",
         "photo shoot",
+        "featured image",
+        "cover image",
+        "article image",
+        "editorial image",
+        "hero image",
+        "visuals for the article",
     ],
     priority=55,
     actions=[
@@ -67,6 +73,21 @@ EMPLOYEE = Employee(
             weight="heavy",
             skill_key="mirage.product_shot",
             inputs=["product_id", "style"],
+            outputs=["image"],
+            requires_permissions=[P_WRITE_IMAGES, P_SPEND_CREDITS],
+        ),
+        Action(
+            id="editorial_image",
+            label="Featured image",
+            description="Art-direct then render a cover or in-article visual for a piece of "
+                        "content.",
+            # The Image Artisan owns editorial and social imagery. Without this
+            # the capability was declared but unbacked, so a request for "an
+            # article with a featured image" fell through to the product shot.
+            capabilities=["image.editorial", "image.instagram", "image.pinterest"],
+            weight="heavy",
+            skill_key="sirocco.generate_visual",
+            inputs=["topic", "angle"],
             outputs=["image"],
             requires_permissions=[P_WRITE_IMAGES, P_SPEND_CREDITS],
         ),

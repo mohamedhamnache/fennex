@@ -88,6 +88,26 @@ _ROUTING_STOPWORDS = {
 }
 
 
+def _singular(word: str) -> str:
+    """Crude de-pluralisation so "descriptions" matches "description".
+
+    Deliberately naive: routing only needs the two forms to collide, and a
+    stemmer would be a dependency for no extra routing accuracy.
+    """
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 3 and word.endswith("es") and not word.endswith("ses"):
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _terms(text: str) -> set[str]:
+    return {_singular(w) for w in _WORD_RE.findall((text or "").lower())
+            if w not in _ROUTING_STOPWORDS}
+
+
 def _phrase_match(message: str, phrases: list[str]) -> float:
     """Best overlap between the user's wording and any supported task phrase.
 
@@ -96,13 +116,16 @@ def _phrase_match(message: str, phrases: list[str]) -> float:
     """
     if not message or not phrases:
         return 0.0
-    words = {w for w in _WORD_RE.findall(message.lower()) if w not in _ROUTING_STOPWORDS}
+    words = _terms(message)
     if not words:
         return 0.0
     best = 0.0
     for phrase in phrases:
-        terms = {w for w in _WORD_RE.findall(phrase.lower()) if w not in _ROUTING_STOPWORDS}
-        if not terms:
+        terms = _terms(phrase)
+        # A phrase that survives tokenisation as a single common word ("x post"
+        # -> {post}) would match any message mentioning it, so it is only
+        # trusted when the phrase really was one word to begin with.
+        if not terms or (len(terms) == 1 and len(phrase.split()) > 1):
             continue
         best = max(best, len(words & terms) / len(terms))
     return min(best, 1.0)
@@ -303,6 +326,11 @@ class Employee:
         score = 0.0
 
         if wanted:
+            # Once the Router has named the capabilities, covering none of them
+            # means the work is not this employee's -- incidental word overlap
+            # with its task phrases must not buy it a seat.
+            if not any(self.covers(c) for c in wanted):
+                return 0.0
             backed = [c for c in wanted if self.actions_for(c)]
             declared = [c for c in wanted if self.covers(c) and c not in backed]
             # Acting on a capability is worth far more than merely declaring it.
