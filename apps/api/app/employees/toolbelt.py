@@ -120,6 +120,17 @@ def _adopt_legacy_data_tools() -> None:
         "seo_grounding": ("SEO grounding", "SEO requirements for an article in progress.",
                           P_READ_CONTENT),
     }
+    register_tool(Tool(
+        name="serp_lookup", label="Search the web",
+        description="Search a keyword and return the real ranking pages: title, URL and "
+                    "domain. Use this to find sources you can actually cite.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_serp_lookup))
+    register_tool(Tool(
+        name="fetch_page", label="Read a page",
+        description="Fetch a URL and return its text, so a claim can be checked against "
+                    "what the page actually says before you cite it.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_fetch_page))
+
     for name, fn in legacy.TOOLS.items():
         label, desc, perm = meta.get(name, (name.replace("_", " ").title(), "", P_READ_CONTENT))
         register_tool(Tool(name=name, label=label, description=desc, kind=KIND_DATA,
@@ -127,6 +138,51 @@ def _adopt_legacy_data_tools() -> None:
 
 
 # --- connected apps -----------------------------------------------------------
+
+
+async def _serp_lookup(ctx, db, inputs):
+    """Real search results for a keyword: ranked URLs and titles.
+
+    This is what makes a citation checkable. Without it a writer asked for
+    sources invents plausible URLs, which is worse than no sources at all.
+    """
+    from app.models.project import Project
+    from app.services.serp_service import fetch_serp
+
+    keyword = str((inputs or {}).get("query") or "").strip()
+    if not keyword:
+        return {"error": "Give the keyword to search for."}
+    project = await db.get(Project, ctx.project_id)
+    if project is None:
+        return {"results": []}
+    data = await fetch_serp(project, keyword, db)
+    if not data:
+        return {"results": [],
+                "note": "No SEO provider is configured, so live results are unavailable."}
+    return {"keyword": keyword,
+            "results": [{"rank": r["rank"], "title": r["title"], "url": r["url"],
+                         "domain": r["domain"]} for r in data.get("top10", [])],
+            "features": data.get("features", [])}
+
+
+async def _fetch_page(ctx, db, inputs):
+    """Fetch a page so a claim can be checked against what it actually says."""
+    from app.services.competitor_service import _crawl
+
+    url = str((inputs or {}).get("query") or "").strip()
+    if not url.startswith(("http://", "https://")):
+        return {"error": "Give a full URL beginning with http:// or https://."}
+    try:
+        page = await _crawl(url)
+    except Exception as exc:   # noqa: BLE001
+        return {"error": f"Could not fetch that page: {exc}"}
+    content = page.get("content") if isinstance(page, dict) else None
+    text = ""
+    if isinstance(content, dict):
+        text = str(content.get("text") or content.get("body") or "")
+    return {"url": url,
+            "title": (content or {}).get("title") if isinstance(content, dict) else None,
+            "text": text[:5000]}
 
 
 async def _shopify_available(project_id, org_id, db) -> bool:

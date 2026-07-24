@@ -1,8 +1,8 @@
 """Dune -- Content Writer. Department: Content."""
 
 from app.employees.spec import (
-    Action, Employee, P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS,
-    P_WRITE_CONTENT, SCOPE_PROJECT,
+    Action, Employee, P_READ_ANALYTICS, P_READ_COMPETITORS, P_READ_CONTENT,
+    P_READ_PRODUCTS, P_WRITE_CONTENT, SCOPE_PROJECT,
 )
 
 EMPLOYEE = Employee(
@@ -107,9 +107,13 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=["article_context", "seo_grounding", "store_products"],
+    # serp_lookup and fetch_page let the writer cite sources it has actually
+    # read, rather than inventing plausible URLs.
+    allowed_tools=["article_context", "seo_grounding", "store_products",
+                   "serp_lookup", "fetch_page"],
     connected_apps=["wordpress", "shopify", "woocommerce"],
-    permissions=[P_WRITE_CONTENT, P_READ_CONTENT, P_READ_PRODUCTS, P_READ_ANALYTICS],
+    permissions=[P_WRITE_CONTENT, P_READ_CONTENT, P_READ_PRODUCTS, P_READ_ANALYTICS,
+                 P_READ_COMPETITORS],
     memory_scope=SCOPE_PROJECT,
     knowledge_sources=["brand-voice", "brand-dna", "published-articles", "product-catalogue"],
     supported_inputs=["brief", "text", "keyword-map"],

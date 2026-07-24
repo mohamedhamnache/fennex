@@ -14,6 +14,7 @@ import {
   type ChatEvent, type ChatMessage, type Conversation, type FollowOnAction,
   type OfferedAction, type TeamStep, type WorkflowStep,
 } from "@/lib/chat";
+import { listProjects } from "@/lib/api";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
 import { WorkflowCard, type StepState } from "./WorkflowCard";
 import { ArtifactCard } from "./ArtifactCard";
@@ -45,6 +46,8 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [activeStep, setActiveStep] = useState<{ messageId: string; index: number } | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  // Follow-on suggestions the user waved away; kept out of the way.
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const cancelRef = useRef<(() => void) | null>(null);
   // Read inside the streaming callback, so it must not go stale.
   const activeStepRef = useRef<{ messageId: string; index: number } | null>(null);
@@ -55,6 +58,12 @@ export function MainChat({ projectId }: { projectId: string }) {
     queryKey: ["employees"], queryFn: () => listEmployees(), staleTime: 300_000,
   });
   const byId = new Map((registry?.employees ?? []).map((e) => [e.id, e]));
+  // Notices follow the project's language, matching what the employees speak,
+  // so a French project never reads English notices between French replies.
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"], queryFn: listProjects, staleTime: 60_000,
+  });
+  const lng = projects.find((p) => p.id === projectId)?.locale;
 
   // Past conversations. Refetched whenever a thread starts or is deleted.
   const conversations = useQuery({
@@ -293,6 +302,10 @@ export function MainChat({ projectId }: { projectId: string }) {
     }
   }, []);
 
+  const dismissSuggestion = useCallback((messageId: string) => {
+    setDismissed((prev) => new Set(prev).add(messageId));
+  }, []);
+
   const stop = () => {
     cancelRef.current?.();
     setBusy(false);
@@ -362,6 +375,9 @@ export function MainChat({ projectId }: { projectId: string }) {
                 byId={byId}
                 projectId={projectId}
                 busy={busy}
+                lng={lng}
+                onDismiss={dismissSuggestion}
+                dismissedIds={dismissed}
                 decisions={decisions}
               />
             ))}
@@ -594,7 +610,8 @@ function ChatHeader({
 
 function MessageRow({
   message, employee, onApprove, onReject, onRunAction, onRunWorkflow, onRunStep,
-  stepStateFor, runningStep, byId, projectId, busy, decisions,
+  stepStateFor, runningStep, byId, projectId, busy, decisions, lng,
+  onDismiss, dismissedIds,
 }: {
   message: ChatMessage;
   employee?: Employee;
@@ -603,6 +620,9 @@ function MessageRow({
   onRunAction: (messageId: string, employeeId: string, actionId: string,
                 decisionKey?: string) => void;
   onRunWorkflow: (messageId: string, steps: WorkflowStep[]) => void;
+  onDismiss: (messageId: string) => void;
+  dismissedIds?: Set<string>;
+  lng?: string;
   onRunStep: (messageId: string, steps: WorkflowStep[], index: number) => void;
   stepStateFor: (messageId: string, index: number) => StepState;
   runningStep: { messageId: string; index: number } | null;
@@ -620,6 +640,7 @@ function MessageRow({
       followOn?: FollowOnAction[];
     };
     if (structured.followOn?.length) {
+      if (dismissedIds?.has(message.id)) return null;
       return (
         <FollowOnCard
           message={message}
@@ -627,6 +648,7 @@ function MessageRow({
           byId={byId}
           onRun={(id, employeeId, actionId) =>
             onRunAction(id, employeeId, actionId, `${employeeId}:${actionId}`)}
+          onDismiss={onDismiss}
           chosen={decisions[message.id]}
         />
       );
@@ -653,6 +675,7 @@ function MessageRow({
           employee={employee}
           actions={structured.actions}
           onRun={onRunAction}
+          lng={lng}
           chosen={decisions[message.id]}
         />
       );
@@ -668,7 +691,7 @@ function MessageRow({
     );
   }
   if (message.role === "system") {
-    return <SystemNotice message={message} employee={employee} />;
+    return <SystemNotice message={message} employee={employee} lng={lng} />;
   }
   if (message.event === "result") {
     return <ArtifactCard message={message} employee={employee} projectId={projectId} />;
@@ -747,13 +770,15 @@ function EmployeeBubble({
 }
 
 /** Router notices: joins, handoffs, clarifications, errors. */
-function SystemNotice({ message, employee }: { message: ChatMessage; employee?: Employee }) {
+function SystemNotice({
+  message, employee, lng,
+}: { message: ChatMessage; employee?: Employee; lng?: string }) {
   const { t } = useTranslation();
   // Notices are generated server-side in English. When one carries a
   // translation key, render it in the project's language so the thread does
   // not mix languages; the stored English stays as the fallback.
   const i18n = (message.structured as { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
-  const text = i18n ? t(i18n.key, { ...i18n.params, defaultValue: message.content }) : message.content;
+  const text = i18n ? t(i18n.key, { ...i18n.params, lng, defaultValue: message.content }) : message.content;
   const Icon = employee ? employeeIcon(employee.icon) : Sparkles;
   const isError = message.event === "error";
   const isHandoff = message.event === "handoff";
@@ -791,12 +816,13 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
 
 /** What the employee is offering to do, as buttons. Nothing runs until pressed. */
 function ActionChoices({
-  message, employee, actions, onRun, chosen,
+  message, employee, actions, onRun, lng, chosen,
 }: {
   message: ChatMessage;
   employee?: Employee;
   actions: OfferedAction[];
   onRun: (messageId: string, employeeId: string, actionId: string) => void;
+  lng?: string;
   chosen?: string;
 }) {
   const { t } = useTranslation();
@@ -814,7 +840,7 @@ function ActionChoices({
         )}
         {t("chat.actions.title")}
       </p>
-      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t)}</p>
+      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t, lng)}</p>
 
       <div className="mt-3 flex flex-col gap-2">
         {actions.map((action, index) => {
@@ -879,12 +905,13 @@ function ActionChoices({
 }
 
 function ApprovalCard({
-  message, employee, onApprove, onReject, decided,
+  message, employee, onApprove, onReject, lng, decided,
 }: {
   message: ChatMessage;
   employee?: Employee;
   onApprove: (approvalId: string) => void;
   onReject: (approvalId: string) => void;
+  lng?: string;
   decided?: string;
 }) {
   const { t } = useTranslation();
@@ -921,7 +948,7 @@ function ApprovalCard({
         {isProposal ? t("chat.approval.proposalTitle") : t("chat.approval.title")}
       </p>
 
-      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t)}</p>
+      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t, lng)}</p>
       {preview.description && (
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{preview.description}</p>
       )}
@@ -1055,10 +1082,14 @@ function WorkingIndicator({
 function noticeText(
   message: ChatMessage,
   t: (key: string, opts?: Record<string, unknown>) => string,
+  lng?: string,
 ): string {
   const i18n = (message.structured as
     { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
-  return i18n ? t(i18n.key, { ...i18n.params, defaultValue: message.content })
+  // `lng` pins the render to the project's language: a French project must
+  // not read English notices between French replies, whatever UI language
+  // the viewer happens to use.
+  return i18n ? t(i18n.key, { ...i18n.params, lng, defaultValue: message.content })
               : message.content;
 }
 

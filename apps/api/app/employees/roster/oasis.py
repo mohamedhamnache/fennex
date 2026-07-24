@@ -1,7 +1,8 @@
 """Oasis -- Market Researcher. Department: Research."""
 
 from app.employees.spec import (
-    Action, Employee, P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS, SCOPE_ORG,
+    Action, Employee, P_READ_ANALYTICS, P_READ_COMPETITORS, P_READ_CONTENT,
+    P_READ_PRODUCTS, SCOPE_ORG,
 )
 
 EMPLOYEE = Employee(
@@ -91,9 +92,10 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=["market_data", "market_insights", "gsc_opportunities", "store_products"],
+    allowed_tools=["market_data", "market_insights", "gsc_opportunities",
+                   "store_products", "serp_lookup", "fetch_page"],
     connected_apps=["google-search-console"],
-    permissions=[P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS],
+    permissions=[P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS, P_READ_COMPETITORS],
     # Research findings are company-wide truth, not project trivia.
     memory_scope=SCOPE_ORG,
     knowledge_sources=["search-console", "analytics", "product-catalogue", "brand-dna"],

@@ -2449,7 +2449,8 @@
     },
     "followOn": {
       "title": "What's next",
-      "hint": "Pick one, or just say what you want."
+      "hint": "Pick one, or just say what you want.",
+      "dismiss": "Dismiss"
     },
     "teamBehind": "{{count}} specialists behind this chat",
     "tryOne": "Try one",

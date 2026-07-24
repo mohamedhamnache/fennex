@@ -2376,7 +2376,8 @@
     },
     "followOn": {
       "title": "A seguir",
-      "hint": "Escolha uma, ou diga simplesmente o que quer."
+      "hint": "Escolha uma, ou diga simplesmente o que quer.",
+      "dismiss": "Dispensar"
     },
     "teamBehind": "{{count}} especialistas por tras deste chat",
     "tryOne": "Experimente",

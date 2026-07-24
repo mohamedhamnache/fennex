@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ChatMessage, FollowOnAction } from "@/lib/chat";
 import { departmentAccent, employeeIcon, type Employee } from "@/lib/employees";
@@ -12,12 +12,14 @@ import { departmentAccent, employeeIcon, type Employee } from "@/lib/employees";
  *  specialist as a button means the user never has to know who to ask for --
  *  which is the whole promise of one assistant over a roster of agents. */
 export function FollowOnCard({
-  message, actions, byId, onRun, chosen,
+  message, actions, byId, onRun, onDismiss, lng, chosen,
 }: {
   message: ChatMessage;
   actions: FollowOnAction[];
   byId: Map<string, Employee>;
   onRun: (messageId: string, employeeId: string, actionId: string) => void;
+  onDismiss: (messageId: string) => void;
+  lng?: string;
   chosen?: string;
 }) {
   const { t } = useTranslation();
@@ -27,12 +29,23 @@ export function FollowOnCard({
       <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         <Sparkles className="h-3 w-3" strokeWidth={2.5} />
         {t("chat.followOn.title")}
+        {!chosen && (
+          <button
+            type="button"
+            onClick={() => onDismiss(message.id)}
+            aria-label={t("chat.followOn.dismiss")}
+            title={t("chat.followOn.dismiss")}
+            className="ml-auto cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </p>
       <p className="mt-1.5 text-sm text-foreground">{
         (() => {
           const i18n = (message.structured as
             { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
-          return i18n ? t(i18n.key, { ...i18n.params, defaultValue: message.content })
+          return i18n ? t(i18n.key, { ...i18n.params, lng, defaultValue: message.content })
                       : message.content;
         })()
       }</p>
