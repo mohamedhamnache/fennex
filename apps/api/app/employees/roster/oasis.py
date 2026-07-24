@@ -42,6 +42,23 @@ EMPLOYEE = Employee(
         "research.persona", "research.trends", "research.market_report",
         "research.forecasting",
     ],
+    supported_tasks=[
+        "market report",
+        "market research",
+        "audience",
+        "ideal customers",
+        "icp",
+        "ideal client profile",
+        "personas",
+        "google search console",
+        "gsc",
+        "trends",
+        "who are my customers",
+        "market analysis",
+        "demand",
+        "opportunity forecast",
+    ],
+    priority=60,
     actions=[
         Action(
             id="market_report",

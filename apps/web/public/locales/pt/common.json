@@ -26,7 +26,8 @@
     "moreTools": "Mais ferramentas",
     "calendar": "Calendário",
     "home": "Início",
-    "integrations": "Integrações"
+    "integrations": "Integrações",
+    "chat": "Chat"
   },
   "common": {
     "save": "Salvar",
@@ -2292,5 +2293,37 @@
     },
     "filterLabel": "Filtrar por departamento",
     "allDepartments": "Todos"
+  },
+  "chat": {
+    "title": "Assistente Fennex",
+    "subtitle": "Peca o que precisar. O especialista certo assume.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "A procurar o especialista certo...",
+    "working": "{{name}} esta a trabalhar",
+    "new": "Novo chat",
+    "send": "Enviar",
+    "stop": "Parar",
+    "inputLabel": "Mensagem",
+    "placeholder": "Peca o que precisar...",
+    "hint": "Enter para enviar, Shift+Enter para nova linha",
+    "confidenceHint": "Confianca do encaminhador",
+    "emptyTitle": "Do que precisa?",
+    "emptyBody": "Escreva naturalmente. O Fennex escolhe o especialista certo, chama outros quando o trabalho exige, e mantem tudo numa conversa.",
+    "examples": [
+      "Escreve um artigo SEO sobre limonada caseira",
+      "Analisa os meus concorrentes",
+      "Gera imagens para Pinterest",
+      "Quem sao os meus clientes ideais?"
+    ],
+    "team": {
+      "progress": "Passo {{step}} de {{of}}"
+    },
+    "approval": {
+      "title": "Precisa da sua aprovacao",
+      "approve": "Aprovar",
+      "reject": "Rejeitar",
+      "approved": "Aprovado.",
+      "rejected": "Rejeitado."
+    }
   }
 }

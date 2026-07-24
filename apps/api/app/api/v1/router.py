@@ -41,6 +41,7 @@ from app.api.v1.routers import (
     billing,
     campaigns,
     employees,
+    chat,
     monitoring,
     seo_hub,
     shopify,
@@ -97,3 +98,4 @@ api_router.include_router(shopify.router, prefix="/shopify", tags=["shopify"])
 api_router.include_router(woocommerce.router, prefix="/woocommerce", tags=["woocommerce"])
 api_router.include_router(store.router, prefix="/store", tags=["store"])
 api_router.include_router(employees.router, prefix="/employees", tags=["employees"])
+api_router.include_router(chat.router, prefix="/chat", tags=["chat"])

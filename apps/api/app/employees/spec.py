@@ -26,6 +26,7 @@ overrides a hook only when it needs behaviour the default cannot express.
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional
@@ -78,6 +79,33 @@ ALL_PERMISSIONS = [
     P_WRITE_CONTENT, P_WRITE_IMAGES, P_WRITE_SOCIAL, P_PUBLISH_EXTERNAL,
     P_SEND_EMAIL, P_SPEND_CREDITS,
 ]
+
+
+_WORD_RE = re.compile(r"[a-z0-9]{3,}")
+_ROUTING_STOPWORDS = {
+    "the", "and", "for", "with", "our", "your", "you", "can", "please", "want",
+    "need", "make", "some", "about", "this", "that", "help", "would", "could",
+}
+
+
+def _phrase_match(message: str, phrases: list[str]) -> float:
+    """Best overlap between the user's wording and any supported task phrase.
+
+    Scored against the phrase's own length so a two-word phrase that fully
+    matches beats a six-word phrase that half matches.
+    """
+    if not message or not phrases:
+        return 0.0
+    words = {w for w in _WORD_RE.findall(message.lower()) if w not in _ROUTING_STOPWORDS}
+    if not words:
+        return 0.0
+    best = 0.0
+    for phrase in phrases:
+        terms = {w for w in _WORD_RE.findall(phrase.lower()) if w not in _ROUTING_STOPWORDS}
+        if not terms:
+            continue
+        best = max(best, len(words & terms) / len(terms))
+    return min(best, 1.0)
 
 
 # --- results ------------------------------------------------------------------
@@ -191,6 +219,13 @@ class Employee:
     # reach
     capabilities: list[str] = field(default_factory=list)
     actions: list[Action] = field(default_factory=list)
+    # Natural-language task phrases this employee answers to. The Router matches
+    # the user's own words against these before falling back to capabilities,
+    # which is what lets "analyze my competitors" reach Sable without the
+    # Router knowing Sable exists.
+    supported_tasks: list[str] = field(default_factory=list)
+    # Tie-breaker when two employees are equally confident (higher wins).
+    priority: int = 50
     allowed_tools: list[str] = field(default_factory=list)
     connected_apps: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
@@ -246,6 +281,54 @@ class Employee:
     def unbacked_capabilities(self) -> list[str]:
         backed = {c for a in self.actions for c in a.capabilities}
         return [c for c in self.capabilities if c not in backed]
+
+    # -- routing ---------------------------------------------------------------
+
+    def confidence_score(self, message: str, capabilities: Optional[list[str]] = None,
+                         *, is_current_owner: bool = False) -> float:
+        """How confident is this employee that the request is theirs? (0..1)
+
+        The Router ranks on this and never on names, so an employee registered
+        tomorrow competes for work on equal terms. Signals, in weight order:
+
+          capability match   the Router's inferred capabilities that this
+                             employee can actually act on
+          task-phrase match  the user's own wording against `supported_tasks`
+          specialisation     a narrow specialist beats a generalist on its turf
+          continuity         the employee already owning the thread gets a nudge,
+                             so a follow-up does not bounce between people
+          standing           active beats beta; priority breaks ties
+        """
+        wanted = [c for c in (capabilities or []) if c]
+        score = 0.0
+
+        if wanted:
+            backed = [c for c in wanted if self.actions_for(c)]
+            declared = [c for c in wanted if self.covers(c) and c not in backed]
+            # Acting on a capability is worth far more than merely declaring it.
+            score += 0.55 * (len(backed) / len(wanted))
+            score += 0.15 * (len(declared) / len(wanted))
+
+        phrase = _phrase_match(message, self.supported_tasks)
+        score += 0.25 * phrase
+
+        if score == 0.0:
+            return 0.0
+
+        # A specialist covering 8 capabilities should outrank a 40-capability
+        # generalist that happens to include the same one.
+        if self.capabilities:
+            score += 0.05 * (1.0 / (1.0 + len(self.capabilities) / 12.0))
+
+        if is_current_owner:
+            score += 0.08
+        if self.status == STATUS_BETA:
+            score -= 0.10
+        elif self.status not in (STATUS_ACTIVE, STATUS_BETA):
+            return 0.0
+
+        score += 0.0004 * max(min(self.priority, 100), 0)
+        return max(0.0, min(score, 1.0))
 
     def prompt_preamble(self) -> str:
         """Identity block prepended to every call this employee makes."""
@@ -355,6 +438,8 @@ class Employee:
             "expertise": list(self.expertise),
             "goals": list(self.goals),
             "capabilities": list(self.capabilities),
+            "supportedTasks": list(self.supported_tasks),
+            "priority": self.priority,
             "allowedTools": list(self.allowed_tools),
             "connectedApps": list(self.connected_apps),
             "permissions": list(self.permissions),

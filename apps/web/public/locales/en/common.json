@@ -26,7 +26,8 @@
     "moreTools": "More tools",
     "calendar": "Calendar",
     "home": "Home",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "chat": "Chat"
   },
   "calendar": {
     "title": "Content calendar",
@@ -2365,5 +2366,37 @@
     },
     "filterLabel": "Filter by department",
     "allDepartments": "All"
+  },
+  "chat": {
+    "title": "Fennex Assistant",
+    "subtitle": "Ask for anything. The right specialist takes over.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "Finding the right specialist...",
+    "working": "{{name}} is working",
+    "new": "New chat",
+    "send": "Send",
+    "stop": "Stop",
+    "inputLabel": "Message",
+    "placeholder": "Ask for anything...",
+    "hint": "Enter to send, Shift+Enter for a new line",
+    "confidenceHint": "How confident the router was",
+    "emptyTitle": "What do you need?",
+    "emptyBody": "Type naturally. Fennex picks the right specialist, brings in others when the work needs them, and keeps everything in one conversation.",
+    "examples": [
+      "Write an SEO article about homemade lemonade",
+      "Analyze my competitors",
+      "Generate Pinterest images",
+      "Who are my ideal customers?"
+    ],
+    "team": {
+      "progress": "Step {{step}} of {{of}}"
+    },
+    "approval": {
+      "title": "Needs your approval",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approved": "Approved.",
+      "rejected": "Rejected."
+    }
   }
 }

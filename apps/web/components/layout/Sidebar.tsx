@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
-  LayoutDashboard, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
+  LayoutDashboard,
+  MessagesSquare, SearchCode, FileText, Zap, Share2, ImagePlus, Send,
   Link2, BarChart2, Settings, LogOut, ChevronDown, Plus, Check, Mic2,
   PanelLeftClose, PanelLeftOpen, Sparkles, CalendarDays, Megaphone, Home,
   TrendingUp, Plug, type LucideIcon,
@@ -27,6 +28,7 @@ type NavItem = { key: string; href: string; icon: LucideIcon };
 // All destinations, defined once. `key` is the i18n suffix (nav.<key>); it
 // matches the href slug except for `content`, whose translation key is `planner`.
 const NAV_ITEMS: Record<string, NavItem> = {
+  chat:       { key: "chat",       href: "chat",       icon: MessagesSquare },
   overview:   { key: "overview",   href: "overview",   icon: LayoutDashboard },
   calendar:   { key: "calendar",   href: "calendar",   icon: CalendarDays },
   agents:     { key: "agents",     href: "agents",     icon: Sparkles },
@@ -46,10 +48,10 @@ const NAV_ITEMS: Record<string, NavItem> = {
 
 // Persona -> primary tool order (the highlighted "For you" group).
 const PERSONA_PRIMARY: Record<string, string[]> = {
-  creator:    ["overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics", "seo", "integrations"],
-  ecommerce:  ["overview", "calendar", "images", "integrations", "analytics", "seo", "agents", "campaigns", "keywords"],
-  freelancer: ["overview", "calendar", "agents", "campaigns", "analytics", "seo", "social", "integrations", "backlinks"],
-  company:    ["overview", "articles", "seo", "campaigns", "social", "analytics", "agents", "keywords", "integrations"],
+  creator:    ["chat", "overview", "calendar", "articles", "social", "images", "agents", "campaigns", "analytics", "seo", "integrations"],
+  ecommerce:  ["chat", "overview", "calendar", "images", "integrations", "analytics", "seo", "agents", "campaigns", "keywords"],
+  freelancer: ["chat", "overview", "calendar", "agents", "campaigns", "analytics", "seo", "social", "integrations", "backlinks"],
+  company:    ["chat", "overview", "articles", "seo", "campaigns", "social", "analytics", "agents", "keywords", "integrations"],
 };
 
 function personaNav(persona: string): { primary: NavItem[]; more: NavItem[] } {

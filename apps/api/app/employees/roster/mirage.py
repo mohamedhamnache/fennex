@@ -42,6 +42,22 @@ EMPLOYEE = Employee(
         "image.instagram", "image.mockup", "image.background_replace", "image.ai_edit",
         "image.variations", "image.upscale",
     ],
+    supported_tasks=[
+        "ai images",
+        "generate images",
+        "product photos",
+        "product photography",
+        "mockups",
+        "lifestyle photography",
+        "edit this image",
+        "background replacement",
+        "upscale",
+        "image variations",
+        "create visuals",
+        "make a picture",
+        "photo shoot",
+    ],
+    priority=55,
     actions=[
         Action(
             id="product_shot",

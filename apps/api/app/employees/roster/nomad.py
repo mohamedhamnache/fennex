@@ -42,6 +42,22 @@ EMPLOYEE = Employee(
         "outreach.partnerships", "outreach.influencer", "outreach.testimonial_collection",
         "outreach.testimonial_to_content", "outreach.lead_nurturing",
     ],
+    supported_tasks=[
+        "outreach",
+        "linkedin outreach",
+        "cold email",
+        "follow up sequence",
+        "partnerships",
+        "influencer outreach",
+        "testimonials",
+        "lead nurturing",
+        "contact restaurants",
+        "i want to contact",
+        "find clients",
+        "reach out to",
+        "prospecting",
+    ],
+    priority=50,
     actions=[
         Action(
             id="outreach_plan",

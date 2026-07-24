@@ -41,6 +41,21 @@ EMPLOYEE = Employee(
         "intel.swot", "intel.pricing_comparison", "intel.serp_monitoring",
         "intel.positioning", "intel.opportunity_report",
     ],
+    supported_tasks=[
+        "competitors",
+        "competitor analysis",
+        "analyze my competitors",
+        "gap analysis",
+        "benchmarking",
+        "keyword overlap",
+        "swot",
+        "pricing comparison",
+        "serp monitoring",
+        "what are rivals doing",
+        "competitive research",
+        "content gap",
+    ],
+    priority=60,
     actions=[
         Action(
             id="competitor_scan",

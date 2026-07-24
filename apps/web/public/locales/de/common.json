@@ -26,7 +26,8 @@
     "moreTools": "Weitere Tools",
     "calendar": "Kalender",
     "home": "Startseite",
-    "integrations": "Integrationen"
+    "integrations": "Integrationen",
+    "chat": "Chat"
   },
   "common": {
     "save": "Speichern",
@@ -2292,5 +2293,37 @@
     },
     "filterLabel": "Nach Abteilung filtern",
     "allDepartments": "Alle"
+  },
+  "chat": {
+    "title": "Fennex Assistent",
+    "subtitle": "Fragen Sie nach allem. Der passende Spezialist uebernimmt.",
+    "ownedBy": "{{name}} · {{role}}",
+    "routing": "Passender Spezialist wird gesucht...",
+    "working": "{{name}} arbeitet",
+    "new": "Neuer Chat",
+    "send": "Senden",
+    "stop": "Stopp",
+    "inputLabel": "Nachricht",
+    "placeholder": "Fragen Sie nach allem...",
+    "hint": "Enter zum Senden, Umschalt+Enter fuer neue Zeile",
+    "confidenceHint": "Sicherheit des Routers",
+    "emptyTitle": "Was brauchen Sie?",
+    "emptyBody": "Schreiben Sie ganz normal. Fennex waehlt den passenden Spezialisten, holt bei Bedarf weitere dazu und haelt alles in einer Unterhaltung.",
+    "examples": [
+      "Schreibe einen SEO-Artikel ueber selbstgemachte Limonade",
+      "Analysiere meine Wettbewerber",
+      "Erstelle Pinterest-Bilder",
+      "Wer sind meine idealen Kunden?"
+    ],
+    "team": {
+      "progress": "Schritt {{step}} von {{of}}"
+    },
+    "approval": {
+      "title": "Ihre Freigabe noetig",
+      "approve": "Freigeben",
+      "reject": "Ablehnen",
+      "approved": "Freigegeben.",
+      "rejected": "Abgelehnt."
+    }
   }
 }
