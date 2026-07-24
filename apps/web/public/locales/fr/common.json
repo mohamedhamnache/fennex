@@ -2417,6 +2417,12 @@
       "followOn": "C'est fait. {{names}} peut prendre la suite.",
       "clarify": "Je veux confier cela au bon specialiste. Pouvez-vous preciser ce dont vous avez besoin ?",
       "actionDone": "{{action}} : termine."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Choisi selon la tache : rapide ou approfondi.",
+      "fast": "Rapide",
+      "deep": "Approfondi"
     }
   },
   "connectors": {

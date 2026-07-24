@@ -460,3 +460,54 @@ def test_the_scout_can_discover_competitors_not_only_crawl_them():
     scout = registry.get("sable")
     assert "known_competitors" in scout.allowed_tools
     assert "serp_lookup" in scout.allowed_tools
+
+
+# --- spend ceilings -----------------------------------------------------------
+
+
+def test_every_run_has_a_turn_token_and_time_ceiling():
+    """An agentic loop is open-ended by construction; nothing may run unbounded."""
+    from app.employees.runtime import budget
+
+    for action in registry.get("dune").actions:
+        spend = budget.for_action(action)
+        assert spend.turns > 0
+        assert spend.total_tokens > 0
+        assert spend.output_tokens > 0
+        assert spend.seconds > 0
+
+
+def test_a_light_action_gets_a_smaller_budget_than_a_heavy_one():
+    from app.employees.runtime import budget
+
+    light = budget.for_action(registry.get("zerda").action("pick_angle"))
+    heavy = budget.for_action(registry.get("dune").action("write_article"))
+    assert light.total_tokens < heavy.total_tokens
+    assert light.seconds <= heavy.seconds
+
+
+def test_a_chat_reply_is_capped_tighter_than_a_deep_action():
+    from app.employees.runtime import budget
+
+    action = registry.get("dune").action("write_article")
+    assert (budget.for_action(action, conversational=True).output_tokens
+            < budget.for_action(action).output_tokens)
+
+
+def test_the_tool_budget_is_finite():
+    assert 0 < toolbridge.MAX_TOOL_CALLS <= 20
+
+
+def test_only_a_catalogued_model_on_a_configured_provider_can_be_chosen():
+    """A picker must not be able to select something the account cannot run."""
+    keys = {"openai": "k"}
+    assert model_provider.is_allowed("openai", "gpt-4o", keys)
+    assert not model_provider.is_allowed("openai", "not-a-model", keys)
+    assert not model_provider.is_allowed("anthropic", "claude-opus-4-8", keys)
+
+
+def test_an_unusable_model_choice_falls_back_to_the_tier():
+    _model, choice = model_provider.for_action(
+        "balanced", "light", {"openai": "k"},
+        provider_override="anthropic", model_override="claude-opus-4-8")
+    assert choice.provider == "openai"

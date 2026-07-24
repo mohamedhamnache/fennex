@@ -126,6 +126,13 @@ def _adopt_legacy_data_tools() -> None:
                           P_READ_CONTENT),
     }
     register_tool(Tool(
+        name="discover_competitors", label="Find this project's competitors",
+        description="Find who competes with THIS project, worked out from the topics "
+                    "it actually ranks for. Use this before searching manually -- it "
+                    "excludes our own site and ranks rivals by how many of our topics "
+                    "they appear on.",
+        kind=KIND_DATA, permission=P_READ_COMPETITORS, handler=_discover_competitors))
+    register_tool(Tool(
         name="known_competitors", label="Known competitors",
         description="The competitors already tracked for this project. Start here "
                     "before searching for new ones.",
@@ -192,6 +199,84 @@ async def _known_competitors(ctx, db, inputs):
                         "topic this project targets and treat the ranking domains as "
                         "the competitors."}
     return {"competitors": found}
+
+
+async def _discover_competitors(ctx, db, inputs):
+    """Who competes with THIS project, derived from its own demand.
+
+    Letting the model pick a keyword to search produces whoever ranks for
+    something it guessed, which is how an unrelated site ends up being
+    "analysed". This instead takes the topics the project actually earns
+    impressions on, sees who ranks against it there, and counts the domains
+    that recur -- a site appearing across several of our topics is a
+    competitor; one appearing on a single query is noise.
+    """
+    from app.models.project import Project
+    from app.services.analytics_service import get_market_insights
+    from app.services.serp_service import (
+        _norm_domain, _project_domain, fetch_serp, language_for_project,
+        location_for_project,
+    )
+
+    project = await db.get(Project, ctx.project_id)
+    if project is None:
+        return {"competitors": [], "error": "Project not found."}
+
+    # The project's real topics, best first.
+    topics: list[str] = []
+    try:
+        insights = await get_market_insights(ctx.project_id, ctx.org_id, db)
+        topics = [c.topic for c in (insights.clusters or [])[:3] if c.topic]
+        if not topics:
+            topics = [i.query for i in (insights.ideas or [])[:3] if i.query]
+    except Exception:
+        topics = []
+    # Fall back to what the caller asked about, then the project's niche.
+    if not topics:
+        seed = str((inputs or {}).get("query") or "").strip()
+        niche = getattr(project, "industry", None) or getattr(project, "niche", None)
+        topics = [t for t in (seed, niche) if t][:2]
+    if not topics:
+        return {"competitors": [],
+                "note": "This project has no Search Console demand and no niche set, "
+                        "so there is nothing to measure competitors against. Connect "
+                        "Search Console or name the competitor to analyse."}
+
+    ours = _project_domain(project)
+    tally: dict[str, dict] = {}
+    checked: list[str] = []
+
+    # Capped deliberately: each lookup is a paid call.
+    for topic in topics[:3]:
+        try:
+            data = await fetch_serp(project, topic, db)
+        except Exception:
+            continue
+        if not data:
+            continue
+        checked.append(topic)
+        for row in (data.get("top10") or [])[:10]:
+            domain = _norm_domain(row.get("domain") or "")
+            # Our own site is not a competitor.
+            if not domain or domain == ours or domain.endswith("." + ours):
+                continue
+            entry = tally.setdefault(domain, {"domain": domain, "topics": [],
+                                              "best_rank": 99, "url": row.get("url") or ""})
+            if topic not in entry["topics"]:
+                entry["topics"].append(topic)
+            entry["best_rank"] = min(entry["best_rank"], int(row.get("rank") or 99))
+
+    if not checked:
+        return {"competitors": [],
+                "error": "The search provider returned nothing for this project's "
+                         "topics. Check the DataForSEO plan and balance."}
+
+    # Recurring across topics beats ranking once, then rank breaks ties.
+    ranked = sorted(tally.values(), key=lambda e: (-len(e["topics"]), e["best_rank"]))
+    return {"ourDomain": ours, "topicsChecked": checked,
+            "competitors": ranked[:8],
+            "note": "Ranked by how many of this project's own topics each domain "
+                    "competes on. Prefer those appearing on more than one."}
 
 
 async def _serp_lookup(ctx, db, inputs):

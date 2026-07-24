@@ -68,6 +68,14 @@ export interface ChatMessage {
   createdAt: string | null;
 }
 
+export interface ChatModel {
+  id: string;
+  label: string;
+  provider: string;
+  grade: "fast" | "deep";
+  hint: string;
+}
+
 export interface Conversation {
   id: string;
   title: string | null;
@@ -76,6 +84,8 @@ export interface Conversation {
   participants: string[];
   projectId: string;
   createdAt: string | null;
+  modelProvider?: string | null;
+  modelId?: string | null;
 }
 
 /** Every event the turn can emit, in the order the UI reacts to them. */
@@ -102,8 +112,18 @@ export type ChatEvent =
 
 /** Send a message and consume the turn. Returns an abort handle so the user can
  *  interrupt a long run. */
+export function listModels(): Promise<{ models: ChatModel[] }> {
+  return request("/chat/models");
+}
+
 export function sendMessage(
-  body: { message: string; project_id: string; conversation_id?: string | null },
+  body: {
+    message: string;
+    project_id: string;
+    conversation_id?: string | null;
+    model_provider?: string | null;
+    model_id?: string | null;
+  },
   onEvent: (event: ChatEvent) => void,
 ): { done: Promise<void>; cancel: () => void } {
   return streamTurn("/chat/stream", body, onEvent);

@@ -30,6 +30,10 @@ class ChatRequest(BaseModel):
     message: str
     project_id: uuid.UUID
     conversation_id: uuid.UUID | None = None
+    # A model the user picked. Ignored unless it is a catalogued model on a
+    # provider this organisation has configured.
+    model_provider: str | None = None
+    model_id: str | None = None
 
 
 class ApprovalDecision(BaseModel):
@@ -42,6 +46,16 @@ def _conversation(convo: Conversation) -> dict:
             "participants": convo.participants or [],
             "projectId": str(convo.project_id),
             "createdAt": convo.created_at.isoformat() if convo.created_at else None}
+
+
+@router.get("/models")
+async def list_models(current_user: CurrentUser, db: DB) -> dict:
+    """Models this organisation can run, for the chat picker."""
+    from app.employees.runtime import models as model_provider
+    from app.services.llm_service import get_org_llm_keys
+
+    keys = await get_org_llm_keys(current_user.org_id, db)
+    return {"models": model_provider.available(keys)}
 
 
 @router.get("/conversations")
@@ -64,7 +78,9 @@ async def get_conversation(conversation_id: uuid.UUID, current_user: CurrentUser
     if convo is None or convo.org_id != current_user.org_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     rows = await employee_chat.history(conversation_id, db, limit=200)
-    return {"conversation": _conversation(convo),
+    provider, model_id = employee_chat.stored_model(convo)
+    return {"conversation": {**_conversation(convo),
+                             "modelProvider": provider, "modelId": model_id},
             "messages": [employee_chat.message_dict(r) for r in rows]}
 
 
@@ -91,6 +107,17 @@ async def chat_stream(body: ChatRequest, current_user: CurrentUser, db: DB):
 
     convo = await employee_chat.get_or_create(
         body.conversation_id, body.project_id, current_user.org_id, current_user.id, db)
+
+    if body.model_provider and body.model_id:
+        from app.employees.runtime import models as model_provider
+        from app.services.llm_service import get_org_llm_keys
+
+        keys = await get_org_llm_keys(current_user.org_id, db)
+        if not model_provider.is_allowed(body.model_provider, body.model_id, keys):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                                "That model is not available for this organisation")
+        await employee_chat.set_model(convo, body.model_provider, body.model_id, db)
+
     conversation_id, org_id, user_id = convo.id, current_user.org_id, current_user.id
 
     async def event_stream():

@@ -11,10 +11,12 @@ hook only when the default cannot express what it needs.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import ExitStack
 from typing import Any, AsyncIterator, Optional
 
+from app.employees.runtime import budget as budget_layer
 from app.employees.runtime import mcp as mcp_layer
 from app.employees.runtime import models as model_provider
 from app.employees.runtime import toolbridge
@@ -132,7 +134,9 @@ class BaseEmployee:
         metrics = Execution(employee_id=self.employee.id, action_id=action.id)
         try:
             model, choice = model_provider.for_action(
-                ctx.tier, action.weight, ctx.keys)
+                ctx.tier, action.weight, ctx.keys,
+                provider_override=getattr(ctx, "model_provider_override", None),
+                model_override=getattr(ctx, "model_override", None))
         except model_provider.ModelUnavailable as exc:
             return Outcome(ok=False, error=str(exc), employee_id=self.employee.id,
                            action_id=action.id)
@@ -155,6 +159,7 @@ class BaseEmployee:
                        visual, last_error) -> Outcome:
         from strands import Agent
 
+        spend = budget_layer.for_action(action)
         for attempt in range(MAX_RETRIES + 1):
             metrics.retries = attempt
             try:
@@ -166,7 +171,11 @@ class BaseEmployee:
                     agent_id=self.employee.id,
                     description=self.employee.role,
                 )
-                result = await agent.invoke_async(prompt)
+                # Two ceilings: Strands caps turns and tokens, the deadline
+                # catches a hung provider or a tool that never returns, which
+                # a token limit cannot.
+                async with asyncio.timeout(spend.seconds):
+                    result = await agent.invoke_async(prompt, limits=spend.to_limits())
                 metrics.absorb_usage(result)
                 text = _text_of(result)
                 if not text.strip():
@@ -179,6 +188,14 @@ class BaseEmployee:
                 if outcome.ok:
                     return outcome
                 last_error = outcome.error
+            except (asyncio.TimeoutError, TimeoutError):
+                # A deadline is not worth retrying into: the next attempt would
+                # spend the same time again for the same reason.
+                logger.warning("agentic run timed out: %s.%s after %ss",
+                               self.employee.id, action.id, spend.seconds)
+                last_error = (f"{self.employee.name} ran out of time after "
+                              f"{spend.seconds}s. Try narrowing the request.")
+                break
             except Exception as exc:   # noqa: BLE001
                 logger.exception("agentic execution failed: %s.%s",
                                  self.employee.id, action.id)
@@ -198,7 +215,10 @@ class BaseEmployee:
 
         metrics = Execution(employee_id=self.employee.id, action_id=action.id)
         try:
-            model, choice = model_provider.for_action(ctx.tier, action.weight, ctx.keys)
+            model, choice = model_provider.for_action(
+                ctx.tier, action.weight, ctx.keys,
+                provider_override=getattr(ctx, "model_provider_override", None),
+                model_override=getattr(ctx, "model_override", None))
         except model_provider.ModelUnavailable as exc:
             yield {"type": "error", "message": str(exc)}
             return
@@ -210,6 +230,7 @@ class BaseEmployee:
         tools = toolbridge.build_tools(self.employee, ctx, on_call=metrics.record_tool)
         tools += self._mcp_tools(ctx, stack)
 
+        spend = budget_layer.for_action(action, conversational=conversational)
         agent = Agent(
             model=model, tools=tools,
             system_prompt=self.instructions(ctx, action, task, visual=visual,
@@ -224,14 +245,25 @@ class BaseEmployee:
         try:
             chat_prompt = (self._chat_prompt(task, ctx) if conversational
                            else self.build_prompt(action, task, ctx))
-            async for event in agent.stream_async(chat_prompt):
-                delta = _delta_of(event)
-                if delta:
-                    yield {"type": "delta", "employeeId": self.employee.id, "text": delta}
-                used = _tool_of(event)
-                if used and used != last_tool:
-                    last_tool = used
-                    yield {"type": "tool", "employeeId": self.employee.id, "tool": used}
+            async with asyncio.timeout(spend.seconds):
+                async for event in agent.stream_async(chat_prompt,
+                                                      limits=spend.to_limits()):
+                    delta = _delta_of(event)
+                    if delta:
+                        yield {"type": "delta", "employeeId": self.employee.id,
+                               "text": delta}
+                    used = _tool_of(event)
+                    if used and used != last_tool:
+                        last_tool = used
+                        yield {"type": "tool", "employeeId": self.employee.id,
+                               "tool": used}
+        except (asyncio.TimeoutError, TimeoutError):
+            logger.warning("agentic stream timed out: %s after %ss",
+                           self.employee.id, spend.seconds)
+            yield {"type": "error", "employeeId": self.employee.id,
+                   "message": f"{self.employee.name} ran out of time after "
+                              f"{spend.seconds}s."}
+            return
         except Exception as exc:   # noqa: BLE001
             logger.exception("agentic stream failed: %s", self.employee.id)
             yield {"type": "error", "employeeId": self.employee.id, "message": str(exc)}

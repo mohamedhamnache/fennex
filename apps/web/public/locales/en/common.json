@@ -2490,6 +2490,12 @@
       "followOn": "That's done. {{names}} could take it from here.",
       "clarify": "I want to route this to the right specialist. Could you say a little more about what you need?",
       "actionDone": "{{action}} is done."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Picks by task: fast for quick work, deep for heavy.",
+      "fast": "Fast",
+      "deep": "Deep"
     }
   },
   "connectors": {

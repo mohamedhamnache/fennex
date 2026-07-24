@@ -139,11 +139,14 @@ async def _build_context(convo: Conversation, goal: str, db) -> WorkContext:
 
     dna = await brand_dna.build(convo.project_id, convo.org_id, db)
     keys = await get_org_llm_keys(convo.org_id, db)
+    picked_provider, picked_model = stored_model(convo)
     return WorkContext(
         goal=goal, project_id=convo.project_id, org_id=convo.org_id, db=db, dna=dna,
         tier=await org_tier(convo.org_id, db), keys=keys,
         granted_permissions=list(ALL_PERMISSIONS),
         connectors=await resolved_servers(convo.org_id, db),
+        model_provider_override=picked_provider,
+        model_override=picked_model,
         runtime={"conversation_id": str(convo.id)},
     )
 
@@ -448,6 +451,24 @@ def _why(employee: Optional[Employee], action, capability: str, index: int) -> s
 
 _INHERITED_KEYS = ("topic", "keyword", "angle", "rationale", "title", "article_id",
                    "image_id", "product_id", "primary_keyword")
+
+
+def stored_model(convo: Conversation) -> tuple[Optional[str], Optional[str]]:
+    """The model the user picked for this thread, if any."""
+    meta = (convo.meta or {}).get("model") or {}
+    return meta.get("provider"), meta.get("id")
+
+
+async def set_model(convo: Conversation, provider: Optional[str], model_id: Optional[str],
+                    db) -> None:
+    """Remember the choice on the thread, so every later step uses it too."""
+    meta = dict(convo.meta or {})
+    if provider and model_id:
+        meta["model"] = {"provider": provider, "id": model_id}
+    else:
+        meta.pop("model", None)
+    convo.meta = meta
+    await db.commit()
 
 
 def _stored_brief(convo: Conversation) -> dict:

@@ -72,11 +72,47 @@ def build(choice: ModelChoice, api_key: str):
     raise ModelUnavailable(f"Unsupported provider: {choice.provider}")
 
 
+# What a user may pick in the chat. Grades map to the same tiers the rest of
+# the system uses, so a choice here cannot escape the cost model.
+CATALOGUE = {
+    "anthropic": [
+        {"id": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5",
+         "grade": "fast", "hint": "Quickest and cheapest."},
+        {"id": "claude-opus-4-8", "label": "Claude Opus 4.8",
+         "grade": "deep", "hint": "Strongest reasoning, costs more."},
+    ],
+    "openai": [
+        {"id": "gpt-4o-mini", "label": "GPT-4o mini",
+         "grade": "fast", "hint": "Quickest and cheapest."},
+        {"id": "gpt-4o", "label": "GPT-4o",
+         "grade": "deep", "hint": "Stronger reasoning, costs more."},
+    ],
+}
+
+
+def available(keys: dict) -> list[dict]:
+    """Models this organisation can actually run, given its keys."""
+    out = []
+    for provider in SUPPORTED:
+        if provider not in keys:
+            continue
+        for model in CATALOGUE.get(provider, []):
+            out.append({**model, "provider": provider})
+    return out
+
+
+def is_allowed(provider: str, model_id: str, keys: dict) -> bool:
+    """Only a catalogued model on a configured provider may be chosen."""
+    if provider not in keys:
+        return False
+    return any(m["id"] == model_id for m in CATALOGUE.get(provider, []))
+
+
 def for_action(tier: str, weight: str, keys: dict, *,
                provider_override: Optional[str] = None,
                model_override: Optional[str] = None):
     """Resolve and construct in one step. Returns (model, ModelChoice)."""
-    if provider_override and provider_override in keys:
+    if provider_override and is_allowed(provider_override, model_override or "", keys):
         choice = ModelChoice(
             provider=provider_override,
             model_id=model_override or resolve(tier, weight, [provider_override]).model_id,

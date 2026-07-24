@@ -2417,6 +2417,12 @@
       "followOn": "Erledigt. {{names}} kann uebernehmen.",
       "clarify": "Ich moechte das an den richtigen Spezialisten geben. Koennen Sie praezisieren, was Sie brauchen?",
       "actionDone": "{{action}}: fertig."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Nach Aufgabe gewaehlt: schnell oder tiefgehend.",
+      "fast": "Schnell",
+      "deep": "Tief"
     }
   },
   "connectors": {

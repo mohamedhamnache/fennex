@@ -4,14 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowDown, ArrowRight, Check, Copy, CornerDownLeft, History, Loader2, Send,
-  Sparkles, Square, Trash2, X,
+  ArrowDown, ArrowRight, Check, ChevronDown, Copy, CornerDownLeft, Cpu,
+  History, Loader2, Send, Sparkles, Square, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   approveAndRun, decideApproval, deleteConversation, getConversation,
-  listConversations, runAction, runWorkflow, runWorkflowStep, sendMessage,
-  type ChatEvent, type ChatMessage, type Conversation, type FollowOnAction,
+  listConversations, listModels, runAction, runWorkflow, runWorkflowStep,
+  sendMessage,
+  type ChatEvent, type ChatMessage, type ChatModel, type Conversation,
+  type FollowOnAction,
   type OfferedAction, type TeamStep, type WorkflowStep,
 } from "@/lib/chat";
 import { listProjects } from "@/lib/api";
@@ -46,6 +48,8 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [activeStep, setActiveStep] = useState<{ messageId: string; index: number } | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  // The model the user picked for this thread; null follows the org tier.
+  const [model, setModel] = useState<ChatModel | null>(null);
   // Follow-on suggestions the user waved away; kept out of the way.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const cancelRef = useRef<(() => void) | null>(null);
@@ -66,6 +70,11 @@ export function MainChat({ projectId }: { projectId: string }) {
   const lng = projects.find((p) => p.id === projectId)?.locale;
 
   // Past conversations. Refetched whenever a thread starts or is deleted.
+  const { data: modelData } = useQuery({
+    queryKey: ["chat-models"], queryFn: listModels, staleTime: 300_000,
+  });
+  const models = modelData?.models ?? [];
+
   const conversations = useQuery({
     queryKey: ["conversations", projectId],
     queryFn: () => listConversations(projectId),
@@ -228,13 +237,16 @@ export function MainChat({ projectId }: { projectId: string }) {
       createdAt: new Date().toISOString(),
     }]);
     const { cancel, done } = sendMessage(
-      { message: text, project_id: projectId, conversation_id: conversationId },
+      {
+        message: text, project_id: projectId, conversation_id: conversationId,
+        model_provider: model?.provider ?? null, model_id: model?.id ?? null,
+      },
       handleEvent,
     );
     cancelRef.current = cancel;
     // A brand-new thread needs to appear in the history list.
     if (!conversationId) done.then(() => conversations.refetch());
-  }, [input, busy, projectId, conversationId, handleEvent, conversations]);
+  }, [input, busy, projectId, conversationId, handleEvent, conversations, model]);
 
   /** Validate a proposed action -- and actually run it. */
   const approve = useCallback((approvalId: string) => {
@@ -350,6 +362,9 @@ export function MainChat({ projectId }: { projectId: string }) {
             .filter((e): e is Employee => !!e)}
           onNew={startNew}
           onToggleHistory={() => setShowHistory((v) => !v)}
+          models={models}
+          model={model}
+          onPickModel={setModel}
           historyCount={conversations.data?.conversations.length ?? 0}
           hasThread={messages.length > 0}
         />
@@ -529,6 +544,7 @@ function HistoryPanel({
 
 function ChatHeader({
   owner, active, participants, onNew, onToggleHistory, historyCount, hasThread,
+  models, model, onPickModel,
 }: {
   owner?: Employee;
   active?: Employee;
@@ -537,6 +553,9 @@ function ChatHeader({
   onToggleHistory: () => void;
   historyCount: number;
   hasThread: boolean;
+  models: ChatModel[];
+  model: ChatModel | null;
+  onPickModel: (m: ChatModel | null) => void;
 }) {
   const { t } = useTranslation();
   const current = active ?? owner;
@@ -593,6 +612,10 @@ function ChatHeader({
         </div>
       )}
 
+      {models.length > 0 && (
+        <ModelPicker models={models} model={model} onPick={onPickModel} />
+      )}
+
       {hasThread && (
         <button
           type="button"
@@ -603,6 +626,93 @@ function ChatHeader({
         </button>
       )}
     </header>
+  );
+}
+
+/** Choose the model for this conversation.
+ *
+ *  Only models the organisation has a key for are offered, and the server
+ *  re-checks the choice — a picker must not be able to select something the
+ *  account cannot run, or bill for. */
+function ModelPicker({
+  models, model, onPick,
+}: { models: ChatModel[]; model: ChatModel | null; onPick: (m: ChatModel | null) => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <Cpu className="h-3 w-3" />
+        <span className="hidden sm:inline">{model?.label ?? t("chat.model.auto")}</span>
+        <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div className="popover absolute right-0 top-full z-20 mt-1 w-64 animate-scale-in p-1">
+            <button
+              type="button"
+              onClick={() => { onPick(null); setOpen(false); }}
+              className={cn(
+                "flex w-full cursor-pointer flex-col rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent",
+                !model && "bg-primary/10",
+              )}
+            >
+              <span className={cn("text-xs font-semibold",
+                !model ? "text-primary" : "text-foreground")}>
+                {t("chat.model.auto")}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {t("chat.model.autoHint")}
+              </span>
+            </button>
+
+            {models.map((option) => {
+              const active = model?.id === option.id;
+              return (
+                <button
+                  key={`${option.provider}:${option.id}`}
+                  type="button"
+                  onClick={() => { onPick(option); setOpen(false); }}
+                  className={cn(
+                    "flex w-full cursor-pointer flex-col rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent",
+                    active && "bg-primary/10",
+                  )}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className={cn("text-xs font-semibold",
+                      active ? "text-primary" : "text-foreground")}>
+                      {option.label}
+                    </span>
+                    <span className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase",
+                      option.grade === "deep"
+                        ? "bg-primary/12 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}>
+                      {t(`chat.model.${option.grade}`)}
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{option.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

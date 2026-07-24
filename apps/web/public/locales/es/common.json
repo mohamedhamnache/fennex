@@ -2417,6 +2417,12 @@
       "followOn": "Hecho. {{names}} puede continuar.",
       "clarify": "Quiero asignar esto al especialista adecuado. Puedes precisar que necesitas?",
       "actionDone": "{{action}}: hecho."
+    },
+    "model": {
+      "auto": "Auto",
+      "autoHint": "Elegido segun la tarea: rapido o profundo.",
+      "fast": "Rapido",
+      "deep": "Profundo"
     }
   },
   "connectors": {

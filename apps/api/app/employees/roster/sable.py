@@ -78,8 +78,8 @@ EMPLOYEE = Employee(
     # The scout must be able to FIND a competitor, not only crawl one it is
     # handed: known_competitors lists who we track, serp_lookup discovers
     # who actually ranks when nobody is tracked yet.
-    allowed_tools=["known_competitors", "serp_lookup", "crawl_competitor",
-                   "our_demand", "market_insights"],
+    allowed_tools=["known_competitors", "discover_competitors", "serp_lookup",
+                   "crawl_competitor", "our_demand", "market_insights"],
     connected_apps=[],
     permissions=[P_READ_COMPETITORS, P_READ_ANALYTICS, P_READ_CONTENT],
     memory_scope=SCOPE_PROJECT,
