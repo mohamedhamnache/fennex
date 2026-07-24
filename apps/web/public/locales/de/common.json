@@ -2458,5 +2458,25 @@
       "failing": "Fehlerhaft",
       "environment": "Aus der Umgebung"
     }
+  },
+  "knowledge": {
+    "title": "Was das Team weiss",
+    "subtitle": "Geben Sie Ihrem KI-Team die Dokumente, nach denen es nie zweimal fragen sollte.",
+    "count": "{{docs}} Dokumente · {{words}} Woerter",
+    "digestTitle": "Staendiges Briefing, in jedem Gespraech dabei",
+    "addNote": "Notiz hinzufuegen",
+    "upload": "Datei hochladen",
+    "formats": ".txt .md .csv .json .html — alles andere als Notiz einfuegen",
+    "noteTitle": "Titel",
+    "noteTitlePlaceholder": "Markenrichtlinien",
+    "noteBody": "Inhalt",
+    "noteBodyPlaceholder": "Positionierung, Sortiment, Tonfall, was nie gesagt werden darf...",
+    "save": "Speichern",
+    "saveFailed": "Konnte nicht gespeichert werden.",
+    "loading": "Wird geladen...",
+    "empty": "Noch nichts. Fuegen Sie Richtlinien, Produktblaetter oder Regeln hinzu — das Team liest sie einmal und merkt sie sich.",
+    "meta": "{{words}} Woerter · {{chunks}} Passagen",
+    "noVectors": "gespeichert, nicht durchsuchbar (OpenAI-Schluessel noetig)",
+    "remove": "Entfernen"
   }
 }

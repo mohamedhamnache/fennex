@@ -2531,5 +2531,25 @@
       "failing": "Failing",
       "environment": "From environment"
     }
+  },
+  "knowledge": {
+    "title": "What the team knows",
+    "subtitle": "Give your AI team the documents it should never have to be told twice.",
+    "count": "{{docs}} documents · {{words}} words",
+    "digestTitle": "Standing brief, carried into every conversation",
+    "addNote": "Add a note",
+    "upload": "Upload a file",
+    "formats": ".txt .md .csv .json .html — paste anything else as a note",
+    "noteTitle": "Title",
+    "noteTitlePlaceholder": "Brand guidelines",
+    "noteBody": "Content",
+    "noteBodyPlaceholder": "Positioning, product range, tone of voice, things never to say...",
+    "save": "Save",
+    "saveFailed": "Could not save that.",
+    "loading": "Loading...",
+    "empty": "Nothing yet. Add your brand guidelines, product sheets or house rules — the team reads them once and remembers.",
+    "meta": "{{words}} words · {{chunks}} passages",
+    "noVectors": "stored, not searchable (needs an OpenAI key)",
+    "remove": "Remove"
   }
 }

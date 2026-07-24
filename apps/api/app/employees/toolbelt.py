@@ -128,6 +128,13 @@ def _adopt_legacy_data_tools() -> None:
                           P_READ_CONTENT),
     }
     register_tool(Tool(
+        name="project_knowledge", label="Read the project's documents",
+        description="Search the documents the user gave this project -- brand books, "
+                    "product sheets, guidelines. Consult it whenever a claim about "
+                    "this business, its products or its rules would otherwise be a "
+                    "guess.",
+        kind=KIND_DATA, permission=P_READ_CONTENT, handler=_project_knowledge))
+    register_tool(Tool(
         name="discover_competitors", label="Find this project's competitors",
         description="Find who competes with THIS project, worked out from the topics "
                     "it actually ranks for. Use this before searching manually -- it "
@@ -210,6 +217,32 @@ _NOT_COMPETITORS = {
     "tiktok.com", "linkedin.com", "x.com", "twitter.com", "reddit.com",
     "amazon.com", "amazon.fr", "quora.com", "medium.com",
 }
+
+
+async def _project_knowledge(ctx, db, inputs):
+    """Search what the user gave this project to read.
+
+    A tool rather than an injection: passages reach the model only when an
+    employee decides it needs them, so a turn that never consults the library
+    pays nothing for it.
+    """
+    from app.services import knowledge_service
+
+    question = str((inputs or {}).get("query") or "").strip()
+    if not question:
+        return {"error": "Say what you need from the project's documents."}
+    try:
+        found = await knowledge_service.search(ctx.project_id, question, ctx.keys, db)
+    except Exception as exc:   # noqa: BLE001
+        logger.exception("knowledge search failed")
+        return {"passages": [], "error": f"Could not search the documents: {exc}"}
+    if not found:
+        return {"passages": [],
+                "note": "Nothing in this project's documents covers that. Do not "
+                        "invent an answer from them."}
+    return {"passages": found,
+            "note": "From this project's own documents. Treat them as settled fact and "
+                    "never contradict them."}
 
 
 async def _plan_competitor_search(project, ctx, topics: list[str]) -> dict:

@@ -44,6 +44,7 @@ from app.api.v1.routers import (
     chat,
     connectors,
     documents,
+    knowledge,
     monitoring,
     seo_hub,
     shopify,
@@ -103,3 +104,4 @@ api_router.include_router(employees.router, prefix="/employees", tags=["employee
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
+api_router.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])

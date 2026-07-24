@@ -92,7 +92,8 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=["gsc_opportunities", "market_insights", "tracked_keywords", "our_demand"],
+    allowed_tools=["gsc_opportunities", "market_insights", "tracked_keywords", "our_demand",
+                   "project_knowledge"],
     connected_apps=["google-search-console"],
     permissions=[P_READ_ANALYTICS, P_READ_CONTENT],
     memory_scope=SCOPE_PROJECT,

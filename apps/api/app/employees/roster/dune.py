@@ -110,7 +110,8 @@ EMPLOYEE = Employee(
     # serp_lookup and fetch_page let the writer cite sources it has actually
     # read, rather than inventing plausible URLs.
     allowed_tools=["article_context", "seo_grounding", "store_products",
-                   "serp_lookup", "fetch_page"],
+                   "serp_lookup", "fetch_page",
+                   "project_knowledge"],
     connected_apps=["wordpress", "shopify", "woocommerce"],
     permissions=[P_WRITE_CONTENT, P_READ_CONTENT, P_READ_PRODUCTS, P_READ_ANALYTICS,
                  P_READ_COMPETITORS],

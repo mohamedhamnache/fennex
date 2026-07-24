@@ -2458,5 +2458,25 @@
       "failing": "En echec",
       "environment": "Environnement"
     }
+  },
+  "knowledge": {
+    "title": "Ce que l'equipe sait",
+    "subtitle": "Donnez a votre equipe IA les documents qu'elle ne devrait jamais avoir a redemander.",
+    "count": "{{docs}} documents · {{words}} mots",
+    "digestTitle": "Note permanente, presente dans chaque conversation",
+    "addNote": "Ajouter une note",
+    "upload": "Importer un fichier",
+    "formats": ".txt .md .csv .json .html — collez le reste en note",
+    "noteTitle": "Titre",
+    "noteTitlePlaceholder": "Charte de marque",
+    "noteBody": "Contenu",
+    "noteBodyPlaceholder": "Positionnement, gamme, ton de voix, ce qu'il ne faut jamais dire...",
+    "save": "Enregistrer",
+    "saveFailed": "Enregistrement impossible.",
+    "loading": "Chargement...",
+    "empty": "Rien pour l'instant. Ajoutez votre charte, vos fiches produit ou vos regles — l'equipe les lit une fois et s'en souvient.",
+    "meta": "{{words}} mots · {{chunks}} passages",
+    "noVectors": "stocke, non recherchable (cle OpenAI requise)",
+    "remove": "Supprimer"
   }
 }

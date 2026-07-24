@@ -93,10 +93,12 @@ def test_a_tool_whose_permission_is_not_granted_is_never_offered():
     assert withheld == []
 
 
-def test_an_employee_with_no_tools_gets_none():
+def test_an_employee_only_gets_the_tools_it_declared():
+    """Every employee can read the project's documents; none get more than it
+    declared."""
     sirocco = registry.get("sirocco")
-    assert sirocco.allowed_tools == []
-    assert toolbridge.build_tools(sirocco, _ctx()) == []
+    assert sirocco.allowed_tools == ["project_knowledge"]
+    assert len(toolbridge.build_tools(sirocco, _ctx())) == 1
 
 
 def test_describe_reports_why_a_tool_is_unavailable():
@@ -298,13 +300,14 @@ def test_mcp_tools_degrade_to_nothing_rather_than_failing_a_turn():
         assert BaseEmployee(registry.get("nomad"))._mcp_tools(_ctx(), stack) == []
 
 
-def test_toolless_employees_have_an_mcp_route_to_gain_tools():
-    """They run on the runtime already; MCP is how they gain reach."""
+def test_employees_without_external_tools_have_an_mcp_route():
+    """They can read the project's documents, but nothing outside it -- MCP is
+    how they gain reach into a real system."""
     from app.employees.runtime import mcp
 
     for employee_id in ("sirocco", "nomad"):
         employee = registry.get(employee_id)
-        assert employee.allowed_tools == []
+        assert employee.allowed_tools == ["project_knowledge"]
         assert mcp.describe(employee), f"{employee_id} has no MCP route to reach"
 
 
@@ -556,3 +559,66 @@ def test_platforms_are_never_returned_as_competitors():
 
     for domain in ("youtube.com", "wikipedia.org", "amazon.fr", "pinterest.com"):
         assert domain in _NOT_COMPETITORS
+
+
+# --- project knowledge --------------------------------------------------------
+
+
+def test_knowledge_is_a_tool_not_an_injection():
+    """Passages must reach a model only on request. Injecting the top matches
+    into every prompt spends thousands of tokens on turns that never use them."""
+    from app.employees import toolbelt
+
+    tool = toolbelt.get_tool("project_knowledge")
+    assert tool is not None and tool.kind == "data"
+    for employee in registry.all_employees():
+        assert "project_knowledge" in employee.allowed_tools, employee.id
+
+
+def test_the_digest_travels_but_the_documents_do_not():
+    """The standing summary is what makes the agency 'know' the project without
+    paying to re-read it each turn."""
+    from app.employees.brand_dna import BrandDNA
+
+    dna = BrandDNA(knowledge_digest="Solid cosmetics, COSMOS certified, made in Provence.")
+    prompt = dna.as_prompt()
+    assert "COSMOS" in prompt
+    assert "DOCUMENTS ESTABLISH" in prompt
+    assert not BrandDNA().as_prompt()
+
+
+def test_chunking_packs_paragraphs_and_respects_the_ceiling():
+    from app.services.knowledge_service import CHUNK_CHARS, MAX_CHUNKS_PER_DOC, chunk_text
+
+    assert chunk_text("") == []
+    assert len(chunk_text("One short note.")) == 1
+
+    long_doc = "\n\n".join(f"Paragraph number {i} with enough words to matter here."
+                           for i in range(200))
+    pieces = chunk_text(long_doc)
+    assert len(pieces) <= MAX_CHUNKS_PER_DOC
+    # Overlap means a piece may exceed the target slightly; it must not run away.
+    assert all(len(p) <= CHUNK_CHARS * 2 for p in pieces)
+
+
+def test_retrieval_is_capped_so_one_answer_cannot_flood_a_prompt():
+    from app.services import knowledge_service as ks
+
+    class _Chunk:
+        text = "x" * 5000
+
+    rendered = ks._render([(_Chunk(), "Doc", 0.9), (_Chunk(), "Doc", 0.8)])
+    assert sum(len(r["text"]) for r in rendered) <= ks.MAX_RETRIEVED_CHARS
+
+
+def test_a_structured_digest_reply_never_reaches_the_prompt():
+    """The digest is pasted into every prompt, so JSON there is noise forever."""
+    from app.services.knowledge_service import _plain_prose
+
+    assert _plain_prose('```json\n{"a": 1}\n```') == ""
+    assert _plain_prose("A French brand of solid cosmetics.") == \
+        "A French brand of solid cosmetics."
+    salvaged = _plain_prose(
+        '{"summary": "A French brand of solid cosmetics made in Provence and sold '
+        'without plastic packaging."}')
+    assert salvaged.startswith("A French brand")

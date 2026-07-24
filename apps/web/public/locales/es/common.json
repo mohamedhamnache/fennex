@@ -2458,5 +2458,25 @@
       "failing": "Con fallos",
       "environment": "Del entorno"
     }
+  },
+  "knowledge": {
+    "title": "Lo que el equipo sabe",
+    "subtitle": "Da a tu equipo de IA los documentos que no deberia tener que preguntar dos veces.",
+    "count": "{{docs}} documentos · {{words}} palabras",
+    "digestTitle": "Resumen permanente, presente en cada conversacion",
+    "addNote": "Anadir nota",
+    "upload": "Subir archivo",
+    "formats": ".txt .md .csv .json .html — pega lo demas como nota",
+    "noteTitle": "Titulo",
+    "noteTitlePlaceholder": "Guia de marca",
+    "noteBody": "Contenido",
+    "noteBodyPlaceholder": "Posicionamiento, gama, tono de voz, lo que nunca debe decirse...",
+    "save": "Guardar",
+    "saveFailed": "No se pudo guardar.",
+    "loading": "Cargando...",
+    "empty": "Nada todavia. Anade tu guia de marca, fichas de producto o reglas: el equipo las lee una vez y las recuerda.",
+    "meta": "{{words}} palabras · {{chunks}} pasajes",
+    "noVectors": "guardado, no buscable (requiere clave OpenAI)",
+    "remove": "Eliminar"
   }
 }

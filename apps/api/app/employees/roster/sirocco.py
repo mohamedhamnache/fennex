@@ -89,7 +89,7 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=[],
+    allowed_tools=["project_knowledge"],
     connected_apps=["instagram", "facebook", "linkedin", "pinterest", "threads", "x"],
     permissions=[P_WRITE_SOCIAL, P_WRITE_IMAGES, P_READ_CONTENT, P_SPEND_CREDITS,
                  P_PUBLISH_EXTERNAL],

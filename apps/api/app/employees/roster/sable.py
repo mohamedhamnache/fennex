@@ -79,7 +79,8 @@ EMPLOYEE = Employee(
     # handed: known_competitors lists who we track, serp_lookup discovers
     # who actually ranks when nobody is tracked yet.
     allowed_tools=["known_competitors", "discover_competitors", "serp_lookup",
-                   "crawl_competitor", "our_demand", "market_insights"],
+                   "crawl_competitor", "our_demand", "market_insights",
+                   "project_knowledge"],
     connected_apps=[],
     permissions=[P_READ_COMPETITORS, P_READ_ANALYTICS, P_READ_CONTENT],
     memory_scope=SCOPE_PROJECT,

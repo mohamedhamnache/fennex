@@ -93,7 +93,8 @@ EMPLOYEE = Employee(
     ],
 
     allowed_tools=["market_data", "market_insights", "gsc_opportunities",
-                   "store_products", "serp_lookup", "fetch_page"],
+                   "store_products", "serp_lookup", "fetch_page",
+                   "project_knowledge"],
     connected_apps=["google-search-console"],
     permissions=[P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS, P_READ_COMPETITORS],
     # Research findings are company-wide truth, not project trivia.
