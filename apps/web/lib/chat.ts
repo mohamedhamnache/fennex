@@ -93,6 +93,8 @@ export type ChatEvent =
   | { type: "workflow"; steps: WorkflowStep[]; message: ChatMessage }
   | { type: "followOn"; actions: FollowOnAction[]; message: ChatMessage }
   | { type: "working"; employeeId: string; action: string }
+  | { type: "tool"; employeeId: string; tool: string }
+  | { type: "telemetry"; metrics: Record<string, unknown> }
   | { type: "result"; stepIndex?: number; message: ChatMessage; artifactType: string | null; artifactIds: string[] | null }
   | { type: "clarify"; message: ChatMessage; routing: RoutingInfo }
   | { type: "error"; message: string; employeeId?: string; stepIndex?: number }

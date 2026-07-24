@@ -763,10 +763,33 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
 
     chunks: list[str] = []
     try:
-        async for piece in stream_llm(provider, model, ctx.keys[provider], system, user,
-                                      locale=ctx.locale):
-            chunks.append(piece)
-            yield {"type": "delta", "employeeId": employee.id, "text": piece}
+        if action is not None and action.agentic:
+            # A migrated employee reasons with its tools while it answers, so
+            # the turn streams from the runtime and the user sees the work --
+            # "checking Search Console" -- rather than a silent pause.
+            from app.employees.runtime.base import BaseEmployee
+
+            runner = BaseEmployee(employee)
+            probe = Task(id=f"chat-{convo.id}", goal=message,
+                         capabilities=list(action.capabilities),
+                         employee_id=employee.id, action_id=action.id,
+                         inputs=await _prior_outputs(convo, db))
+            async for event in runner.stream(action, probe, ctx):
+                if event["type"] == "delta":
+                    chunks.append(event["text"])
+                    yield event
+                elif event["type"] == "tool":
+                    yield {"type": "tool", "employeeId": employee.id,
+                           "tool": event["tool"]}
+                elif event["type"] == "telemetry":
+                    yield event
+                elif event["type"] == "error":
+                    raise RuntimeError(event.get("message") or "stream failed")
+        else:
+            async for piece in stream_llm(provider, model, ctx.keys[provider], system, user,
+                                          locale=ctx.locale):
+                chunks.append(piece)
+                yield {"type": "delta", "employeeId": employee.id, "text": piece}
     except Exception as exc:   # noqa: BLE001
         logger.exception("employee %s failed to reply", employee.id)
         row = await add_message(convo, db, role="employee", employee_id=employee.id,

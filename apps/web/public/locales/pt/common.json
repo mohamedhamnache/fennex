@@ -2379,6 +2379,7 @@
       "hint": "Escolha uma, ou diga simplesmente o que quer."
     },
     "teamBehind": "{{count}} especialistas por tras deste chat",
-    "tryOne": "Experimente"
+    "tryOne": "Experimente",
+    "usingTool": "{{name}} esta a consultar {{tool}}"
   }
 }

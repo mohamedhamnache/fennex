@@ -37,6 +37,8 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [stage, setStage] = useState<{ step: number; of: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState<{ employeeId: string; action: string } | null>(null);
+  // Tools the employee is reaching for, shown while it thinks.
+  const [activeTools, setActiveTools] = useState<string[]>([]);
   const [decisions, setDecisions] = useState<Record<string, string>>({});
   // Per-workflow step outcomes, keyed by the workflow message id.
   const [stepStates, setStepStates] = useState<Record<string, Record<number, StepState>>>({});
@@ -171,6 +173,12 @@ export function MainChat({ projectId }: { projectId: string }) {
       case "working":
         setWorking({ employeeId: event.employeeId, action: event.action });
         break;
+      case "tool":
+        setActiveTools((prev) => (prev.includes(event.tool) ? prev : [...prev, event.tool]));
+        break;
+      case "telemetry":
+        // Recorded server-side; the transcript does not need to show numbers.
+        break;
       case "result":
         setWorking(null);
         setMessages((prev) => [...prev, event.message]);
@@ -191,6 +199,7 @@ export function MainChat({ projectId }: { projectId: string }) {
         setRouting(false);
         setLive(null);
         setStage(null);
+        setActiveTools([]);
         setBusy(false);
         break;
     }
@@ -202,6 +211,7 @@ export function MainChat({ projectId }: { projectId: string }) {
     setInput("");
     setBusy(true);
     setTeam(null);
+    setActiveTools([]);
     setMessages((prev) => [...prev, {
       id: `local-${Date.now()}`, seq: prev.length + 1, role: "user", employeeId: null,
       event: null, content: text, routing: null, confidence: null, artifactType: null,
@@ -370,7 +380,7 @@ export function MainChat({ projectId }: { projectId: string }) {
               <EmployeeBubble employee={activeEmployee} content={live.text} streaming />
             )}
             {live && !live.text && activeEmployee && !working && (
-              <WorkingIndicator employee={activeEmployee} />
+              <WorkingIndicator employee={activeEmployee} tools={activeTools} />
             )}
 
             <div ref={bottomRef} />
@@ -1003,7 +1013,9 @@ function RoutingIndicator() {
   );
 }
 
-function WorkingIndicator({ employee, action }: { employee: Employee; action?: string }) {
+function WorkingIndicator({
+  employee, action, tools = [],
+}: { employee: Employee; action?: string; tools?: string[] }) {
   const { t } = useTranslation();
   const Icon = employeeIcon(employee.icon);
   return (
@@ -1016,7 +1028,9 @@ function WorkingIndicator({ employee, action }: { employee: Employee; action?: s
         <span className="text-xs text-muted-foreground">
           {action
             ? t("chat.runningAction", { name: employee.name, action })
-            : t("chat.working", { name: employee.name })}
+            : tools.length > 0
+              ? t("chat.usingTool", { name: employee.name, tool: prettyTool(tools[tools.length - 1]) })
+              : t("chat.working", { name: employee.name })}
         </span>
         <span className="flex gap-0.5">
           {[0, 1, 2].map((i) => (
@@ -1030,6 +1044,11 @@ function WorkingIndicator({ employee, action }: { employee: Employee; action?: s
       </div>
     </div>
   );
+}
+
+/** Tool names are internal slugs; show them as something a person reads. */
+function prettyTool(name: string): string {
+  return name.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // --- empty state --------------------------------------------------------------

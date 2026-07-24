@@ -2452,6 +2452,7 @@
       "hint": "Pick one, or just say what you want."
     },
     "teamBehind": "{{count}} specialists behind this chat",
-    "tryOne": "Try one"
+    "tryOne": "Try one",
+    "usingTool": "{{name}} is checking {{tool}}"
   }
 }

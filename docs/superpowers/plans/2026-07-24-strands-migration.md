@@ -113,16 +113,22 @@ The settled block is now appended to whatever the skill produced.
 | 2 | Zerda | **done** |
 | 3–8 | Dune, Sable, Oasis | **done** |
 | 3–8 | Mirage, Sirocco, Nomad | held -- no tools to justify a loop |
-| 9 | Tool execution moved wholesale to the bridge | not started |
+| 9 | Chat streams from the runtime; tool use is visible | **done** |
 | 10 | Legacy orchestration retired | not started |
 | 11 | MCP servers | not started |
 | 12 | Remove deprecated code | not started |
 
 ## Known gaps
 
-- **Streaming is written but unused.** `BaseEmployee.stream()` exists; the chat
-  service still streams through the legacy `_speak`. Wiring it is part of
-  phase 9.
+- **Streaming now comes from the runtime for migrated actions.** A migrated
+  employee streams through `BaseEmployee.stream()`, so the user sees "Zerda is
+  checking Market Insights" while it works. Unmigrated actions still stream
+  through the legacy path, and both share the same persistence and memory
+  write afterwards.
+- **`current_tool_use` repeats on every chunk.** It is present on each chunk
+  of a tool call rather than once per call -- the first wiring emitted 48
+  frames for 3 actual lookups. The stream now emits only on change. Worth
+  remembering when reading any other field off a streamed event.
 - **The SDK's result and event shapes are not a stable contract.** `_text_of`,
   `_delta_of` and `_tool_of` read defensively and degrade to empty rather than
   raising mid-turn. These are the most likely thing to break on an SDK upgrade

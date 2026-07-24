@@ -183,13 +183,18 @@ class BaseEmployee:
             name=self.employee.name, agent_id=self.employee.id,
             description=self.employee.role)
 
+        # `current_tool_use` is present on every chunk of a tool call, not once
+        # per call, so emit only when the tool actually changes -- otherwise a
+        # single lookup floods the stream with dozens of identical frames.
+        last_tool: Optional[str] = None
         try:
             async for event in agent.stream_async(self.build_prompt(action, task, ctx)):
                 delta = _delta_of(event)
                 if delta:
                     yield {"type": "delta", "employeeId": self.employee.id, "text": delta}
                 used = _tool_of(event)
-                if used:
+                if used and used != last_tool:
+                    last_tool = used
                     yield {"type": "tool", "employeeId": self.employee.id, "tool": used}
         except Exception as exc:   # noqa: BLE001
             logger.exception("agentic stream failed: %s", self.employee.id)
