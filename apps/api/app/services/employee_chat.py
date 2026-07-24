@@ -34,6 +34,12 @@ logger = logging.getLogger(__name__)
 # Actions that reach outside Fennex always stop for a human first.
 APPROVAL_PERMISSIONS = {"publish:external", "send:email"}
 
+# Real work -- producing an artifact or spending credits -- is proposed, never
+# performed unannounced. The employee says what it intends to do and waits for
+# the user to validate it.
+PROPOSE_PERMISSIONS = {"write:content", "write:images", "write:social",
+                       "publish:external", "send:email", "spend:credits"}
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -135,12 +141,84 @@ def _turns(rows: list[ConversationMessage]) -> list[dict]:
 
 
 def _needs_approval(employee: Employee, action_id: Optional[str]) -> bool:
+    """Reaches outside Fennex -- gate it before the employee even speaks."""
     action = employee.action(action_id) if action_id else None
     if action is None:
         return False
     if action.requires_approval:
         return True
     return any(p in APPROVAL_PERMISSIONS for p in action.requires_permissions)
+
+
+def _should_propose(employee: Employee, action_id: Optional[str]) -> bool:
+    """Produces an artifact or spends credits -- propose it, then wait."""
+    action = employee.action(action_id) if action_id else None
+    if action is None:
+        return False
+    return (action.weight == "heavy"
+            or any(p in PROPOSE_PERMISSIONS for p in action.requires_permissions))
+
+
+def _offerable_actions(employee: Employee, decision) -> list:
+    """What this employee can actually do next, best match first.
+
+    The one the Router picked leads; the employee's other real actions follow,
+    so the user can redirect ("actually, just do the visual") with one click
+    instead of another round of typing.
+    """
+    offered = []
+    chosen = employee.action(decision.action_id) if decision.action_id else None
+    if chosen is not None and _should_propose(employee, chosen.id):
+        offered.append(chosen)
+    for action in employee.actions:
+        if action is chosen or not _should_propose(employee, action.id):
+            continue
+        offered.append(action)
+    return offered[:4]
+
+
+async def _offer_actions(convo: Conversation, employee: Employee, actions: list,
+                         db) -> dict:
+    """Offer the work as buttons. Nothing runs until one is pressed."""
+    payload = [
+        {"actionId": a.id, "label": a.label, "description": a.description,
+         "outputs": list(a.outputs), "permissions": list(a.requires_permissions),
+         "weight": a.weight,
+         "destructive": any(p in APPROVAL_PERMISSIONS for p in a.requires_permissions)}
+        for a in actions
+    ]
+    row = await add_message(
+        convo, db, role="approval", employee_id=employee.id, event="actions",
+        content=f"{employee.name} can take it from here. What would you like?",
+        structured={"actions": payload, "employeeId": employee.id})
+    return {"type": "actions", "employeeId": employee.id, "actions": payload,
+            "message": message_dict(row)}
+
+
+async def run_action(convo: Conversation, employee_id: str, action_id: str, db,
+                     user_id=None) -> AsyncIterator[dict]:
+    """Run an action the user explicitly chose, recording the consent."""
+    employee = registry.get(employee_id)
+    action = employee.action(action_id) if employee else None
+    if employee is None or action is None:
+        yield {"type": "error", "message": "That action is no longer available."}
+        yield {"type": "done"}
+        return
+
+    approval = PendingApproval(
+        org_id=convo.org_id, conversation_id=convo.id, employee_id=employee.id,
+        action_id=action.id, summary=f"{employee.name}: {action.label}",
+        preview={"action": action.label, "description": action.description,
+                 "outputs": list(action.outputs)},
+        payload={"message": convo.title or ""},
+        status="approved", decided_by=user_id, decided_at=_now(),
+        destructive=any(p in APPROVAL_PERMISSIONS for p in action.requires_permissions))
+    db.add(approval)
+    await db.commit()
+    await db.refresh(approval)
+
+    async for event in run_approved(approval, db):
+        yield event
 
 
 # --- the turn -----------------------------------------------------------------
@@ -219,12 +297,17 @@ async def _run_single(convo: Conversation, decision, ctx: WorkContext, db,
     yield await _announce(convo, employee, decision, db)
 
     if _needs_approval(employee, decision.action_id):
-        approval = await _request_approval(convo, employee, decision, db, message)
-        yield approval
+        yield await _request_approval(convo, employee, decision, db, message)
         return
 
     async for event in _speak(convo, employee, decision, ctx, db, message):
         yield event
+
+    # The employee has explained its approach; now it offers what it can
+    # actually do. Nothing runs until the user picks one.
+    offered = _offerable_actions(employee, decision)
+    if offered:
+        yield await _offer_actions(convo, employee, offered, db)
 
 
 async def _run_team(convo: Conversation, decision, ctx: WorkContext,
@@ -345,29 +428,106 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
 
 
 async def _request_approval(convo: Conversation, employee: Employee, decision, db,
-                            message: str) -> dict:
+                            message: str, kind: str = "approval") -> dict:
+    """Ask before acting. `kind` separates a proposal ("shall I write it?") from
+    a hard gate on something that leaves Fennex ("shall I publish it?")."""
     action = employee.action(decision.action_id)
+    label = action.label if action else (decision.action_id or "this")
+    destructive = kind == "approval"
+    # Action labels are noun phrases ("Multi-network social"), so they are read
+    # into the sentence rather than used as verbs.
+    summary = (f"{employee.name} wants to run {label}." if destructive
+               else f"{employee.name} is ready to run {label}. Shall I go ahead?")
+
     approval = PendingApproval(
         org_id=convo.org_id, conversation_id=convo.id, employee_id=employee.id,
         action_id=action.id if action else (decision.action_id or ""),
-        summary=(f"{employee.name} wants to run "
-                 f"{action.label if action else decision.action_id}."),
-        preview={"request": message[:500],
-                 "action": action.label if action else decision.action_id,
+        summary=summary,
+        preview={"request": message[:500], "action": label,
+                 "kind": kind,
                  "description": action.description if action else "",
+                 "outputs": list(action.outputs) if action else [],
                  "permissions": list(action.requires_permissions) if action else []},
         payload={"message": message},
-        status="pending", destructive=True)
+        status="pending", destructive=destructive)
     db.add(approval)
     await db.commit()
     await db.refresh(approval)
 
     row = await add_message(
-        convo, db, role="approval", employee_id=employee.id, event="approval",
-        content=approval.summary,
-        structured={"approvalId": str(approval.id), "preview": approval.preview})
-    return {"type": "approval", "approvalId": str(approval.id),
+        convo, db, role="approval", employee_id=employee.id, event=kind,
+        content=summary,
+        structured={"approvalId": str(approval.id), "preview": approval.preview,
+                    "kind": kind})
+    return {"type": "approval", "approvalId": str(approval.id), "kind": kind,
             "preview": approval.preview, "message": message_dict(row)}
+
+
+async def run_approved(approval: PendingApproval, db) -> AsyncIterator[dict]:
+    """Execute a validated action for real, streaming progress as it runs.
+
+    This is where the conversation stops being talk: the employee's bound skill
+    runs through the same runner the orchestrator uses, so the artifact it
+    produces is a real saved record, not chat text.
+    """
+    convo = await db.get(Conversation, approval.conversation_id)
+    employee = registry.get(approval.employee_id)
+    if convo is None or employee is None:
+        yield {"type": "error", "message": "This action is no longer available."}
+        yield {"type": "done"}
+        return
+
+    action = employee.action(approval.action_id)
+    if action is None:
+        yield {"type": "error", "message": f"{employee.name} no longer offers that action."}
+        yield {"type": "done"}
+        return
+
+    request = (approval.payload or {}).get("message", convo.title or "")
+    ctx = await _build_context(convo, request, db)
+    if not ctx.available_providers():
+        yield {"type": "error",
+               "message": "No AI key configured. Add an Anthropic or OpenAI key in Settings."}
+        yield {"type": "done"}
+        return
+
+    yield {"type": "working", "employeeId": employee.id, "action": action.label}
+
+    task = Task(id=f"approval-{approval.id}", goal=request,
+                capabilities=list(action.capabilities), employee_id=employee.id,
+                action_id=action.id, inputs={})
+    await ctx.load_memory(employee)
+
+    try:
+        outcome = await employee.execute(action, task, ctx)
+    except Exception as exc:   # noqa: BLE001
+        logger.exception("approved action failed: %s.%s", employee.id, action.id)
+        outcome = None
+        error = str(exc)
+    else:
+        error = outcome.error if not outcome.ok else None
+
+    if outcome is not None and outcome.ok:
+        row = await add_message(
+            convo, db, role="employee", employee_id=employee.id, event="result",
+            content=outcome.summary or f"{action.label} is done.",
+            artifact_type=outcome.artifact_type, artifact_ids=outcome.artifact_ids,
+            structured={**(outcome.structured or {}), "actionId": action.id})
+        try:
+            await employee.learn(task, outcome, await employee.evaluate(outcome, task, ctx), ctx)
+        except Exception:
+            logger.exception("learn() failed after approved action")
+        yield {"type": "result", "message": message_dict(row),
+               "artifactType": outcome.artifact_type,
+               "artifactIds": outcome.artifact_ids}
+    else:
+        row = await add_message(
+            convo, db, role="system", employee_id=employee.id, event="error",
+            content=f"{action.label} could not be completed.", error=error)
+        yield {"type": "error", "employeeId": employee.id,
+               "message": error or "The action failed.", "messageRow": message_dict(row)}
+
+    yield {"type": "done"}
 
 
 async def decide_approval(approval_id: uuid.UUID, org_id: uuid.UUID, decision: str,

@@ -2396,7 +2396,23 @@
       "approve": "Approve",
       "reject": "Reject",
       "approved": "Approved.",
-      "rejected": "Rejected."
+      "rejected": "Rejected.",
+      "proposalTitle": "Ready when you are",
+      "goAhead": "Yes, go ahead",
+      "produces": "Produces: {{what}}"
+    },
+    "runningAction": "{{name}} is running {{action}}",
+    "history": {
+      "title": "History",
+      "empty": "No conversations yet.",
+      "untitled": "Untitled",
+      "delete": "Delete conversation"
+    },
+    "actions": {
+      "title": "What would you like?",
+      "hint": "Nothing runs until you choose.",
+      "external": "Leaves Fennex",
+      "takesLonger": "Takes longer"
     }
   }
 }

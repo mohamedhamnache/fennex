@@ -4,12 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowRight, Check, CornerDownLeft, Loader2, Send, Sparkles, Square, X,
+  ArrowRight, Check, CornerDownLeft, History, Loader2, Send, Sparkles, Square,
+  Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  decideApproval, getConversation, sendMessage,
-  type ChatEmployee, type ChatEvent, type ChatMessage, type TeamStep,
+  approveAndRun, decideApproval, deleteConversation, getConversation,
+  listConversations, runAction, sendMessage,
+  type ChatEvent, type ChatMessage, type Conversation, type OfferedAction,
+  type TeamStep,
 } from "@/lib/chat";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
 
@@ -30,6 +33,9 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [team, setTeam] = useState<TeamStep[] | null>(null);
   const [stage, setStage] = useState<{ step: number; of: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState<{ employeeId: string; action: string } | null>(null);
+  const [decisions, setDecisions] = useState<Record<string, string>>({});
+  const [showHistory, setShowHistory] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -38,16 +44,40 @@ export function MainChat({ projectId }: { projectId: string }) {
   });
   const byId = new Map((registry?.employees ?? []).map((e) => [e.id, e]));
 
+  // Past conversations. Refetched whenever a thread starts or is deleted.
+  const conversations = useQuery({
+    queryKey: ["conversations", projectId],
+    queryFn: () => listConversations(projectId),
+    staleTime: 30_000,
+  });
+
   // Keep the newest turn in view while text streams in.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, live, routing]);
 
   const loadConversation = useCallback(async (id: string) => {
+    cancelRef.current?.();
     const data = await getConversation(id);
+    setConversationId(id);
     setMessages(data.messages);
     setOwner(data.conversation.ownerEmployeeId);
+    setLive(null);
+    setTeam(null);
+    setWorking(null);
+    setBusy(false);
+    setShowHistory(false);
   }, []);
+
+  const removeConversation = useCallback(async (id: string) => {
+    await deleteConversation(id);
+    await conversations.refetch();
+    if (id === conversationId) {
+      setConversationId(null);
+      setMessages([]);
+      setOwner(null);
+    }
+  }, [conversationId, conversations]);
 
   const handleEvent = useCallback((event: ChatEvent) => {
     switch (event.type) {
@@ -84,9 +114,17 @@ export function MainChat({ projectId }: { projectId: string }) {
         setMessages((prev) => [...prev, event.message]);
         break;
       case "approval":
+      case "actions":
       case "clarify":
         setRouting(false);
         setLive(null);
+        setMessages((prev) => [...prev, event.message]);
+        break;
+      case "working":
+        setWorking({ employeeId: event.employeeId, action: event.action });
+        break;
+      case "result":
+        setWorking(null);
         setMessages((prev) => [...prev, event.message]);
         break;
       case "error":
@@ -120,12 +158,46 @@ export function MainChat({ projectId }: { projectId: string }) {
       artifactIds: null, structured: null, error: null,
       createdAt: new Date().toISOString(),
     }]);
-    const { cancel } = sendMessage(
+    const { cancel, done } = sendMessage(
       { message: text, project_id: projectId, conversation_id: conversationId },
       handleEvent,
     );
     cancelRef.current = cancel;
-  }, [input, busy, projectId, conversationId, handleEvent]);
+    // A brand-new thread needs to appear in the history list.
+    if (!conversationId) done.then(() => conversations.refetch());
+  }, [input, busy, projectId, conversationId, handleEvent, conversations]);
+
+  /** Validate a proposed action -- and actually run it. */
+  const approve = useCallback((approvalId: string) => {
+    if (busy) return;
+    setBusy(true);
+    setDecisions((prev) => ({ ...prev, [approvalId]: "approved" }));
+    const { cancel } = approveAndRun(approvalId, handleEvent);
+    cancelRef.current = cancel;
+  }, [busy, handleEvent]);
+
+  /** The user pressed one of the offered action buttons. */
+  const runChosenAction = useCallback((
+    messageId: string, employeeId: string, actionId: string,
+  ) => {
+    if (busy || !conversationId) return;
+    setBusy(true);
+    setDecisions((prev) => ({ ...prev, [messageId]: actionId }));
+    const { cancel } = runAction(
+      { conversation_id: conversationId, employee_id: employeeId, action_id: actionId },
+      handleEvent,
+    );
+    cancelRef.current = cancel;
+  }, [busy, conversationId, handleEvent]);
+
+  const reject = useCallback(async (approvalId: string) => {
+    setDecisions((prev) => ({ ...prev, [approvalId]: "rejected" }));
+    try {
+      await decideApproval(approvalId, "rejected");
+    } catch {
+      // The card already reads as rejected; a failed write is not worth a modal.
+    }
+  }, []);
 
   const stop = () => {
     cancelRef.current?.();
@@ -140,71 +212,199 @@ export function MainChat({ projectId }: { projectId: string }) {
     setMessages([]);
     setOwner(null);
     setTeam(null);
+    setWorking(null);
+    setShowHistory(false);
   };
 
   const activeEmployee = live?.employeeId ? byId.get(live.employeeId) : undefined;
+  const workingEmployee = working ? byId.get(working.employeeId) : undefined;
 
   return (
-    <div className="flex h-full flex-col">
-      <ChatHeader
-        owner={owner ? byId.get(owner) : undefined}
-        active={activeEmployee}
-        participants={messages
-          .map((m) => m.employeeId)
-          .filter((id, i, arr): id is string => !!id && arr.indexOf(id) === i)
-          .map((id) => byId.get(id))
-          .filter((e): e is Employee => !!e)}
+    <div className="flex h-full">
+      <HistoryPanel
+        open={showHistory}
+        conversations={conversations.data?.conversations ?? []}
+        activeId={conversationId}
+        byId={byId}
+        onSelect={loadConversation}
+        onDelete={removeConversation}
         onNew={startNew}
-        hasThread={messages.length > 0}
+        onClose={() => setShowHistory(false)}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
-          {messages.length === 0 && !routing && <EmptyState onPick={setInput} />}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <ChatHeader
+          owner={owner ? byId.get(owner) : undefined}
+          active={activeEmployee ?? workingEmployee}
+          participants={messages
+            .map((m) => m.employeeId)
+            .filter((id, i, arr): id is string => !!id && arr.indexOf(id) === i)
+            .map((id) => byId.get(id))
+            .filter((e): e is Employee => !!e)}
+          onNew={startNew}
+          onToggleHistory={() => setShowHistory((v) => !v)}
+          historyCount={conversations.data?.conversations.length ?? 0}
+          hasThread={messages.length > 0}
+        />
 
-          {messages.map((message) => (
-            <MessageRow key={message.id} message={message} employee={
-              message.employeeId ? byId.get(message.employeeId) : undefined
-            } onReload={() => conversationId && loadConversation(conversationId)} />
-          ))}
+        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+          <div className="mx-auto flex max-w-3xl flex-col gap-4">
+            {messages.length === 0 && !routing && <EmptyState onPick={setInput} />}
 
-          {team && stage && (
-            <TeamProgress team={team} step={stage.step} of={stage.of} byId={byId} />
-          )}
+            {messages.map((message) => (
+              <MessageRow
+                key={message.id}
+                message={message}
+                employee={message.employeeId ? byId.get(message.employeeId) : undefined}
+                onApprove={approve}
+                onReject={reject}
+                onRunAction={runChosenAction}
+                decisions={decisions}
+              />
+            ))}
 
-          {routing && <RoutingIndicator />}
+            {team && stage && (
+              <TeamProgress team={team} step={stage.step} of={stage.of} byId={byId} />
+            )}
 
-          {live && live.text && activeEmployee && (
-            <EmployeeBubble employee={activeEmployee} content={live.text} streaming />
-          )}
-          {live && !live.text && activeEmployee && (
-            <WorkingIndicator employee={activeEmployee} />
-          )}
+            {routing && <RoutingIndicator />}
 
-          <div ref={bottomRef} />
+            {working && workingEmployee && (
+              <WorkingIndicator employee={workingEmployee} action={working.action} />
+            )}
+
+            {live && live.text && activeEmployee && (
+              <EmployeeBubble employee={activeEmployee} content={live.text} streaming />
+            )}
+            {live && !live.text && activeEmployee && !working && (
+              <WorkingIndicator employee={activeEmployee} />
+            )}
+
+            <div ref={bottomRef} />
+          </div>
         </div>
-      </div>
 
-      <Composer
-        value={input}
-        onChange={setInput}
-        onSubmit={submit}
-        onStop={stop}
-        busy={busy}
-      />
+        <Composer
+          value={input}
+          onChange={setInput}
+          onSubmit={submit}
+          onStop={stop}
+          busy={busy}
+        />
+      </div>
     </div>
+  );
+}
+
+// --- history ------------------------------------------------------------------
+
+function HistoryPanel({
+  open, conversations, activeId, byId, onSelect, onDelete, onNew, onClose,
+}: {
+  open: boolean;
+  conversations: Conversation[];
+  activeId: string | null;
+  byId: Map<string, Employee>;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onNew: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  if (!open) return null;
+
+  return (
+    <>
+      {/* Overlay only on small screens; the panel is inline from lg up. */}
+      <button
+        type="button"
+        aria-label={t("common.close")}
+        onClick={onClose}
+        className="fixed inset-0 z-30 cursor-default bg-background/70 backdrop-blur-sm lg:hidden animate-fade-in"
+      />
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-border bg-card animate-slide-in-right lg:static lg:z-auto lg:animate-none">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <p className="flex-1 font-display text-sm font-bold text-foreground">
+            {t("chat.history.title")}
+          </p>
+          <button
+            type="button"
+            onClick={onNew}
+            className="cursor-pointer rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {t("chat.new")}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {conversations.length === 0 && (
+            <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+              {t("chat.history.empty")}
+            </p>
+          )}
+          {conversations.map((convo) => {
+            const owner = convo.ownerEmployeeId ? byId.get(convo.ownerEmployeeId) : undefined;
+            const Icon = employeeIcon(owner?.icon ?? "sparkles");
+            const active = convo.id === activeId;
+            return (
+              <div
+                key={convo.id}
+                className={cn(
+                  "group flex items-center gap-2 rounded-lg px-2 py-2 transition-colors",
+                  active ? "bg-primary/10" : "hover:bg-accent",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelect(convo.id)}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
+                >
+                  <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-lg",
+                    owner ? departmentAccent(owner.department) : "bg-muted text-muted-foreground")}>
+                    <Icon className="h-3 w-3" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("block truncate text-xs font-medium",
+                      active ? "text-primary" : "text-foreground")}>
+                      {convo.title || t("chat.history.untitled")}
+                    </span>
+                    {convo.participants.length > 0 && (
+                      <span className="block truncate text-[10px] text-muted-foreground">
+                        {convo.participants
+                          .map((id) => byId.get(id)?.name ?? id)
+                          .join(", ")}
+                      </span>
+                    )}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(convo.id)}
+                  aria-label={t("chat.history.delete")}
+                  className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+    </>
   );
 }
 
 // --- header -------------------------------------------------------------------
 
 function ChatHeader({
-  owner, active, participants, onNew, hasThread,
+  owner, active, participants, onNew, onToggleHistory, historyCount, hasThread,
 }: {
   owner?: Employee;
   active?: Employee;
   participants: Employee[];
   onNew: () => void;
+  onToggleHistory: () => void;
+  historyCount: number;
   hasThread: boolean;
 }) {
   const { t } = useTranslation();
@@ -212,6 +412,17 @@ function ChatHeader({
 
   return (
     <header className="flex items-center gap-3 border-b border-border bg-card/30 px-4 py-3 sm:px-6">
+      <button
+        type="button"
+        onClick={onToggleHistory}
+        aria-label={t("chat.history.title")}
+        className="flex cursor-pointer items-center gap-1.5 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <History className="h-4 w-4" />
+        {historyCount > 0 && (
+          <span className="text-[10px] font-medium">{historyCount}</span>
+        )}
+      </button>
       <span className="flex h-9 w-9 items-center justify-center rounded-xl gradient-brand glow-primary">
         <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
       </span>
@@ -267,11 +478,42 @@ function ChatHeader({
 // --- messages -----------------------------------------------------------------
 
 function MessageRow({
-  message, employee, onReload,
-}: { message: ChatMessage; employee?: Employee; onReload: () => void }) {
+  message, employee, onApprove, onReject, onRunAction, decisions,
+}: {
+  message: ChatMessage;
+  employee?: Employee;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  onRunAction: (messageId: string, employeeId: string, actionId: string) => void;
+  decisions: Record<string, string>;
+}) {
   if (message.role === "user") return <UserBubble content={message.content} />;
   if (message.role === "approval") {
-    return <ApprovalCard message={message} employee={employee} onDecided={onReload} />;
+    const structured = (message.structured ?? {}) as {
+      approvalId?: string;
+      actions?: OfferedAction[];
+    };
+    // An offer of work renders as buttons; a hard gate renders as approve/reject.
+    if (structured.actions?.length) {
+      return (
+        <ActionChoices
+          message={message}
+          employee={employee}
+          actions={structured.actions}
+          onRun={onRunAction}
+          chosen={decisions[message.id]}
+        />
+      );
+    }
+    return (
+      <ApprovalCard
+        message={message}
+        employee={employee}
+        onApprove={onApprove}
+        onReject={onReject}
+        decided={structured.approvalId ? decisions[structured.approvalId] : undefined}
+      />
+    );
   }
   if (message.role === "system") {
     return <SystemNotice message={message} employee={employee} />;
@@ -362,39 +604,147 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
 
 // --- approvals ----------------------------------------------------------------
 
-function ApprovalCard({
-  message, employee, onDecided,
-}: { message: ChatMessage; employee?: Employee; onDecided: () => void }) {
+/** What the employee is offering to do, as buttons. Nothing runs until pressed. */
+function ActionChoices({
+  message, employee, actions, onRun, chosen,
+}: {
+  message: ChatMessage;
+  employee?: Employee;
+  actions: OfferedAction[];
+  onRun: (messageId: string, employeeId: string, actionId: string) => void;
+  chosen?: string;
+}) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const Icon = employee ? employeeIcon(employee.icon) : Sparkles;
+  const employeeId = employee?.id ?? message.employeeId ?? "";
+
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-4 animate-slide-up">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+        {employee && (
+          <span className={cn("flex h-4 w-4 items-center justify-center rounded-full",
+            departmentAccent(employee.department))}>
+            <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+          </span>
+        )}
+        {t("chat.actions.title")}
+      </p>
+      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+
+      <div className="mt-3 flex flex-col gap-2">
+        {actions.map((action, index) => {
+          const isChosen = chosen === action.actionId;
+          const dimmed = !!chosen && !isChosen;
+          return (
+            <button
+              key={action.actionId}
+              type="button"
+              disabled={!!chosen}
+              onClick={() => onRun(message.id, employeeId, action.actionId)}
+              className={cn(
+                "group flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all duration-200",
+                index === 0 && !chosen
+                  ? "border-primary/40 bg-primary/[0.07] hover:border-primary/60"
+                  : "border-border hover:border-primary/30 hover:bg-accent",
+                isChosen && "border-success/40 bg-success/[0.07]",
+                dimmed && "cursor-not-allowed opacity-40",
+                !!chosen && "cursor-not-allowed",
+              )}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-semibold text-foreground">{action.label}</span>
+                  {action.destructive && (
+                    <span className="rounded-full bg-warning/15 px-1.5 py-0.5 text-[9px] font-semibold text-warning">
+                      {t("chat.actions.external")}
+                    </span>
+                  )}
+                  {action.weight === "heavy" && (
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                      {t("chat.actions.takesLonger")}
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
+                  {action.description}
+                </span>
+                {action.outputs.length > 0 && (
+                  <span className="mt-1 block text-[10px] text-muted-foreground/80">
+                    {t("chat.approval.produces", { what: action.outputs.join(", ") })}
+                  </span>
+                )}
+              </span>
+              {isChosen ? (
+                <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={2.5} />
+              ) : (
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {!chosen && (
+        <p className="mt-2.5 text-[10px] text-muted-foreground">
+          {t("chat.actions.hint")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ApprovalCard({
+  message, employee, onApprove, onReject, decided,
+}: {
+  message: ChatMessage;
+  employee?: Employee;
+  onApprove: (approvalId: string) => void;
+  onReject: (approvalId: string) => void;
+  decided?: string;
+}) {
+  const { t } = useTranslation();
   const structured = (message.structured ?? {}) as {
     approvalId?: string;
-    preview?: { action?: string; description?: string; permissions?: string[]; request?: string };
+    kind?: "approval" | "proposal";
+    preview?: {
+      action?: string; description?: string; permissions?: string[];
+      request?: string; outputs?: string[];
+    };
   };
   const approvalId = structured.approvalId;
   const preview = structured.preview ?? {};
-
-  const decide = async (decision: "approved" | "rejected") => {
-    if (!approvalId || pending) return;
-    setPending(true);
-    try {
-      const result = await decideApproval(approvalId, decision);
-      setStatus(result.status);
-      onDecided();
-    } finally {
-      setPending(false);
-    }
-  };
+  // A proposal ("shall I write it?") is routine; a hard gate ("shall I
+  // publish it?") reaches outside Fennex and is styled as the heavier ask.
+  const isProposal = (structured.kind ?? message.event) === "proposal";
+  const Icon = employee ? employeeIcon(employee.icon) : Sparkles;
 
   return (
-    <div className="rounded-2xl border border-warning/30 bg-warning/[0.06] p-4 animate-slide-up">
-      <p className="flex items-center gap-2 text-xs font-semibold text-warning">
-        {t("chat.approval.title")}
+    <div className={cn(
+      "rounded-2xl border p-4 animate-slide-up",
+      isProposal
+        ? "border-primary/25 bg-primary/[0.05]"
+        : "border-warning/30 bg-warning/[0.06]",
+    )}>
+      <p className={cn("flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide",
+        isProposal ? "text-primary" : "text-warning")}>
+        {employee && (
+          <span className={cn("flex h-4 w-4 items-center justify-center rounded-full",
+            departmentAccent(employee.department))}>
+            <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+          </span>
+        )}
+        {isProposal ? t("chat.approval.proposalTitle") : t("chat.approval.title")}
       </p>
+
       <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
       {preview.description && (
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{preview.description}</p>
+      )}
+
+      {preview.outputs && preview.outputs.length > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {t("chat.approval.produces", { what: preview.outputs.join(", ") })}
+        </p>
       )}
       {preview.permissions && preview.permissions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
@@ -406,24 +756,26 @@ function ApprovalCard({
         </div>
       )}
 
-      {status ? (
-        <p className="mt-3 text-xs font-medium text-muted-foreground">
-          {t(`chat.approval.${status}`)}
+      {decided ? (
+        <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          {decided === "approved" && <Check className="h-3 w-3 text-success" strokeWidth={2.5} />}
+          {t(`chat.approval.${decided}`)}
         </p>
       ) : (
         <div className="mt-3 flex gap-2">
           <button
             type="button"
-            onClick={() => decide("approved")}
-            disabled={pending}
+            onClick={() => approvalId && onApprove(approvalId)}
+            disabled={!approvalId}
             className="btn-primary flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
           >
-            <Check className="h-3 w-3" /> {t("chat.approval.approve")}
+            <Check className="h-3 w-3" />
+            {isProposal ? t("chat.approval.goAhead") : t("chat.approval.approve")}
           </button>
           <button
             type="button"
-            onClick={() => decide("rejected")}
-            disabled={pending}
+            onClick={() => approvalId && onReject(approvalId)}
+            disabled={!approvalId}
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-50"
           >
             <X className="h-3 w-3" /> {t("chat.approval.reject")}
@@ -481,7 +833,7 @@ function RoutingIndicator() {
   );
 }
 
-function WorkingIndicator({ employee }: { employee: Employee }) {
+function WorkingIndicator({ employee, action }: { employee: Employee; action?: string }) {
   const { t } = useTranslation();
   const Icon = employeeIcon(employee.icon);
   return (
@@ -492,7 +844,9 @@ function WorkingIndicator({ employee }: { employee: Employee }) {
       </span>
       <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3">
         <span className="text-xs text-muted-foreground">
-          {t("chat.working", { name: employee.name })}
+          {action
+            ? t("chat.runningAction", { name: employee.name, action })
+            : t("chat.working", { name: employee.name })}
         </span>
         <span className="flex gap-0.5">
           {[0, 1, 2].map((i) => (

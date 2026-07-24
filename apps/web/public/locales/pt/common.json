@@ -2323,7 +2323,23 @@
       "approve": "Aprovar",
       "reject": "Rejeitar",
       "approved": "Aprovado.",
-      "rejected": "Rejeitado."
+      "rejected": "Rejeitado.",
+      "proposalTitle": "Pronto quando quiser",
+      "goAhead": "Sim, avance",
+      "produces": "Produz: {{what}}"
+    },
+    "runningAction": "{{name}} esta a executar {{action}}",
+    "history": {
+      "title": "Historico",
+      "empty": "Ainda sem conversas.",
+      "untitled": "Sem titulo",
+      "delete": "Eliminar conversa"
+    },
+    "actions": {
+      "title": "O que prefere?",
+      "hint": "Nada corre ate escolher.",
+      "external": "Sai do Fennex",
+      "takesLonger": "Demora mais"
     }
   }
 }

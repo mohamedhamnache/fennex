@@ -153,6 +153,73 @@ async def list_approvals(current_user: CurrentUser, db: DB,
         for a in rows]}
 
 
+class RunActionRequest(BaseModel):
+    conversation_id: uuid.UUID
+    employee_id: str
+    action_id: str
+
+
+@router.post("/actions/run")
+async def run_action(body: RunActionRequest, current_user: CurrentUser, db: DB):
+    """Run an action the user picked from the offered buttons."""
+    convo = await db.get(Conversation, body.conversation_id)
+    if convo is None or convo.org_id != current_user.org_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+
+    conversation_id, org_id, user_id = convo.id, current_user.org_id, current_user.id
+
+    async def event_stream():
+        try:
+            async with async_session_factory() as session:
+                thread = await session.get(Conversation, conversation_id)
+                if thread is None or thread.org_id != org_id:
+                    yield _sse({"type": "error", "message": "Conversation not found"})
+                    return
+                async for event in employee_chat.run_action(
+                        thread, body.employee_id, body.action_id, session, user_id=user_id):
+                    yield _sse(event)
+        except Exception as exc:   # noqa: BLE001
+            logger.exception("action run failed")
+            yield _sse({"type": "error", "message": str(exc)})
+            yield _sse({"type": "done"})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                             headers=SSE_HEADERS)
+
+
+@router.post("/approvals/{approval_id}/run")
+async def approve_and_run(approval_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Validate the proposed action and actually execute it, streaming progress.
+
+    Approval and execution are one call so an approved action cannot be left
+    recorded-but-never-run.
+    """
+    try:
+        await employee_chat.decide_approval(
+            approval_id, current_user.org_id, "approved", current_user.id, db)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+
+    org_id = current_user.org_id
+
+    async def event_stream():
+        try:
+            async with async_session_factory() as session:
+                approval = await session.get(PendingApproval, approval_id)
+                if approval is None or approval.org_id != org_id:
+                    yield _sse({"type": "error", "message": "Approval not found"})
+                    return
+                async for event in employee_chat.run_approved(approval, session):
+                    yield _sse(event)
+        except Exception as exc:   # noqa: BLE001
+            logger.exception("approved action stream failed")
+            yield _sse({"type": "error", "message": str(exc)})
+            yield _sse({"type": "done"})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                             headers=SSE_HEADERS)
+
+
 @router.post("/approvals/{approval_id}")
 async def decide(approval_id: uuid.UUID, body: ApprovalDecision,
                  current_user: CurrentUser, db: DB) -> dict:

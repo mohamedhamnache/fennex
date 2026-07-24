@@ -88,7 +88,10 @@ export type ChatEvent =
   | { type: "stage"; step: number; of: number; employeeId: string; capability: string }
   | { type: "delta"; employeeId: string; text: string }
   | { type: "message"; message: ChatMessage }
-  | { type: "approval"; approvalId: string; preview: Record<string, unknown>; message: ChatMessage }
+  | { type: "approval"; approvalId: string; kind?: "approval" | "proposal"; preview: Record<string, unknown>; message: ChatMessage }
+  | { type: "actions"; employeeId: string; actions: OfferedAction[]; message: ChatMessage }
+  | { type: "working"; employeeId: string; action: string }
+  | { type: "result"; message: ChatMessage; artifactType: string | null; artifactIds: string[] | null }
   | { type: "clarify"; message: ChatMessage; routing: RoutingInfo }
   | { type: "error"; message: string; employeeId?: string }
   | { type: "done" };
@@ -99,6 +102,42 @@ export function sendMessage(
   body: { message: string; project_id: string; conversation_id?: string | null },
   onEvent: (event: ChatEvent) => void,
 ): { done: Promise<void>; cancel: () => void } {
+  return streamTurn("/chat/stream", body, onEvent);
+}
+
+/** One thing an employee is offering to do, rendered as a button. */
+export interface OfferedAction {
+  actionId: string;
+  label: string;
+  description: string;
+  outputs: string[];
+  permissions: string[];
+  weight: "light" | "heavy";
+  destructive: boolean;
+}
+
+/** Run the action the user picked. Nothing runs until they press a button. */
+export function runAction(
+  body: { conversation_id: string; employee_id: string; action_id: string },
+  onEvent: (event: ChatEvent) => void,
+): { done: Promise<void>; cancel: () => void } {
+  return streamTurn("/chat/actions/run", body, onEvent);
+}
+
+/** Validate a proposed action and run it for real. Same event stream, so the
+ *  UI shows the employee working and the artifact it produced. */
+export function approveAndRun(
+  approvalId: string,
+  onEvent: (event: ChatEvent) => void,
+): { done: Promise<void>; cancel: () => void } {
+  return streamTurn(`/chat/approvals/${approvalId}/run`, undefined, onEvent);
+}
+
+function streamTurn(
+  path: string,
+  body: unknown,
+  onEvent: (event: ChatEvent) => void,
+): { done: Promise<void>; cancel: () => void } {
   const controller = new AbortController();
 
   const done = (async () => {
@@ -106,10 +145,10 @@ export function sendMessage(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/v1/chat/stream`, {
+    const res = await fetch(`${API_BASE}/api/v1${path}`, {
       method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
 

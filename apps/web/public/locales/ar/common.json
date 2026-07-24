@@ -2323,7 +2323,23 @@
       "approve": "موافقة",
       "reject": "رفض",
       "approved": "تمت الموافقة.",
-      "rejected": "تم الرفض."
+      "rejected": "تم الرفض.",
+      "proposalTitle": "جاهز عندما تكون مستعدًا",
+      "goAhead": "نعم، تابع",
+      "produces": "ينتج: {{what}}"
+    },
+    "runningAction": "{{name}} ينفّذ {{action}}",
+    "history": {
+      "title": "السجل",
+      "empty": "لا توجد محادثات بعد.",
+      "untitled": "بدون عنوان",
+      "delete": "حذف المحادثة"
+    },
+    "actions": {
+      "title": "ماذا تفضل؟",
+      "hint": "لا شيء يُنفَّذ قبل اختيارك.",
+      "external": "يخرج من Fennex",
+      "takesLonger": "يستغرق وقتًا أطول"
     }
   }
 }

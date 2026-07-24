@@ -2323,7 +2323,23 @@
       "approve": "Freigeben",
       "reject": "Ablehnen",
       "approved": "Freigegeben.",
-      "rejected": "Abgelehnt."
+      "rejected": "Abgelehnt.",
+      "proposalTitle": "Bereit, wenn Sie es sind",
+      "goAhead": "Ja, loslegen",
+      "produces": "Ergebnis: {{what}}"
+    },
+    "runningAction": "{{name}} fuehrt {{action}} aus",
+    "history": {
+      "title": "Verlauf",
+      "empty": "Noch keine Unterhaltungen.",
+      "untitled": "Ohne Titel",
+      "delete": "Unterhaltung loeschen"
+    },
+    "actions": {
+      "title": "Was moechten Sie?",
+      "hint": "Nichts laeuft, bevor Sie waehlen.",
+      "external": "Verlaesst Fennex",
+      "takesLonger": "Dauert laenger"
     }
   }
 }
