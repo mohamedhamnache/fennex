@@ -42,7 +42,8 @@ class BaseEmployee:
     def id(self) -> str:
         return self.employee.id
 
-    def instructions(self, ctx, action, task=None, *, visual: bool = False) -> str:
+    def instructions(self, ctx, action, task=None, *, visual: bool = False,
+                     conversational: bool = False) -> str:
         """The full system prompt: identity, brand, memory, and the craft.
 
         The skill's own system prompt is inherited verbatim. That is where the
@@ -52,7 +53,10 @@ class BaseEmployee:
         """
         blocks = [ctx.system_preamble(self.employee, visual=visual)]
 
-        skill_system = self._skill_prompts(action, task, ctx)[0]
+        # In chat the employee speaks; the artifact is produced later, when the
+        # user presses the button. Inheriting the skill's output contract here
+        # makes it reply with raw JSON or a full article instead of talking.
+        skill_system = "" if conversational else self._skill_prompts(action, task, ctx)[0]
         if skill_system:
             blocks.append(skill_system)
         elif action is not None:
@@ -69,10 +73,24 @@ class BaseEmployee:
                 "When you have gathered enough, produce the final output in exactly the "
                 "format required above -- tool results are your evidence, not your answer.")
 
-        blocks.append(
-            "Do not describe how the work could be done -- do it. Return the finished "
-            "output only, with no preamble about your process.")
-        return "\n\n".join(b for b in blocks if b)
+        if conversational:
+            blocks.append(
+                "You are speaking to the user in a chat. Reply in prose, in your own voice, "
+                "in two to four sentences: the angle you would take and the judgement behind "
+                "it. Never output JSON, markdown documents, code fences or a finished "
+                "artifact here -- the work itself runs separately when the user approves it.")
+        else:
+            blocks.append(
+                "Do not describe how the work could be done -- do it. Return the finished "
+                "output only, with no preamble about your process.")
+
+        # The legacy path applied this inside call_llm. The runtime hands its
+        # system prompt straight to Strands, so without this an employee
+        # answers in whatever language the prompt happened to be in and the
+        # thread ends up mixing languages.
+        from app.services.llm_service import language_directive
+
+        return "\n\n".join(b for b in blocks if b) + language_directive(ctx.locale)
 
     def _skill_prompts(self, action, task, ctx) -> tuple[str, str]:
         """The bound skill's (system, user) prompts, or ("", "").
@@ -173,7 +191,8 @@ class BaseEmployee:
                        employee_id=self.employee.id, action_id=action.id,
                        cost=metrics.finish(ok=False, error=last_error).to_dict())
 
-    async def stream(self, action, task, ctx) -> AsyncIterator[dict]:
+    async def stream(self, action, task, ctx, *,
+                     conversational: bool = True) -> AsyncIterator[dict]:
         """Stream a turn: text deltas and tool-use notices as they happen."""
         from strands import Agent
 
@@ -193,7 +212,8 @@ class BaseEmployee:
 
         agent = Agent(
             model=model, tools=tools,
-            system_prompt=self.instructions(ctx, action, task, visual=visual),
+            system_prompt=self.instructions(ctx, action, task, visual=visual,
+                                            conversational=conversational),
             name=self.employee.name, agent_id=self.employee.id,
             description=self.employee.role)
 
@@ -202,7 +222,9 @@ class BaseEmployee:
         # single lookup floods the stream with dozens of identical frames.
         last_tool: Optional[str] = None
         try:
-            async for event in agent.stream_async(self.build_prompt(action, task, ctx)):
+            chat_prompt = (self._chat_prompt(task, ctx) if conversational
+                           else self.build_prompt(action, task, ctx))
+            async for event in agent.stream_async(chat_prompt):
                 delta = _delta_of(event)
                 if delta:
                     yield {"type": "delta", "employeeId": self.employee.id, "text": delta}
@@ -255,6 +277,14 @@ class BaseEmployee:
             return f"{skill_user}\n\n{settled}" if settled else skill_user
 
         lines = [f"REQUEST: {task.goal or ctx.goal}"]
+        settled = self._settled_block(task)
+        if settled:
+            lines.append(settled)
+        return "\n\n".join(lines)
+
+    def _chat_prompt(self, task, ctx) -> str:
+        """What the user actually said, plus what is already settled."""
+        lines = [f"THE USER SAID: {task.goal or ctx.goal}"]
         settled = self._settled_block(task)
         if settled:
             lines.append(settled)

@@ -2380,6 +2380,15 @@
     },
     "teamBehind": "{{count}} Spezialisten hinter diesem Chat",
     "tryOne": "Probieren Sie",
-    "usingTool": "{{name}} prueft {{tool}}"
+    "usingTool": "{{name}} prueft {{tool}}",
+    "notice": {
+      "joined": "{{name}} ist der Unterhaltung beigetreten.",
+      "handoff": "{{from_}} hat an {{to}} uebergeben.",
+      "plan": "{{count}} Spezialisten arbeiten daran.",
+      "workflow": "{{names}} sind bereit. Starten Sie jeden Schritt, wenn er passt.",
+      "actions": "{{name}} kann uebernehmen. Was moechten Sie?",
+      "followOn": "Erledigt. {{names}} kann uebernehmen.",
+      "clarify": "Ich moechte das an den richtigen Spezialisten geben. Koennen Sie praezisieren, was Sie brauchen?"
+    }
   }
 }

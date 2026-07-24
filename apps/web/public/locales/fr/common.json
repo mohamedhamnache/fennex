@@ -2380,6 +2380,15 @@
     },
     "teamBehind": "{{count}} specialistes derriere ce chat",
     "tryOne": "Essayez",
-    "usingTool": "{{name}} consulte {{tool}}"
+    "usingTool": "{{name}} consulte {{tool}}",
+    "notice": {
+      "joined": "{{name}} a rejoint la conversation.",
+      "handoff": "{{from_}} a transmis a {{to}}.",
+      "plan": "{{count}} specialistes vont travailler dessus.",
+      "workflow": "{{names}} sont prets. Lancez chaque etape quand elle vous convient.",
+      "actions": "{{name}} peut prendre la suite. Que souhaitez-vous ?",
+      "followOn": "C'est fait. {{names}} peut prendre la suite.",
+      "clarify": "Je veux confier cela au bon specialiste. Pouvez-vous preciser ce dont vous avez besoin ?"
+    }
   }
 }

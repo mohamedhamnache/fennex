@@ -749,6 +749,11 @@ function EmployeeBubble({
 /** Router notices: joins, handoffs, clarifications, errors. */
 function SystemNotice({ message, employee }: { message: ChatMessage; employee?: Employee }) {
   const { t } = useTranslation();
+  // Notices are generated server-side in English. When one carries a
+  // translation key, render it in the project's language so the thread does
+  // not mix languages; the stored English stays as the fallback.
+  const i18n = (message.structured as { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
+  const text = i18n ? t(i18n.key, { ...i18n.params, defaultValue: message.content }) : message.content;
   const Icon = employee ? employeeIcon(employee.icon) : Sparkles;
   const isError = message.event === "error";
   const isHandoff = message.event === "handoff";
@@ -768,7 +773,7 @@ function SystemNotice({ message, employee }: { message: ChatMessage; employee?: 
           <Icon className="h-3 w-3" strokeWidth={2} />
         </span>
       )}
-      <span>{message.content}</span>
+      <span>{text}</span>
       {isHandoff && <ArrowRight className="h-3 w-3 opacity-60" />}
       {message.confidence != null && !isError && (
         <span
@@ -809,7 +814,7 @@ function ActionChoices({
         )}
         {t("chat.actions.title")}
       </p>
-      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t)}</p>
 
       <div className="mt-3 flex flex-col gap-2">
         {actions.map((action, index) => {
@@ -916,7 +921,7 @@ function ApprovalCard({
         {isProposal ? t("chat.approval.proposalTitle") : t("chat.approval.title")}
       </p>
 
-      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+      <p className="mt-1.5 text-sm text-foreground">{noticeText(message, t)}</p>
       {preview.description && (
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{preview.description}</p>
       )}
@@ -1044,6 +1049,17 @@ function WorkingIndicator({
       </div>
     </div>
   );
+}
+
+/** A server notice, in the project's language when it carries a key. */
+function noticeText(
+  message: ChatMessage,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const i18n = (message.structured as
+    { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
+  return i18n ? t(i18n.key, { ...i18n.params, defaultValue: message.content })
+              : message.content;
 }
 
 /** Tool names are internal slugs; show them as something a person reads. */

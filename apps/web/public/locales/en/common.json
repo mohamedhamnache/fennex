@@ -2453,6 +2453,15 @@
     },
     "teamBehind": "{{count}} specialists behind this chat",
     "tryOne": "Try one",
-    "usingTool": "{{name}} is checking {{tool}}"
+    "usingTool": "{{name}} is checking {{tool}}",
+    "notice": {
+      "joined": "{{name}} joined the conversation.",
+      "handoff": "{{from_}} handed this to {{to}}.",
+      "plan": "{{count}} specialists will work on this.",
+      "workflow": "{{names}} are ready. Run each step when you are happy with it.",
+      "actions": "{{name}} can take it from here. What would you like?",
+      "followOn": "That's done. {{names}} could take it from here.",
+      "clarify": "I want to route this to the right specialist. Could you say a little more about what you need?"
+    }
   }
 }

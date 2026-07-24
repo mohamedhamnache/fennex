@@ -27,7 +27,7 @@ export function WorkflowCard({
   onRunAll,
   busy,
 }: {
-  message: { id: string; content: string };
+  message: { id: string; content: string; structured?: Record<string, unknown> | null };
   steps: WorkflowStep[];
   byId: Map<string, Employee>;
   stateOf: (index: number) => StepState;
@@ -37,6 +37,11 @@ export function WorkflowCard({
   busy: boolean;
 }) {
   const { t } = useTranslation();
+  const i18n = (message as { structured?: { i18n?: { key: string; params?: Record<string, unknown> } } })
+    .structured?.i18n;
+  const headline = i18n
+    ? t(i18n.key, { ...i18n.params, defaultValue: message.content })
+    : message.content;
   const done = steps.filter((_, i) => stateOf(i) === "done").length;
   const allDone = done === steps.length;
 
@@ -70,7 +75,7 @@ export function WorkflowCard({
         </span>
       </header>
 
-      <p className="px-4 pt-3 text-sm text-foreground">{message.content}</p>
+      <p className="px-4 pt-3 text-sm text-foreground">{headline}</p>
 
       <ol className="flex flex-col gap-2 p-4">
         {steps.map((step, index) => (

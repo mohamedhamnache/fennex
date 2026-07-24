@@ -45,6 +45,16 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _t(key: str, **params) -> dict:
+    """Attach a translation key to a system notice.
+
+    The English `content` stays as the stored transcript and as a fallback;
+    the UI renders `structured.i18n` in the project's language so a French
+    project does not read "Dune joined the conversation" mid-thread.
+    """
+    return {"i18n": {"key": key, "params": params}}
+
+
 # --- conversation plumbing ----------------------------------------------------
 
 
@@ -218,7 +228,8 @@ async def _offer_actions(convo: Conversation, employee: Employee, actions: list,
     row = await add_message(
         convo, db, role="approval", employee_id=employee.id, event="actions",
         content=f"{employee.name} can take it from here. What would you like?",
-        structured={"actions": payload, "employeeId": employee.id})
+        structured={"actions": payload, "employeeId": employee.id,
+                    **_t("chat.notice.actions", name=employee.name)})
     return {"type": "actions", "employeeId": employee.id, "actions": payload,
             "message": message_dict(row)}
 
@@ -288,7 +299,7 @@ async def run_turn(convo: Conversation, message: str, db,
             convo, db, role="system", event="clarify",
             content=("I want to route this to the right specialist. Could you say a little more "
                      "about what you need?"),
-            routing=decision.to_dict())
+            routing=decision.to_dict(), structured=_t("chat.notice.clarify"))
         yield {"type": "clarify", "message": message_dict(row),
                "routing": decision.to_dict()}
         yield {"type": "done"}
@@ -307,18 +318,22 @@ async def run_turn(convo: Conversation, message: str, db,
 
 async def _announce(convo: Conversation, employee: Employee, decision, db) -> dict:
     """The employee enters the conversation -- as a join or as a handover."""
+    previous = registry.get(decision.handoff_from) if decision.handoff_from else None
     if decision.handoff_from:
-        previous = registry.get(decision.handoff_from)
         content = (f"{previous.name} handed this to {employee.name}."
                    if previous else f"{employee.name} took over.")
         row = await add_message(convo, db, role="system", event="handoff",
                                 employee_id=employee.id, content=content,
-                                routing=decision.to_dict(), confidence=decision.confidence)
+                                routing=decision.to_dict(), confidence=decision.confidence,
+                                structured=_t("chat.notice.handoff",
+                                              from_=previous.name if previous else "",
+                                              to=employee.name))
     else:
         row = await add_message(convo, db, role="system", event="joined",
                                 employee_id=employee.id,
                                 content=f"{employee.name} joined the conversation.",
-                                routing=decision.to_dict(), confidence=decision.confidence)
+                                routing=decision.to_dict(), confidence=decision.confidence,
+                                structured=_t("chat.notice.joined", name=employee.name))
 
     convo.owner_employee_id = employee.id
     await db.commit()
@@ -367,7 +382,9 @@ async def _run_team(convo: Conversation, decision, ctx: WorkContext,
     row = await add_message(
         convo, db, role="system", event="plan", employee_id=lead.id,
         content=f"{len(decision.team)} specialists will work on this.",
-        routing=decision.to_dict(), structured={"team": decision.team})
+        routing=decision.to_dict(),
+        structured={"team": decision.team, **_t("chat.notice.plan",
+                                                count=len(decision.team))})
     yield {"type": "plan", "team": decision.team, "message": message_dict(row)}
 
     # A short word from the lead on what the squad will deliver -- not a
@@ -407,7 +424,7 @@ async def _offer_workflow(convo: Conversation, lead: Employee, team: list[dict],
     row = await add_message(
         convo, db, role="approval", employee_id=lead.id, event="workflow",
         content=f"{names} are ready. Run each step when you are happy with it.",
-        structured={"workflow": steps})
+        structured={"workflow": steps, **_t("chat.notice.workflow", names=names)})
     return {"type": "workflow", "steps": steps, "message": message_dict(row)}
 
 
@@ -523,7 +540,7 @@ async def _offer_follow_on(convo: Conversation, follow: list[dict], db) -> dict:
         convo, db, role="approval", employee_id=payload[0]["employeeId"] if payload else None,
         event="followOn",
         content=f"That's done. {names} could take it from here.",
-        structured={"followOn": payload})
+        structured={"followOn": payload, **_t("chat.notice.followOn", names=names)})
     return {"type": "followOn", "actions": payload, "message": message_dict(row)}
 
 
@@ -654,7 +671,10 @@ async def run_workflow(convo: Conversation, steps: list[dict], db,
                 convo, db, role="system", event="handoff", employee_id=employee.id,
                 content=(f"{handing.name} handed this to {employee.name}."
                          if handing else f"{employee.name} took the next step."),
-                structured={"step": index + 1, "of": total})
+                structured={"step": index + 1, "of": total,
+                            **_t("chat.notice.handoff",
+                                 from_=handing.name if handing else "",
+                                 to=employee.name)})
             yield {"type": "handoff", "from": previous_employee,
                    "employee": {"id": employee.id, "name": employee.name,
                                 "role": employee.role, "department": employee.department,

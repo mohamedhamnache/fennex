@@ -28,7 +28,14 @@ export function FollowOnCard({
         <Sparkles className="h-3 w-3" strokeWidth={2.5} />
         {t("chat.followOn.title")}
       </p>
-      <p className="mt-1.5 text-sm text-foreground">{message.content}</p>
+      <p className="mt-1.5 text-sm text-foreground">{
+        (() => {
+          const i18n = (message.structured as
+            { i18n?: { key: string; params?: Record<string, unknown> } } | null)?.i18n;
+          return i18n ? t(i18n.key, { ...i18n.params, defaultValue: message.content })
+                      : message.content;
+        })()
+      }</p>
 
       <div className="mt-3 flex flex-col gap-2">
         {actions.map((action) => {

@@ -2380,6 +2380,15 @@
     },
     "teamBehind": "{{count}} especialistas por tras deste chat",
     "tryOne": "Experimente",
-    "usingTool": "{{name}} esta a consultar {{tool}}"
+    "usingTool": "{{name}} esta a consultar {{tool}}",
+    "notice": {
+      "joined": "{{name}} juntou-se a conversa.",
+      "handoff": "{{from_}} passou isto a {{to}}.",
+      "plan": "{{count}} especialistas vao trabalhar nisto.",
+      "workflow": "{{names}} estao prontos. Execute cada passo quando estiver satisfeito.",
+      "actions": "{{name}} pode continuar. O que prefere?",
+      "followOn": "Feito. {{names}} pode continuar.",
+      "clarify": "Quero encaminhar isto para o especialista certo. Pode precisar o que precisa?"
+    }
   }
 }
