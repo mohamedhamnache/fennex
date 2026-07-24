@@ -946,7 +946,10 @@
         "plum": "Ciruela"
       },
       "custom": "Personalizado",
-      "accentPreview": "Vista previa"
+      "accentPreview": "Vista previa",
+      "description": "Que es este proyecto",
+      "descriptionPlaceholder": "Un blog WordPress para compartir recetas caseras",
+      "descriptionHint": "Sirve para juzgar competidores y mantener a cada empleado en tono. Di que es el sitio y para quien."
     },
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",

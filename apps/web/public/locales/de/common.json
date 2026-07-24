@@ -946,7 +946,10 @@
         "plum": "Pflaume"
       },
       "custom": "Benutzerdefiniert",
-      "accentPreview": "Vorschau"
+      "accentPreview": "Vorschau",
+      "description": "Was dieses Projekt ist",
+      "descriptionPlaceholder": "Ein WordPress-Blog fuer hausgemachte Rezepte",
+      "descriptionHint": "Dient dazu, Wettbewerber zu beurteilen und alle Mitarbeiter markentreu zu halten. Sagen Sie, was die Seite ist und fuer wen."
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",

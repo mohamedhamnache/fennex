@@ -946,7 +946,10 @@
         "plum": "Ameixa"
       },
       "custom": "Personalizado",
-      "accentPreview": "Pré-visualização"
+      "accentPreview": "Pré-visualização",
+      "description": "O que e este projeto",
+      "descriptionPlaceholder": "Um blog WordPress de partilha de receitas caseiras",
+      "descriptionHint": "Serve para avaliar concorrentes e manter cada colaborador no tom. Diga o que e o site e para quem."
     },
     "title": "Configurações",
     "subtitle": "Gerencie sua conta, espaço de trabalho e preferências.",

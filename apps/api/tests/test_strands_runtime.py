@@ -511,3 +511,39 @@ def test_an_unusable_model_choice_falls_back_to_the_tier():
         "balanced", "light", {"openai": "k"},
         provider_override="anthropic", model_override="claude-opus-4-8")
     assert choice.provider == "openai"
+
+
+def test_a_bare_topic_is_qualified_with_the_project_scope():
+    """"pure" is a dictionary entry; "pure recettes" is this project's
+    territory. Searching the bare label is how a dictionary and an app store
+    ended up looking like competitors."""
+    from app.employees.toolbelt import _qualified, _scope_terms
+
+    class _Project:
+        description = "Un blog WordPress de partage de recettes de cuisine maison."
+        industry = "Food"
+
+    terms = _scope_terms(_Project())
+    # Platform words describe how it is built, not what it competes on.
+    assert "wordpress" not in terms and "blog" not in terms
+    assert _qualified("pure", terms) != "pure"
+    # A phrase is already specific enough to leave alone.
+    assert _qualified("substituts oeufs", terms) == "substituts oeufs"
+
+
+def test_without_a_scope_the_topic_is_left_alone():
+    from app.employees.toolbelt import _qualified, _scope_terms
+
+    class _Bare:
+        description = None
+        industry = None
+
+    assert _scope_terms(_Bare()) == []
+    assert _qualified("pure", []) == "pure"
+
+
+def test_platforms_are_never_returned_as_competitors():
+    from app.employees.toolbelt import _NOT_COMPETITORS
+
+    for domain in ("youtube.com", "wikipedia.org", "amazon.fr", "pinterest.com"):
+        assert domain in _NOT_COMPETITORS

@@ -1098,7 +1098,8 @@ function ProjectSection() {
   const active = projects.find((p) => p.id === (editId ?? currentProjectId)) ?? projects[0];
 
   const [form, setForm] = useState({
-    name: "", domain: "", locale: "en", target_country: "", industry: "", persona: "" as ProjectPersona | "",
+    name: "", domain: "", locale: "en", target_country: "", industry: "",
+    description: "", persona: "" as ProjectPersona | "",
     autopilot_enabled: false, theme: "desert",
   });
 
@@ -1111,6 +1112,7 @@ function ProjectSection() {
         locale: active.locale ?? "en",
         target_country: active.target_country ?? "",
         industry: active.industry ?? "",
+        description: active.description ?? "",
         persona: active.persona ?? "",
         autopilot_enabled: active.autopilot_enabled ?? false,
         theme: active.theme || "desert",
@@ -1133,6 +1135,7 @@ function ProjectSection() {
         locale: form.locale,
         target_country: form.target_country.trim() || null,
         industry: form.industry.trim() || null,
+        description: form.description.trim() || null,
         persona: form.persona || undefined,
         autopilot_enabled: form.autopilot_enabled,
         theme: form.theme,
@@ -1209,6 +1212,22 @@ function ProjectSection() {
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("settings.project.country")}>
             <Input value={form.target_country} onChange={(v) => setForm((f) => ({ ...f, target_country: v }))} placeholder="US" />
+          </Field>
+          <Field label={t("settings.project.description")}>
+            {/* What the site actually is. Brand DNA and the competitor scout
+                both read it -- without it a rival can only be judged on
+                keyword overlap, which is how a dictionary ends up looking
+                like competition. */}
+            <textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder={t("settings.project.descriptionPlaceholder")}
+              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t("settings.project.descriptionHint")}
+            </p>
           </Field>
           <Field label={t("settings.project.industry")}>
             <Input value={form.industry} onChange={(v) => setForm((f) => ({ ...f, industry: v }))} />

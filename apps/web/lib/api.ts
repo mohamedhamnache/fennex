@@ -169,6 +169,7 @@ export interface Project {
   name: string;
   domain: string;
   locale: string;
+  description?: string | null;
   target_country: string | null;
   industry: string | null;
   persona?: ProjectPersona | null;
@@ -224,7 +225,7 @@ export async function listProjects(): Promise<Project[]> {
 
 export async function updateProject(
   projectId: string,
-  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled" | "theme">>,
+  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "description" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled" | "theme">>,
 ): Promise<Project> {
   return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }

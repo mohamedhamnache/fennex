@@ -201,6 +201,52 @@ async def _known_competitors(ctx, db, inputs):
     return {"competitors": found}
 
 
+# Sites that rank across every topic and compete with no one in particular.
+_NOT_COMPETITORS = {
+    "youtube.com", "google.com", "wikipedia.org", "fr.wikipedia.org",
+    "facebook.com", "instagram.com", "pinterest.com", "pinterest.fr",
+    "tiktok.com", "linkedin.com", "x.com", "twitter.com", "reddit.com",
+    "amazon.com", "amazon.fr", "quora.com", "medium.com",
+}
+
+
+# Words that say nothing about what a project competes on.
+_SCOPE_STOPWORDS = {
+    "blog", "site", "website", "wordpress", "shopify", "page", "pages", "web",
+    "the", "and", "for", "with", "une", "des", "les", "pour", "avec", "sur",
+    "partage", "sharing", "maison", "online", "ligne",
+}
+
+
+def _scope_terms(project, limit: int = 2) -> list[str]:
+    """A couple of words describing what the project is about.
+
+    Drawn from its description and industry, with platform words dropped --
+    "WordPress" and "blog" say how it is built, not what it competes on.
+    """
+    import re as _re
+
+    text = " ".join(str(x) for x in (
+        getattr(project, "description", None),
+        getattr(project, "industry", None),
+    ) if x)
+    seen: list[str] = []
+    for word in _re.findall(r"[^\W\d_]{4,}", text.lower(), flags=_re.UNICODE):
+        if word in _SCOPE_STOPWORDS or word in seen:
+            continue
+        seen.append(word)
+    return seen[:limit]
+
+
+def _qualified(topic: str, scope_terms: list[str]) -> str:
+    """Qualify a bare topic with the project's subject matter."""
+    topic = (topic or "").strip()
+    if not scope_terms or len(topic.split()) > 1:
+        return topic
+    extra = [t for t in scope_terms if t not in topic.lower()]
+    return f"{topic} {extra[0]}" if extra else topic
+
+
 async def _discover_competitors(ctx, db, inputs):
     """Who competes with THIS project, derived from its own demand.
 
@@ -222,13 +268,19 @@ async def _discover_competitors(ctx, db, inputs):
     if project is None:
         return {"competitors": [], "error": "Project not found."}
 
-    # The project's real topics, best first.
+    scope_terms = _scope_terms(project)
+
+    # The project's real topics, best first. Real search queries are preferred
+    # over cluster labels: a label is often a single word ("pure", "dinde"),
+    # and searching one returns dictionaries and app stores rather than rivals.
     topics: list[str] = []
     try:
         insights = await get_market_insights(ctx.project_id, ctx.org_id, db)
-        topics = [c.topic for c in (insights.clusters or [])[:3] if c.topic]
-        if not topics:
-            topics = [i.query for i in (insights.ideas or [])[:3] if i.query]
+        multi = [i.query for i in (insights.ideas or []) if i.query and len(i.query.split()) > 1]
+        topics = multi[:3]
+        if len(topics) < 3:
+            labels = [c.topic for c in (insights.clusters or []) if c.topic]
+            topics += [t for t in labels if t not in topics][:3 - len(topics)]
     except Exception:
         topics = []
     # Fall back to what the caller asked about, then the project's niche.
@@ -243,18 +295,30 @@ async def _discover_competitors(ctx, db, inputs):
                         "Search Console or name the competitor to analyse."}
 
     ours = _project_domain(project)
+    # What this project IS, so a candidate can be judged on kind and not only
+    # on keyword overlap: a recipe blog does not compete with a supermarket
+    # that happens to rank for the same ingredient.
+    scope = " ".join(str(x) for x in (
+        getattr(project, "description", None),
+        getattr(project, "industry", None),
+    ) if x).strip()
+
     tally: dict[str, dict] = {}
     checked: list[str] = []
 
     # Capped deliberately: each lookup is a paid call.
     for topic in topics[:3]:
+        # A bare topic is ambiguous -- "pure" is a dictionary entry, "pure
+        # recette" is this project's territory. Qualify it with what the
+        # project is, so the results are rivals rather than coincidences.
+        query = _qualified(topic, scope_terms)
         try:
-            data = await fetch_serp(project, topic, db)
+            data = await fetch_serp(project, query, db)
         except Exception:
             continue
         if not data:
             continue
-        checked.append(topic)
+        checked.append(query)
         for row in (data.get("top10") or [])[:10]:
             domain = _norm_domain(row.get("domain") or "")
             # Our own site is not a competitor.
@@ -271,12 +335,28 @@ async def _discover_competitors(ctx, db, inputs):
                 "error": "The search provider returned nothing for this project's "
                          "topics. Check the DataForSEO plan and balance."}
 
+    # Platforms and marketplaces rank for everything and compete with nobody
+    # in particular. Excluding them here saves the employee judging each one.
+    for domain in list(tally):
+        if any(domain == g or domain.endswith("." + g) for g in _NOT_COMPETITORS):
+            tally.pop(domain, None)
+
     # Recurring across topics beats ranking once, then rank breaks ties.
     ranked = sorted(tally.values(), key=lambda e: (-len(e["topics"]), e["best_rank"]))
-    return {"ourDomain": ours, "topicsChecked": checked,
-            "competitors": ranked[:8],
-            "note": "Ranked by how many of this project's own topics each domain "
-                    "competes on. Prefer those appearing on more than one."}
+    return {
+        "ourDomain": ours,
+        "projectScope": scope or None,
+        "topicsChecked": checked,
+        "competitors": ranked[:8],
+        "note": ("Ranked by how many of this project's own topics each domain competes "
+                 "on. Prefer those appearing on more than one. "
+                 + (f"This project is: {scope}. Judge each candidate against that -- a "
+                    "site of a different kind is not a competitor even when it ranks "
+                    "for the same terms."
+                    if scope else
+                    "This project has no description set, so candidates can only be "
+                    "judged on keyword overlap. Adding one would sharpen this.")),
+    }
 
 
 async def _serp_lookup(ctx, db, inputs):

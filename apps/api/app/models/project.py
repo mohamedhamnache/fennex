@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import String, Boolean, ForeignKey, JSON
+from sqlalchemy import String, Boolean, ForeignKey, JSON, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,11 @@ class Project(Base, TimestampMixin):
     locale: Mapped[str] = mapped_column(String(10), default="en")
     target_country: Mapped[str | None] = mapped_column(String(10))
     industry: Mapped[str | None] = mapped_column(String(100))
+    # What this project actually is, in the owner's words: "a WordPress blog
+    # sharing recipes". Brand DNA and the competitor scout both read it -- the
+    # difference between judging a rival by keyword overlap alone and knowing
+    # whether it is even the same kind of site.
+    description: Mapped[str | None] = mapped_column(Text)
     locked: Mapped[bool] = mapped_column(Boolean, default=False)
     locked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Onboarding persona: "creator" | "ecommerce" | "freelancer"

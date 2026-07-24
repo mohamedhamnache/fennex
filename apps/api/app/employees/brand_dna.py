@@ -81,7 +81,7 @@ class BrandDNA:
             if value:
                 lines.append(f"{label}: {value}")
 
-        add("Mission", self.mission)
+        add("What this project is", self.mission)
         add("Vision", self.vision)
         add("Audience", self.audience)
         add("Products", self.products[:12])

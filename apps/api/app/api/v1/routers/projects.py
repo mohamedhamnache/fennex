@@ -20,6 +20,7 @@ class ProjectCreate(BaseModel):
     locale: str = "en"
     target_country: Optional[str] = None
     industry: Optional[str] = None
+    description: Optional[str] = None
     persona: Optional[str] = None          # creator | ecommerce | freelancer
     persona_data: Optional[dict] = None
 
@@ -30,6 +31,7 @@ class ProjectUpdate(BaseModel):
     locale: Optional[str] = None
     target_country: Optional[str] = None
     industry: Optional[str] = None
+    description: Optional[str] = None
     persona: Optional[str] = None
     persona_data: Optional[dict] = None
     autopilot_enabled: Optional[bool] = None

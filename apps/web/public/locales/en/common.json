@@ -1043,7 +1043,10 @@
         "plum": "Plum"
       },
       "custom": "Custom",
-      "accentPreview": "Preview"
+      "accentPreview": "Preview",
+      "description": "What this project is",
+      "descriptionPlaceholder": "A WordPress blog sharing home-cooking recipes",
+      "descriptionHint": "Used to judge competitors and to keep every employee on-brand. Say what the site is and who it is for."
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",

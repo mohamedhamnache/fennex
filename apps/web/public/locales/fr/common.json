@@ -946,7 +946,10 @@
         "plum": "Prune"
       },
       "custom": "Personnalisé",
-      "accentPreview": "Aperçu"
+      "accentPreview": "Aperçu",
+      "description": "Ce qu'est ce projet",
+      "descriptionPlaceholder": "Un blog WordPress de partage de recettes de cuisine maison",
+      "descriptionHint": "Sert a juger les concurrents et a garder chaque employe dans le ton. Dites ce qu'est le site et pour qui."
     },
     "title": "Paramètres",
     "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",

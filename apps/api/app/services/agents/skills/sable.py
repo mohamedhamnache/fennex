@@ -19,9 +19,13 @@ def _scan_prompt(brief, inputs, td):
         "3. only search manually if discovery returns nothing, and then search a topic "
         "this project genuinely targets;\n"
         "4. crawl the top one or two before judging them.\n"
-        "Reject anything that is not a real competitor -- a directory, an encyclopaedia, "
-        "a government or news page ranking incidentally is not a rival. Say so rather "
-        "than analysing it. Never report finding nothing without having looked.\n\n"
+        "JUDGE THEM AGAINST WHAT THIS PROJECT IS. The brief says what kind of site "
+        "this is; a candidate of a different kind is not a competitor even when it "
+        "ranks for the same terms. A recipe blog competes with other recipe blogs, "
+        "not with a supermarket, a marketplace, an encyclopaedia or a video platform "
+        "that happens to appear for an ingredient. Name what you rejected and why, "
+        "briefly, so the user can see you looked. Never report finding nothing "
+        "without having looked.\n\n"
         'Return ONLY JSON: {"competitors": [str], "scorecard": {...}, '
         '"gaps": [str], "insights": str}. Write every human-readable value in the '
         "project's language; keep the field names exactly as given."
