@@ -83,10 +83,12 @@ function artifactMeta(
   const first = ids[0];
   switch (kind) {
     case "article":
-      // There is no per-article route -- articles are opened from the list.
+      // The editor lives on the list page and opens from ?article=<id>.
       return {
         Icon: FileText,
-        href: `/${projectId}/articles`,
+        href: first
+          ? `/${projectId}/articles?article=${first}`
+          : `/${projectId}/articles`,
         tone: "bg-amber-500/12 text-amber-500",
       };
     case "image":

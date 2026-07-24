@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1372,7 +1373,11 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
   const queryClient = useQueryClient();
   const { success, error } = useToast();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // ?article=<id> opens straight into the editor, so anything that produces an
+  // article (the assistant, a campaign) can link to the piece it just made.
+  const searchParams = useSearchParams();
+  const requestedId = searchParams.get("article");
+  const [selectedId, setSelectedId] = useState<string | null>(requestedId);
   const [streamId, setStreamId] = useState<string | null>(null);
   const [streamTemplate, setStreamTemplate] = useState<TemplateId | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -1417,6 +1422,10 @@ export default function ArticlesPage({ params }: { params: { projectId: string }
     setStreamId(article.id);
     setSelectedId(article.id);
   }
+
+  useEffect(() => {
+    if (requestedId) setSelectedId(requestedId);
+  }, [requestedId]);
 
   const selectedArticle = articles.find((a) => a.id === selectedId) ?? null;
 

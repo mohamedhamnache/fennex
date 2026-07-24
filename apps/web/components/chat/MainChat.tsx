@@ -11,12 +11,13 @@ import { cn } from "@/lib/cn";
 import {
   approveAndRun, decideApproval, deleteConversation, getConversation,
   listConversations, runAction, runWorkflow, runWorkflowStep, sendMessage,
-  type ChatEvent, type ChatMessage, type Conversation, type OfferedAction,
-  type TeamStep, type WorkflowStep,
+  type ChatEvent, type ChatMessage, type Conversation, type FollowOnAction,
+  type OfferedAction, type TeamStep, type WorkflowStep,
 } from "@/lib/chat";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
 import { WorkflowCard, type StepState } from "./WorkflowCard";
 import { ArtifactCard } from "./ArtifactCard";
+import { FollowOnCard } from "./FollowOnCard";
 
 /** A turn in flight: the employee currently speaking and their partial text. */
 interface Live {
@@ -161,6 +162,7 @@ export function MainChat({ projectId }: { projectId: string }) {
       case "approval":
       case "actions":
       case "workflow":
+      case "followOn":
       case "clarify":
         setRouting(false);
         setLive(null);
@@ -226,11 +228,11 @@ export function MainChat({ projectId }: { projectId: string }) {
 
   /** The user pressed one of the offered action buttons. */
   const runChosenAction = useCallback((
-    messageId: string, employeeId: string, actionId: string,
+    messageId: string, employeeId: string, actionId: string, decisionKey?: string,
   ) => {
     if (busy || !conversationId) return;
     setBusy(true);
-    setDecisions((prev) => ({ ...prev, [messageId]: actionId }));
+    setDecisions((prev) => ({ ...prev, [messageId]: decisionKey ?? actionId }));
     const { cancel } = runAction(
       { conversation_id: conversationId, employee_id: employeeId, action_id: actionId },
       handleEvent,
@@ -331,7 +333,9 @@ export function MainChat({ projectId }: { projectId: string }) {
 
         <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
-            {messages.length === 0 && !routing && <EmptyState onPick={setInput} />}
+            {messages.length === 0 && !routing && (
+              <EmptyState onPick={setInput} employees={registry?.employees ?? []} />
+            )}
 
             {messages.map((message) => (
               <MessageRow
@@ -586,7 +590,8 @@ function MessageRow({
   employee?: Employee;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
-  onRunAction: (messageId: string, employeeId: string, actionId: string) => void;
+  onRunAction: (messageId: string, employeeId: string, actionId: string,
+                decisionKey?: string) => void;
   onRunWorkflow: (messageId: string, steps: WorkflowStep[]) => void;
   onRunStep: (messageId: string, steps: WorkflowStep[], index: number) => void;
   stepStateFor: (messageId: string, index: number) => StepState;
@@ -602,7 +607,20 @@ function MessageRow({
       approvalId?: string;
       actions?: OfferedAction[];
       workflow?: WorkflowStep[];
+      followOn?: FollowOnAction[];
     };
+    if (structured.followOn?.length) {
+      return (
+        <FollowOnCard
+          message={message}
+          actions={structured.followOn}
+          byId={byId}
+          onRun={(id, employeeId, actionId) =>
+            onRunAction(id, employeeId, actionId, `${employeeId}:${actionId}`)}
+          chosen={decisions[message.id]}
+        />
+      );
+    }
     if (structured.workflow?.length) {
       return (
         <WorkflowCard
@@ -1016,11 +1034,14 @@ function WorkingIndicator({ employee, action }: { employee: Employee; action?: s
 
 // --- empty state --------------------------------------------------------------
 
-function EmptyState({ onPick }: { onPick: (text: string) => void }) {
+function EmptyState({
+  onPick, employees,
+}: { onPick: (text: string) => void; employees: Employee[] }) {
   const { t } = useTranslation();
   const examples = t("chat.examples", { returnObjects: true }) as string[];
+
   return (
-    <div className="flex flex-col items-center py-10 text-center animate-fade-in">
+    <div className="flex flex-col items-center py-8 text-center animate-fade-in">
       <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary">
         <Sparkles className="h-7 w-7 text-white" strokeWidth={1.8} />
       </span>
@@ -1028,17 +1049,52 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
       <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
         {t("chat.emptyBody")}
       </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        {examples.map((example) => (
-          <button
-            key={example}
-            type="button"
-            onClick={() => onPick(example)}
-            className="cursor-pointer rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-          >
-            {example}
-          </button>
-        ))}
+
+      {/* Who is behind the assistant. Seeing the specialists makes it obvious
+          what can be asked for, without reading any documentation. */}
+      {employees.length > 0 && (
+        <div className="mt-6 w-full max-w-lg">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("chat.teamBehind", { count: employees.length })}
+          </p>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {employees.map((employee) => {
+              const Icon = employeeIcon(employee.icon);
+              return (
+                <span
+                  key={employee.id}
+                  title={`${employee.name} — ${employee.role}`}
+                  className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                >
+                  <span className={cn("flex h-4 w-4 items-center justify-center rounded-full",
+                    departmentAccent(employee.department))}>
+                    <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+                  </span>
+                  {employee.name}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 w-full max-w-lg">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("chat.tryOne")}
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {examples.map((example) => (
+            <button
+              key={example}
+              type="button"
+              onClick={() => onPick(example)}
+              className="group flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-accent hover:text-foreground active:scale-[0.99]"
+            >
+              <span className="flex-1">{example}</span>
+              <ArrowRight className="h-3 w-3 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

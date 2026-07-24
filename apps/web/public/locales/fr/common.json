@@ -2373,6 +2373,12 @@
         "campaign": "Campagne creee",
         "report": "Rapport cree"
       }
-    }
+    },
+    "followOn": {
+      "title": "Et ensuite",
+      "hint": "Choisissez, ou dites simplement ce que vous voulez."
+    },
+    "teamBehind": "{{count}} specialistes derriere ce chat",
+    "tryOne": "Essayez"
   }
 }

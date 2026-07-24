@@ -2446,6 +2446,12 @@
         "campaign": "Campaign created",
         "report": "Report created"
       }
-    }
+    },
+    "followOn": {
+      "title": "What's next",
+      "hint": "Pick one, or just say what you want."
+    },
+    "teamBehind": "{{count}} specialists behind this chat",
+    "tryOne": "Try one"
   }
 }

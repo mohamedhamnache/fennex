@@ -91,6 +91,7 @@ export type ChatEvent =
   | { type: "approval"; approvalId: string; kind?: "approval" | "proposal"; preview: Record<string, unknown>; message: ChatMessage }
   | { type: "actions"; employeeId: string; actions: OfferedAction[]; message: ChatMessage }
   | { type: "workflow"; steps: WorkflowStep[]; message: ChatMessage }
+  | { type: "followOn"; actions: FollowOnAction[]; message: ChatMessage }
   | { type: "working"; employeeId: string; action: string }
   | { type: "result"; stepIndex?: number; message: ChatMessage; artifactType: string | null; artifactIds: string[] | null }
   | { type: "clarify"; message: ChatMessage; routing: RoutingInfo }
@@ -114,6 +115,24 @@ export interface OfferedAction {
   outputs: string[];
   permissions: string[];
   weight: "light" | "heavy";
+  destructive: boolean;
+}
+
+/** A next step the company suggests once the current work is delivered.
+ *  Unlike OfferedAction these can span several employees, so each carries its
+ *  own identity. */
+export interface FollowOnAction {
+  actionId: string;
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string;
+  icon: string;
+  department: string;
+  label: string;
+  description: string;
+  outputs: string[];
+  weight: "light" | "heavy";
+  permissions: string[];
   destructive: boolean;
 }
 

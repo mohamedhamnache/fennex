@@ -140,6 +140,34 @@ def _turns(rows: list[ConversationMessage]) -> list[dict]:
             for r in rows if r.role in ("user", "employee") and r.content]
 
 
+async def _thread_state(convo: Conversation, db) -> str:
+    """What this conversation has already established and produced.
+
+    Without it, each turn starts cold: an employee asked to "now write the
+    social posts" would not know an article already exists, and would ask the
+    user for a subject they already gave.
+    """
+    lines: list[str] = []
+    brief = _stored_brief(convo)
+    if brief.get("title"):
+        lines.append(f"Subject agreed with the user: {brief['title']}")
+    if brief.get("keyword"):
+        lines.append(f"Primary keyword: {brief['keyword']}")
+
+    delivered: list[str] = []
+    for row in await history(convo.id, db, limit=60):
+        if row.event != "result":
+            continue
+        who = registry.get(row.employee_id) if row.employee_id else None
+        delivered.append(
+            f"- {who.name if who else row.employee_id} produced "
+            f"{row.artifact_type or 'output'}: {(row.content or '')[:160]}")
+    if delivered:
+        lines.append("Already delivered in this conversation -- build on it, never "
+                     "redo it and never ask for it again:\n" + "\n".join(delivered[-6:]))
+    return "\n".join(lines)
+
+
 def _needs_approval(employee: Employee, action_id: Optional[str]) -> bool:
     """Reaches outside Fennex -- gate it before the employee even speaks."""
     action = employee.action(action_id) if action_id else None
@@ -456,6 +484,49 @@ async def _prior_outputs(convo: Conversation, db) -> dict:
     return inherited
 
 
+def _follow_on(done_steps: list[dict], last_employee_id: str, limit: int = 3) -> list[dict]:
+    """What the company would do next, excluding anything already planned.
+
+    Read from the roster's own `produces_for` declarations, so the suggestion
+    comes from how the company is wired rather than from a rule written here.
+    """
+    already = {(s.get("employeeId"), s.get("actionId")) for s in done_steps}
+    covered = [s.get("capability", "") for s in done_steps]
+    out = []
+    for candidate in ai_router.next_steps(last_employee_id, covered, limit=limit + 2):
+        if (candidate["employeeId"], candidate["actionId"]) in already:
+            continue
+        out.append(candidate)
+    return out[:limit]
+
+
+async def _offer_follow_on(convo: Conversation, follow: list[dict], db) -> dict:
+    """Offer the next specialists as buttons, once the plan is delivered."""
+    payload = []
+    for candidate in follow:
+        employee = registry.get(candidate["employeeId"])
+        action = employee.action(candidate["actionId"]) if employee else None
+        if employee is None or action is None:
+            continue
+        payload.append({
+            "actionId": action.id, "employeeId": employee.id,
+            "employeeName": employee.name, "employeeRole": employee.role,
+            "icon": employee.icon, "department": employee.department,
+            "label": action.label, "description": action.description,
+            "outputs": list(action.outputs), "weight": action.weight,
+            "permissions": list(action.requires_permissions),
+            "destructive": any(p in APPROVAL_PERMISSIONS
+                               for p in action.requires_permissions),
+        })
+    names = ", ".join(dict.fromkeys(p["employeeName"] for p in payload))
+    row = await add_message(
+        convo, db, role="approval", employee_id=payload[0]["employeeId"] if payload else None,
+        event="followOn",
+        content=f"That's done. {names} could take it from here.",
+        structured={"followOn": payload})
+    return {"type": "followOn", "actions": payload, "message": message_dict(row)}
+
+
 async def run_step(convo: Conversation, steps: list[dict], index: int, db,
                    user_id=None) -> AsyncIterator[dict]:
     """Run one approved step of a workflow, inheriting from the steps before it."""
@@ -530,6 +601,15 @@ async def run_step(convo: Conversation, steps: list[dict], index: int, db,
         yield {"type": "result", "stepIndex": index, "message": message_dict(row),
                "artifactType": outcome.artifact_type,
                "artifactIds": outcome.artifact_ids}
+
+        # The work rarely ends here. Once the last planned step is done, offer
+        # what the company would naturally do next -- an article wants a
+        # campaign, a campaign wants visuals -- so the user does not have to
+        # know who to ask for.
+        if index == len(steps) - 1:
+            follow = _follow_on(steps, employee.id)
+            if follow:
+                yield await _offer_follow_on(convo, follow, db)
     else:
         row = await add_message(
             convo, db, role="system", employee_id=employee.id, event="error",
@@ -618,6 +698,10 @@ async def run_workflow(convo: Conversation, steps: list[dict], db,
             yield {"type": "result", "message": message_dict(row),
                    "artifactType": outcome.artifact_type,
                    "artifactIds": outcome.artifact_ids}
+            if index == total - 1:
+                follow = _follow_on(steps, employee.id)
+                if follow:
+                    yield await _offer_follow_on(convo, follow, db)
             previous_task = task.id
         else:
             row = await add_message(
@@ -663,6 +747,11 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                    "single decision that shapes it.")
     else:
         system += "\n\nKeep it under about six sentences."
+
+    # Everything this thread already settled, so the employee never re-asks.
+    state = await _thread_state(convo, db)
+    if state:
+        system += f"\n\nWHERE THIS CONVERSATION STANDS:\n{state}"
 
     past = await history(convo.id, db, limit=12)
     turns = _turns(past)[-6:]
@@ -806,6 +895,11 @@ async def run_approved(approval: PendingApproval, db) -> AsyncIterator[dict]:
         yield {"type": "result", "message": message_dict(row),
                "artifactType": outcome.artifact_type,
                "artifactIds": outcome.artifact_ids}
+        follow = _follow_on([{"employeeId": employee.id, "actionId": action.id,
+                              "capability": (action.capabilities or [""])[0]}],
+                            employee.id)
+        if follow:
+            yield await _offer_follow_on(convo, follow, db)
     else:
         row = await add_message(
             convo, db, role="system", employee_id=employee.id, event="error",

@@ -2373,6 +2373,12 @@
         "campaign": "Campanha criada",
         "report": "Relatorio criado"
       }
-    }
+    },
+    "followOn": {
+      "title": "A seguir",
+      "hint": "Escolha uma, ou diga simplesmente o que quer."
+    },
+    "teamBehind": "{{count}} especialistas por tras deste chat",
+    "tryOne": "Experimente"
   }
 }
