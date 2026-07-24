@@ -69,21 +69,54 @@ A canonical empty result is produced by `empty_result()` in Task 3 and reused ev
 **Interfaces:**
 - Produces: `DiscoveryRun` ORM model with columns `id, org_id, project_id, input_url, input_description, status, stage, progress, result (JSON), error, created_at, updated_at`. Status values: `"queued" | "running" | "done" | "error"`.
 
+**Test infrastructure (read before writing the test).** This repo's tests run on
+host with **in-memory SQLite (aiosqlite)**, `asyncio_mode="auto"` (no
+`@pytest.mark.asyncio` needed). There is **no shared `db_session` fixture** — each
+test file stands up its own engine and overrides deps, mirroring
+`tests/test_content_plans.py`. Migrations are **not** run in tests; tables come from
+`Base.metadata.create_all()`, so the model must be import-registered via
+`app/models/__init__.py`. SQLAlchemy column defaults (`default=...`) apply at
+**INSERT/flush**, not at object construction — assert defaults after a commit, never
+on a bare in-memory instance.
+
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # apps/api/tests/test_discovery_model.py
 import uuid
+
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.database import Base
 from app.models.discovery import DiscoveryRun
 
+test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
 
-def test_discovery_run_defaults():
-    run = DiscoveryRun(org_id=uuid.uuid4(), input_url="https://example.com")
-    assert run.status == "queued"
-    assert run.progress == 0
-    assert run.result == {} or run.result is None
+
+@pytest.fixture(autouse=True)
+async def setup_db():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+async def test_discovery_run_defaults():
+    async with TestSessionLocal() as db:
+        run = DiscoveryRun(org_id=uuid.uuid4(), input_url="https://example.com", result={})
+        db.add(run)
+        await db.commit()
+        await db.refresh(run)
+        assert run.status == "queued"
+        assert run.progress == 0
+        assert run.result == {}
 ```
+
+> Note: `result={}` is passed explicitly because the SQLAlchemy `default=dict`
+> applies at flush; passing it makes the intent explicit and works on SQLite.
 
 - [ ] **Step 2: Run test to verify it fails**
 
