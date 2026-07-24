@@ -54,11 +54,26 @@ async def tracked_keywords(brief, db, inputs):
 
 
 async def crawl_competitor(brief, db, inputs):
-    url = str((inputs or {}).get("competitor_url") or "").strip()
+    """Crawl a competitor page and score it.
+
+    Deliberately uses `scan_scorecard` rather than `analyze`: analyze() runs the
+    Sable competitor-scan skill to add AI insights, and that skill's own tool is
+    this one -- so calling it here made Sable crawl, scan, crawl, scan without
+    end. The employee is already the intelligence; this tool only fetches the
+    evidence.
+    """
+    url = str((inputs or {}).get("competitor_url") or (inputs or {}).get("query") or "").strip()
     if not url:
-        return {"skipped": True}
-    from app.services.competitor_service import analyze as _analyze  # lazy: avoids import cycle
-    return {"analysis": await _analyze(brief.project_id, brief.org_id, url, db)}
+        return {"skipped": True,
+                "note": "Give the full URL of the page to crawl."}
+    if not url.startswith(("http://", "https://")):
+        url = f"https://{url.lstrip('/')}"
+
+    from app.services.competitor_service import scan_scorecard  # lazy: avoids import cycle
+    try:
+        return {"url": url, "scorecard": await scan_scorecard(url)}
+    except Exception as exc:  # noqa: BLE001
+        return {"url": url, "error": f"Could not crawl that page: {str(exc)[:200]}"}
 
 
 async def our_demand(brief, db, inputs):

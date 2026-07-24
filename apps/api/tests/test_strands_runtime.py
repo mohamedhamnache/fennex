@@ -428,3 +428,35 @@ def test_a_disabled_or_urlless_connector_is_not_offered():
     configured = {"linkedin": mcp.MCPServer(
         app="linkedin", label="LinkedIn", url="", permission="publish:external")}
     assert mcp.servers_for(registry.get("nomad"), ALL_PERMISSIONS, configured) == []
+
+
+def test_the_crawl_tool_does_not_re_enter_the_scan_skill():
+    """crawl_competitor used to call competitor_service.analyze(), which runs
+    the Sable scan skill, whose own tool is crawl_competitor -- so a scan
+    crawled, scanned, crawled and never finished."""
+    import inspect
+
+    from app.services.agents import tools as legacy
+
+    source = inspect.getsource(legacy.crawl_competitor)
+    assert "scan_scorecard" in source
+    # Match a call or an import, not the comment that explains the bug.
+    assert "_analyze(" not in source and "import analyze" not in source, (
+        "crawl_competitor must not call analyze(): that path runs the scan "
+        "skill, which calls this tool again")
+
+
+def test_a_tool_declares_the_input_key_it_reads():
+    """The bridge passed only "query"; adapted tools read their own key, so a
+    URL handed to crawl_competitor was silently discarded."""
+    from app.employees import toolbelt
+
+    assert toolbelt.get_tool("crawl_competitor").arg == "competitor_url"
+    assert toolbelt.get_tool("article_context").arg == "article_id"
+    assert toolbelt.get_tool("seo_grounding").arg == "article_id"
+
+
+def test_the_scout_can_discover_competitors_not_only_crawl_them():
+    scout = registry.get("sable")
+    assert "known_competitors" in scout.allowed_tools
+    assert "serp_lookup" in scout.allowed_tools
