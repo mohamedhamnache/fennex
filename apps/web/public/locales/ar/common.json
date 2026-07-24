@@ -2211,5 +2211,86 @@
     "rescheduled": "أُعيدت الجدولة",
     "scheduledCount": "{{count}} مجدول",
     "noPast": "اختر وقتًا في المستقبل."
+  },
+  "company": {
+    "title": "شركتك للذكاء الاصطناعي",
+    "subtitle": "متخصصون منظمون حسب الأقسام. حدد هدفًا وسيتشكل الفريق.",
+    "loading": "جارٍ قراءة السجل...",
+    "error": "تعذر الوصول إلى سجل الموظفين.",
+    "memberCount": "{{count}} عضو",
+    "memberCount_plural": "{{count}} أعضاء",
+    "stats": {
+      "employees": "موظفون",
+      "departments": "أقسام",
+      "actions": "إجراءات",
+      "capabilities": "مهارات"
+    },
+    "health": {
+      "ready": "جاهز",
+      "blocked": "محظور"
+    },
+    "status": {
+      "active": "نشط",
+      "beta": "تجريبي",
+      "deprecated": "مهمل",
+      "disabled": "معطل"
+    },
+    "weight": {
+      "light": "سريع",
+      "heavy": "معمق"
+    },
+    "scope": {
+      "self": "خاص",
+      "department": "القسم",
+      "project": "المشروع",
+      "org": "الشركة بأكملها"
+    },
+    "card": {
+      "open": "فتح ملف {{name}}",
+      "skills": "مهارات",
+      "actions": "إجراءات",
+      "apps": "تطبيقات"
+    },
+    "delegate": {
+      "title": "تفويض هدف",
+      "subtitle": "صف النتيجة المطلوبة. يختار المنسق المتخصصين وترتيب العمل.",
+      "label": "هدفك",
+      "placeholder": "مثال: إطلاق مجموعة الأكواب الجديدة",
+      "cta": "تشكيل الفريق",
+      "examples": [
+        "إطلاق مجموعتنا الجديدة",
+        "زيادة الزيارات العضوية هذا الربع",
+        "إيجاد عملاء على لينكد إن"
+      ],
+      "planTitle": "خطة التنفيذ",
+      "stepCount": "{{count}} خطوة",
+      "stepCount_plural": "{{count}} خطوات",
+      "layerCount": "{{count}} مرحلة",
+      "layerCount_plural": "{{count}} مراحل",
+      "parallel": "يعمل بالتوازي",
+      "previewNote": "هذه معاينة فقط. لم يتم تنفيذ أي شيء ولم تُستخدم أي أرصدة.",
+      "unstaffed": "لا أحد في الشركة يغطي هذا الطلب بعد.",
+      "error": "تعذر بناء الخطة. تأكد من إعداد مفتاح ذكاء اصطناعي في الإعدادات."
+    },
+    "sheet": {
+      "goals": "الأهداف الدائمة",
+      "actions": "ما يمكنه فعله",
+      "capabilities": "المهارات",
+      "tools": "الأدوات",
+      "apps": "التطبيقات المتصلة",
+      "knowledge": "المعرفة والذاكرة",
+      "memoryScope": "نطاق الذاكرة",
+      "sources": "المصادر",
+      "io": "المدخلات / المخرجات",
+      "permissions": "الأذونات",
+      "needsApproval": "يتطلب موافقة",
+      "connected": "متصل",
+      "notConnected": "غير متصل",
+      "plannedHint": "مخطط -- لا يوجد إجراء مرتبط",
+      "plannedNote": "{{count}} مهارة معلنة لم تُربط بعد بإجراء.",
+      "plannedNote_plural": "{{count}} مهارات معلنة لم تُربط بعد بإجراء."
+    },
+    "filterLabel": "تصفية حسب القسم",
+    "allDepartments": "الكل"
   }
 }

@@ -2211,5 +2211,86 @@
     "rescheduled": "Neu geplant",
     "scheduledCount": "{{count}} geplant",
     "noPast": "Wähle einen Zeitpunkt in der Zukunft."
+  },
+  "company": {
+    "title": "Ihr KI-Unternehmen",
+    "subtitle": "Spezialisten nach Abteilungen. Geben Sie ein Ziel vor, das Team stellt sich zusammen.",
+    "loading": "Registry wird gelesen...",
+    "error": "Das Mitarbeiterregister ist nicht erreichbar.",
+    "memberCount": "{{count}} Mitglied",
+    "memberCount_plural": "{{count}} Mitglieder",
+    "stats": {
+      "employees": "Mitarbeiter",
+      "departments": "Abteilungen",
+      "actions": "Aktionen",
+      "capabilities": "Faehigkeiten"
+    },
+    "health": {
+      "ready": "Bereit",
+      "blocked": "Blockiert"
+    },
+    "status": {
+      "active": "Aktiv",
+      "beta": "Beta",
+      "deprecated": "Veraltet",
+      "disabled": "Deaktiviert"
+    },
+    "weight": {
+      "light": "Schnell",
+      "heavy": "Tiefgehend"
+    },
+    "scope": {
+      "self": "Privat",
+      "department": "Abteilung",
+      "project": "Projekt",
+      "org": "Unternehmensweit"
+    },
+    "card": {
+      "open": "Profil von {{name}} oeffnen",
+      "skills": "Faehigkeiten",
+      "actions": "Aktionen",
+      "apps": "Apps"
+    },
+    "delegate": {
+      "title": "Ziel delegieren",
+      "subtitle": "Beschreiben Sie das gewuenschte Ergebnis. Der Orchestrator waehlt Spezialisten und Reihenfolge.",
+      "label": "Ihr Ziel",
+      "placeholder": "z. B. Unsere neue Tassenkollektion einfuehren",
+      "cta": "Team bilden",
+      "examples": [
+        "Unsere neue Produktlinie einfuehren",
+        "Organischen Traffic steigern",
+        "Kunden auf LinkedIn finden"
+      ],
+      "planTitle": "Ausfuehrungsplan",
+      "stepCount": "{{count}} Schritt",
+      "stepCount_plural": "{{count}} Schritte",
+      "layerCount": "{{count}} Phase",
+      "layerCount_plural": "{{count}} Phasen",
+      "parallel": "Laeuft parallel",
+      "previewNote": "Dies ist eine Vorschau. Nichts wurde ausgefuehrt, keine Credits verbraucht.",
+      "unstaffed": "Niemand im Unternehmen deckt diese Anfrage bisher ab.",
+      "error": "Der Plan konnte nicht erstellt werden. Pruefen Sie den KI-Schluessel in den Einstellungen."
+    },
+    "sheet": {
+      "goals": "Staendige Ziele",
+      "actions": "Was er kann",
+      "capabilities": "Faehigkeiten",
+      "tools": "Werkzeuge",
+      "apps": "Verbundene Apps",
+      "knowledge": "Wissen und Gedaechtnis",
+      "memoryScope": "Gedaechtnisbereich",
+      "sources": "Quellen",
+      "io": "Eingabe / Ausgabe",
+      "permissions": "Berechtigungen",
+      "needsApproval": "Freigabe noetig",
+      "connected": "Verbunden",
+      "notConnected": "Nicht verbunden",
+      "plannedHint": "Geplant -- keine Aktion hinterlegt",
+      "plannedNote": "{{count}} Faehigkeit ist deklariert, aber noch keiner Aktion zugeordnet.",
+      "plannedNote_plural": "{{count}} Faehigkeiten sind deklariert, aber noch keiner Aktion zugeordnet."
+    },
+    "filterLabel": "Nach Abteilung filtern",
+    "allDepartments": "Alle"
   }
 }

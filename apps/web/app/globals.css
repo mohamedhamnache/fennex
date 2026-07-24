@@ -325,8 +325,11 @@ input:focus, textarea:focus, select:focus {
   100% { background-color: hsl(var(--primary) / 0); box-shadow: 0 0 0 2px hsl(var(--primary) / 0); }
 }
 
+@keyframes slideInRight { from { opacity: 0; transform: translateX(24px) } to { opacity: 1; transform: translateX(0) } }
+
 .animate-fade-in    { animation: fadeIn 0.2s ease-out both; }
 .animate-slide-up   { animation: slideUp 0.25s ease-out both; }
+.animate-slide-in-right { animation: slideInRight 0.24s cubic-bezier(0.32, 0.72, 0, 1) both; }
 .animate-pulse-dot  { animation: pulse 2s ease-in-out infinite; }
 .animate-msg-in     { animation: msgSlideIn 0.2s ease-out both; }
 .animate-typing-dot { animation: typingDot 1.2s ease-in-out infinite; }
@@ -676,6 +679,7 @@ input:focus, textarea:focus, select:focus {
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob { animation: none !important; }
   .animate-fade-in, .animate-slide-up, .animate-scale-in, .animate-toast-in,
+  .animate-slide-in-right,
   .edge-flow, .node-active, .animate-pulse-dot, .animate-msg-in, .animate-edit-flash, .word-in { animation: none !important; }
   .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .spin-slow, .marquee-track { animation: none !important; }

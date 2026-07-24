@@ -2211,5 +2211,86 @@
     "rescheduled": "Reagendado",
     "scheduledCount": "{{count}} agendado(s)",
     "noPast": "Escolha uma data futura."
+  },
+  "company": {
+    "title": "A sua empresa de IA",
+    "subtitle": "Especialistas organizados por departamento. Dê um objetivo e a equipa forma-se.",
+    "loading": "A ler o registo...",
+    "error": "Nao foi possivel aceder ao registo de colaboradores.",
+    "memberCount": "{{count}} membro",
+    "memberCount_plural": "{{count}} membros",
+    "stats": {
+      "employees": "colaboradores",
+      "departments": "departamentos",
+      "actions": "acoes",
+      "capabilities": "competencias"
+    },
+    "health": {
+      "ready": "Pronto",
+      "blocked": "Bloqueado"
+    },
+    "status": {
+      "active": "Ativo",
+      "beta": "Beta",
+      "deprecated": "Obsoleto",
+      "disabled": "Desativado"
+    },
+    "weight": {
+      "light": "Rapido",
+      "heavy": "Aprofundado"
+    },
+    "scope": {
+      "self": "Privado",
+      "department": "Departamento",
+      "project": "Projeto",
+      "org": "Toda a empresa"
+    },
+    "card": {
+      "open": "Abrir o perfil de {{name}}",
+      "skills": "competencias",
+      "actions": "acoes",
+      "apps": "apps"
+    },
+    "delegate": {
+      "title": "Delegar um objetivo",
+      "subtitle": "Descreva o resultado pretendido. O orquestrador escolhe os especialistas e a ordem.",
+      "label": "O seu objetivo",
+      "placeholder": "ex. Lancar a nossa nova linha de canecas",
+      "cta": "Formar equipa",
+      "examples": [
+        "Lancar a nossa nova linha",
+        "Aumentar o trafego organico este trimestre",
+        "Encontrar clientes no LinkedIn"
+      ],
+      "planTitle": "Plano de execucao",
+      "stepCount": "{{count}} passo",
+      "stepCount_plural": "{{count}} passos",
+      "layerCount": "{{count}} fase",
+      "layerCount_plural": "{{count}} fases",
+      "parallel": "Em paralelo",
+      "previewNote": "Isto e uma pre-visualizacao. Nada foi executado nem foram usados creditos.",
+      "unstaffed": "Ninguem na empresa cobre ainda este pedido.",
+      "error": "Nao foi possivel construir o plano. Verifique a chave de IA nas Definicoes."
+    },
+    "sheet": {
+      "goals": "Objetivos permanentes",
+      "actions": "O que sabe fazer",
+      "capabilities": "Competencias",
+      "tools": "Ferramentas",
+      "apps": "Apps ligadas",
+      "knowledge": "Conhecimento e memoria",
+      "memoryScope": "Ambito de memoria",
+      "sources": "Fontes",
+      "io": "Entrada / saida",
+      "permissions": "Permissoes",
+      "needsApproval": "Requer aprovacao",
+      "connected": "Ligado",
+      "notConnected": "Nao ligado",
+      "plannedHint": "Previsto -- sem acao associada",
+      "plannedNote": "{{count}} competencia declarada ainda nao esta ligada a uma acao.",
+      "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao."
+    },
+    "filterLabel": "Filtrar por departamento",
+    "allDepartments": "Todos"
   }
 }
