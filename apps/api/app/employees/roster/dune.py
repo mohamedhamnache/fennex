@@ -75,6 +75,9 @@ EMPLOYEE = Employee(
             inputs=["angle", "keyword"],
             outputs=["article"],
             requires_permissions=[P_WRITE_CONTENT],
+            # Agentic: the writer can pull SEO grounding for the exact angle
+            # instead of receiving a fixed pre-fetched bundle.
+            agentic=True,
         ),
         Action(
             id="regenerate_article",
@@ -86,6 +89,8 @@ EMPLOYEE = Employee(
             inputs=["article_id"],
             outputs=["article"],
             requires_permissions=[P_WRITE_CONTENT, P_READ_CONTENT],
+            # Agentic: the writer re-reads the article and its grounding itself.
+            agentic=True,
         ),
         Action(
             id="product_copy",
@@ -98,6 +103,8 @@ EMPLOYEE = Employee(
             inputs=["product_id"],
             outputs=["title", "description", "meta"],
             requires_permissions=[P_WRITE_CONTENT, P_READ_PRODUCTS],
+            # Agentic: copy is written against the live catalogue entry.
+            agentic=True,
         ),
     ],
 

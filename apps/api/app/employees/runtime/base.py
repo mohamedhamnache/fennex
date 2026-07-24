@@ -40,15 +40,20 @@ class BaseEmployee:
     def id(self) -> str:
         return self.employee.id
 
-    def instructions(self, ctx, action, *, visual: bool = False) -> str:
-        """The full system prompt: who they are, the brand, what they know.
+    def instructions(self, ctx, action, task=None, *, visual: bool = False) -> str:
+        """The full system prompt: identity, brand, memory, and the craft.
 
-        Assembled by Fennex, not Strands, so every employee gets an identical
-        and auditable context envelope regardless of runtime.
+        The skill's own system prompt is inherited verbatim. That is where the
+        output contract lives -- the JSON shape, the word count, the structure
+        -- and discarding it is how an agentic run ends up returning prose
+        where the caller expected a parsed object.
         """
         blocks = [ctx.system_preamble(self.employee, visual=visual)]
 
-        if action is not None:
+        skill_system = self._skill_prompts(action, task, ctx)[0]
+        if skill_system:
+            blocks.append(skill_system)
+        elif action is not None:
             outputs = ", ".join(action.outputs) or "the result"
             blocks.append(
                 f"YOUR TASK: {action.label} -- {action.description}\n"
@@ -58,12 +63,35 @@ class BaseEmployee:
             blocks.append(
                 "You have tools. Use them to ground your work in this project's real data "
                 "before you assert anything. Never invent a number a tool could have told "
-                "you. If a tool is unavailable, say so plainly and work from what you have.")
+                "you. If a tool is unavailable, say so plainly and work from what you have. "
+                "When you have gathered enough, produce the final output in exactly the "
+                "format required above -- tool results are your evidence, not your answer.")
 
         blocks.append(
             "Do not describe how the work could be done -- do it. Return the finished "
             "output only, with no preamble about your process.")
         return "\n\n".join(b for b in blocks if b)
+
+    def _skill_prompts(self, action, task, ctx) -> tuple[str, str]:
+        """The bound skill's (system, user) prompts, or ("", "").
+
+        Reusing them is the point of the migration: the domain prompt work is
+        proven, and Strands only adds the tool loop on top of it. Tools run
+        live now, so the skill receives an empty pre-fetched tool payload.
+        """
+        if action is None or not action.skill_key:
+            return "", ""
+        from app.services.agents.registry import get_skill
+
+        skill = get_skill(action.skill_key)
+        if skill is None or skill.build_prompt is None:
+            return "", ""
+        try:
+            inputs = dict((task.inputs if task else None) or {})
+            return skill.build_prompt(ctx, inputs, {})
+        except Exception:
+            logger.warning("could not reuse skill prompts for %s", action.skill_key)
+            return "", ""
 
     # -- knowledge -----------------------------------------------------------
 
@@ -103,7 +131,7 @@ class BaseEmployee:
                 agent = Agent(
                     model=model,
                     tools=tools,
-                    system_prompt=self.instructions(ctx, action, visual=visual),
+                    system_prompt=self.instructions(ctx, action, task, visual=visual),
                     name=self.employee.name,
                     agent_id=self.employee.id,
                     description=self.employee.role,
@@ -151,7 +179,7 @@ class BaseEmployee:
 
         agent = Agent(
             model=model, tools=tools,
-            system_prompt=self.instructions(ctx, action, visual=visual),
+            system_prompt=self.instructions(ctx, action, task, visual=visual),
             name=self.employee.name, agent_id=self.employee.id,
             description=self.employee.role)
 
@@ -172,32 +200,86 @@ class BaseEmployee:
     # -- overridable hooks ---------------------------------------------------
 
     def build_prompt(self, action, task, ctx) -> str:
-        """The user-side prompt. Overridden when an action needs a shape."""
+        """The user-side prompt.
+
+        The skill's own user prompt is inherited when present -- it carries the
+        brief, the word count and the shape the caller expects.
+        """
+        skill_user = self._skill_prompts(action, task, ctx)[1]
+        if skill_user:
+            # Append rather than replace: a skill builds its prompt from the
+            # goal and may ignore `inputs` entirely, which would silently drop
+            # the title and keyword the conversation already agreed.
+            settled = self._settled_block(task)
+            return f"{skill_user}\n\n{settled}" if settled else skill_user
+
         lines = [f"REQUEST: {task.goal or ctx.goal}"]
-        inputs = {k: v for k, v in (task.inputs or {}).items()
-                  if v and k not in ("feedback", "upstream_artifacts")}
-        if inputs:
-            rendered = "\n".join(f"- {k}: {str(v)[:400]}" for k, v in inputs.items())
-            lines.append(f"WHAT IS ALREADY SETTLED (use it, do not ask again):\n{rendered}")
-        if (task.inputs or {}).get("upstream"):
-            lines.append(f"PREVIOUS STEP PRODUCED:\n{task.inputs['upstream']}")
-        if (task.inputs or {}).get("feedback"):
-            lines.append(f"REVIEWER FEEDBACK TO ADDRESS:\n{task.inputs['feedback']}")
+        settled = self._settled_block(task)
+        if settled:
+            lines.append(settled)
         return "\n\n".join(lines)
 
-    async def persist(self, text: str, action, task, ctx) -> Outcome:
-        """Turn the model's output into a saved artifact.
+    def _settled_block(self, task) -> str:
+        """What the conversation already decided, so nothing is re-asked."""
+        if task is None:
+            return ""
+        inputs = task.inputs or {}
+        parts = []
+        facts = {k: v for k, v in inputs.items()
+                 if v and k not in ("feedback", "upstream", "upstream_artifacts")}
+        if facts:
+            rendered = "\n".join(f"- {k}: {str(v)[:400]}" for k, v in facts.items())
+            parts.append(f"WHAT IS ALREADY SETTLED (use it, do not ask again):\n{rendered}")
+        if inputs.get("upstream"):
+            parts.append(f"PREVIOUS STEP PRODUCED:\n{str(inputs['upstream'])[:1500]}")
+        if inputs.get("feedback"):
+            parts.append(f"REVIEWER FEEDBACK TO ADDRESS:\n{inputs['feedback']}")
+        return "\n\n".join(parts)
 
-        The default keeps the answer as conversation. Actions that produce a
-        record (an article, an image) reuse the existing persist hook from the
-        skill catalog, so the migration inherits working business logic rather
-        than reimplementing it.
+    async def persist(self, text: str, action, task, ctx) -> Outcome:
+        """Turn the model's output into a saved artifact or structured result.
+
+        Three shapes, in order:
+          1. the skill has a persist hook -- reuse it, so the migration
+             inherits working business logic rather than reimplementing it
+          2. the skill returns JSON -- parse it into `structured` so the next
+             specialist inherits the angle, keyword and rationale rather than
+             a wall of prose
+          3. otherwise the answer is the result
         """
         if action.skill_key:
             saved = await self._persist_via_skill(text, action, task, ctx)
             if saved is not None:
                 return saved
+            structured = self._structured_from(text, action)
+            if structured is not None:
+                return Outcome(ok=True, summary=_summarise_structured(structured),
+                               content=structured, structured=structured)
         return Outcome(ok=True, summary=text[:400], content=text)
+
+    def _structured_from(self, text: str, action) -> Optional[dict]:
+        """Parse a JSON-shaped skill's output into a dict, or None.
+
+        An agent that has been reasoning out loud often wraps its JSON in
+        commentary, so the skill's own parser is tried first and a braces-only
+        fallback second.
+        """
+        from app.services.agents.registry import get_skill
+
+        skill = get_skill(action.skill_key)
+        if skill is None or skill.output != "json":
+            return None
+        for candidate in (text, _braces(text)):
+            if not candidate:
+                continue
+            try:
+                parsed = skill.parse(candidate) if skill.parse else None
+            except Exception:
+                parsed = None
+            if isinstance(parsed, dict) and parsed:
+                return parsed
+        logger.warning("agentic output for %s was not usable JSON", action.skill_key)
+        return None
 
     async def _persist_via_skill(self, text: str, action, task, ctx) -> Optional[Outcome]:
         from app.services.agents.registry import get_skill
@@ -235,6 +317,21 @@ class BaseEmployee:
 # --- result shapes ------------------------------------------------------------
 # The SDK's event and result shapes are not a stable contract, so these read
 # defensively and degrade to empty rather than raising mid-turn.
+
+
+def _braces(text: str) -> str:
+    """The outermost {...} span, for JSON buried in commentary."""
+    start, end = text.find("{"), text.rfind("}")
+    return text[start:end + 1] if 0 <= start < end else ""
+
+
+def _summarise_structured(data: dict) -> str:
+    """A one-line summary of a structured result, for the transcript."""
+    for key in ("topic", "angle", "title", "summary", "primary_keyword", "keyword"):
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:300]
+    return ", ".join(f"{k}: {str(v)[:60]}" for k, v in list(data.items())[:3])[:300]
 
 
 def _text_of(result: Any) -> str:

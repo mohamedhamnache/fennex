@@ -73,10 +73,37 @@ its own session.
 `Action.agentic = True` opts one action onto the runtime. Everything else runs
 the proven legacy path untouched, so a regression is contained to one action.
 
-Currently migrated:
+Migrated so far -- only employees whose work is grounded by tools:
 
-- `zerda.pick_angle`
-- `zerda.keyword_targets`
+| Employee | Actions | Tools it can now reach for itself |
+|---|---|---|
+| Zerda | `pick_angle`, `keyword_targets` | GSC opportunities, market insights, tracked keywords, our demand |
+| Sable | `competitor_scan` | crawl competitor, our demand, market insights |
+| Oasis | `market_report`, `define_icp` | market data, insights, GSC, products |
+| Dune | `write_article`, `regenerate_article`, `product_copy` | article context, SEO grounding, store products |
+
+**Sirocco and Nomad are deliberately not migrated.** They declare no tools, so
+an agentic loop could never call anything on their behalf -- it would be risk
+with no benefit. They stay on the legacy generator until MCP (phase 11) gives
+them something to reach for. A test enforces this: an agentic employee must
+have tools.
+
+Mirage is held back too: its only tool is the product catalogue and both of its
+actions persist an image, so the gain does not yet justify re-verifying the
+persist path.
+
+### Two things the migration itself taught
+
+**Inherit the skill's prompts, do not replace them.** The first cut wrote a
+generic instruction block and dropped the skill's system prompt. `pick_angle`
+promptly returned French prose where the caller expected JSON, because the
+output contract lives in that prompt. `BaseEmployee` now inherits both the
+system and user prompts from the bound skill and layers tool discipline on top.
+
+**Append settled context, do not let the skill's prompt replace it.** A skill
+builds its prompt from the goal and may ignore `inputs` entirely, which
+silently dropped the title and keyword the conversation had already agreed.
+The settled block is now appended to whatever the skill produced.
 
 ## Remaining phases
 
@@ -84,7 +111,8 @@ Currently migrated:
 |---|---|---|
 | 1 | Install, BaseEmployee, registry, wrap one, validate | **done** |
 | 2 | Zerda | **done** |
-| 3–8 | Dune, Mirage, Sirocco, Sable, Oasis, Nomad | not started |
+| 3–8 | Dune, Sable, Oasis | **done** |
+| 3–8 | Mirage, Sirocco, Nomad | held -- no tools to justify a loop |
 | 9 | Tool execution moved wholesale to the bridge | not started |
 | 10 | Legacy orchestration retired | not started |
 | 11 | MCP servers | not started |

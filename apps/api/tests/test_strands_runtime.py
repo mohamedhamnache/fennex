@@ -131,25 +131,52 @@ def test_missing_usage_costs_a_number_not_the_run():
 # --- BaseEmployee --------------------------------------------------------------
 
 
-def test_instructions_carry_identity_task_and_tool_discipline():
+def test_instructions_carry_identity_craft_and_tool_discipline():
     zerda = registry.get("zerda")
     action = zerda.action("pick_angle")
     text = BaseEmployee(zerda).instructions(_ctx(), action)
-    assert "Zerda" in text
-    assert action.label in text
-    assert "tools" in text.lower()
-    assert "do it" in text.lower()
+    assert "Zerda" in text                       # identity
+    assert "json" in text.lower()                # the skill's output contract
+    assert "tools" in text.lower()               # tool discipline
+    assert "do it" in text.lower()               # produce, do not describe
 
 
-def test_the_prompt_carries_settled_context_so_nothing_is_re_asked():
+def test_instructions_fall_back_to_the_action_when_no_skill_is_bound():
+    """An action with only a handler still gets a usable task statement."""
+    from app.employees.spec import Action, Employee
+
+    employee = Employee(
+        id="tmp", name="Tmp", codename="t", role="r", department="d", description="x",
+        actions=[Action(id="a", label="Do the thing", description="A thing.",
+                        capabilities=["content.article"], handler=lambda *a, **k: None)])
+    text = BaseEmployee(employee).instructions(_ctx(), employee.action("a"))
+    assert "Do the thing" in text
+
+
+def test_settled_context_survives_a_skills_own_prompt():
+    """A skill may build its prompt from the goal alone and ignore inputs, so
+    the agreed title and keyword must be appended rather than replaced."""
     from app.employees.context import Task
+
     zerda = registry.get("zerda")
     task = Task(id="t", goal="Egg substitutes", capabilities=["seo.opportunity_discovery"],
-                inputs={"title": "Comment remplacer les oeufs", "keyword": "remplacer les oeufs"})
+                inputs={"title": "Comment remplacer les oeufs",
+                        "keyword": "remplacer les oeufs"})
     prompt = BaseEmployee(zerda).build_prompt(zerda.action("pick_angle"), task, _ctx())
     assert "Comment remplacer les oeufs" in prompt
-    assert "remplacer les oeufs" in prompt
     assert "do not ask again" in prompt.lower()
+
+
+def test_upstream_output_and_reviewer_feedback_reach_the_prompt():
+    from app.employees.context import Task
+
+    zerda = registry.get("zerda")
+    task = Task(id="t", goal="g", capabilities=["seo.opportunity_discovery"],
+                inputs={"upstream": "The article covers flax and aquafaba.",
+                        "feedback": "Be more specific about baking."})
+    prompt = BaseEmployee(zerda).build_prompt(zerda.action("pick_angle"), task, _ctx())
+    assert "flax and aquafaba" in prompt
+    assert "Be more specific about baking" in prompt
 
 
 @pytest.mark.asyncio
@@ -166,17 +193,49 @@ async def test_a_run_without_a_provider_fails_cleanly():
 # --- migration state -----------------------------------------------------------
 
 
+def test_only_employees_with_tools_are_migrated():
+    """An agentic loop with no tools is risk without benefit.
+
+    Sirocco and Nomad declare no tools, so the runtime could never call
+    anything on their behalf -- they stay on the proven legacy path until MCP
+    gives them something to reach for.
+    """
+    for employee in registry.all_employees():
+        migrated = [a.id for a in employee.actions if a.agentic]
+        if migrated:
+            assert employee.allowed_tools, (
+                f"{employee.id} is agentic but has no tools to call")
+
+
 def test_migrated_actions_are_flagged_and_the_rest_are_untouched():
     """Migration is per action, so a regression cannot reach the whole roster."""
     agentic, legacy = [], []
     for employee in registry.all_employees():
         for action in employee.actions:
             (agentic if action.agentic else legacy).append(f"{employee.id}.{action.id}")
-    assert "zerda.pick_angle" in agentic
-    assert "zerda.keyword_targets" in agentic
-    # Everything not yet migrated still runs the proven legacy path.
-    assert "dune.write_article" in legacy
-    assert "mirage.editorial_image" in legacy
+
+    for migrated in ("zerda.pick_angle", "zerda.keyword_targets",
+                     "sable.competitor_scan", "oasis.market_report",
+                     "oasis.define_icp", "dune.write_article"):
+        assert migrated in agentic
+
+    # Toolless employees remain on the legacy generator.
+    for untouched in ("sirocco.multi_network_social", "sirocco.generate_visual",
+                      "nomad.outreach_plan", "mirage.product_shot"):
+        assert untouched in legacy
+
+
+def test_an_agentic_action_bound_to_a_skill_inherits_its_prompts():
+    """Dropping the skill's system prompt loses the output contract -- which is
+    how a JSON action ends up returning prose."""
+    from app.employees.context import Task
+
+    zerda = registry.get("zerda")
+    action = zerda.action("pick_angle")
+    task = Task(id="t", goal="Egg substitutes", capabilities=list(action.capabilities))
+    system, user = BaseEmployee(zerda)._skill_prompts(action, task, _ctx())
+    assert system and user
+    assert "json" in system.lower()
 
 
 def test_every_agentic_action_belongs_to_an_employee_with_usable_tools():

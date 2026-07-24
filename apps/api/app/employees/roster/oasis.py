@@ -71,6 +71,9 @@ EMPLOYEE = Employee(
             inputs=["goal"],
             outputs=["report"],
             requires_permissions=[P_READ_ANALYTICS],
+            # Agentic: the researcher pulls the full data bundle, then follows up
+            # on whatever the first read raises.
+            agentic=True,
         ),
         Action(
             id="define_icp",
@@ -83,6 +86,8 @@ EMPLOYEE = Employee(
             inputs=["goal"],
             outputs=["segments", "personas"],
             requires_permissions=[P_READ_ANALYTICS],
+            # Agentic: segments are drawn from real demand rather than assumed.
+            agentic=True,
         ),
     ],
 

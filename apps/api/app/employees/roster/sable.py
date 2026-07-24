@@ -69,6 +69,9 @@ EMPLOYEE = Employee(
             inputs=["competitor_url"],
             outputs=["score", "gaps", "opportunities"],
             requires_permissions=[P_READ_COMPETITORS],
+            # Agentic: the scout can crawl a rival, read what it finds, then
+            # check our own demand against it before scoring the gap.
+            agentic=True,
         ),
     ],
 
