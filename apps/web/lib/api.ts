@@ -234,8 +234,13 @@ export async function updateProject(
 // ─── Onboarding discovery ──────────────────────────────────────────────────────
 
 export interface DiscoveryProduct {
-  name?: string; description?: string; category?: string; price?: string;
-  benefits?: string[]; url?: string; image_url?: string;
+  name: string | null;
+  description: string | null;
+  category: string | null;
+  price: string | number | null;
+  benefits: string[];
+  url: string | null;
+  image_url: string | null;
 }
 
 export interface DiscoveryICP {
