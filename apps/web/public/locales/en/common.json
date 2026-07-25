@@ -1932,7 +1932,29 @@
       "title": "What are your goals?",
       "goalsLabel": "Select your main goals",
       "metricsLabel": "How will you measure success?",
-      "next": "Next"
+      "next": "Next",
+      "presetGoals": [
+        "Increase SEO traffic",
+        "Write blog posts",
+        "Generate product pages",
+        "Create Instagram content",
+        "Grow Pinterest",
+        "Generate leads",
+        "Increase sales",
+        "Launch products",
+        "Email marketing",
+        "Market research",
+        "Competitor analysis"
+      ],
+      "presetMetrics": [
+        "Organic traffic",
+        "Revenue",
+        "Leads",
+        "Followers",
+        "Newsletter",
+        "Sales",
+        "Appointments"
+      ]
     },
     "brand": {
       "title": "Your brand DNA",

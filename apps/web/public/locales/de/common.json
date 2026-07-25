@@ -1824,7 +1824,29 @@
       "title": "Was sind deine Ziele?",
       "goalsLabel": "Wähle deine wichtigsten Ziele aus",
       "metricsLabel": "Wie misst du den Erfolg?",
-      "next": "Weiter"
+      "next": "Weiter",
+      "presetGoals": [
+        "SEO-Traffic steigern",
+        "Blogartikel schreiben",
+        "Produktseiten erstellen",
+        "Instagram-Inhalte erstellen",
+        "Pinterest ausbauen",
+        "Leads generieren",
+        "Umsatz steigern",
+        "Produkte einführen",
+        "E-Mail-Marketing",
+        "Marktforschung",
+        "Wettbewerbsanalyse"
+      ],
+      "presetMetrics": [
+        "Organischer Traffic",
+        "Umsatz",
+        "Leads",
+        "Follower",
+        "Newsletter",
+        "Verkäufe",
+        "Termine"
+      ]
     },
     "brand": {
       "title": "Deine Marken-DNA",

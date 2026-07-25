@@ -1824,7 +1824,29 @@
       "title": "Quais são seus objetivos?",
       "goalsLabel": "Selecione seus principais objetivos",
       "metricsLabel": "Como você vai medir o sucesso?",
-      "next": "Avançar"
+      "next": "Avançar",
+      "presetGoals": [
+        "Aumentar o tráfego SEO",
+        "Escrever posts de blog",
+        "Gerar páginas de produto",
+        "Criar conteúdo para Instagram",
+        "Expandir o Pinterest",
+        "Gerar leads",
+        "Aumentar as vendas",
+        "Lançar produtos",
+        "Marketing por e-mail",
+        "Pesquisa de mercado",
+        "Análise da concorrência"
+      ],
+      "presetMetrics": [
+        "Tráfego orgânico",
+        "Receita",
+        "Leads",
+        "Seguidores",
+        "Newsletter",
+        "Vendas",
+        "Agendamentos"
+      ]
     },
     "brand": {
       "title": "O DNA da sua marca",

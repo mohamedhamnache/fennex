@@ -5,30 +5,6 @@ import type { DiscoveryResult } from "@/lib/api";
 import { ChipMultiSelect } from "./ChipMultiSelect";
 import { SuggestButton } from "./SuggestButton";
 
-const GOALS = [
-  "Increase SEO traffic",
-  "Write blog posts",
-  "Generate product pages",
-  "Create Instagram content",
-  "Grow Pinterest",
-  "Generate leads",
-  "Increase sales",
-  "Launch products",
-  "Email marketing",
-  "Market research",
-  "Competitor analysis",
-];
-
-const METRICS = [
-  "Organic traffic",
-  "Revenue",
-  "Leads",
-  "Followers",
-  "Newsletter",
-  "Sales",
-  "Appointments",
-];
-
 export function GoalsStep({
   result,
   onChange,
@@ -41,6 +17,13 @@ export function GoalsStep({
   runId: string | null;
 }) {
   const { t } = useTranslation();
+
+  // Preset chips come from i18n so the options match the workspace language
+  // rather than being hardcoded English.
+  const rawGoals = t("onboarding.goals.presetGoals", { returnObjects: true });
+  const rawMetrics = t("onboarding.goals.presetMetrics", { returnObjects: true });
+  const presetGoals = Array.isArray(rawGoals) ? (rawGoals as string[]) : [];
+  const presetMetrics = Array.isArray(rawMetrics) ? (rawMetrics as string[]) : [];
 
   const toggle = (key: "goals" | "success_metrics", v: string) => {
     const cur = result[key];
@@ -62,7 +45,11 @@ export function GoalsStep({
 
   // Options include any AI/discovered goals not in the built-in list, so custom
   // goals stay visible and toggleable as chips.
-  const goalOptions = [...GOALS, ...result.goals.filter((g) => !GOALS.includes(g))];
+  const goalOptions = [...presetGoals, ...result.goals.filter((g) => !presetGoals.includes(g))];
+  const metricOptions = [
+    ...presetMetrics,
+    ...result.success_metrics.filter((m) => !presetMetrics.includes(m)),
+  ];
 
   return (
     <div className="animate-fade-in">
@@ -87,7 +74,7 @@ export function GoalsStep({
           {t("onboarding.goals.metricsLabel")}
         </p>
         <ChipMultiSelect
-          options={METRICS}
+          options={metricOptions}
           selected={result.success_metrics}
           onToggle={(v) => toggle("success_metrics", v)}
         />
