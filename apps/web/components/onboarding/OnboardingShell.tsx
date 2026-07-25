@@ -47,7 +47,13 @@ export function OnboardingShell() {
     : t("onboarding.rail.welcome", { defaultValue: step });
 
   return (
-    <div className="flex min-h-screen bg-background">
+    // h-full (not min-h-screen): the ancestor chain in
+    // app/(dashboard)/layout.tsx already bounds height down to this root via
+    // h-screen -> flex-1 (x2) -> this <main>, all overflow-hidden on takeover
+    // routes. A definite height here is what lets the content column below
+    // actually scroll (min-h-screen is only a floor, not a box overflow can
+    // clip against).
+    <div className="flex h-full bg-background">
       <aside className="hidden w-64 shrink-0 border-r border-border p-6 md:block">
         <p className="mb-6 text-sm font-semibold text-foreground">{t("onboarding.title")}</p>
         <ol className="space-y-1">
@@ -80,7 +86,7 @@ export function OnboardingShell() {
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center p-6 animate-fade-in">
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center p-6 animate-fade-in">
           {/* Step components are wired in Tasks 11-16. Placeholder keeps typecheck green: */}
           <p className="text-sm text-muted-foreground">{placeholderLabel}</p>
         </div>

@@ -102,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <CommandPaletteProvider>
       <div className="relative z-10 flex h-screen flex-col overflow-hidden bg-background">
-        {usage && (
+        {usage && !isTakeover && (
           <UsageBanner
             onUpgrade={() => {
               const warnResource =
@@ -126,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </div>
-      {upgradeInfo && (
+      {upgradeInfo && !isTakeover && (
         <UpgradeModal
           resource={upgradeInfo.resource}
           used={upgradeInfo.used}
