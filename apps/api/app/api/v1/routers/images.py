@@ -254,9 +254,12 @@ async def plan_campaign(body: PlanCampaignRequest, current_user: CurrentUser, db
     keys = await get_org_llm_keys(current_user.org_id, db)
 
     brand_context = ""
-    if body.use_brand_kit:
+    if body.use_brand_kit and body.project_id is not None:
         bk_result = await db.execute(
-            select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id)
+            select(BrandKitModel).where(
+                BrandKitModel.org_id == current_user.org_id,
+                BrandKitModel.project_id == body.project_id,
+            )
         )
         bk = bk_result.scalar_one_or_none()
         if bk:
@@ -356,7 +359,10 @@ async def generate_image(
     brand_kit = None
     if body.use_brand_kit:
         bk_result = await db.execute(
-            select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id)
+            select(BrandKitModel).where(
+                BrandKitModel.org_id == current_user.org_id,
+                BrandKitModel.project_id == body.project_id,
+            )
         )
         brand_kit = bk_result.scalar_one_or_none()
 

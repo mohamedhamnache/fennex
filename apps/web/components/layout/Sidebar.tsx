@@ -15,7 +15,6 @@ import { useTranslation } from "react-i18next";
 import { FennecMark } from "@fennex/ui";
 import { authLogout, listProjects } from "@/lib/api";
 import { useProjectStore } from "@/lib/store";
-import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { cn } from "@/lib/cn";
 
 function projectInitials(name?: string) {
@@ -107,7 +106,6 @@ export function Sidebar() {
   const [pinned, setPinned] = useState(true);
   const [hovered, setHovered] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // Restore pin preference
@@ -199,7 +197,7 @@ export function Sidebar() {
         <div className="relative px-3 py-3">
           {projects.length === 0 ? (
             <button
-              onClick={() => setModalOpen(true)}
+              onClick={() => router.push("/onboarding")}
               className={cn(
                 "flex w-full items-center gap-2 rounded-xl border border-dashed border-white/15 text-white/45 transition-all hover:border-primary/40 hover:text-white/80",
                 expanded ? "px-3 py-2.5" : "justify-center p-2.5",
@@ -261,7 +259,7 @@ export function Sidebar() {
                   </div>
                   <div className="mt-1 border-t border-white/[0.06] pt-1">
                     <button
-                      onClick={() => { setDropdownOpen(false); setModalOpen(true); }}
+                      onClick={() => { setDropdownOpen(false); router.push("/onboarding"); }}
                       className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-primary transition-colors hover:bg-primary/10"
                     >
                       <Plus className="h-3.5 w-3.5" /> {t("nav.newProject")}
@@ -341,12 +339,6 @@ export function Sidebar() {
           <RailLink label={t("nav.signOut")} icon={LogOut} expanded={expanded} danger onClick={handleLogout} />
         </div>
       </aside>
-
-      <CreateProjectModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onCreated={() => { refetch(); setModalOpen(false); }}
-      />
     </>
   );
 }

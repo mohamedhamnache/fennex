@@ -156,7 +156,7 @@ async def build(project_id: uuid.UUID, org_id: uuid.UUID, db) -> BrandDNA:
 
     try:
         voice = (await db.execute(
-            select(BrandVoice).where(BrandVoice.org_id == org_id)
+            select(BrandVoice).where(BrandVoice.org_id == org_id, BrandVoice.project_id == project_id)
             .order_by(BrandVoice.is_default.desc())
         )).scalars().first()
     except Exception:
@@ -170,7 +170,9 @@ async def build(project_id: uuid.UUID, org_id: uuid.UUID, db) -> BrandDNA:
         dna.avoid_words = list(_attr(voice, "avoid_words") or [])
 
     try:
-        kit = (await db.execute(select(BrandKit).where(BrandKit.org_id == org_id))).scalars().first()
+        kit = (await db.execute(
+            select(BrandKit).where(BrandKit.org_id == org_id, BrandKit.project_id == project_id)
+        )).scalars().first()
     except Exception:
         kit = None
     if kit is not None:

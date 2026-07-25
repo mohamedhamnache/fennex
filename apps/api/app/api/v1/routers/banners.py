@@ -55,7 +55,12 @@ async def generate_marketing_banners(body: MarketingBannerRequest, current_user:
 
     brand_kit = None
     if body.use_brand_kit:
-        bk = await db.execute(select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id))
+        bk = await db.execute(
+            select(BrandKitModel).where(
+                BrandKitModel.org_id == current_user.org_id,
+                BrandKitModel.project_id == body.project_id,
+            )
+        )
         brand_kit = bk.scalar_one_or_none()
 
     openai_key = await _get_openai_key(current_user.org_id, db)

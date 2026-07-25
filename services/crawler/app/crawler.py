@@ -31,6 +31,7 @@ async def crawl(url: str) -> dict:
         "has_viewport_meta": False,
         "error": None,
         "text": None,
+        "text_html": None,
     }
 
     start = time.monotonic()
@@ -52,6 +53,7 @@ async def crawl(url: str) -> dict:
             return result
 
         html = response.text
+        result["text_html"] = html  # raw response body, for downstream extraction
         soup = BeautifulSoup(html, "lxml")
         base_netloc = urlparse(result["url"]).netloc
 

@@ -950,7 +950,22 @@
       "description": "Que es este proyecto",
       "descriptionPlaceholder": "Un blog WordPress para compartir recetas caseras",
       "descriptionHint": "Sirve para juzgar competidores y mantener a cada empleado en tono. Di que es el sitio y para quien.",
-      "descriptionUsedBy": "Lo leen todos los empleados y sirve para distinguir un competidor real de un sitio que solo posiciona por las mismas palabras."
+      "descriptionUsedBy": "Lo leen todos los empleados y sirve para distinguir un competidor real de un sitio que solo posiciona por las mismas palabras.",
+      "yourProjects": "Tus proyectos",
+      "yourProjectsHint": "Cambia, renombra o elimina los espacios de trabajo que gestionas.",
+      "current": "Actual",
+      "switchTo": "Abrir {{name}}",
+      "rename": "Renombrar {{name}}",
+      "saveRename": "Guardar nombre",
+      "delete": "Eliminar {{name}}",
+      "deletePermanently": "Eliminar permanentemente",
+      "deleting": "Eliminando…",
+      "deleteConfirm": "¿Eliminar «{{name}}»? Esta acción no se puede deshacer: se perderán todo su contenido, palabras clave y conexiones.",
+      "deleteSuccess": "Proyecto eliminado",
+      "deleteError": "No se pudo eliminar el proyecto. Inténtalo de nuevo.",
+      "renameSaved": "Proyecto renombrado",
+      "renameError": "No se pudo renombrar el proyecto. Inténtalo de nuevo.",
+      "lastProjectHint": "Necesitas al menos un proyecto: este es el último."
     },
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",
@@ -1728,6 +1743,168 @@
       "articles": "Con demanda: «{{query}}» — {{impressions}} impresiones",
       "social": "Tu audiencia se agrupa en torno a «{{query}}» ({{count}} consultas)",
       "competitors": "Los rivales dominan «{{query}}» — pos media {{pos}}"
+    }
+  },
+  "onboarding": {
+    "title": "Configura tu espacio de trabajo",
+    "exit": "Salir de la configuración",
+    "rail": {
+      "welcome": "Bienvenida",
+      "discover": "Descubrir",
+      "review": "Revisar",
+      "goals": "Objetivos",
+      "brand": "Marca",
+      "audience": "Audiencia",
+      "summary": "Resumen"
+    },
+    "welcome": {
+      "title": "Creemos tu espacio de marketing",
+      "subtitle": "Cuéntanos sobre tu negocio y lo configuraremos todo por ti.",
+      "time": "3-5 minutos",
+      "start": "Comenzar",
+      "hints": {
+        "articles": "Artículos con la identidad de tu marca",
+        "seo": "Información de SEO y competidores",
+        "brand": "El ADN de tu marca, capturado"
+      }
+    },
+    "discovery": {
+      "title": "¿Dónde debemos buscar?",
+      "noSite": "Todavía no tengo un sitio web",
+      "backToUrl": "Tengo un sitio web en su lugar",
+      "describe": "Describe tu negocio, producto o idea...",
+      "analyze": "Analizar",
+      "starting": "Comenzando...",
+      "hint": "Esto suele tardar menos de un minuto. Puedes esperar aquí.",
+      "previewHint": "Estamos armando una vista previa de tu espacio de trabajo.",
+      "stages": {
+        "analyzing": "Analizando el sitio web",
+        "reading": "Leyendo páginas",
+        "products": "Comprendiendo los productos",
+        "competitors": "Buscando competidores",
+        "brandDna": "Extrayendo el ADN de marca",
+        "seo": "Analizando el SEO",
+        "profile": "Creando el perfil"
+      },
+      "error": {
+        "startFailed": "No pudimos iniciar el descubrimiento. Inténtalo de nuevo.",
+        "heading": "Encontramos un problema",
+        "retry": "Intentar de nuevo",
+        "continue": "Continuar de todos modos"
+      }
+    },
+    "review": {
+      "title": "Revisa lo que encontramos",
+      "subtitle": "Verifica los siguientes detalles y corrige lo que sea necesario antes de continuar.",
+      "business": "Negocio",
+      "name": "Nombre",
+      "industry": "Sector",
+      "country": "País",
+      "language": "Idioma",
+      "description": "Descripción",
+      "colors": "Colores de marca",
+      "colorLabel": "Color {{index}}",
+      "removeColor": "Eliminar color",
+      "addColor": "Añadir color",
+      "competitors": "Competidores",
+      "competitorName": "Nombre",
+      "competitorUrl": "Sitio web",
+      "removeCompetitor": "Eliminar competidor",
+      "addCompetitor": "Añadir competidor",
+      "confirm": "Todo listo, continuar",
+      "understandTitle": "Esto es lo que entiendo",
+      "seo": "Resumen SEO",
+      "seoScore": "{{score}}/100",
+      "seoWords": "{{count}} palabras en la página de inicio",
+      "seoKeywords": "Palabras clave iniciales",
+      "seoIssues": "Cosas por corregir",
+      "removeKeyword": "Eliminar palabra clave"
+    },
+    "goals": {
+      "title": "¿Cuáles son tus objetivos?",
+      "goalsLabel": "Selecciona tus principales objetivos",
+      "metricsLabel": "¿Cómo medirás el éxito?",
+      "next": "Siguiente",
+      "presetGoals": [
+        "Aumentar el tráfico SEO",
+        "Escribir entradas de blog",
+        "Generar páginas de producto",
+        "Crear contenido de Instagram",
+        "Hacer crecer Pinterest",
+        "Generar clientes potenciales",
+        "Aumentar las ventas",
+        "Lanzar productos",
+        "Marketing por correo",
+        "Investigación de mercado",
+        "Análisis de la competencia"
+      ],
+      "presetMetrics": [
+        "Tráfico orgánico",
+        "Ingresos",
+        "Clientes potenciales",
+        "Seguidores",
+        "Boletín",
+        "Ventas",
+        "Citas"
+      ]
+    },
+    "brand": {
+      "title": "El ADN de tu marca",
+      "tone": "Tono",
+      "cta": "Estilo de llamada a la acción",
+      "reading": "Nivel de lectura",
+      "emoji": "Política de emojis",
+      "mission": "Misión",
+      "voice": "Descripción de la voz",
+      "use": "Usa estas palabras",
+      "avoid": "Evita estas palabras",
+      "next": "Siguiente"
+    },
+    "audience": {
+      "title": "¿A quién te diriges?",
+      "label": "Segmento de audiencia",
+      "profession": "Profesión",
+      "budget": "Presupuesto",
+      "add": "Añadir otro segmento",
+      "remove": "Eliminar segmento",
+      "next": "Siguiente"
+    },
+    "summary": {
+      "title": "Revisa tu espacio de trabajo",
+      "subtitle": "Esto es lo que usaremos para configurarlo todo. Aún puedes cambiar cualquier detalle.",
+      "edit": "Editar {{field}}",
+      "business": "Negocio",
+      "goals": "Objetivos",
+      "brand": "Tono de marca",
+      "audience": "Audiencia",
+      "employeesNote": "Podrás invitar a tu equipo y ajustar estos detalles más adelante desde la configuración de tu espacio de trabajo.",
+      "create": "Crear mi espacio de trabajo"
+    },
+    "provisioning": {
+      "title": "Configurando tu espacio de trabajo",
+      "hint": "Esto suele tardar solo unos segundos. Espera un momento.",
+      "staged": [
+        "Creando tu espacio de trabajo...",
+        "Aplicando el ADN de tu marca...",
+        "Preparando tus primeras tareas..."
+      ],
+      "error": "No pudimos configurar tu espacio de trabajo. Inténtalo de nuevo.",
+      "retry": "Intentar de nuevo"
+    },
+    "done": {
+      "badge": "Todo listo",
+      "title": "Tu espacio de trabajo está listo",
+      "subtitle": "Este es un buen punto de partida.",
+      "article": "Escribe tu primer artículo",
+      "competitors": "Revisa a tus competidores",
+      "instagram": "Planifica una publicación de Instagram",
+      "roadmap": "Consulta tu hoja de ruta de SEO",
+      "dashboard": "Ir al panel"
+    },
+    "back": "Atrás",
+    "suggest": {
+      "label": "Sugerir con IA",
+      "none": "No hay sugerencias por ahora"
     }
   },
   "personaHome": {

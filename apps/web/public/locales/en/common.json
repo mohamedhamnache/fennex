@@ -1047,7 +1047,22 @@
       "description": "What this project is",
       "descriptionPlaceholder": "A WordPress blog sharing home-cooking recipes",
       "descriptionHint": "Used to judge competitors and to keep every employee on-brand. Say what the site is and who it is for.",
-      "descriptionUsedBy": "Read by every employee, and used to tell a real competitor from a site that just ranks for the same words."
+      "descriptionUsedBy": "Read by every employee, and used to tell a real competitor from a site that just ranks for the same words.",
+      "yourProjects": "Your projects",
+      "yourProjectsHint": "Switch, rename, or remove workspaces you manage.",
+      "current": "Current",
+      "switchTo": "Open {{name}}",
+      "rename": "Rename {{name}}",
+      "saveRename": "Save name",
+      "delete": "Delete {{name}}",
+      "deletePermanently": "Delete permanently",
+      "deleting": "Deleting…",
+      "deleteConfirm": "Delete \"{{name}}\"? This can't be undone — all its content, keywords, and connections go with it.",
+      "deleteSuccess": "Project deleted",
+      "deleteError": "Could not delete project. Try again.",
+      "renameSaved": "Project renamed",
+      "renameError": "Could not rename project. Try again.",
+      "lastProjectHint": "You need at least one project — this is your last one."
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",
@@ -1835,6 +1850,168 @@
       "articles": "In demand: “{{query}}” — {{impressions}} impressions",
       "social": "Your audience clusters around “{{query}}” ({{count}} queries)",
       "competitors": "Rivals lead on “{{query}}” — avg pos {{pos}}"
+    }
+  },
+  "onboarding": {
+    "title": "Set up your workspace",
+    "exit": "Exit setup",
+    "back": "Back",
+    "rail": {
+      "welcome": "Welcome",
+      "discover": "Discover",
+      "review": "Review",
+      "goals": "Goals",
+      "brand": "Brand",
+      "audience": "Audience",
+      "summary": "Summary"
+    },
+    "welcome": {
+      "title": "Let's build your marketing workspace",
+      "subtitle": "Tell us about your business and we'll set everything up for you.",
+      "time": "3-5 minutes",
+      "start": "Get started",
+      "hints": {
+        "articles": "On-brand articles",
+        "seo": "SEO & competitor insights",
+        "brand": "Your brand DNA, captured"
+      }
+    },
+    "discovery": {
+      "title": "Where should we look?",
+      "noSite": "I don't have a website yet",
+      "backToUrl": "I have a website instead",
+      "describe": "Describe your business, product, or idea...",
+      "analyze": "Analyze",
+      "starting": "Getting started...",
+      "hint": "This usually takes under a minute. Feel free to wait here.",
+      "previewHint": "We're piecing together a preview of your workspace.",
+      "stages": {
+        "analyzing": "Analyzing website",
+        "reading": "Reading pages",
+        "products": "Understanding products",
+        "competitors": "Finding competitors",
+        "brandDna": "Extracting Brand DNA",
+        "seo": "Analyzing SEO",
+        "profile": "Building profile"
+      },
+      "error": {
+        "startFailed": "We couldn't start discovery. Please try again.",
+        "heading": "We ran into a problem",
+        "retry": "Try again",
+        "continue": "Continue anyway"
+      }
+    },
+    "review": {
+      "title": "Review what we found",
+      "subtitle": "Double-check the details below and fix anything that's off before we continue.",
+      "business": "Business",
+      "name": "Name",
+      "industry": "Industry",
+      "country": "Country",
+      "language": "Language",
+      "description": "Description",
+      "colors": "Brand colors",
+      "colorLabel": "Color {{index}}",
+      "removeColor": "Remove color",
+      "addColor": "Add color",
+      "competitors": "Competitors",
+      "competitorName": "Name",
+      "competitorUrl": "Website",
+      "removeCompetitor": "Remove competitor",
+      "addCompetitor": "Add competitor",
+      "confirm": "Looks good, continue",
+      "understandTitle": "Here's what I understand",
+      "seo": "SEO snapshot",
+      "seoScore": "{{score}}/100",
+      "seoWords": "{{count}} words on the homepage",
+      "seoKeywords": "Seed keywords",
+      "seoIssues": "Things to fix",
+      "removeKeyword": "Remove keyword"
+    },
+    "goals": {
+      "title": "What are your goals?",
+      "goalsLabel": "Select your main goals",
+      "metricsLabel": "How will you measure success?",
+      "next": "Next",
+      "presetGoals": [
+        "Increase SEO traffic",
+        "Write blog posts",
+        "Generate product pages",
+        "Create Instagram content",
+        "Grow Pinterest",
+        "Generate leads",
+        "Increase sales",
+        "Launch products",
+        "Email marketing",
+        "Market research",
+        "Competitor analysis"
+      ],
+      "presetMetrics": [
+        "Organic traffic",
+        "Revenue",
+        "Leads",
+        "Followers",
+        "Newsletter",
+        "Sales",
+        "Appointments"
+      ]
+    },
+    "brand": {
+      "title": "Your brand DNA",
+      "tone": "Tone",
+      "cta": "CTA style",
+      "reading": "Reading level",
+      "emoji": "Emoji policy",
+      "mission": "Mission",
+      "voice": "Voice prompt",
+      "use": "Use these words",
+      "avoid": "Avoid these words",
+      "next": "Next"
+    },
+    "audience": {
+      "title": "Who are you targeting?",
+      "label": "Audience segment",
+      "profession": "Profession",
+      "budget": "Budget",
+      "add": "Add another segment",
+      "remove": "Remove segment",
+      "next": "Next"
+    },
+    "summary": {
+      "title": "Review your workspace",
+      "subtitle": "Here's what we'll use to set everything up. You can still change any of it.",
+      "edit": "Edit {{field}}",
+      "business": "Business",
+      "goals": "Goals",
+      "brand": "Brand tone",
+      "audience": "Audience",
+      "employeesNote": "You can invite teammates and fine-tune these details later from your workspace settings.",
+      "create": "Create my workspace"
+    },
+    "provisioning": {
+      "title": "Setting up your workspace",
+      "hint": "This usually takes a few seconds. Hang tight.",
+      "staged": [
+        "Creating your workspace...",
+        "Applying your brand DNA...",
+        "Preparing your first tasks..."
+      ],
+      "error": "We couldn't set up your workspace. Please try again.",
+      "retry": "Try again"
+    },
+    "done": {
+      "badge": "All set",
+      "title": "Your workspace is ready",
+      "subtitle": "Here's a good place to start.",
+      "article": "Write your first article",
+      "competitors": "Check your competitors",
+      "instagram": "Plan an Instagram post",
+      "roadmap": "See your SEO roadmap",
+      "dashboard": "Go to dashboard"
+    },
+    "suggest": {
+      "label": "Suggest with AI",
+      "none": "No suggestions right now"
     }
   },
   "integrations": {

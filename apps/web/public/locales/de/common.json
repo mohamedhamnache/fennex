@@ -950,7 +950,22 @@
       "description": "Was dieses Projekt ist",
       "descriptionPlaceholder": "Ein WordPress-Blog fuer hausgemachte Rezepte",
       "descriptionHint": "Dient dazu, Wettbewerber zu beurteilen und alle Mitarbeiter markentreu zu halten. Sagen Sie, was die Seite ist und fuer wen.",
-      "descriptionUsedBy": "Wird von jedem Mitarbeiter gelesen und unterscheidet einen echten Wettbewerber von einer Seite, die nur fuer dieselben Woerter rankt."
+      "descriptionUsedBy": "Wird von jedem Mitarbeiter gelesen und unterscheidet einen echten Wettbewerber von einer Seite, die nur fuer dieselben Woerter rankt.",
+      "yourProjects": "Ihre Projekte",
+      "yourProjectsHint": "Wechseln, umbenennen oder entfernen Sie von Ihnen verwaltete Workspaces.",
+      "current": "Aktuell",
+      "switchTo": "{{name}} öffnen",
+      "rename": "{{name}} umbenennen",
+      "saveRename": "Namen speichern",
+      "delete": "{{name}} löschen",
+      "deletePermanently": "Endgültig löschen",
+      "deleting": "Wird gelöscht…",
+      "deleteConfirm": "„{{name}}“ löschen? Dies kann nicht rückgängig gemacht werden – alle Inhalte, Keywords und Verbindungen gehen verloren.",
+      "deleteSuccess": "Projekt gelöscht",
+      "deleteError": "Projekt konnte nicht gelöscht werden. Erneut versuchen.",
+      "renameSaved": "Projekt umbenannt",
+      "renameError": "Projekt konnte nicht umbenannt werden. Erneut versuchen.",
+      "lastProjectHint": "Sie brauchen mindestens ein Projekt – dies ist Ihr letztes."
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",
@@ -1728,6 +1743,168 @@
       "articles": "Gefragt: „{{query}}“ — {{impressions}} Impressionen",
       "social": "Deine Zielgruppe bündelt sich um „{{query}}“ ({{count}} Suchanfragen)",
       "competitors": "Wettbewerber führen bei „{{query}}“ — Ø-Pos {{pos}}"
+    }
+  },
+  "onboarding": {
+    "title": "Richten Sie Ihren Arbeitsbereich ein",
+    "exit": "Einrichtung verlassen",
+    "rail": {
+      "welcome": "Willkommen",
+      "discover": "Entdecken",
+      "review": "Überprüfen",
+      "goals": "Ziele",
+      "brand": "Marke",
+      "audience": "Zielgruppe",
+      "summary": "Zusammenfassung"
+    },
+    "welcome": {
+      "title": "Lass uns deinen Marketing-Arbeitsbereich aufbauen",
+      "subtitle": "Erzähl uns von deinem Unternehmen und wir richten alles für dich ein.",
+      "time": "3–5 Minuten",
+      "start": "Loslegen",
+      "hints": {
+        "articles": "Markenkonforme Artikel",
+        "seo": "SEO- und Wettbewerbsanalysen",
+        "brand": "Deine Marken-DNA, erfasst"
+      }
+    },
+    "discovery": {
+      "title": "Wo sollen wir nachsehen?",
+      "noSite": "Ich habe noch keine Website",
+      "backToUrl": "Ich habe stattdessen eine Website",
+      "describe": "Beschreibe dein Unternehmen, Produkt oder deine Idee...",
+      "analyze": "Analysieren",
+      "starting": "Wird gestartet...",
+      "hint": "Das dauert normalerweise weniger als eine Minute. Du kannst hier warten.",
+      "previewHint": "Wir stellen eine Vorschau deines Arbeitsbereichs zusammen.",
+      "stages": {
+        "analyzing": "Website wird analysiert",
+        "reading": "Seiten werden gelesen",
+        "products": "Produkte werden erfasst",
+        "competitors": "Wettbewerber werden gesucht",
+        "brandDna": "Marken-DNA wird extrahiert",
+        "seo": "SEO wird analysiert",
+        "profile": "Profil wird erstellt"
+      },
+      "error": {
+        "startFailed": "Die Analyse konnte nicht gestartet werden. Bitte versuche es erneut.",
+        "heading": "Es ist ein Problem aufgetreten",
+        "retry": "Erneut versuchen",
+        "continue": "Trotzdem fortfahren"
+      }
+    },
+    "review": {
+      "title": "Überprüfe, was wir gefunden haben",
+      "subtitle": "Überprüfe die folgenden Angaben und korrigiere alles, was nicht stimmt, bevor wir fortfahren.",
+      "business": "Unternehmen",
+      "name": "Name",
+      "industry": "Branche",
+      "country": "Land",
+      "language": "Sprache",
+      "description": "Beschreibung",
+      "colors": "Markenfarben",
+      "colorLabel": "Farbe {{index}}",
+      "removeColor": "Farbe entfernen",
+      "addColor": "Farbe hinzufügen",
+      "competitors": "Wettbewerber",
+      "competitorName": "Name",
+      "competitorUrl": "Website",
+      "removeCompetitor": "Wettbewerber entfernen",
+      "addCompetitor": "Wettbewerber hinzufügen",
+      "confirm": "Sieht gut aus, weiter",
+      "understandTitle": "Das habe ich verstanden",
+      "seo": "SEO-Überblick",
+      "seoScore": "{{score}}/100",
+      "seoWords": "{{count}} Wörter auf der Startseite",
+      "seoKeywords": "Start-Keywords",
+      "seoIssues": "Zu behebende Punkte",
+      "removeKeyword": "Keyword entfernen"
+    },
+    "goals": {
+      "title": "Was sind deine Ziele?",
+      "goalsLabel": "Wähle deine wichtigsten Ziele aus",
+      "metricsLabel": "Wie misst du den Erfolg?",
+      "next": "Weiter",
+      "presetGoals": [
+        "SEO-Traffic steigern",
+        "Blogartikel schreiben",
+        "Produktseiten erstellen",
+        "Instagram-Inhalte erstellen",
+        "Pinterest ausbauen",
+        "Leads generieren",
+        "Umsatz steigern",
+        "Produkte einführen",
+        "E-Mail-Marketing",
+        "Marktforschung",
+        "Wettbewerbsanalyse"
+      ],
+      "presetMetrics": [
+        "Organischer Traffic",
+        "Umsatz",
+        "Leads",
+        "Follower",
+        "Newsletter",
+        "Verkäufe",
+        "Termine"
+      ]
+    },
+    "brand": {
+      "title": "Deine Marken-DNA",
+      "tone": "Tonalität",
+      "cta": "CTA-Stil",
+      "reading": "Lesestufe",
+      "emoji": "Emoji-Richtlinie",
+      "mission": "Mission",
+      "voice": "Sprach-Prompt",
+      "use": "Diese Wörter verwenden",
+      "avoid": "Diese Wörter vermeiden",
+      "next": "Weiter"
+    },
+    "audience": {
+      "title": "Wen sprichst du an?",
+      "label": "Zielgruppensegment",
+      "profession": "Beruf",
+      "budget": "Budget",
+      "add": "Weiteres Segment hinzufügen",
+      "remove": "Segment entfernen",
+      "next": "Weiter"
+    },
+    "summary": {
+      "title": "Überprüfe deinen Arbeitsbereich",
+      "subtitle": "So richten wir alles ein. Du kannst jederzeit noch etwas ändern.",
+      "edit": "{{field}} bearbeiten",
+      "business": "Unternehmen",
+      "goals": "Ziele",
+      "brand": "Markenton",
+      "audience": "Zielgruppe",
+      "employeesNote": "Du kannst später Teammitglieder einladen und diese Angaben in den Arbeitsbereich-Einstellungen anpassen.",
+      "create": "Meinen Arbeitsbereich erstellen"
+    },
+    "provisioning": {
+      "title": "Dein Arbeitsbereich wird eingerichtet",
+      "hint": "Das dauert normalerweise nur wenige Sekunden. Einen Moment noch.",
+      "staged": [
+        "Dein Arbeitsbereich wird erstellt...",
+        "Deine Marken-DNA wird angewendet...",
+        "Deine ersten Aufgaben werden vorbereitet..."
+      ],
+      "error": "Dein Arbeitsbereich konnte nicht eingerichtet werden. Bitte versuche es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "done": {
+      "badge": "Alles bereit",
+      "title": "Dein Arbeitsbereich ist bereit",
+      "subtitle": "Hier ist ein guter Ausgangspunkt.",
+      "article": "Schreibe deinen ersten Artikel",
+      "competitors": "Sieh dir deine Wettbewerber an",
+      "instagram": "Plane einen Instagram-Beitrag",
+      "roadmap": "Sieh dir deine SEO-Roadmap an",
+      "dashboard": "Zum Dashboard"
+    },
+    "back": "Zurück",
+    "suggest": {
+      "label": "Mit KI vorschlagen",
+      "none": "Derzeit keine Vorschläge"
     }
   },
   "personaHome": {

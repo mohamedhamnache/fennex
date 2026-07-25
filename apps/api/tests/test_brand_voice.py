@@ -19,6 +19,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.main import app
 from app.models.billing import OrgUsage, SubscriptionEvent  # noqa: F401 — register with Base.metadata
 from app.models.organization import Organization
+from app.models.project import Project
 from app.models.user import User, UserRole
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
@@ -124,10 +125,18 @@ async def db_session():
 
 @pytest.fixture
 async def org(db_session):
-    """Create an org in the test DB."""
+    """Create an org with a project in the test DB.
+
+    Brand voices are now scoped per project; the router falls back to the
+    org's first project when no project_id is given, so tests need a
+    project to exist.
+    """
     from app.models.organization import PlanTier
     org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", plan_tier=PlanTier.PRO)
     db_session.add(org)
+    await db_session.flush()
+    project = Project(org_id=FAKE_ORG_ID, name="Test Project", domain="example.com")
+    db_session.add(project)
     await db_session.commit()
     return org
 

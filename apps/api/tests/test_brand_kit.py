@@ -8,6 +8,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.main import app
 from app.models.billing import OrgUsage, SubscriptionEvent  # noqa: F401
 from app.models.organization import Organization, PlanTier
+from app.models.project import Project
 from app.models.user import User, UserRole
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -17,6 +18,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 SQLITE_COMPATIBLE_TABLES = [
     "organizations",
     "users",
+    "projects",
     "brand_kits",
 ]
 
@@ -72,8 +74,17 @@ async def db_session():
 
 @pytest.fixture
 async def org(db_session):
+    """Create an org with a project in the test DB.
+
+    Brand DNA (brand kit/voice) is now scoped per project; the router falls
+    back to the org's first project when no project_id is given, so tests
+    need a project to exist.
+    """
     org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", plan_tier=PlanTier.PRO)
     db_session.add(org)
+    await db_session.flush()
+    project = Project(org_id=FAKE_ORG_ID, name="Test Project", domain="example.com")
+    db_session.add(project)
     await db_session.commit()
     return org
 

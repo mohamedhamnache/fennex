@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.core.billing import check_usage_limit
 from app.core.dependencies import CurrentUser, DB
 from app.models.brand_voice import BrandVoice, BrandVoiceSource, VoiceTone
+from app.api.v1.routers.brand_kit import _resolve_project
 
 router = APIRouter()
 
@@ -66,11 +67,11 @@ class AddSourceRequest(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _get_voice_or_404(voice_id: uuid.UUID, org_id: uuid.UUID, db) -> BrandVoice:
+async def _get_voice_or_404(voice_id: uuid.UUID, org_id: uuid.UUID, project_id: uuid.UUID, db) -> BrandVoice:
     result = await db.execute(
         select(BrandVoice)
         .options(selectinload(BrandVoice.training_sources))
-        .where(BrandVoice.id == voice_id, BrandVoice.org_id == org_id)
+        .where(BrandVoice.id == voice_id, BrandVoice.org_id == org_id, BrandVoice.project_id == project_id)
     )
     voice = result.scalar_one_or_none()
     if voice is None:
@@ -102,16 +103,22 @@ async def create_brand_voice(
     current_user: CurrentUser,
     db: DB,
     _: Annotated[None, Depends(check_usage_limit("brand_voices"))],
+    project_id: uuid.UUID | None = None,
 ):
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+
     # Check if this is the first voice (to set is_default)
     count_result = await db.execute(
-        select(BrandVoice).where(BrandVoice.org_id == current_user.org_id)
+        select(BrandVoice).where(
+            BrandVoice.org_id == current_user.org_id, BrandVoice.project_id == resolved_project_id
+        )
     )
     existing = count_result.scalars().all()
     is_first = len(existing) == 0
 
     voice = BrandVoice(
         org_id=current_user.org_id,
+        project_id=resolved_project_id,
         name=body.name,
         tone=body.tone or VoiceTone.professional,
         description=body.description,
@@ -138,11 +145,13 @@ async def create_brand_voice(
 async def list_brand_voices(
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
     result = await db.execute(
         select(BrandVoice)
         .options(selectinload(BrandVoice.training_sources))
-        .where(BrandVoice.org_id == current_user.org_id)
+        .where(BrandVoice.org_id == current_user.org_id, BrandVoice.project_id == resolved_project_id)
         .order_by(BrandVoice.created_at.desc())
     )
     voices = result.scalars().all()
@@ -154,8 +163,10 @@ async def get_brand_voice(
     voice_id: uuid.UUID,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    voice = await _get_voice_or_404(voice_id, current_user.org_id, db)
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    voice = await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
     return BrandVoiceOut.model_validate(voice)
 
 
@@ -165,8 +176,10 @@ async def update_brand_voice(
     body: UpdateBrandVoiceRequest,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    voice = await _get_voice_or_404(voice_id, current_user.org_id, db)
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    voice = await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
 
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -183,8 +196,10 @@ async def delete_brand_voice(
     voice_id: uuid.UUID,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    voice = await _get_voice_or_404(voice_id, current_user.org_id, db)
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    voice = await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
     await db.delete(voice)
     await db.commit()
     return None
@@ -195,13 +210,19 @@ async def set_default_brand_voice(
     voice_id: uuid.UUID,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    voice = await _get_voice_or_404(voice_id, current_user.org_id, db)
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    voice = await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
 
-    # Clear is_default on all other voices in org
+    # Clear is_default on all other voices in the same project
     await db.execute(
         update(BrandVoice)
-        .where(BrandVoice.org_id == current_user.org_id, BrandVoice.id != voice_id)
+        .where(
+            BrandVoice.org_id == current_user.org_id,
+            BrandVoice.project_id == resolved_project_id,
+            BrandVoice.id != voice_id,
+        )
         .values(is_default=False)
     )
     voice.is_default = True
@@ -217,8 +238,10 @@ async def add_brand_voice_source(
     body: AddSourceRequest,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    voice = await _get_voice_or_404(voice_id, current_user.org_id, db)
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    voice = await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
 
     if body.source_type not in ("url", "text"):
         raise HTTPException(
@@ -254,9 +277,11 @@ async def delete_brand_voice_source(
     source_id: uuid.UUID,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    # Verify voice belongs to org
-    await _get_voice_or_404(voice_id, current_user.org_id, db)
+    # Verify voice belongs to org and project
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
 
     result = await db.execute(
         select(BrandVoiceSource).where(
@@ -279,8 +304,10 @@ async def generate_voice_prompt(
     voice_id: uuid.UUID,
     current_user: CurrentUser,
     db: DB,
+    project_id: uuid.UUID | None = None,
 ):
-    voice = await _get_voice_or_404(voice_id, current_user.org_id, db)
+    resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
+    voice = await _get_voice_or_404(voice_id, current_user.org_id, resolved_project_id, db)
 
     # Build prompt from tone, description, vocabulary, avoid_words
     parts = [f"Write in a {voice.tone.value if hasattr(voice.tone, 'value') else voice.tone} tone."]
