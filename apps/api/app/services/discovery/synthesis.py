@@ -60,14 +60,28 @@ def parse_synthesis(raw: str) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    return {k: v for k, v in data.items() if k in _ALLOWED_TOP}
+    result = {}
+    for k, v in data.items():
+        if k not in _ALLOWED_TOP:
+            continue
+        if k in {"business", "brand", "seo"}:
+            if isinstance(v, dict):
+                result[k] = v
+        elif k in {"audience", "competitors", "goals", "success_metrics", "products"}:
+            if isinstance(v, list):
+                result[k] = v
+    return result
 
 
 async def synthesise(text: str, partial: dict, *, provider: str, model: str,
                      api_key: str, locale: str = "en") -> dict:
     if not text.strip():
         return partial
-    sysp, userp = build_prompt(text, partial)
+    try:
+        sysp, userp = build_prompt(text, partial)
+    except Exception:
+        logger.exception("discovery synthesis prompt building failed")
+        return partial
     try:
         raw = await call_llm(provider, model, api_key, sysp, userp, locale=locale, max_tokens=2000)
     except Exception:
