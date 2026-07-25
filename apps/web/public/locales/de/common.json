@@ -1730,6 +1730,18 @@
       "competitors": "Wettbewerber führen bei „{{query}}“ — Ø-Pos {{pos}}"
     }
   },
+  "onboarding": {
+    "title": "Richten Sie Ihren Arbeitsbereich ein",
+    "rail": {
+      "welcome": "Willkommen",
+      "discover": "Entdecken",
+      "review": "Überprüfen",
+      "goals": "Ziele",
+      "brand": "Marke",
+      "audience": "Zielgruppe",
+      "summary": "Zusammenfassung"
+    }
+  },
   "personaHome": {
     "persona": {
       "company": "Unternehmen"

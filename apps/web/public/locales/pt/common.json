@@ -1730,6 +1730,18 @@
       "competitors": "Os concorrentes lideram em “{{query}}” — pos média {{pos}}"
     }
   },
+  "onboarding": {
+    "title": "Configure seu espaço de trabalho",
+    "rail": {
+      "welcome": "Boas-vindas",
+      "discover": "Descobrir",
+      "review": "Revisão",
+      "goals": "Objetivos",
+      "brand": "Marca",
+      "audience": "Público",
+      "summary": "Resumo"
+    }
+  },
   "personaHome": {
     "persona": {
       "company": "Empresa"

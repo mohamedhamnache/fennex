@@ -1730,6 +1730,18 @@
       "competitors": "المنافسون يتصدرون «{{query}}» — متوسط المركز {{pos}}"
     }
   },
+  "onboarding": {
+    "title": "إعداد مساحة العمل الخاصة بك",
+    "rail": {
+      "welcome": "مرحبًا",
+      "discover": "الاكتشاف",
+      "review": "المراجعة",
+      "goals": "الأهداف",
+      "brand": "العلامة التجارية",
+      "audience": "الجمهور",
+      "summary": "الملخص"
+    }
+  },
   "personaHome": {
     "persona": {
       "company": "شركة"

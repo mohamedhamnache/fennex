@@ -1837,6 +1837,18 @@
       "competitors": "Rivals lead on “{{query}}” — avg pos {{pos}}"
     }
   },
+  "onboarding": {
+    "title": "Set up your workspace",
+    "rail": {
+      "welcome": "Welcome",
+      "discover": "Discover",
+      "review": "Review",
+      "goals": "Goals",
+      "brand": "Brand",
+      "audience": "Audience",
+      "summary": "Summary"
+    }
+  },
   "integrations": {
     "title": "Integrations",
     "subtitle": "Connect your data, publishing and social destinations. Fennex works best grounded in your real accounts.",

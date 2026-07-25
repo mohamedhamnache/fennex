@@ -1730,6 +1730,18 @@
       "competitors": "Les concurrents dominent « {{query}} » — pos moy. {{pos}}"
     }
   },
+  "onboarding": {
+    "title": "Configurez votre espace de travail",
+    "rail": {
+      "welcome": "Bienvenue",
+      "discover": "Découverte",
+      "review": "Vérification",
+      "goals": "Objectifs",
+      "brand": "Marque",
+      "audience": "Audience",
+      "summary": "Résumé"
+    }
+  },
   "personaHome": {
     "persona": {
       "company": "Entreprise"

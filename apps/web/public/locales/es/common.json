@@ -1730,6 +1730,18 @@
       "competitors": "Los rivales dominan «{{query}}» — pos media {{pos}}"
     }
   },
+  "onboarding": {
+    "title": "Configura tu espacio de trabajo",
+    "rail": {
+      "welcome": "Bienvenida",
+      "discover": "Descubrir",
+      "review": "Revisar",
+      "goals": "Objetivos",
+      "brand": "Marca",
+      "audience": "Audiencia",
+      "summary": "Resumen"
+    }
+  },
   "personaHome": {
     "persona": {
       "company": "Empresa"
