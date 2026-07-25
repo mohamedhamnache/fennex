@@ -64,3 +64,14 @@ async def test_synthesise_merges_successful_parse(monkeypatch):
     assert result["business"]["name"] == "Test Co"
     assert result["business"]["industry"] == "Tech"
     assert "Increase revenue" in result["goals"]
+
+
+async def test_synthesise_degrades_on_malformed_partial(monkeypatch):
+    malformed_partial = {}
+
+    async def mock_call_llm(*args, **kwargs):
+        raise AssertionError("call_llm should not be reached")
+
+    monkeypatch.setattr("app.services.discovery.synthesis.call_llm", mock_call_llm)
+    result = await synthesis.synthesise("Some text", malformed_partial, provider="test", model="test", api_key="test")
+    assert result == malformed_partial
