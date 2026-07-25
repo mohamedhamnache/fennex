@@ -1894,7 +1894,14 @@
       "language": "Language",
       "description": "Description",
       "colors": "Brand colors",
+      "colorLabel": "Color {{index}}",
+      "removeColor": "Remove color",
+      "addColor": "Add color",
       "competitors": "Competitors",
+      "competitorName": "Name",
+      "competitorUrl": "Website",
+      "removeCompetitor": "Remove competitor",
+      "addCompetitor": "Add competitor",
       "confirm": "Looks good, continue"
     },
     "goals": {
