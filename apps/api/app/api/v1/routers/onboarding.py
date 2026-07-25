@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.discovery import DiscoveryRun
-from app.services import workspace_provisioning_service as prov
+from app.services import discovery_service, workspace_provisioning_service as prov
+from app.services.discovery import suggest as suggest_service
 
 router = APIRouter()
 
@@ -27,6 +28,11 @@ class DiscoveryPatch(BaseModel):
 class ProvisionRequest(BaseModel):
     run_id: uuid.UUID
     persona: Optional[str] = None
+
+
+class SuggestRequest(BaseModel):
+    run_id: uuid.UUID
+    field: str
 
 
 # Top-level shape of a DiscoveryRun.result, mirrored from
@@ -128,3 +134,26 @@ async def provision_workspace(body: ProvisionRequest, current_user: CurrentUser,
     run = await _get_owned_run(body.run_id, current_user, db)
     project_id = await prov.provision(run.id, persona=body.persona, db=db)
     return {"project_id": str(project_id)}
+
+
+@router.post("/suggest")
+async def suggest_field(body: SuggestRequest, current_user: CurrentUser, db: DB) -> dict:
+    """AI-suggest additional items for one discovery field (audience/goals/
+    competitors) from the run's already-discovered profile. Returns an empty
+    list (never an error) when the org has no LLM key. Does not mutate the run --
+    the client merges the suggestions and persists them via PATCH."""
+    if body.field not in suggest_service.SUGGESTABLE:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"field must be one of {sorted(suggest_service.SUGGESTABLE)}",
+        )
+    run = await _get_owned_run(body.run_id, current_user, db)
+    provider, model, api_key = await discovery_service._org_model(current_user.org_id, db)
+    if not api_key:
+        return {"suggestions": []}
+    result = run.result or {}
+    locale = (result.get("business", {}) or {}).get("language") or "en"
+    suggestions = await suggest_service.suggest(
+        result, body.field, provider=provider, model=model, api_key=api_key, locale=locale
+    )
+    return {"suggestions": suggestions}
