@@ -16,9 +16,19 @@ and **enforce quotas before cost is incurred** to protect margin. The good news:
 config layer, (2) raw token/call metering, (3) quota + rate-limit + concurrency
 enforcement, (4) overage/add-on billing, and (5) a cost/margin admin dashboard.
 
-**Cost anchors (verified 2026-07-25):** Opus 5/4.8 $5/$25 per 1M in/out;
-Sonnet 5 $3/$15; Haiku 4.5 $1/$5; prompt-cache reads ~0.1×. DataForSEO shallow
-SERP ~$0.001–0.002/task, keyword-ideas ~$0.01–0.05/call.
+**Multi-supplier from day one, OpenAI primary.** The platform runs on a pool of
+LLM suppliers (OpenAI at launch; Anthropic, Google as fallbacks/alternates) —
+the metering, credits, and margin math are supplier-neutral, so swapping or
+adding suppliers is a config change, not a rebuild. Already half-built:
+`call_llm(provider, model, …)` supports openai/anthropic/google and `tiers.py`
+has per-provider maps.
+
+**Cost anchors (verified 2026-07-25).** Anthropic (fallback): Opus 5/4.8 $5/$25
+per 1M in/out; Sonnet 5 $3/$15; Haiku 4.5 $1/$5; prompt-cache reads ~0.1×.
+OpenAI (primary — codebase uses `gpt-4o` / `gpt-4o-mini`): confirm exact per-1M
+prices against OpenAI's current pricing and load them into `cost_rates`, which
+is what the margin math reads. DataForSEO shallow SERP ~$0.001–0.002/task,
+keyword-ideas ~$0.01–0.05/call.
 
 ---
 
@@ -71,6 +81,32 @@ SERP ~$0.001–0.002/task, keyword-ideas ~$0.01–0.05/call.
                    ▼
      Rollups -> org_usage_period (billing) -> Stripe metered/overage -> admin cost dashboard
 ```
+
+### 1.2b Multi-supplier by default (OpenAI first)
+
+Fennex is **not tied to one AI supplier**. The platform runs on a **pool of LLM
+suppliers** (OpenAI, Anthropic, Google Gemini, later Bedrock/others), with
+**OpenAI as the primary/launch supplier**. This is already half-built:
+`llm_service.call_llm(provider, model, …)` supports `openai`/`anthropic`/
+`google`, and `tiers.py` carries per-provider model maps. The billing/metering
+layer is **supplier-neutral** — `cost_rates` and `usage_events` are keyed by
+`(provider, model)`, and the user-facing **credit** abstraction hides which
+supplier served a request, so we can add, swap, or fail over suppliers with zero
+user-visible or pricing change.
+
+Design consequences:
+- A **primary supplier** setting (OpenAI at launch) plus an **ordered fallback
+  list** per tier; the `ProviderRegistry` tries the primary, fails over on
+  outage/rate-limit/price-spike to the next.
+- **Tiers map to a *capability*, then to a concrete `(supplier, model)`** via a
+  configurable catalog (§3.4.1) — so "the standard model" can be `gpt-4o` today
+  and a Gemini or Claude model tomorrow without touching feature code.
+- **Per-supplier accounts** live in `provider_accounts` (multiple OpenAI keys for
+  load-balancing, an Anthropic key for fallback, etc.), each with its own budget
+  circuit-breaker.
+- **Capability parity check:** the registry only fails over to a model that
+  supports the features the request needs (JSON/structured output, vision, tool
+  use), recorded per catalog row.
 
 ### 1.3 Provider abstraction (pluggable)
 
@@ -325,19 +361,47 @@ into pure-software margin.
 quality bar, and escalate only on proven need.** Opus is *off by default*.
 This is what makes 400% markup possible.
 
-**3.4.1 Model ladder (cheapest first).**
+**3.4.1 Capability tiers → concrete models (per supplier, configurable).**
 
-| Tier | Model (Anthropic / OpenAI alt) | Cost in/out /1M | Use for |
-|------|-------------------------------|-----------------|---------|
-| **cheap**    | Haiku 4.5 / gpt-4o-mini | $1 / $5   | classification, extraction, tagging, meta descriptions, alt-text, short social captions, keyword clustering, JSON/structured parsing, title/slug generation, simple rewrites, moderation |
-| **standard** | Sonnet 5 / gpt-4o       | $3 / $15  | **the default workhorse** — article drafts, brand-voice writing, discovery synthesis, competitor gap analysis, ICP/audience generation, most agent reasoning |
-| **premium**  | Opus 5                  | $5 / $25  | reserved: only hard long-form editorial polish or complex multi-step strategy, **Pro+ only, behind an explicit toggle, at a credit multiplier** — and even then try Sonnet first |
+Tiers are **capability bands**, not fixed models. A `model_catalog` maps each
+band to a concrete `(supplier, model)` with a `priority` (primary first, then
+fallbacks), so the routing is supplier-agnostic and swappable in data.
 
-Change `services/agents/tiers.py`: today `balanced`/`max` route "heavy" work to
-**Opus**. Re-map so the default heavy tier is **Sonnet (standard)**; Opus is a
-separate `premium` grade selected *only* when (a) the plan allows it, (b) the
-feature is flagged `needs_premium`, and (c) the user opted in. Trial/Starter cap
-at **standard**; Haiku is the floor for anything light.
+| Band | What it's for | Primary (launch = OpenAI) | Fallbacks |
+|------|---------------|---------------------------|-----------|
+| **cheap**    | classification, extraction, tagging, meta descriptions, alt-text, short captions, keyword clustering, JSON parsing, titles/slugs, simple rewrites | `openai:gpt-4o-mini` | `anthropic:claude-haiku-4-5`, `google:gemini-*-flash` |
+| **standard** | **default workhorse** — article drafts, brand-voice writing, discovery synthesis, competitor gap analysis, ICP/audience, most agent reasoning | `openai:gpt-4o` | `anthropic:claude-sonnet-5`, `google:gemini-*-pro` |
+| **premium**  | hard long-form editorial polish / complex multi-step strategy only — Pro+, opt-in, 8× credit multiplier | `openai:` (flagship reasoning model) | `anthropic:claude-opus-5` |
+
+> Exact OpenAI model IDs/prices must be confirmed against OpenAI's current
+> pricing before launch (the codebase currently references `gpt-4o` /
+> `gpt-4o-mini`); `cost_rates` holds the authoritative per-model cost and is what
+> the margin math reads — models can be re-pointed without code changes.
+
+```sql
+-- Maps a capability band to concrete supplier models, in preference order.
+CREATE TABLE model_catalog (
+  band      TEXT NOT NULL,       -- 'cheap' | 'standard' | 'premium'
+  provider  TEXT NOT NULL,       -- 'openai' | 'anthropic' | 'google' | ...
+  model     TEXT NOT NULL,
+  priority  INT  NOT NULL,       -- 1 = primary; higher = fallback order
+  supports  JSONB NOT NULL DEFAULT '{}',  -- {json_output, vision, tools} capability flags
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  PRIMARY KEY (band, provider, model)
+);
+```
+
+The `ProviderRegistry` resolves a band → the active, capability-matching model
+with the lowest `priority`, using a `provider_accounts` credential; on
+outage/rate-limit/budget-breaker it advances to the next `priority`.
+
+Change `services/agents/tiers.py` to resolve **bands**, not hardcoded model IDs:
+today `balanced`/`max` route "heavy" work to Opus. Re-map so the default heavy
+band is **standard** (launch: `gpt-4o`); **premium** is selected *only* when
+(a) the plan allows it, (b) the feature is flagged `needs_premium`, and (c) the
+user opted in. Trial/Starter cap at **standard**; **cheap** is the floor for
+anything light. Because bands are supplier-neutral, adding Gemini or swapping the
+primary supplier is a `model_catalog` row change.
 
 **3.4.2 Route by task, not by user request.** A `model_policy` map
 (feature → required tier) lives in config, so promoting/demoting a feature's
@@ -427,9 +491,9 @@ flow) without schema changes.
 | Seats                      | 1                  | 3           | 10           | 25            | 75         |
 | **AI credits (trial total)** | 100 (whole trial) | 1,500 / mo | 6,000 / mo   | 20,000 / mo   | 60,000 / mo|
 | Raw AI output-token cap    | 80K (trial total)  | 1.5M / mo   | 6M / mo      | 20M / mo      | 60M / mo   |
-| Default model              | Haiku/Sonnet       | Haiku/Sonnet| Haiku/Sonnet | Haiku/Sonnet  | Haiku/Sonnet |
-| Premium (Opus) — opt-in, 8× credits | ❌        | ❌          | ✅ (toggle)  | ✅ (toggle)   | ✅ (toggle) |
-| Model tier ceiling         | standard           | standard    | premium      | premium       | premium    |
+| Default models             | cheap+standard band | cheap+standard | cheap+standard | cheap+standard | cheap+standard |
+| Premium band — opt-in, 8× credits | ❌          | ❌          | ✅ (toggle)  | ✅ (toggle)   | ✅ (toggle) |
+| Band ceiling               | standard           | standard    | premium      | premium       | premium    |
 | **SERP analyses**          | 25 (trial total)   | 300 / mo    | 1,500 / mo   | 6,000 / mo    | 20,000 / mo|
 | **Keyword analyses**       | 50 (trial total)   | 500 / mo    | 2,500 / mo   | 10,000 / mo   | 40,000 / mo|
 | DataForSEO calls (hard)    | 100 (trial total)  | 1,000 / mo  | 5,000 / mo   | 20,000 / mo   | 75,000 / mo|
@@ -478,10 +542,13 @@ trial and Starter hard-stop only.
 
 ## 6. Implementation roadmap (phased, each shippable)
 
-**Phase 0 — Platform providers (unblocks reseller model).** Flip
+**Phase 0 — Platform providers, OpenAI-primary (unblocks reseller model).** Flip
 `get_seo_provider_for_org` and `get_org_llm_keys` to **platform-first** via
-`ProviderRegistry`; add `provider_accounts` + admin CRUD; keep env fallback.
-Users stop needing their own keys. *(No metering yet — just the key flip.)*
+`ProviderRegistry`; add `provider_accounts` (seed with OpenAI keys as primary,
+an Anthropic key as fallback) + `model_catalog` (seed the three bands, OpenAI
+priority 1) + admin CRUD; keep env fallback. Users stop needing their own keys;
+the app runs on **our OpenAI account** with cross-supplier failover ready.
+*(No metering yet — just the key flip + supplier abstraction.)*
 
 **Phase 1 — Metering + cost-first routing.** `UsageMeter` + `usage_events` +
 `cost_rates`; wrap `call_llm` and the `SEODataProvider`; extend `org_usage` with
@@ -510,9 +577,11 @@ TRIAL_EXPIRED` gating; Stripe metered prices for overage; add-on packs +
 **Phase 5 — Cost/margin admin dashboard + alerts.** Per-org/app COGS, margin,
 budget circuit-breakers, loss-making-org list, 80/95/100% alerts.
 
-**Phase 6 — Pluggable-provider hardening.** Add a second LLM provider (Gemini/
-Bedrock) and a fail-over SEO provider behind the registry; load-balancing via
-`provider_accounts.weight`; per-account budget breakers.
+**Phase 6 — Supplier hardening & expansion.** Add more LLM suppliers (Gemini,
+Bedrock) and a fail-over SEO provider as `model_catalog` / `provider_accounts`
+rows; automatic failover on outage/rate-limit/budget-breaker; load-balancing
+across multiple OpenAI accounts via `provider_accounts.weight`; per-account
+budget circuit-breakers; optional per-supplier A/B on quality.
 
 ---
 
@@ -557,7 +626,7 @@ Bedrock) and a fail-over SEO provider behind the registry; load-balancing via
 | 2 | Overage default | **Opt-in** on Pro/Agency/Scale (default hard-stop); trial + Starter hard-stop only. |
 | 3 | BYOK | **Yes on Agency** (−30%); also offered on Scale (−40%). Not on trial/Starter/Pro. |
 | 4 | Trial | **7 days, no card** for now (config flag to require a card later). One trial per verified email + fingerprint; small quota to make abuse cheap. |
-| 5 | LLM selection | **Cost-first routing (§3.4):** default Haiku/Sonnet, **Opus off by default**, premium opt-in only on Pro+ at an 8× credit multiplier. Re-map `tiers.py` so "heavy" = Sonnet, not Opus. |
+| 5 | LLM selection | **Cost-first, multi-supplier routing (§1.2b, §3.4):** **OpenAI is the primary/launch supplier**, with Anthropic/Google as fallbacks; the app is supplier-agnostic via a `model_catalog`. Default to the **cheap/standard** bands (launch: `gpt-4o-mini`/`gpt-4o`); **premium band off by default**, opt-in only on Pro+ at an 8× credit multiplier. Re-map `tiers.py` to resolve bands, not hardcoded models. |
 
 ### Still open (lower priority)
 
