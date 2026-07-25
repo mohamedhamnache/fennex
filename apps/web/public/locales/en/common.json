@@ -1868,6 +1868,19 @@
         "retry": "Try again",
         "continue": "Continue anyway"
       }
+    },
+    "review": {
+      "title": "Review what we found",
+      "subtitle": "Double-check the details below and fix anything that's off before we continue.",
+      "business": "Business",
+      "name": "Name",
+      "industry": "Industry",
+      "country": "Country",
+      "language": "Language",
+      "description": "Description",
+      "colors": "Brand colors",
+      "competitors": "Competitors",
+      "confirm": "Looks good, continue"
     }
   },
   "integrations": {

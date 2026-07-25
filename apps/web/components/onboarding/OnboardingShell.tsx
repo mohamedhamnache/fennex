@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { DiscoveryResult, ProjectPersona } from "@/lib/api";
+import { patchDiscovery, type DiscoveryResult, type ProjectPersona } from "@/lib/api";
 import { STEP_ORDER, type OnboardingStep } from "./types";
 import { WelcomeStep } from "./WelcomeStep";
 import { DiscoveryStep } from "./DiscoveryStep";
+import { ReviewStep } from "./ReviewStep";
 
 const RAIL: { step: OnboardingStep; key: string }[] = [
   { step: "discovery", key: "onboarding.rail.discover" },
@@ -34,6 +35,17 @@ export function OnboardingShell() {
   // Phase 1 has no persona picker; provisioning treats null as "unset".
   const [persona, setPersona] = useState<ProjectPersona | null>(null);
   const [result, setResult] = useState<DiscoveryResult | null>(null);
+
+  // Persist edits made on the review screen so a refresh resumes from saved
+  // state instead of losing the user's corrections. Debounced to avoid
+  // hammering the API on every keystroke.
+  useEffect(() => {
+    if (!runId || !result) return;
+    const id = setTimeout(() => {
+      patchDiscovery(runId, result).catch(() => {});
+    }, 800);
+    return () => clearTimeout(id);
+  }, [runId, result]);
 
   const activeIndex = STEP_ORDER.indexOf(step);
   // "provisioning" and "done" are terminal states reached after "summary" and
@@ -99,10 +111,13 @@ export function OnboardingShell() {
               }}
             />
           )}
-          {/* Review/goals/brand/audience/summary/provisioning/done screens are
-              wired in Tasks 12-16; this placeholder keeps typecheck green and
-              the shell navigable in the meantime. */}
-          {step !== "welcome" && step !== "discovery" && (
+          {step === "review" && result && (
+            <ReviewStep result={result} onChange={setResult} onNext={() => setStep("goals")} />
+          )}
+          {/* Goals/brand/audience/summary/provisioning/done screens are wired
+              in Tasks 13-16; this placeholder keeps typecheck green and the
+              shell navigable in the meantime. */}
+          {step !== "welcome" && step !== "discovery" && step !== "review" && (
             <p className="text-sm text-muted-foreground">{placeholderLabel}</p>
           )}
         </div>
