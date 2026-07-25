@@ -93,7 +93,7 @@ async def upload_logo(
     resolved_project_id = await _resolve_project(project_id, current_user.org_id, db)
 
     ext = (file.filename or "logo.png").rsplit(".", 1)[-1].lower()
-    key = f"brand-kit/{current_user.org_id}/logo.{ext}"
+    key = f"brand-kit/{current_user.org_id}/{resolved_project_id}/logo.{ext}"
     logo_url = await upload_bytes(content, key, file.content_type or "image/png")
 
     kit = await get_or_create_for_project(resolved_project_id, current_user.org_id, db)

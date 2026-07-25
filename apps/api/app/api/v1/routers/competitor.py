@@ -66,7 +66,12 @@ async def competitor_analysis(body: CompetitorRequest, current_user: CurrentUser
 
     brand_kit = None
     if body.use_brand_kit:
-        bk = await db.execute(select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id))
+        bk = await db.execute(
+            select(BrandKitModel).where(
+                BrandKitModel.org_id == current_user.org_id,
+                BrandKitModel.project_id == body.project_id,
+            )
+        )
         brand_kit = bk.scalar_one_or_none()
 
     brand_hint = ""

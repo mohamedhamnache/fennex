@@ -41,7 +41,10 @@ async def score_image_endpoint(image_id: uuid.UUID, current_user: CurrentUser, d
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
 
     bk_result = await db.execute(
-        select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id)
+        select(BrandKitModel).where(
+            BrandKitModel.org_id == current_user.org_id,
+            BrandKitModel.project_id == image.project_id,
+        )
     )
     brand_kit = bk_result.scalar_one_or_none()
 

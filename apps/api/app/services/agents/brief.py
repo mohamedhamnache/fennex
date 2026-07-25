@@ -51,9 +51,12 @@ async def build_brief(project_id, org_id, goal: str, persona: str, db) -> Brief:
     brand: dict = {}
     try:
         voice = (await db.execute(
-            select(BrandVoice).where(BrandVoice.org_id == org_id).order_by(BrandVoice.is_default.desc())
+            select(BrandVoice).where(BrandVoice.org_id == org_id, BrandVoice.project_id == project_id)
+            .order_by(BrandVoice.is_default.desc())
         )).scalars().first()
-        kit = (await db.execute(select(BrandKit).where(BrandKit.org_id == org_id))).scalars().first()
+        kit = (await db.execute(
+            select(BrandKit).where(BrandKit.org_id == org_id, BrandKit.project_id == project_id)
+        )).scalars().first()
         if voice:
             tone = voice.tone.value if hasattr(voice.tone, "value") else voice.tone
             brand.update({"voice_prompt": voice.voice_prompt, "tone": tone,

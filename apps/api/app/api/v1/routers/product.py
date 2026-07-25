@@ -145,7 +145,12 @@ async def generate_product_scene(body: ProductSceneRequest, current_user: Curren
 
     brand_kit = None
     if body.use_brand_kit:
-        bk = await db.execute(select(BrandKitModel).where(BrandKitModel.org_id == current_user.org_id))
+        bk = await db.execute(
+            select(BrandKitModel).where(
+                BrandKitModel.org_id == current_user.org_id,
+                BrandKitModel.project_id == body.project_id,
+            )
+        )
         brand_kit = bk.scalar_one_or_none()
 
     prompt = build_scene_prompt(body.scene_id, body.product_description, brand_kit)
