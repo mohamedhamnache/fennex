@@ -100,8 +100,12 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
         await _set(run_id, stage="Understanding products", progress=55)
         text = "\n\n".join(t for t in corpus if t)[:16000]
         if api_key:
+            # Answer in the site's own language (detected from <html lang>) so the
+            # description, mission, audience, keywords etc. match the business's
+            # language rather than defaulting to English.
+            locale = (result.get("business", {}).get("language")) or "en"
             result = await synthesis.synthesise(text, result, provider=provider,
-                                                 model=model, api_key=api_key, locale="en")
+                                                 model=model, api_key=api_key, locale=locale)
 
         await _set(run_id, stage="Finding competitors", progress=75)
         # Competitors already inferred by synthesis; the Sable deep-scan is a

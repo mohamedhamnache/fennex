@@ -17,7 +17,7 @@ _SYSTEM = (
     "text and already-extracted signals, infer its business profile. "
     "Respond with a single valid JSON object and nothing else. Use only these "
     "top-level keys: business, brand, audience, goals, success_metrics, "
-    "competitors. In business set: industry, country, timezone, description "
+    "competitors, seo. In business set: industry, country, timezone, description "
     "(2-3 sentences on what they do). In brand set: tone, personality (array), "
     "mission, vision, values (array), voice_prompt (one paragraph an AI writer "
     "can follow), vocabulary (array of preferred words), avoid_words (array), "
@@ -25,8 +25,11 @@ _SYSTEM = (
     "objects with: label, age, gender, country, profession, interests (array), "
     "pains (array), goals (array), budget, buying_behavior. goals is an array "
     "of 3-6 concrete marketing goals. success_metrics is an array of 3-5 "
-    "metrics. competitors is an array of {name, url, note}. Leave a field out "
-    "if you cannot infer it. Never invent a URL."
+    "metrics. competitors is an array of {name, url, note}. In seo set: "
+    "suggested_keywords (an array of 6-10 realistic seed keywords or phrases "
+    "someone would search to find this business) and issues (an array of short "
+    "SEO problems you notice). Leave a field out if you cannot infer it. Never "
+    "invent a URL. Write every piece of free text in the business's own language."
 )
 
 
@@ -83,7 +86,11 @@ async def synthesise(text: str, partial: dict, *, provider: str, model: str,
         logger.exception("discovery synthesis prompt building failed")
         return partial
     try:
-        raw = await call_llm(provider, model, api_key, sysp, userp, locale=locale, max_tokens=2000)
+        # 4000, not 2000: the full profile (brand DNA + 1-2 ICPs + goals + SEO
+        # keywords) in a non-English language routinely overran a 2000-token cap,
+        # truncating the JSON mid-object so it failed to parse and silently
+        # dropped every interpretive field.
+        raw = await call_llm(provider, model, api_key, sysp, userp, locale=locale, max_tokens=4000)
     except Exception:
         logger.exception("discovery synthesis LLM call failed")
         return partial
