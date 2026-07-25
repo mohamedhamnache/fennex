@@ -12,6 +12,7 @@ from app.workers.tasks.calendar_tasks import run_content_scheduler
 from app.workers.tasks.campaign_tasks import run_campaign
 from app.workers.tasks.crawl_tasks import crawl_website
 from app.workers.tasks.digest_tasks import send_weekly_digests
+from app.workers.tasks.discovery_tasks import run_discovery
 from app.workers.tasks.keyword_tasks import run_keyword_research
 from app.workers.tasks.monitoring_tasks import run_competitor_monitor, run_market_monitor
 from app.workers.tasks.seo_tasks import run_rank_tracker
@@ -48,6 +49,7 @@ class WorkerSettings:
         run_market_monitor,
         run_competitor_monitor,
         run_rank_tracker,
+        run_discovery,
     ]
     cron_jobs = [
         cron(sync_analytics_data, hour=6, minute=0, run_at_startup=False),
