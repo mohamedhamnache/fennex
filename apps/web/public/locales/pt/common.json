@@ -1740,6 +1740,27 @@
       "brand": "Marca",
       "audience": "Público",
       "summary": "Resumo"
+    },
+    "welcome": {
+      "title": "Vamos criar seu espaço de marketing",
+      "subtitle": "Conte-nos sobre o seu negócio e cuidaremos de tudo para você.",
+      "time": "Leva cerca de 2 minutos",
+      "start": "Começar"
+    },
+    "discovery": {
+      "title": "Onde devemos procurar?",
+      "noSite": "Ainda não tenho um site",
+      "backToUrl": "Tenho um site, na verdade",
+      "describe": "Descreva seu negócio, produto ou ideia...",
+      "analyze": "Analisar",
+      "starting": "Iniciando...",
+      "hint": "Isso geralmente leva menos de um minuto. Fique à vontade para esperar aqui.",
+      "error": {
+        "startFailed": "Não foi possível iniciar a descoberta. Tente novamente.",
+        "heading": "Encontramos um problema",
+        "retry": "Tentar novamente",
+        "continue": "Continuar mesmo assim"
+      }
     }
   },
   "personaHome": {

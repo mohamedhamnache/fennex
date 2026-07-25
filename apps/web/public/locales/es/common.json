@@ -1740,6 +1740,27 @@
       "brand": "Marca",
       "audience": "Audiencia",
       "summary": "Resumen"
+    },
+    "welcome": {
+      "title": "Creemos tu espacio de marketing",
+      "subtitle": "Cuéntanos sobre tu negocio y lo configuraremos todo por ti.",
+      "time": "Tarda unos 2 minutos",
+      "start": "Comenzar"
+    },
+    "discovery": {
+      "title": "¿Dónde debemos buscar?",
+      "noSite": "Todavía no tengo un sitio web",
+      "backToUrl": "Tengo un sitio web en su lugar",
+      "describe": "Describe tu negocio, producto o idea...",
+      "analyze": "Analizar",
+      "starting": "Comenzando...",
+      "hint": "Esto suele tardar menos de un minuto. Puedes esperar aquí.",
+      "error": {
+        "startFailed": "No pudimos iniciar el descubrimiento. Inténtalo de nuevo.",
+        "heading": "Encontramos un problema",
+        "retry": "Intentar de nuevo",
+        "continue": "Continuar de todos modos"
+      }
     }
   },
   "personaHome": {

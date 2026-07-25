@@ -1740,6 +1740,27 @@
       "brand": "Marke",
       "audience": "Zielgruppe",
       "summary": "Zusammenfassung"
+    },
+    "welcome": {
+      "title": "Lass uns deinen Marketing-Arbeitsbereich aufbauen",
+      "subtitle": "Erzähl uns von deinem Unternehmen und wir richten alles für dich ein.",
+      "time": "Dauert etwa 2 Minuten",
+      "start": "Loslegen"
+    },
+    "discovery": {
+      "title": "Wo sollen wir nachsehen?",
+      "noSite": "Ich habe noch keine Website",
+      "backToUrl": "Ich habe stattdessen eine Website",
+      "describe": "Beschreibe dein Unternehmen, Produkt oder deine Idee...",
+      "analyze": "Analysieren",
+      "starting": "Wird gestartet...",
+      "hint": "Das dauert normalerweise weniger als eine Minute. Du kannst hier warten.",
+      "error": {
+        "startFailed": "Die Analyse konnte nicht gestartet werden. Bitte versuche es erneut.",
+        "heading": "Es ist ein Problem aufgetreten",
+        "retry": "Erneut versuchen",
+        "continue": "Trotzdem fortfahren"
+      }
     }
   },
   "personaHome": {

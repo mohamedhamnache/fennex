@@ -7,6 +7,8 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { DiscoveryResult, ProjectPersona } from "@/lib/api";
 import { STEP_ORDER, type OnboardingStep } from "./types";
+import { WelcomeStep } from "./WelcomeStep";
+import { DiscoveryStep } from "./DiscoveryStep";
 
 const RAIL: { step: OnboardingStep; key: string }[] = [
   { step: "discovery", key: "onboarding.rail.discover" },
@@ -87,8 +89,22 @@ export function OnboardingShell() {
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center p-6 animate-fade-in">
-          {/* Step components are wired in Tasks 11-16. Placeholder keeps typecheck green: */}
-          <p className="text-sm text-muted-foreground">{placeholderLabel}</p>
+          {step === "welcome" && <WelcomeStep onStart={() => setStep("discovery")} />}
+          {step === "discovery" && (
+            <DiscoveryStep
+              onComplete={(id, res) => {
+                setRunId(id);
+                setResult(res);
+                setStep("review");
+              }}
+            />
+          )}
+          {/* Review/goals/brand/audience/summary/provisioning/done screens are
+              wired in Tasks 12-16; this placeholder keeps typecheck green and
+              the shell navigable in the meantime. */}
+          {step !== "welcome" && step !== "discovery" && (
+            <p className="text-sm text-muted-foreground">{placeholderLabel}</p>
+          )}
         </div>
       </main>
     </div>

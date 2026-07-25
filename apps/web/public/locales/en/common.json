@@ -1847,6 +1847,27 @@
       "brand": "Brand",
       "audience": "Audience",
       "summary": "Summary"
+    },
+    "welcome": {
+      "title": "Let's build your marketing workspace",
+      "subtitle": "Tell us about your business and we'll set everything up for you.",
+      "time": "Takes about 2 minutes",
+      "start": "Get started"
+    },
+    "discovery": {
+      "title": "Where should we look?",
+      "noSite": "I don't have a website yet",
+      "backToUrl": "I have a website instead",
+      "describe": "Describe your business, product, or idea...",
+      "analyze": "Analyze",
+      "starting": "Getting started...",
+      "hint": "This usually takes under a minute. Feel free to wait here.",
+      "error": {
+        "startFailed": "We couldn't start discovery. Please try again.",
+        "heading": "We ran into a problem",
+        "retry": "Try again",
+        "continue": "Continue anyway"
+      }
     }
   },
   "integrations": {
