@@ -1839,6 +1839,7 @@
   },
   "onboarding": {
     "title": "Set up your workspace",
+    "exit": "Exit setup",
     "rail": {
       "welcome": "Welcome",
       "discover": "Discover",

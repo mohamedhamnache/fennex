@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { FennecMark } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { patchDiscovery, type DiscoveryResult, type ProjectPersona } from "@/lib/api";
@@ -70,7 +70,23 @@ export function OnboardingShell() {
     // routes. A definite height here is what lets the content column below
     // actually scroll (min-h-screen is only a floor, not a box overflow can
     // clip against).
-    <div className="flex h-full bg-background">
+    <div className="relative flex h-full bg-background">
+      {/* Persistent escape hatch: onboarding is a full-screen takeover, so the
+          user needs a way back to the app. Hidden while provisioning (don't
+          interrupt workspace creation) and on the done screen (which has its
+          own dashboard CTA). The discovery run is persisted server-side, so
+          leaving loses nothing. */}
+      {step !== "provisioning" && step !== "done" && (
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          aria-label={t("onboarding.exit")}
+          className="absolute right-4 top-4 z-10 flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          <X className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{t("onboarding.exit")}</span>
+        </button>
+      )}
       <aside className="hidden w-64 shrink-0 border-r border-border p-6 md:flex md:flex-col">
         <div className="mb-8 flex items-center gap-2.5">
           <FennecMark className="h-9 w-9 shrink-0 dark:brightness-0 dark:invert" />
