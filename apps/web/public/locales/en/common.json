@@ -1881,6 +1881,12 @@
       "colors": "Brand colors",
       "competitors": "Competitors",
       "confirm": "Looks good, continue"
+    },
+    "goals": {
+      "title": "What are your goals?",
+      "goalsLabel": "Select your main goals",
+      "metricsLabel": "How will you measure success?",
+      "next": "Next"
     }
   },
   "integrations": {
