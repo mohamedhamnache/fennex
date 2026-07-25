@@ -257,8 +257,22 @@ keys (INCRBY), `rl:{org}` token bucket, `conc:{org}` semaphore. Postgres
 
 ### 3.1 Margin math (the core constraint)
 
-Target **≥ 70% gross margin** on resold AI/SEO: the *included* quota's COGS
-should be ≤ ~25% of plan price, and **overage priced at 3–5× underlying cost**.
+**Target: minimum 400% markup** — the resale price is **≥ 5× the underlying
+COGS**. Concretely:
+- At **expected (P50) utilization**, an org's included-quota COGS must be
+  **≤ 20% of its plan price** (≥ 400% markup).
+- At **worst-case (100%) utilization**, COGS must stay **≤ ~40% of price**
+  (≥ 150% markup floor) — guaranteed by the raw hard caps.
+- **Overage and add-ons priced at ≥ 5× underlying cost** (≥ 400% markup on
+  every incremental unit too).
+
+Hitting 400% at these quota sizes is **only possible with the §3.4 cost-first
+LLM routing** (default to Haiku/Sonnet, Opus off by default), aggressive prompt
+caching (reads ~0.1×), the Batch API (−50%) for non-interactive work, and
+**tight SEO-call quotas** (keyword-ideas at $0.01–0.05 is the single biggest
+margin risk — cap it hard and meter it). Every plan number in §5 is sized
+against these levers and **must be re-validated against real `cost_rates`**
+before launch.
 
 Cost anchors → representative per-action COGS:
 - Article (Opus, ~8K in + 4K out, partial cache): **~$0.10–0.14**
@@ -305,6 +319,62 @@ into pure-software margin.
 
 ---
 
+### 3.4 LLM selection strategy (cost-first routing) — the margin linchpin
+
+**Principle: never pick a model; pick the cheapest model that clears the task's
+quality bar, and escalate only on proven need.** Opus is *off by default*.
+This is what makes 400% markup possible.
+
+**3.4.1 Model ladder (cheapest first).**
+
+| Tier | Model (Anthropic / OpenAI alt) | Cost in/out /1M | Use for |
+|------|-------------------------------|-----------------|---------|
+| **cheap**    | Haiku 4.5 / gpt-4o-mini | $1 / $5   | classification, extraction, tagging, meta descriptions, alt-text, short social captions, keyword clustering, JSON/structured parsing, title/slug generation, simple rewrites, moderation |
+| **standard** | Sonnet 5 / gpt-4o       | $3 / $15  | **the default workhorse** — article drafts, brand-voice writing, discovery synthesis, competitor gap analysis, ICP/audience generation, most agent reasoning |
+| **premium**  | Opus 5                  | $5 / $25  | reserved: only hard long-form editorial polish or complex multi-step strategy, **Pro+ only, behind an explicit toggle, at a credit multiplier** — and even then try Sonnet first |
+
+Change `services/agents/tiers.py`: today `balanced`/`max` route "heavy" work to
+**Opus**. Re-map so the default heavy tier is **Sonnet (standard)**; Opus is a
+separate `premium` grade selected *only* when (a) the plan allows it, (b) the
+feature is flagged `needs_premium`, and (c) the user opted in. Trial/Starter cap
+at **standard**; Haiku is the floor for anything light.
+
+**3.4.2 Route by task, not by user request.** A `model_policy` map
+(feature → required tier) lives in config, so promoting/demoting a feature's
+model is a data change, not a redeploy. Default every new feature to **cheap**
+and only bump it after evals show the cheap model misses.
+
+**3.4.3 Cost-cutting techniques (stacked).**
+1. **Right-size per task** (the ladder above) — the single biggest lever;
+   most Fennex features (meta, captions, tags, clustering, extraction) belong on
+   Haiku, not Sonnet or Opus.
+2. **Cascade with a validator.** Cheap model drafts → a fast programmatic/LLM
+   quality check → escalate to standard *only* on failure. You pay premium on
+   the ~10% that needs it, not the 90% the cheap model nails.
+3. **Prompt caching.** Cache the stable prefix (system prompt, Brand DNA,
+   few-shots, style rules) so repeated generations read at ~0.1×. Fennex's
+   per-project Brand DNA is a perfect cache key.
+4. **Cap output tokens per feature.** Output is 5× the input price — tight
+   `max_tokens` per task and streaming; a "meta description" never needs 4K
+   tokens.
+5. **Batch API (−50%)** for everything non-interactive: monitoring, digests,
+   bulk keyword/content jobs, competitor re-scans, backlink discovery.
+6. **Retrieval, not big context.** Inject only the relevant knowledge-base
+   chunks (embeddings already exist) instead of dumping large context — fewer
+   input tokens per call.
+7. **Deterministic-first.** Do with code/heuristics what doesn't need an LLM
+   (the color/competitor extractors are the model here) before spending a call.
+8. **Provider-cheapest routing.** The registry can pick the cheaper of two
+   equivalent models per tier (e.g., gpt-4o-mini vs Haiku) from `cost_rates`.
+9. **Per-org COGS circuit-breaker.** If an org nears loss, force the whole org
+   to the cheap tier and alert ops.
+
+**3.4.4 How the user experiences it.** Users never choose a model — they pick a
+*quality intent* at most ("fast draft" vs "best quality"), which maps to a tier
+and a **credit multiplier** (cheap = 1×, standard = 3×, premium = 8×). The
+multiplier makes premium self-financing: a user who wants Opus spends
+proportionally more credits, so our markup holds regardless of their choice.
+
 ## 4. Quota enforcement strategy
 
 - **Pre-flight (`QuotaGuard` dependency):** before an AI/SEO action runs, read
@@ -343,8 +413,12 @@ economics from users while protecting margin. Raw token ceilings back each tier.
 There is **no permanent free tier**. New signups get a **7-day free trial**
 (time-boxed, quota-limited) that then must convert to a paid plan. The trial is a
 *state on the org* (`billing_state='trialing'`, `trial_ends_at`), not a separate
-priced plan — it grants a small, fixed quota bucket and a **credit-card-optional**
-start (recommended: card required to reduce abuse; see open decisions).
+priced plan — it grants a small, fixed quota bucket. **No card required at
+signup** (per current decision); because there's no card gate, guard against
+trial-farming: **one trial per verified email + signup fingerprint** (IP /
+device / disposable-email blocklist), and keep the trial quota small so abuse is
+cheap. A card requirement can be switched on later (a config flag on the trial
+flow) without schema changes.
 
 | Resource / capability      | **Trial (7 days)** | Starter $29 | Pro $99      | Agency $299   | Scale $799 |
 |----------------------------|--------------------|-------------|--------------|---------------|------------|
@@ -353,8 +427,9 @@ start (recommended: card required to reduce abuse; see open decisions).
 | Seats                      | 1                  | 3           | 10           | 25            | 75         |
 | **AI credits (trial total)** | 100 (whole trial) | 1,500 / mo | 6,000 / mo   | 20,000 / mo   | 60,000 / mo|
 | Raw AI output-token cap    | 80K (trial total)  | 1.5M / mo   | 6M / mo      | 20M / mo      | 60M / mo   |
-| Premium models (Opus)      | preview (few runs) | limited     | ✅           | ✅            | ✅         |
-| Model tier ceiling         | balanced           | balanced    | max          | max           | max        |
+| Default model              | Haiku/Sonnet       | Haiku/Sonnet| Haiku/Sonnet | Haiku/Sonnet  | Haiku/Sonnet |
+| Premium (Opus) — opt-in, 8× credits | ❌        | ❌          | ✅ (toggle)  | ✅ (toggle)   | ✅ (toggle) |
+| Model tier ceiling         | standard           | standard    | premium      | premium       | premium    |
 | **SERP analyses**          | 25 (trial total)   | 300 / mo    | 1,500 / mo   | 6,000 / mo    | 20,000 / mo|
 | **Keyword analyses**       | 50 (trial total)   | 500 / mo    | 2,500 / mo   | 10,000 / mo   | 40,000 / mo|
 | DataForSEO calls (hard)    | 100 (trial total)  | 1,000 / mo  | 5,000 / mo   | 20,000 / mo   | 75,000 / mo|
@@ -368,6 +443,7 @@ start (recommended: card required to reduce abuse; see open decisions).
 | Overage billing            | ❌ (hard stop)     | opt-in      | opt-in       | ✅            | ✅         |
 | Pay-as-you-go add-ons      | ❌                 | ✅          | ✅           | ✅            | ✅         |
 | BYOK (own AI/SEO keys)     | ❌                 | ❌          | ❌           | ✅ (-30%)     | ✅ (-40%)  |
+| Credit multiplier by model | cheap 1× · standard 3× · premium 8× (all tiers) |||||
 | API access / white-label   | ❌                 | ❌          | API          | API+WL        | API+WL     |
 
 `*` "unlimited" is fair-use: still bounded by the raw token/call hard caps to
@@ -392,9 +468,11 @@ is 20–40%, realized COGS ≈ $20–30 → **~70–80% margin**. *The keyword-a
 line is the margin risk* — cap it hard and price add-ons above cost. (These are
 planning figures; validate `cost_rates` against real invoices before launch.)
 
-**Overage price examples (3–5× cost):** premium article $0.49; 100 SERP $0.75;
-100 keyword analyses $4.00; 1M Opus output tokens $99. Add-on packs: "+2,000 SERP
-$19", "+1,000 keyword analyses $29", "+10M Sonnet tokens $19".
+**Overage price examples (≥ 5× cost = ≥ 400% markup):** standard article $0.25;
+100 SERP $0.75; 100 keyword analyses $10; 1M Opus output tokens $125. Add-on
+packs: "+2,000 SERP $19", "+1,000 keyword analyses $49", "+10M Sonnet output
+tokens $99". Overage is **opt-in on Pro/Agency/Scale** (default hard-stop);
+trial and Starter hard-stop only.
 
 ---
 
@@ -405,9 +483,15 @@ $19", "+1,000 keyword analyses $29", "+10M Sonnet tokens $19".
 `ProviderRegistry`; add `provider_accounts` + admin CRUD; keep env fallback.
 Users stop needing their own keys. *(No metering yet — just the key flip.)*
 
-**Phase 1 — Metering.** `UsageMeter` + `usage_events` + `cost_rates`; wrap
-`call_llm` and the `SEODataProvider`; extend `org_usage` with raw columns;
-nightly rollup job. *(Observe-only: dashboards light up, no enforcement change.)*
+**Phase 1 — Metering + cost-first routing.** `UsageMeter` + `usage_events` +
+`cost_rates`; wrap `call_llm` and the `SEODataProvider`; extend `org_usage` with
+raw columns; nightly rollup. **In the same phase, land the §3.4 routing** — it's
+the margin linchpin and independent of billing: re-map `tiers.py` (heavy →
+Sonnet, Opus behind a `premium` grade), add the `model_policy` feature→tier map
+defaulting new features to `cheap`, turn on prompt caching for stable prefixes
+(Brand DNA/system prompts), and move non-interactive jobs to the Batch API.
+*(Observe-only on billing: dashboards light up, no enforcement change — but COGS
+drops immediately.)*
 
 **Phase 2 — Plan catalog in DB.** Move `PLAN_LIMITS` → `plans`/`plan_limits`/
 `plan_capabilities`/`plan_runtime_limits`; `check_usage_limit` reads DB+Redis.
@@ -465,23 +549,24 @@ Bedrock) and a fail-over SEO provider behind the registry; load-balancing via
 
 ---
 
-## Open decisions for you (before we build)
+## Decisions (locked 2026-07-25)
 
-1. **Price points & margin target** — the §5 numbers are illustrative; confirm
-   real target margin (I assumed ≥70%) and anchor prices.
-2. **Overage default** — hard-stop everywhere (safest) vs opt-in overage on paid
-   tiers (more revenue, some bill-shock risk). I recommend opt-in on Pro+.
-3. **BYOK** — offer it on Agency/Scale (recommended) or not at all in v1?
-4. **Metering granularity** — per-request credits (simple, opaque) vs raw tokens
-   surfaced to users (transparent, but invites min-maxing). I recommend
-   credits in the UI + raw caps as the backstop.
-5. **Existing tenant keys** — migrate current `api_keys` users to platform
-   provider (seamless) and keep their key only if they opt into BYOK?
-6. **Trial: card required?** Card-up-front (fewer, higher-intent trials, near-zero
-   abuse, higher conversion) vs no-card (more top-of-funnel, more abuse, needs
-   fingerprint/email-domain throttling). I recommend **card required** with a
-   clear "no charge for 7 days, cancel anytime" — it also lets us auto-convert on
-   day 7 instead of hoping the user returns.
-7. **One trial per...** — org / email / payment-fingerprint? Recommend
-   fingerprint + email to stop trial farming.
+| # | Decision | Resolution |
+|---|----------|------------|
+| 1 | Margin target | **Min 400% markup** — price ≥ 5× COGS; included quota ≤ 20% of price at P50 util, ≤ 40% worst-case; overage/add-ons ≥ 5× cost. Drives the cost-first LLM routing (§3.4) and tight SEO quotas. |
+| 2 | Overage default | **Opt-in** on Pro/Agency/Scale (default hard-stop); trial + Starter hard-stop only. |
+| 3 | BYOK | **Yes on Agency** (−30%); also offered on Scale (−40%). Not on trial/Starter/Pro. |
+| 4 | Trial | **7 days, no card** for now (config flag to require a card later). One trial per verified email + fingerprint; small quota to make abuse cheap. |
+| 5 | LLM selection | **Cost-first routing (§3.4):** default Haiku/Sonnet, **Opus off by default**, premium opt-in only on Pro+ at an 8× credit multiplier. Re-map `tiers.py` so "heavy" = Sonnet, not Opus. |
+
+### Still open (lower priority)
+
+- **Metering granularity** — recommend **credits** in the UI (with the model
+  multiplier) + raw token/call hard caps as the backstop; raw tokens stay
+  internal.
+- **Existing tenant keys** — migrate current `api_keys` orgs to the platform
+  provider automatically; retain their key only if they later opt into BYOK
+  (Agency+).
+- **Exact prices/quotas** — §5 numbers are illustrative and must be tuned against
+  real `cost_rates` (esp. the keyword-analysis line) before launch.
 ```
