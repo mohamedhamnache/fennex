@@ -90,8 +90,9 @@ class MockSEOProvider:
             })
         return results
 
-    async def serp(self, keyword: str, language_code: str = "en", location_code: int = 2840) -> list[dict]:
-        """Deterministic synthetic SERP — 10 organic items."""
+    async def serp(self, keyword: str, language_code: str = "en", location_code: int = 2840,
+                   depth: int = 100) -> list[dict]:
+        """Deterministic synthetic SERP — up to ``depth`` organic items (capped 10)."""
         return [
             {
                 "type": "organic",
@@ -100,5 +101,9 @@ class MockSEOProvider:
                 "url": f"https://site{i}.com/page",
                 "title": f"Result {i} for {keyword}",
             }
-            for i in range(1, 11)
+            for i in range(1, min(depth, 10) + 1)
         ]
+
+    async def serp_batch(self, keywords: list[str], language_code: str = "en",
+                         location_code: int = 2840, depth: int = 100) -> dict[str, list[dict]]:
+        return {kw: await self.serp(kw, language_code, location_code, depth) for kw in keywords}

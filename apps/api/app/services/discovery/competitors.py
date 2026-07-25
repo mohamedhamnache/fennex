@@ -15,6 +15,12 @@ from app.services.serp_service import COUNTRY_LOCATIONS
 
 logger = logging.getLogger(__name__)
 
+# DataForSEO cost controls. Each keyword is one billable SERP task and cost
+# scales with depth, so keep both small: 3 keywords give enough ranking-overlap
+# signal, and real competitors sit at the top of the page.
+SERP_KEYWORDS = 3
+SERP_DEPTH = 10
+
 # Second-level names that rank for almost any query but are never a specific
 # business's competitor.
 _NON_COMPETITORS = {
@@ -62,8 +68,10 @@ async def discover_competitors(result: dict, org_id, db, *, own_url: str,
 
     business = result.get("business", {}) or {}
     seo = result.get("seo", {}) or {}
+    # Cost control: 3 keywords is enough overlap signal, and we only need the top
+    # of the page, so query a shallow SERP. See SERP_KEYWORDS / SERP_DEPTH.
     keywords = [k for k in (seo.get("suggested_keywords") or [])
-                if isinstance(k, str) and k.strip()][:5]
+                if isinstance(k, str) and k.strip()][:SERP_KEYWORDS]
     if not keywords:
         seed = business.get("industry") or business.get("name")
         keywords = [seed] if seed else []
@@ -74,16 +82,20 @@ async def discover_competitors(result: dict, org_id, db, *, own_url: str,
     location_code = _location_code(business.get("country"), language_code)
     own = _second_level(own_url)
 
+    # One batched request (all keywords) instead of one call per keyword.
+    try:
+        serps = await provider.serp_batch(
+            keywords, language_code=language_code, location_code=location_code, depth=SERP_DEPTH)
+    except Exception:
+        logger.info("discovery SERP batch failed")
+        return []
+
     counts: dict[str, int] = {}
     best_rank: dict[str, int] = {}
     for kw in keywords:
-        try:
-            items = await provider.serp(kw, language_code=language_code, location_code=location_code)
-        except Exception:
-            logger.info("discovery SERP failed for keyword %r", kw)
-            continue
+        items = serps.get(kw) or []
         seen_this_kw: set[str] = set()
-        for item in items or []:
+        for item in items:
             if item.get("type") != "organic":
                 continue
             dom = _registrable(item.get("domain") or "")

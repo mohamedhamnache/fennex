@@ -7,9 +7,15 @@ from app.services.discovery import competitors as comp
 class _FakeProvider:
     def __init__(self, serps):
         self._serps = serps  # keyword -> list[organic items]
+        self.batch_calls = 0
 
-    async def serp(self, keyword, language_code="en", location_code=2840):
+    async def serp(self, keyword, language_code="en", location_code=2840, depth=100):
         return self._serps.get(keyword, [])
+
+    async def serp_batch(self, keywords, language_code="en", location_code=2840, depth=100):
+        # Discovery must use a single batched request, not one call per keyword.
+        self.batch_calls += 1
+        return {kw: self._serps.get(kw, []) for kw in keywords}
 
 
 def _item(rank, domain):
@@ -49,12 +55,16 @@ async def test_ranks_by_keyword_overlap_and_filters_noise(result, monkeypatch):
             _item(5, "rival-c.com"),        # competitor (one keyword)
         ],
     }
+    fake = _FakeProvider(serps)
     async def provider(*a, **k):
-        return _FakeProvider(serps)
+        return fake
     monkeypatch.setattr(comp, "get_seo_provider_for_org", provider)
 
     out = await comp.discover_competitors(result, "org", "db", own_url="https://www.acme.test")
     names = [c["name"] for c in out]
+
+    # Cost control: all keywords fetched in ONE batched request.
+    assert fake.batch_calls == 1
 
     assert "acme.test" not in names          # own domain excluded
     assert "youtube.com" not in names         # platform excluded
