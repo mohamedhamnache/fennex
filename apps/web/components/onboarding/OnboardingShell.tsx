@@ -11,6 +11,7 @@ import { WelcomeStep } from "./WelcomeStep";
 import { DiscoveryStep } from "./DiscoveryStep";
 import { ReviewStep } from "./ReviewStep";
 import { GoalsStep } from "./GoalsStep";
+import { BrandStep } from "./BrandStep";
 
 const RAIL: { step: OnboardingStep; key: string }[] = [
   { step: "discovery", key: "onboarding.rail.discover" },
@@ -118,10 +119,13 @@ export function OnboardingShell() {
           {step === "goals" && result && (
             <GoalsStep result={result} onChange={setResult} onNext={() => setStep("brand")} />
           )}
-          {/* Brand/audience/summary/provisioning/done screens are wired
-              in Tasks 14-16; this placeholder keeps typecheck green and the
+          {step === "brand" && result && (
+            <BrandStep result={result} onChange={setResult} onNext={() => setStep("audience")} />
+          )}
+          {/* Audience/summary/provisioning/done screens are wired
+              in Tasks 15-16; this placeholder keeps typecheck green and the
               shell navigable in the meantime. */}
-          {step !== "welcome" && step !== "discovery" && step !== "review" && step !== "goals" && (
+          {step !== "welcome" && step !== "discovery" && step !== "review" && step !== "goals" && step !== "brand" && (
             <p className="text-sm text-muted-foreground">{placeholderLabel}</p>
           )}
         </div>

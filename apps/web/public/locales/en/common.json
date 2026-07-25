@@ -1887,6 +1887,18 @@
       "goalsLabel": "Select your main goals",
       "metricsLabel": "How will you measure success?",
       "next": "Next"
+    },
+    "brand": {
+      "title": "Your brand DNA",
+      "tone": "Tone",
+      "cta": "CTA style",
+      "reading": "Reading level",
+      "emoji": "Emoji policy",
+      "mission": "Mission",
+      "voice": "Voice prompt",
+      "use": "Use these words",
+      "avoid": "Avoid these words",
+      "next": "Next"
     }
   },
   "integrations": {
