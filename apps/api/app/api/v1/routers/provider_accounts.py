@@ -14,7 +14,8 @@ router = APIRouter()
 
 
 def _require_staff(current_user: CurrentUser) -> None:
-    if current_user.email not in (settings.PLATFORM_ADMIN_EMAILS or []):
+    admin_emails = {e.lower() for e in (settings.PLATFORM_ADMIN_EMAILS or [])}
+    if current_user.email.lower() not in admin_emails:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
 
 
@@ -59,7 +60,10 @@ async def create_account(body: CreateAccount, current_user: CurrentUser, db: DB)
     await db.commit()
     await db.refresh(acct)
     out = _out(acct)
-    out["credentials_hint"] = "…" + body.credentials[-4:]  # last-4 hint on create
+    if body.kind == "llm":
+        out["credentials_hint"] = "…" + body.credentials[-4:]  # last-4 hint on create
+    # kind == "seo": credentials is "login:password" (DataForSEO) — last-4 would
+    # leak part of the password, so keep the fixed "****" mask from _out().
     return out
 
 

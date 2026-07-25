@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
+    # Staff allowed to manage provider accounts. Parsed as a JSON array by
+    # pydantic-settings, e.g. PLATFORM_ADMIN_EMAILS=["a@b.com","c@d.com"]
     PLATFORM_ADMIN_EMAILS: list[str] = []
 
     @property

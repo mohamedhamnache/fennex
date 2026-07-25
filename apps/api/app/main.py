@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 import stripe
@@ -11,12 +12,19 @@ from app.core.database import engine, Base
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: create tables if they don't exist (dev only; prod uses Alembic)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    if not (settings.OPENAI_API_KEY or settings.ANTHROPIC_API_KEY or settings.GOOGLE_API_KEY):
+        logger.warning(
+            "No platform LLM key configured (OPENAI_API_KEY/ANTHROPIC_API_KEY/GOOGLE_API_KEY). "
+            "AI features will be unavailable unless an active LLM provider_account exists."
+        )
     yield
     # Shutdown
     await engine.dispose()
