@@ -1920,7 +1920,13 @@
       "removeCompetitor": "Remove competitor",
       "addCompetitor": "Add competitor",
       "confirm": "Looks good, continue",
-      "understandTitle": "Here's what I understand"
+      "understandTitle": "Here's what I understand",
+      "seo": "SEO snapshot",
+      "seoScore": "{{score}}/100",
+      "seoWords": "{{count}} words on the homepage",
+      "seoKeywords": "Seed keywords",
+      "seoIssues": "Things to fix",
+      "removeKeyword": "Remove keyword"
     },
     "goals": {
       "title": "What are your goals?",

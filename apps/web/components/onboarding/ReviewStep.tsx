@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2, X, Sparkles } from "lucide-react";
 import type { DiscoveryCompetitor, DiscoveryResult } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { EditableField } from "./EditableField";
 import { SuggestButton } from "./SuggestButton";
 
@@ -30,6 +31,23 @@ export function ReviewStep({ result, onChange, onNext, runId }: {
     });
     if (fresh.length) onChange({ ...result, competitors: [...result.competitors, ...fresh] });
   };
+
+  const seo = result.seo;
+  const removeKeyword = (i: number) =>
+    onChange({
+      ...result,
+      seo: { ...seo, suggested_keywords: seo.suggested_keywords.filter((_, idx) => idx !== i) },
+    });
+  const hasSeo =
+    seo.score != null || seo.suggested_keywords.length > 0 || seo.issues.length > 0;
+  const scoreTone =
+    seo.score == null
+      ? "bg-muted text-muted-foreground"
+      : seo.score >= 70
+        ? "bg-primary/15 text-primary"
+        : seo.score >= 40
+          ? "bg-muted text-foreground"
+          : "bg-destructive/15 text-destructive";
 
   const setColor = (i: number, v: string) => {
     const colors = result.brand.colors.map((c, idx) => (idx === i ? v : c));
@@ -150,6 +168,51 @@ export function ReviewStep({ result, onChange, onNext, runId }: {
           </button>
         </div>
       </div>
+
+      {hasSeo && (
+        <div className="mt-4 rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: "180ms" }}>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">{t("onboarding.review.seo")}</p>
+            {seo.score != null && (
+              <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", scoreTone)}>
+                {t("onboarding.review.seoScore", { score: seo.score })}
+              </span>
+            )}
+          </div>
+          {seo.word_count != null && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("onboarding.review.seoWords", { count: seo.word_count })}
+            </p>
+          )}
+          {seo.suggested_keywords.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("onboarding.review.seoKeywords")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {seo.suggested_keywords.map((kw, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                    {kw}
+                    <button
+                      onClick={() => removeKeyword(i)}
+                      aria-label={t("onboarding.review.removeKeyword")}
+                      className="text-primary/60 transition-colors hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {seo.issues.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("onboarding.review.seoIssues")}</p>
+              <ul className="list-inside list-disc space-y-0.5 text-xs text-muted-foreground">
+                {seo.issues.map((issue, i) => <li key={i}>{issue}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <button onClick={onNext} className="btn-primary mt-6 px-6 py-2.5 text-sm">{t("onboarding.review.confirm")}</button>
     </div>

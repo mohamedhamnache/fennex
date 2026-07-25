@@ -1812,7 +1812,13 @@
       "removeCompetitor": "إزالة المنافس",
       "addCompetitor": "إضافة منافس",
       "confirm": "يبدو جيدًا، متابعة",
-      "understandTitle": "إليك ما فهمته"
+      "understandTitle": "إليك ما فهمته",
+      "seo": "لمحة SEO",
+      "seoScore": "{{score}}/100",
+      "seoWords": "{{count}} كلمة في الصفحة الرئيسية",
+      "seoKeywords": "الكلمات المفتاحية الأولية",
+      "seoIssues": "أمور بحاجة إلى إصلاح",
+      "removeKeyword": "إزالة الكلمة المفتاحية"
     },
     "goals": {
       "title": "ما هي أهدافك؟",

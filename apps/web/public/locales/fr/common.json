@@ -1812,7 +1812,13 @@
       "removeCompetitor": "Supprimer le concurrent",
       "addCompetitor": "Ajouter un concurrent",
       "confirm": "Tout est correct, continuer",
-      "understandTitle": "Voici ce que j'ai compris"
+      "understandTitle": "Voici ce que j'ai compris",
+      "seo": "Aperçu SEO",
+      "seoScore": "{{score}}/100",
+      "seoWords": "{{count}} mots sur la page d'accueil",
+      "seoKeywords": "Mots-clés de départ",
+      "seoIssues": "Points à corriger",
+      "removeKeyword": "Supprimer le mot-clé"
     },
     "goals": {
       "title": "Quels sont vos objectifs ?",
