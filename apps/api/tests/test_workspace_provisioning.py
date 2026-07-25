@@ -12,6 +12,7 @@ from app.models.brand_kit import BrandKit
 from app.models.brand_voice import BrandVoice, VoiceTone
 from app.models.discovery import DiscoveryRun
 from app.models.employee_memory import EmployeeMemory
+from app.models.knowledge import ProjectDocument
 from app.models.organization import Organization
 from app.models.project import Project
 from app.services import knowledge_service, workspace_provisioning_service as prov
@@ -34,13 +35,17 @@ def no_network(monkeypatch):
     """Never let a test touch the network via embeddings or memory writes'
     optional vector backend -- assert on call args instead of letting real
     work happen."""
-    calls = {"add_document": [], "remember": []}
+    calls = {"add_document": [], "delete_document": [], "remember": []}
 
     async def fake_add_document(project_id, org_id, *, title, body, kind, source, keys, db):
+        # Mirrors the real knowledge_service.add_document closely enough to
+        # catch a wrong project_id/org_id/kind filter elsewhere in the
+        # provisioning service: it actually inserts a row, so a broken filter
+        # that fails to find/delete the superseded document leaves a real
+        # extra ProjectDocument behind for the idempotency test to see.
         calls["add_document"].append(dict(
             project_id=project_id, org_id=org_id, title=title, body=body,
             kind=kind, source=source, keys=keys))
-        from app.models.knowledge import ProjectDocument
         doc = ProjectDocument(org_id=org_id, project_id=project_id, title=title,
                               kind=kind, source=source, body=body,
                               word_count=len(body.split()), status="ready")
@@ -49,6 +54,15 @@ def no_network(monkeypatch):
         return doc
 
     async def fake_delete_document(document_id, org_id, keys, db):
+        # Mirrors the real knowledge_service.delete_document: actually
+        # removes the row (scoped to org_id), rather than a no-op that would
+        # let a duplicate silently survive.
+        calls["delete_document"].append(dict(document_id=document_id, org_id=org_id))
+        doc = await db.get(ProjectDocument, document_id)
+        if doc is None or doc.org_id != org_id:
+            return False
+        await db.delete(doc)
+        await db.flush()
         return True
 
     real_remember = memory_layer.remember
@@ -153,6 +167,21 @@ async def test_provision_is_idempotent_on_reprovision(no_network):
         )).scalars().all()
         assert len(memories) == 1
 
+        # Knowledge-store idempotency: the fakes above actually insert/delete
+        # rows (unlike a stub that always returns True), so this catches a
+        # provisioning-service filter bug directly. If the existing-document
+        # lookup in provision() used the wrong project_id/org_id/kind (e.g.
+        # matched on kind="note" instead of PROFILE_DOC_KIND, or omitted the
+        # project_id filter), the superseded document from the first
+        # provision() call would never be found and never deleted, and the
+        # second call's add_document would insert a second row -- this
+        # assertion would then see 2 documents instead of 1 and fail.
+        docs = (await db.execute(
+            select(ProjectDocument).where(
+                ProjectDocument.project_id == pid1, ProjectDocument.kind == "profile")
+        )).scalars().all()
+        assert len(docs) == 1
+
 
 async def test_free_text_tone_maps_onto_closed_enum(no_network):
     """BrandVoice.tone is a closed SQLAlchemy enum. Discovery's brand.tone is
@@ -221,6 +250,41 @@ async def test_knowledge_document_written_with_expected_body(no_network):
     assert call["kind"] == "profile"
     assert "Acme Cafe" in call["body"]
     assert "We roast coffee." in call["body"]
+
+
+async def test_add_document_failure_preserves_existing_document(monkeypatch, no_network):
+    """If add_document fails on a re-provision (transient DB error, etc.),
+    the previously-written profile document must survive untouched and
+    provision() must still succeed -- never leave the project with zero
+    profile documents."""
+    org_id = await _seed_org("kb-fail-org")
+    run_id = await _seed_run(org_id, ACME_RESULT)
+
+    async with TestSessionLocal() as db:
+        pid = await prov.provision(run_id, persona=None, db=db)
+
+        docs_before = (await db.execute(
+            select(ProjectDocument).where(
+                ProjectDocument.project_id == pid, ProjectDocument.kind == "profile")
+        )).scalars().all()
+        assert len(docs_before) == 1
+        original_doc_id = docs_before[0].id
+
+        async def failing_add_document(*args, **kwargs):
+            raise RuntimeError("transient db error")
+
+        monkeypatch.setattr(knowledge_service, "add_document", failing_add_document)
+
+        # Must not raise even though the knowledge write fails.
+        pid2 = await prov.provision(run_id, persona=None, db=db)
+        assert pid2 == pid
+
+        docs_after = (await db.execute(
+            select(ProjectDocument).where(
+                ProjectDocument.project_id == pid, ProjectDocument.kind == "profile")
+        )).scalars().all()
+        assert len(docs_after) == 1
+        assert docs_after[0].id == original_doc_id
 
 
 async def test_knowledge_write_skipped_without_org_keys(no_network):

@@ -140,6 +140,14 @@ async def provision(run_id: uuid.UUID, *, persona: str | None, db) -> uuid.UUID:
 
     # 3. Knowledge base: one "profile" document, replaced on re-provisioning
     # so a second provision() call cannot pile up duplicate documents.
+    #
+    # Order matters: the new document is written FIRST, and the superseded
+    # one is only removed once the new one is durably committed. If
+    # add_document fails for any reason (transient DB error, etc.), the old
+    # document is left untouched -- a re-provision failure must never leave
+    # the project with fewer usable profile documents than it started with,
+    # even though the write as a whole stays best-effort and must never fail
+    # provision() itself.
     keys = await get_org_llm_keys(org_id, db)
     profile = _profile_document(r)
     if profile.strip() and keys.get("openai"):
@@ -150,14 +158,19 @@ async def provision(run_id: uuid.UUID, *, persona: str | None, db) -> uuid.UUID:
                 ProjectDocument.kind == PROFILE_DOC_KIND,
             )
         )).scalars().first()
-        if existing_doc is not None:
-            await knowledge_service.delete_document(existing_doc.id, org_id, keys, db)
         try:
             await knowledge_service.add_document(
                 project.id, org_id, title="Business profile", body=profile,
                 kind=PROFILE_DOC_KIND, source=run.input_url, keys=keys, db=db)
         except Exception:
-            pass  # knowledge is best-effort; never blocks provisioning
+            pass  # knowledge is best-effort; never blocks provisioning -- the
+                  # old document (if any) is still in place, so nothing is lost
+        else:
+            if existing_doc is not None:
+                try:
+                    await knowledge_service.delete_document(existing_doc.id, org_id, keys, db)
+                except Exception:
+                    pass  # a leftover duplicate is acceptable; data loss is not
 
     # 4. Employee memory. Stable `key`s mean a re-provision reinforces the
     # existing memory row instead of duplicating it (app/employees/memory.py).
