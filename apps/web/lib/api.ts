@@ -231,6 +231,64 @@ export async function updateProject(
   return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }
 
+// ─── Onboarding discovery ──────────────────────────────────────────────────────
+
+export interface DiscoveryProduct {
+  name?: string; description?: string; category?: string; price?: string;
+  benefits?: string[]; url?: string; image_url?: string;
+}
+
+export interface DiscoveryICP {
+  label?: string; age?: string; gender?: string; country?: string;
+  profession?: string; interests?: string[]; pains?: string[];
+  goals?: string[]; budget?: string; buying_behavior?: string;
+}
+
+export interface DiscoveryCompetitor { url?: string; name?: string; note?: string }
+
+export interface DiscoveryResult {
+  business: {
+    name: string | null; domain: string | null; industry: string | null;
+    country: string | null; language: string | null; timezone: string | null;
+    cms: string | null; contact: { email: string | null; phone: string | null };
+    socials: Record<string, string>; navigation: string[]; description: string | null;
+  };
+  brand: {
+    logo_url: string | null; colors: string[]; primary_font: string | null;
+    secondary_font: string | null; tone: string | null; personality: string[];
+    mission: string | null; vision: string | null; values: string[];
+    voice_prompt: string | null; vocabulary: string[]; avoid_words: string[];
+    cta_style: string | null; reading_level: string | null; emoji_policy: string | null;
+  };
+  products: DiscoveryProduct[];
+  audience: DiscoveryICP[];
+  competitors: DiscoveryCompetitor[];
+  seo: { score: number | null; title: string | null; meta_description: string | null;
+         word_count: number | null; issues: string[]; suggested_keywords: string[] };
+  goals: string[]; success_metrics: string[];
+}
+
+export interface DiscoveryRun {
+  id: string; status: "queued" | "running" | "done" | "error";
+  stage: string | null; progress: number; result: DiscoveryResult; error: string | null;
+}
+
+export async function startDiscovery(body: { url?: string; description?: string }): Promise<{ run_id: string }> {
+  return apiClient.post<{ run_id: string }>("/onboarding/discovery", body);
+}
+
+export async function getDiscovery(runId: string): Promise<DiscoveryRun> {
+  return apiClient.get<DiscoveryRun>(`/onboarding/discovery/${runId}`);
+}
+
+export async function patchDiscovery(runId: string, result: DiscoveryResult): Promise<DiscoveryRun> {
+  return apiClient.patch<DiscoveryRun>(`/onboarding/discovery/${runId}`, { result });
+}
+
+export async function provisionWorkspace(runId: string, persona?: ProjectPersona): Promise<{ project_id: string }> {
+  return apiClient.post<{ project_id: string }>("/onboarding/provision", { run_id: runId, persona });
+}
+
 export async function triggerCrawl(
   projectId: string,
   url: string,
