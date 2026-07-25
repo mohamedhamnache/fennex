@@ -124,9 +124,15 @@ async def provision(run_id: uuid.UUID, *, persona: str | None, db) -> uuid.UUID:
     kit.secondary_font = brand.get("secondary_font") or kit.secondary_font
     kit.tone = brand.get("tone") or kit.tone
 
+    # A project may accrue several voices after onboarding, so pick the default
+    # (or oldest) rather than assuming exactly one -- scalar_one_or_none would
+    # raise MultipleResultsFound on a re-provision of such a project.
     voice = (await db.execute(
-        select(BrandVoice).where(BrandVoice.project_id == project.id, BrandVoice.org_id == org_id)
-    )).scalar_one_or_none()
+        select(BrandVoice)
+        .where(BrandVoice.project_id == project.id, BrandVoice.org_id == org_id)
+        .order_by(BrandVoice.is_default.desc(), BrandVoice.created_at.asc())
+        .limit(1)
+    )).scalars().first()
     if voice is None:
         voice = BrandVoice(id=uuid.uuid4(), org_id=org_id, project_id=project.id,
                            name=f"{project.name} voice"[:255], is_default=True)
@@ -183,21 +189,28 @@ async def provision(run_id: uuid.UUID, *, persona: str | None, db) -> uuid.UUID:
         shared.append(("goals", "Primary goals: " + ", ".join(r["goals"])))
     if brand.get("avoid_words"):
         shared.append(("avoid_words", "Never use: " + ", ".join(brand["avoid_words"])))
+    # memory_layer.remember dedups on (org_id, employee_id, key) WITHOUT
+    # project_id, so a bare key like "tone" would collide across projects in the
+    # same org: onboarding a second workspace would overwrite the first
+    # project's seeded memory in place (and leave the second with none). Since
+    # onboarding is now the per-project creation path, namespace every seed key
+    # by project id so each workspace keeps its own facts.
+    kp = f"{project.id}:"
     for key, content in shared:
         await memory_layer.remember(db, org_id=org_id, project_id=project.id,
                                     employee_id="zerda", content=content,
-                                    scope=SCOPE_PROJECT, kind="fact", key=key)
+                                    scope=SCOPE_PROJECT, kind="fact", key=f"{kp}{key}")
     if r.get("competitors"):
         names = ", ".join(c.get("name") or c.get("url") or "" for c in r["competitors"])
         if names:
             await memory_layer.remember(db, org_id=org_id, project_id=project.id,
                                         employee_id="sable", content=f"Known competitors: {names}",
-                                        scope=SCOPE_PROJECT, kind="fact", key="competitors")
+                                        scope=SCOPE_PROJECT, kind="fact", key=f"{kp}competitors")
     if (r.get("seo") or {}).get("suggested_keywords"):
         kws = ", ".join(r["seo"]["suggested_keywords"])
         await memory_layer.remember(db, org_id=org_id, project_id=project.id,
                                     employee_id="zerda", content=f"Seed keywords: {kws}",
-                                    scope=SCOPE_PROJECT, kind="fact", key="seed_keywords")
+                                    scope=SCOPE_PROJECT, kind="fact", key=f"{kp}seed_keywords")
 
     await db.commit()
     return project.id

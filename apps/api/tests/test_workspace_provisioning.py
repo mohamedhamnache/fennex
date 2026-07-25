@@ -163,7 +163,7 @@ async def test_provision_is_idempotent_on_reprovision(no_network):
         assert len(kits) == 1
 
         memories = (await db.execute(
-            select(EmployeeMemory).where(EmployeeMemory.project_id == pid1, EmployeeMemory.key == "competitors")
+            select(EmployeeMemory).where(EmployeeMemory.project_id == pid1, EmployeeMemory.key == f"{pid1}:competitors")
         )).scalars().all()
         assert len(memories) == 1
 
@@ -306,11 +306,39 @@ async def test_employee_memory_seeded(no_network):
     async with TestSessionLocal() as db:
         pid = await prov.provision(run_id, persona=None, db=db)
 
-        keys_written = {call["key"] for call in no_network["remember"]}
-        assert {"tone", "goals", "avoid_words", "competitors", "seed_keywords"} <= keys_written
+        # Seed keys are namespaced by project id so a second workspace in the
+        # same org cannot overwrite this project's memory.
+        suffixes = {call["key"].split(":", 1)[-1] for call in no_network["remember"]}
+        assert {"tone", "goals", "avoid_words", "competitors", "seed_keywords"} <= suffixes
+        assert all(call["key"].startswith(f"{pid}:") for call in no_network["remember"])
 
         competitor_memory = (await db.execute(
-            select(EmployeeMemory).where(EmployeeMemory.project_id == pid, EmployeeMemory.key == "competitors")
+            select(EmployeeMemory).where(
+                EmployeeMemory.project_id == pid, EmployeeMemory.key == f"{pid}:competitors"
+            )
         )).scalar_one()
         assert "Rival" in competitor_memory.content
         assert competitor_memory.employee_id == "sable"
+
+
+async def test_two_workspaces_same_org_keep_separate_memory(no_network):
+    """Regression: onboarding a second workspace in the same org must not
+    overwrite the first project's seeded memory (memory.remember dedups on
+    (org_id, employee_id, key), so seed keys are namespaced by project id)."""
+    org_id = await _seed_org("multi-ws-org")
+    run_a = await _seed_run(org_id, ACME_RESULT, url="https://acme-a.test")
+    run_b = await _seed_run(org_id, ACME_RESULT, url="https://acme-b.test")
+
+    async with TestSessionLocal() as db:
+        pid_a = await prov.provision(run_a, persona=None, db=db)
+        pid_b = await prov.provision(run_b, persona=None, db=db)
+        assert pid_a != pid_b
+
+        # Each project must have its OWN tone memory, with its own project_id.
+        for pid in (pid_a, pid_b):
+            tone = (await db.execute(
+                select(EmployeeMemory).where(
+                    EmployeeMemory.project_id == pid, EmployeeMemory.key == f"{pid}:tone"
+                )
+            )).scalar_one()
+            assert tone.project_id == pid
