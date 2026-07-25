@@ -80,7 +80,9 @@ def no_network(monkeypatch):
 async def _seed_org(slug: str, with_openai_key: bool = True) -> uuid.UUID:
     org_id = uuid.uuid4()
     async with TestSessionLocal() as db:
-        db.add(Organization(id=org_id, slug=slug, name=slug))
+        # byok_enabled mirrors with_openai_key: platform-first resolution only
+        # surfaces this tenant key when the org has opted into BYOK.
+        db.add(Organization(id=org_id, slug=slug, name=slug, byok_enabled=with_openai_key))
         if with_openai_key:
             db.add(APIKey(org_id=org_id, provider="openai", encrypted_value=encrypt_value("sk-test")))
         await db.commit()

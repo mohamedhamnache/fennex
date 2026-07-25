@@ -34,7 +34,10 @@ async def db():
 
 @pytest.fixture
 async def org_with_keys(db):
-    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+    # byok_enabled=True: platform-first resolution only surfaces these tenant
+    # keys when the org has opted into BYOK (see test_llm_keys_platform_first.py
+    # for the platform-key-only path).
+    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", byok_enabled=True)
     db.add(org)
     await db.flush()
     db.add(APIKey(org_id=FAKE_ORG_ID, provider="anthropic", encrypted_value=encrypt_value("sk-ant-test-key")))

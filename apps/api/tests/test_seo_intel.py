@@ -37,6 +37,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects", "gsc_connections", "api_keys",
     "tracked_keywords", "serp_snapshots", "alerts", "monitor_snapshots",
+    "provider_accounts",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
