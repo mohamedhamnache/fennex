@@ -13,6 +13,9 @@ import { ReviewStep } from "./ReviewStep";
 import { GoalsStep } from "./GoalsStep";
 import { BrandStep } from "./BrandStep";
 import { AudienceStep } from "./AudienceStep";
+import { SummaryStep } from "./SummaryStep";
+import { ProvisioningStep } from "./ProvisioningStep";
+import { DoneStep } from "./DoneStep";
 
 const RAIL: { step: OnboardingStep; key: string }[] = [
   { step: "discovery", key: "onboarding.rail.discover" },
@@ -38,6 +41,7 @@ export function OnboardingShell() {
   // Phase 1 has no persona picker; provisioning treats null as "unset".
   const [persona, setPersona] = useState<ProjectPersona | null>(null);
   const [result, setResult] = useState<DiscoveryResult | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   // Persist edits made on the review screen so a refresh resumes from saved
   // state instead of losing the user's corrections. Debounced to avoid
@@ -57,11 +61,6 @@ export function OnboardingShell() {
   // whole rail would render as "todo" right when the user finishes the flow.
   // Terminal steps show the rail fully completed instead.
   const isTerminalStep = activeIndex === -1;
-
-  const currentRailItem = RAIL.find((item) => item.step === step);
-  const placeholderLabel = currentRailItem
-    ? t(currentRailItem.key)
-    : t("onboarding.rail.welcome", { defaultValue: step });
 
   return (
     // h-full (not min-h-screen): the ancestor chain in
@@ -126,12 +125,20 @@ export function OnboardingShell() {
           {step === "audience" && result && (
             <AudienceStep result={result} onChange={setResult} onNext={() => setStep("summary")} />
           )}
-          {/* Summary/provisioning/done screens are wired
-              in Tasks 16; this placeholder keeps typecheck green and the
-              shell navigable in the meantime. */}
-          {step !== "welcome" && step !== "discovery" && step !== "review" && step !== "goals" && step !== "brand" && step !== "audience" && (
-            <p className="text-sm text-muted-foreground">{placeholderLabel}</p>
+          {step === "summary" && result && (
+            <SummaryStep result={result} onEdit={setStep} onCreate={() => setStep("provisioning")} />
           )}
+          {step === "provisioning" && runId && (
+            <ProvisioningStep
+              runId={runId}
+              persona={persona}
+              onDone={(id) => {
+                setProjectId(id);
+                setStep("done");
+              }}
+            />
+          )}
+          {step === "done" && projectId && <DoneStep projectId={projectId} />}
         </div>
       </main>
     </div>

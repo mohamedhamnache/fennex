@@ -1908,6 +1908,31 @@
       "add": "Add another segment",
       "remove": "Remove segment",
       "next": "Next"
+    },
+    "summary": {
+      "title": "Review your workspace",
+      "subtitle": "Here's what we'll use to set everything up. You can still change any of it.",
+      "edit": "Edit {{field}}",
+      "business": "Business",
+      "goals": "Goals",
+      "brand": "Brand tone",
+      "audience": "Audience",
+      "employeesNote": "You can invite teammates and fine-tune these details later from your workspace settings.",
+      "create": "Create my workspace"
+    },
+    "provisioning": {
+      "title": "Setting up your workspace",
+      "hint": "This usually takes a few seconds. Hang tight.",
+      "error": "We couldn't set up your workspace. Please try again."
+    },
+    "done": {
+      "title": "Your workspace is ready",
+      "subtitle": "Here's a good place to start.",
+      "article": "Write your first article",
+      "competitors": "Check your competitors",
+      "instagram": "Plan an Instagram post",
+      "roadmap": "See your SEO roadmap",
+      "dashboard": "Go to dashboard"
     }
   },
   "integrations": {
