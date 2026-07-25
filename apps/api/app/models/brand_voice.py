@@ -20,6 +20,9 @@ class BrandVoice(Base, TimestampMixin):
     __tablename__ = "brand_voices"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     tone: Mapped[VoiceTone] = mapped_column(SAEnum(VoiceTone, name="voice_tone_enum"), default=VoiceTone.professional)
     description: Mapped[str | None] = mapped_column(Text)          # human-written description
