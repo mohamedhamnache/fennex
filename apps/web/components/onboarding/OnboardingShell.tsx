@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Check, X } from "lucide-react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { FennecMark } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { patchDiscovery, type DiscoveryResult, type ProjectPersona } from "@/lib/api";
@@ -26,6 +26,14 @@ const RAIL: { step: OnboardingStep; key: string }[] = [
   { step: "audience", key: "onboarding.rail.audience" },
   { step: "summary", key: "onboarding.rail.summary" },
 ];
+
+// The editable steps all mutate the same `result` with no hard dependencies
+// between them, so once discovery has produced a result the user may jump
+// freely among them (rail clicks) or step back one at a time (Back button).
+// "welcome" and "discovery" are one-way entry points -- re-entering discovery
+// would restart the run -- and "provisioning"/"done" are terminal, so none of
+// those are navigable.
+const EDITABLE: OnboardingStep[] = ["review", "goals", "brand", "audience", "summary"];
 
 /**
  * Owns onboarding flow state: the current step, the discovery run id, the
@@ -63,6 +71,12 @@ export function OnboardingShell() {
   // Terminal steps show the rail fully completed instead.
   const isTerminalStep = activeIndex === -1;
 
+  // Whether the user is currently in the free-navigation phase: only the
+  // editable steps expose the clickable rail and the Back control.
+  const isEditablePhase = EDITABLE.includes(step);
+  const editableIndex = EDITABLE.indexOf(step);
+  const canGoBack = isEditablePhase && editableIndex > 0;
+
   return (
     // h-full (not min-h-screen): the ancestor chain in
     // app/(dashboard)/layout.tsx already bounds height down to this root via
@@ -87,6 +101,20 @@ export function OnboardingShell() {
           <span className="hidden sm:inline">{t("onboarding.exit")}</span>
         </button>
       )}
+      {/* Step back one editable step at a time. Only shown once discovery has
+          handed off to the editable phase and there is a previous editable
+          step to return to (never on "review", the first one). */}
+      {canGoBack && (
+        <button
+          type="button"
+          onClick={() => setStep(EDITABLE[editableIndex - 1])}
+          aria-label={t("onboarding.back")}
+          className="absolute left-4 top-4 z-10 flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{t("onboarding.back")}</span>
+        </button>
+      )}
       <aside className="hidden w-64 shrink-0 border-r border-border p-6 md:flex md:flex-col">
         <div className="mb-8 flex items-center gap-2.5">
           <FennecMark className="h-9 w-9 shrink-0 dark:brightness-0 dark:invert" />
@@ -100,6 +128,33 @@ export function OnboardingShell() {
             const idx = STEP_ORDER.indexOf(item.step);
             const state = isTerminalStep || idx < activeIndex ? "done" : idx === activeIndex ? "active" : "todo";
             const isLast = i === RAIL.length - 1;
+            // Only the editable steps (never "discovery") are jumpable, and
+            // only once the flow has reached the editable phase -- a step
+            // navigated back from still counts, since `isEditablePhase` and
+            // the rail item set don't depend on `state`/position.
+            const isClickable = isEditablePhase && EDITABLE.includes(item.step);
+            const itemClassName = cn(
+              "relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+              state === "active" && "bg-primary/10 text-primary font-medium",
+              state === "done" && "text-muted-foreground",
+              state === "todo" && "text-muted-foreground/60",
+              isClickable && "cursor-pointer hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+            );
+            const itemContent = (
+              <>
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
+                    state === "active" && "bg-primary text-primary-foreground",
+                    state === "done" && "bg-primary/15 text-primary",
+                    state === "todo" && "bg-muted",
+                  )}
+                >
+                  {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
+                </span>
+                {t(item.key)}
+              </>
+            );
             return (
               <li key={item.step} className="relative">
                 {!isLast && (
@@ -111,26 +166,13 @@ export function OnboardingShell() {
                     )}
                   />
                 )}
-                <div
-                  className={cn(
-                    "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    state === "active" && "bg-primary/10 text-primary font-medium",
-                    state === "done" && "text-muted-foreground",
-                    state === "todo" && "text-muted-foreground/60",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
-                      state === "active" && "bg-primary text-primary-foreground",
-                      state === "done" && "bg-primary/15 text-primary",
-                      state === "todo" && "bg-muted",
-                    )}
-                  >
-                    {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
-                  </span>
-                  {t(item.key)}
-                </div>
+                {isClickable ? (
+                  <button type="button" onClick={() => setStep(item.step)} aria-label={t(item.key)} className={itemClassName}>
+                    {itemContent}
+                  </button>
+                ) : (
+                  <div className={itemClassName}>{itemContent}</div>
+                )}
               </li>
             );
           })}

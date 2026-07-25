@@ -1840,6 +1840,7 @@
   "onboarding": {
     "title": "Set up your workspace",
     "exit": "Exit setup",
+    "back": "Back",
     "rail": {
       "welcome": "Welcome",
       "discover": "Discover",
