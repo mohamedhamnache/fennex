@@ -13,7 +13,7 @@ from app.core.database import async_session_factory
 from app.models.discovery import DiscoveryRun
 from app.services import competitor_service
 from app.services.agents.tiers import resolve_model
-from app.services.discovery import crawl_map, extractors, synthesis
+from app.services.discovery import competitors, crawl_map, extractors, synthesis
 from app.services.llm_service import get_org_llm_keys
 
 logger = logging.getLogger(__name__)
@@ -108,8 +108,17 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
                                                  model=model, api_key=api_key, locale=locale)
 
         await _set(run_id, stage="Finding competitors", progress=75)
-        # Competitors already inferred by synthesis; the Sable deep-scan is a
-        # phase-2 enrichment. Keep synthesised competitors as-is here.
+        # Real competitors = sites that rank for the same seed keywords. When a
+        # SERP provider is configured this is far more accurate than the LLM's
+        # guesses, so it replaces them; otherwise we keep the synthesised list.
+        try:
+            async with async_session_factory() as db:
+                real_competitors = await competitors.discover_competitors(
+                    result, org_id, db, own_url=url)
+            if real_competitors:
+                result["competitors"] = real_competitors
+        except Exception:
+            logger.info("competitor discovery skipped for %s", url)
 
         await _set(run_id, stage="Analyzing SEO", progress=88)
         try:
