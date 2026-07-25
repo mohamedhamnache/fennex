@@ -29,6 +29,31 @@ class ProvisionRequest(BaseModel):
     persona: Optional[str] = None
 
 
+# Top-level shape of a DiscoveryRun.result, mirrored from
+# app.services.discovery.extractors.empty_result(). Unknown/absent keys are
+# fine -- this is a partial editor payload -- but a key that IS present must
+# have the right container type, or workspace_provisioning_service later
+# crashes with an unhandled AttributeError deep in provisioning instead of
+# failing fast here with a clear 400.
+_RESULT_OBJECT_KEYS = ("business", "brand", "seo")
+_RESULT_ARRAY_KEYS = ("products", "audience", "competitors", "goals", "success_metrics")
+
+
+def _validate_result_shape(result: dict) -> None:
+    for key in _RESULT_OBJECT_KEYS:
+        if key in result and not isinstance(result[key], dict):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"'{key}' must be an object",
+            )
+    for key in _RESULT_ARRAY_KEYS:
+        if key in result and not isinstance(result[key], list):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"'{key}' must be an array",
+            )
+
+
 def _out(run: DiscoveryRun) -> dict:
     return {
         "id": str(run.id),
@@ -91,6 +116,7 @@ async def get_discovery(run_id: uuid.UUID, current_user: CurrentUser, db: DB) ->
 async def patch_discovery(
     run_id: uuid.UUID, body: DiscoveryPatch, current_user: CurrentUser, db: DB
 ) -> dict:
+    _validate_result_shape(body.result)
     run = await _get_owned_run(run_id, current_user, db)
     run.result = body.result
     await db.commit()

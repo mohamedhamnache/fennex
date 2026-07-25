@@ -197,6 +197,58 @@ async def test_patch_discovery_not_found(client):
     assert resp.status_code == 404
 
 
+async def test_patch_discovery_rejects_object_field_as_wrong_type(client):
+    """'business' must be an object. Against the pre-fix router this would
+    store fine (a truthy string passes the `or {}` fallback in
+    workspace_provisioning_service) and only blow up later, inside
+    POST /provision, with an unhandled AttributeError -> 500."""
+    run_id = await _seed_run(FAKE_ORG_ID, result={"business": {"name": "Original"}})
+
+    resp = await client.patch(
+        f"/api/v1/onboarding/discovery/{run_id}",
+        json={"result": {"business": "oops"}},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 400
+    assert "business" in resp.json()["detail"]
+
+    async with TestSessionLocal() as session:
+        run = await session.get(DiscoveryRun, run_id)
+        assert run.result == {"business": {"name": "Original"}}
+
+
+async def test_patch_discovery_rejects_array_field_as_wrong_type(client):
+    """'goals' must be an array, not an object."""
+    run_id = await _seed_run(FAKE_ORG_ID, result={"goals": ["Grow traffic"]})
+
+    resp = await client.patch(
+        f"/api/v1/onboarding/discovery/{run_id}",
+        json={"result": {"goals": {"not": "a list"}}},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 400
+    assert "goals" in resp.json()["detail"]
+
+    async with TestSessionLocal() as session:
+        run = await session.get(DiscoveryRun, run_id)
+        assert run.result == {"goals": ["Grow traffic"]}
+
+
+async def test_patch_discovery_accepts_valid_partial_payload(client):
+    """A well-typed partial payload (only some top-level keys present) still
+    replaces `result` wholesale, as the brief requires -- the shape check
+    must not reject legitimate partial editor payloads."""
+    run_id = await _seed_run(FAKE_ORG_ID, result={"business": {"name": "Original"}})
+
+    resp = await client.patch(
+        f"/api/v1/onboarding/discovery/{run_id}",
+        json={"result": {"business": {"name": "Edited"}, "goals": ["Grow traffic"]}},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["result"] == {"business": {"name": "Edited"}, "goals": ["Grow traffic"]}
+
+
 # -- POST /provision ---------------------------------------------------------------
 
 async def test_provision_workspace(client, monkeypatch):
