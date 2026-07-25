@@ -950,7 +950,22 @@
       "description": "Que es este proyecto",
       "descriptionPlaceholder": "Un blog WordPress para compartir recetas caseras",
       "descriptionHint": "Sirve para juzgar competidores y mantener a cada empleado en tono. Di que es el sitio y para quien.",
-      "descriptionUsedBy": "Lo leen todos los empleados y sirve para distinguir un competidor real de un sitio que solo posiciona por las mismas palabras."
+      "descriptionUsedBy": "Lo leen todos los empleados y sirve para distinguir un competidor real de un sitio que solo posiciona por las mismas palabras.",
+      "yourProjects": "Tus proyectos",
+      "yourProjectsHint": "Cambia, renombra o elimina los espacios de trabajo que gestionas.",
+      "current": "Actual",
+      "switchTo": "Abrir {{name}}",
+      "rename": "Renombrar {{name}}",
+      "saveRename": "Guardar nombre",
+      "delete": "Eliminar {{name}}",
+      "deletePermanently": "Eliminar permanentemente",
+      "deleting": "Eliminando…",
+      "deleteConfirm": "¿Eliminar «{{name}}»? Esta acción no se puede deshacer: se perderán todo su contenido, palabras clave y conexiones.",
+      "deleteSuccess": "Proyecto eliminado",
+      "deleteError": "No se pudo eliminar el proyecto. Inténtalo de nuevo.",
+      "renameSaved": "Proyecto renombrado",
+      "renameError": "No se pudo renombrar el proyecto. Inténtalo de nuevo.",
+      "lastProjectHint": "Necesitas al menos un proyecto: este es el último."
     },
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",
@@ -1796,7 +1811,8 @@
       "competitorUrl": "Sitio web",
       "removeCompetitor": "Eliminar competidor",
       "addCompetitor": "Añadir competidor",
-      "confirm": "Todo listo, continuar"
+      "confirm": "Todo listo, continuar",
+      "understandTitle": "Esto es lo que entiendo"
     },
     "goals": {
       "title": "¿Cuáles son tus objetivos?",
@@ -1856,6 +1872,11 @@
       "instagram": "Planifica una publicación de Instagram",
       "roadmap": "Consulta tu hoja de ruta de SEO",
       "dashboard": "Ir al panel"
+    },
+    "back": "Atrás",
+    "suggest": {
+      "label": "Sugerir con IA",
+      "none": "No hay sugerencias por ahora"
     }
   },
   "personaHome": {

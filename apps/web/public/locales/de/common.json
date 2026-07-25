@@ -950,7 +950,22 @@
       "description": "Was dieses Projekt ist",
       "descriptionPlaceholder": "Ein WordPress-Blog fuer hausgemachte Rezepte",
       "descriptionHint": "Dient dazu, Wettbewerber zu beurteilen und alle Mitarbeiter markentreu zu halten. Sagen Sie, was die Seite ist und fuer wen.",
-      "descriptionUsedBy": "Wird von jedem Mitarbeiter gelesen und unterscheidet einen echten Wettbewerber von einer Seite, die nur fuer dieselben Woerter rankt."
+      "descriptionUsedBy": "Wird von jedem Mitarbeiter gelesen und unterscheidet einen echten Wettbewerber von einer Seite, die nur fuer dieselben Woerter rankt.",
+      "yourProjects": "Ihre Projekte",
+      "yourProjectsHint": "Wechseln, umbenennen oder entfernen Sie von Ihnen verwaltete Workspaces.",
+      "current": "Aktuell",
+      "switchTo": "{{name}} öffnen",
+      "rename": "{{name}} umbenennen",
+      "saveRename": "Namen speichern",
+      "delete": "{{name}} löschen",
+      "deletePermanently": "Endgültig löschen",
+      "deleting": "Wird gelöscht…",
+      "deleteConfirm": "„{{name}}“ löschen? Dies kann nicht rückgängig gemacht werden – alle Inhalte, Keywords und Verbindungen gehen verloren.",
+      "deleteSuccess": "Projekt gelöscht",
+      "deleteError": "Projekt konnte nicht gelöscht werden. Erneut versuchen.",
+      "renameSaved": "Projekt umbenannt",
+      "renameError": "Projekt konnte nicht umbenannt werden. Erneut versuchen.",
+      "lastProjectHint": "Sie brauchen mindestens ein Projekt – dies ist Ihr letztes."
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",
@@ -1796,7 +1811,8 @@
       "competitorUrl": "Website",
       "removeCompetitor": "Wettbewerber entfernen",
       "addCompetitor": "Wettbewerber hinzufügen",
-      "confirm": "Sieht gut aus, weiter"
+      "confirm": "Sieht gut aus, weiter",
+      "understandTitle": "Das habe ich verstanden"
     },
     "goals": {
       "title": "Was sind deine Ziele?",
@@ -1856,6 +1872,11 @@
       "instagram": "Plane einen Instagram-Beitrag",
       "roadmap": "Sieh dir deine SEO-Roadmap an",
       "dashboard": "Zum Dashboard"
+    },
+    "back": "Zurück",
+    "suggest": {
+      "label": "Mit KI vorschlagen",
+      "none": "Derzeit keine Vorschläge"
     }
   },
   "personaHome": {

@@ -950,7 +950,22 @@
       "description": "Ce qu'est ce projet",
       "descriptionPlaceholder": "Un blog WordPress de partage de recettes de cuisine maison",
       "descriptionHint": "Sert a juger les concurrents et a garder chaque employe dans le ton. Dites ce qu'est le site et pour qui.",
-      "descriptionUsedBy": "Lu par chaque employe, et sert a distinguer un vrai concurrent d'un site qui se positionne sur les memes mots."
+      "descriptionUsedBy": "Lu par chaque employe, et sert a distinguer un vrai concurrent d'un site qui se positionne sur les memes mots.",
+      "yourProjects": "Vos projets",
+      "yourProjectsHint": "Changez, renommez ou supprimez les espaces de travail que vous gérez.",
+      "current": "Actuel",
+      "switchTo": "Ouvrir {{name}}",
+      "rename": "Renommer {{name}}",
+      "saveRename": "Enregistrer le nom",
+      "delete": "Supprimer {{name}}",
+      "deletePermanently": "Supprimer définitivement",
+      "deleting": "Suppression…",
+      "deleteConfirm": "Supprimer « {{name}} » ? Cette action est irréversible — tout son contenu, ses mots-clés et ses connexions seront perdus.",
+      "deleteSuccess": "Projet supprimé",
+      "deleteError": "Impossible de supprimer le projet. Réessayez.",
+      "renameSaved": "Projet renommé",
+      "renameError": "Impossible de renommer le projet. Réessayez.",
+      "lastProjectHint": "Vous devez avoir au moins un projet — c'est le dernier."
     },
     "title": "Paramètres",
     "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",
@@ -1796,7 +1811,8 @@
       "competitorUrl": "Site web",
       "removeCompetitor": "Supprimer le concurrent",
       "addCompetitor": "Ajouter un concurrent",
-      "confirm": "Tout est correct, continuer"
+      "confirm": "Tout est correct, continuer",
+      "understandTitle": "Voici ce que j'ai compris"
     },
     "goals": {
       "title": "Quels sont vos objectifs ?",
@@ -1856,6 +1872,11 @@
       "instagram": "Planifiez une publication Instagram",
       "roadmap": "Consultez votre feuille de route SEO",
       "dashboard": "Aller au tableau de bord"
+    },
+    "back": "Retour",
+    "suggest": {
+      "label": "Suggérer avec l'IA",
+      "none": "Aucune suggestion pour le moment"
     }
   },
   "personaHome": {
