@@ -126,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </div>
-      {upgradeInfo && !isTakeover && (
+      {upgradeInfo && (
         <UpgradeModal
           resource={upgradeInfo.resource}
           used={upgradeInfo.used}
