@@ -22,7 +22,7 @@ export function DoneStep({ projectId }: { projectId: string }) {
         {t("onboarding.done.badge")}
       </span>
 
-      <FennecMark className="mx-auto mt-5 h-14 w-14 animate-scale-in dark:brightness-0 dark:invert" />
+      <FennecMark className="mx-auto mt-5 h-20 w-20 max-w-full animate-scale-in dark:brightness-0 dark:invert" />
 
       <h2 className="mt-5 font-display text-3xl font-bold text-foreground">{t("onboarding.done.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.done.subtitle")}</p>
