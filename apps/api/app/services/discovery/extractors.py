@@ -10,12 +10,13 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from app.services.discovery.colors import extract_brand_colors
+
 _SOCIAL_HOSTS = {
     "instagram.com": "instagram", "facebook.com": "facebook", "x.com": "x",
     "twitter.com": "x", "linkedin.com": "linkedin", "youtube.com": "youtube",
     "pinterest.com": "pinterest", "tiktok.com": "tiktok",
 }
-_HEX_RE = re.compile(r"#[0-9a-fA-F]{6}\b")
 _FONT_RE = re.compile(r"font-family\s*:\s*([^;{}]+)", re.I)
 _CMS_HINTS = [("WordPress", "wordpress"), ("Shopify", "shopify"),
               ("Wix", "wix"), ("Squarespace", "squarespace"), ("Webflow", "webflow")]
@@ -49,10 +50,24 @@ def _jsonld_blocks(soup) -> list[dict]:
     return [b for b in out if isinstance(b, dict)]
 
 
+# Generic CSS keywords and system stacks -- never a real brand typeface.
+_GENERIC_FONTS = {
+    "sans-serif", "serif", "monospace", "system-ui", "inherit", "cursive",
+    "fantasy", "ui-sans-serif", "ui-serif", "ui-monospace", "-apple-system",
+    "blinkmacsystemfont", "segoe ui", "helvetica", "helvetica neue", "arial",
+    "roboto", "sans", "initial", "unset", "revert", "var",
+}
+# Icon fonts masquerade as font-family; they are not brand typography.
+_ICON_FONT_HINT = re.compile(r"icon|fontawesome|font awesome|glyphicon|material icons|icomoon|dashicons", re.I)
+
+
 def _clean_fonts(decl: str) -> str | None:
     first = decl.split(",")[0].strip().strip('"').strip("'")
-    generic = {"sans-serif", "serif", "monospace", "system-ui", "inherit", "cursive"}
-    return first if first and first.lower() not in generic else None
+    if not first or first.startswith(("var(", "-")):
+        return None
+    if first.lower() in _GENERIC_FONTS or _ICON_FONT_HINT.search(first):
+        return None
+    return first
 
 
 def extract_from_page(html: str, base_url: str) -> dict:
@@ -113,15 +128,7 @@ def extract_from_page(html: str, base_url: str) -> dict:
     if logo:
         brand["logo_url"] = logo if logo.startswith("http") else urljoin(base_url, logo)
 
-    colors = []
-    meta_theme = soup.find("meta", attrs={"name": "theme-color"})
-    if meta_theme and meta_theme.get("content", "").startswith("#"):
-        colors.append(meta_theme["content"].upper())
-    for m in _HEX_RE.findall(html):
-        u = m.upper()
-        if u not in colors:
-            colors.append(u)
-    brand["colors"] = colors[:6]
+    brand["colors"] = extract_brand_colors(html, soup)
 
     fonts = []
     for decl in _FONT_RE.findall(html):
