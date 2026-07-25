@@ -37,6 +37,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects", "gsc_connections", "api_keys",
     "tracked_keywords", "serp_snapshots", "alerts", "monitor_snapshots",
+    "provider_accounts",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
@@ -130,9 +131,13 @@ async def _single_session(session):
 
 @pytest.mark.asyncio
 async def test_provider_resolution_precedence(db_session, monkeypatch):
+    """Platform-first (Phase 0 platform providers): env/platform account is the
+    default; a tenant DataForSEO key only overrides it once the org has
+    byok_enabled=True. Without BYOK, an org-scoped key is ignored."""
     from app.integrations.seo_apis import get_seo_provider_for_org
     from app.core.security import encrypt_value
     from app.models.api_key import APIKey
+    from app.models.organization import Organization
     # 1. nothing -> None
     monkeypatch.setattr("app.core.config.settings.DATAFORSEO_LOGIN", "", raising=False)
     monkeypatch.setattr("app.core.config.settings.DATAFORSEO_PASSWORD", "", raising=False)
@@ -142,9 +147,14 @@ async def test_provider_resolution_precedence(db_session, monkeypatch):
     monkeypatch.setattr("app.core.config.settings.DATAFORSEO_PASSWORD", "envpass", raising=False)
     p = await get_seo_provider_for_org(FAKE_ORG_ID, db_session)
     assert p is not None and p._auth == ("envuser", "envpass")
-    # 3. org key wins over env
+    # 3. org key present but byok_enabled is off -> env/platform still wins
     db_session.add(APIKey(org_id=FAKE_ORG_ID, provider="dataforseo",
                           encrypted_value=encrypt_value("orguser:orgpass")))
+    await db_session.commit()
+    p = await get_seo_provider_for_org(FAKE_ORG_ID, db_session)
+    assert p._auth == ("envuser", "envpass")
+    # 4. once the org has byok_enabled, its tenant key wins over env
+    db_session.add(Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", byok_enabled=True))
     await db_session.commit()
     p = await get_seo_provider_for_org(FAKE_ORG_ID, db_session)
     assert p._auth == ("orguser", "orgpass")

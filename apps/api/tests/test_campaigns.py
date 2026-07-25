@@ -40,7 +40,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects",
     "articles", "generated_images", "social_posts", "gsc_query_stats", "analytics_snapshots",
-    "campaigns", "campaign_steps", "api_keys", "recommendations",
+    "campaigns", "campaign_steps", "api_keys", "recommendations", "provider_accounts",
 ]
 
 
@@ -106,7 +106,10 @@ async def _single_session(session):
 
 @pytest.fixture
 async def org_and_project(db_session):
-    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+    # byok_enabled=True: these tests seed their own tenant APIKey rows and
+    # expect them to be used by the executors' LLM calls (platform-first
+    # resolution only surfaces tenant keys when the org has opted into BYOK).
+    org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", byok_enabled=True)
     db_session.add(org)
     await db_session.flush()
     project = Project(id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, name="Test Project", domain="example.com")

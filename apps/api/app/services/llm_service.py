@@ -4,18 +4,16 @@ import uuid
 import httpx
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_value
-from app.models.api_key import APIKey
 from app.models.project import Project
 
 
 async def get_org_llm_keys(org_id: uuid.UUID, db: AsyncSession) -> dict[str, str]:
-    """Return {provider: plaintext_key} for every API key stored for the org."""
-    result = await db.execute(select(APIKey).where(APIKey.org_id == org_id))
-    return {k.provider: decrypt_value(k.encrypted_value) for k in result.scalars().all()}
+    """Return {provider: plaintext_key} for LLM calls. Platform accounts/env by
+    default; a tenant's own keys override only when the org has byok_enabled."""
+    from app.services.providers import registry
+    return await registry.get_llm_keys(org_id, db)
 
 
 async def project_locale(project_id, db: AsyncSession) -> str:

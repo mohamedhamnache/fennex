@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     # Frontend base URL (used for OAuth redirects back to the app)
     FRONTEND_URL: str = "http://localhost:3001"
 
+    # Platform-owned LLM provider credentials (reseller accounts)
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
+    # Staff allowed to manage provider accounts. Parsed as a JSON array by
+    # pydantic-settings, e.g. PLATFORM_ADMIN_EMAILS=["a@b.com","c@d.com"]
+    PLATFORM_ADMIN_EMAILS: list[str] = []
+
     @property
     def REDIS_SETTINGS(self) -> Any:
         from arq.connections import RedisSettings

@@ -47,6 +47,7 @@ from app.api.v1.routers import (
     knowledge,
     monitoring,
     onboarding,
+    provider_accounts,
     seo_hub,
     shopify,
     woocommerce,
@@ -107,3 +108,4 @@ api_router.include_router(connectors.router, prefix="/connectors", tags=["connec
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])
 api_router.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
+api_router.include_router(provider_accounts.router, prefix="/admin/provider-accounts", tags=["admin"])

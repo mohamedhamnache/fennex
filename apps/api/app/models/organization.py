@@ -2,7 +2,7 @@ import uuid
 import enum
 from datetime import datetime
 
-from sqlalchemy import String, Enum as SAEnum
+from sqlalchemy import String, Enum as SAEnum, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,6 +32,7 @@ class Organization(Base, TimestampMixin):
     trial_ends_at: Mapped[datetime | None] = mapped_column(nullable=True)
     plan_locked_at: Mapped[datetime | None] = mapped_column(nullable=True)
     agent_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)  # economy | balanced | max
+    byok_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     users: Mapped[list["User"]] = relationship("User", back_populates="organization")
     projects: Mapped[list["Project"]] = relationship("Project", back_populates="organization")

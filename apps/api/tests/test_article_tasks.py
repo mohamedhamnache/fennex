@@ -33,7 +33,9 @@ async def setup_db():
 async def _seed(with_key: bool = True) -> uuid.UUID:
     """Create org, project, article (and optionally an Anthropic key) in the test DB."""
     async with TestSessionLocal() as session:
-        org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org")
+        # byok_enabled mirrors with_key: platform-first resolution only surfaces
+        # this tenant key when the org has opted into BYOK.
+        org = Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", byok_enabled=with_key)
         session.add(org)
         await session.flush()
 
