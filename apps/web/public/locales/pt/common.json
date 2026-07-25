@@ -1732,6 +1732,7 @@
   },
   "onboarding": {
     "title": "Configure seu espaço de trabalho",
+    "exit": "Sair da configuração",
     "rail": {
       "welcome": "Boas-vindas",
       "discover": "Descobrir",
@@ -1744,8 +1745,13 @@
     "welcome": {
       "title": "Vamos criar seu espaço de marketing",
       "subtitle": "Conte-nos sobre o seu negócio e cuidaremos de tudo para você.",
-      "time": "Leva cerca de 2 minutos",
-      "start": "Começar"
+      "time": "3 a 5 minutos",
+      "start": "Começar",
+      "hints": {
+        "articles": "Artigos alinhados à sua marca",
+        "seo": "Insights de SEO e concorrência",
+        "brand": "O DNA da sua marca, capturado"
+      }
     },
     "discovery": {
       "title": "Onde devemos procurar?",
@@ -1755,12 +1761,101 @@
       "analyze": "Analisar",
       "starting": "Iniciando...",
       "hint": "Isso geralmente leva menos de um minuto. Fique à vontade para esperar aqui.",
+      "previewHint": "Estamos montando uma prévia do seu espaço de trabalho.",
+      "stages": {
+        "analyzing": "Analisando o site",
+        "reading": "Lendo páginas",
+        "products": "Entendendo os produtos",
+        "competitors": "Encontrando concorrentes",
+        "brandDna": "Extraindo o DNA da marca",
+        "seo": "Analisando o SEO",
+        "profile": "Criando o perfil"
+      },
       "error": {
         "startFailed": "Não foi possível iniciar a descoberta. Tente novamente.",
         "heading": "Encontramos um problema",
         "retry": "Tentar novamente",
         "continue": "Continuar mesmo assim"
       }
+    },
+    "review": {
+      "title": "Revise o que encontramos",
+      "subtitle": "Confira os detalhes abaixo e corrija o que estiver errado antes de continuarmos.",
+      "business": "Negócio",
+      "name": "Nome",
+      "industry": "Setor",
+      "country": "País",
+      "language": "Idioma",
+      "description": "Descrição",
+      "colors": "Cores da marca",
+      "colorLabel": "Cor {{index}}",
+      "removeColor": "Remover cor",
+      "addColor": "Adicionar cor",
+      "competitors": "Concorrentes",
+      "competitorName": "Nome",
+      "competitorUrl": "Site",
+      "removeCompetitor": "Remover concorrente",
+      "addCompetitor": "Adicionar concorrente",
+      "confirm": "Está tudo certo, continuar"
+    },
+    "goals": {
+      "title": "Quais são seus objetivos?",
+      "goalsLabel": "Selecione seus principais objetivos",
+      "metricsLabel": "Como você vai medir o sucesso?",
+      "next": "Avançar"
+    },
+    "brand": {
+      "title": "O DNA da sua marca",
+      "tone": "Tom",
+      "cta": "Estilo de CTA",
+      "reading": "Nível de leitura",
+      "emoji": "Política de emojis",
+      "mission": "Missão",
+      "voice": "Descrição da voz",
+      "use": "Use estas palavras",
+      "avoid": "Evite estas palavras",
+      "next": "Avançar"
+    },
+    "audience": {
+      "title": "Quem você quer atingir?",
+      "label": "Segmento de público",
+      "profession": "Profissão",
+      "budget": "Orçamento",
+      "add": "Adicionar outro segmento",
+      "remove": "Remover segmento",
+      "next": "Avançar"
+    },
+    "summary": {
+      "title": "Revise seu espaço de trabalho",
+      "subtitle": "É isto que usaremos para configurar tudo. Você ainda pode alterar qualquer detalhe.",
+      "edit": "Editar {{field}}",
+      "business": "Negócio",
+      "goals": "Objetivos",
+      "brand": "Tom da marca",
+      "audience": "Público",
+      "employeesNote": "Você poderá convidar colegas de equipe e ajustar esses detalhes depois, nas configurações do seu espaço de trabalho.",
+      "create": "Criar meu espaço de trabalho"
+    },
+    "provisioning": {
+      "title": "Configurando seu espaço de trabalho",
+      "hint": "Isso costuma levar apenas alguns segundos. Aguarde um instante.",
+      "staged": [
+        "Criando seu espaço de trabalho...",
+        "Aplicando o DNA da sua marca...",
+        "Preparando suas primeiras tarefas..."
+      ],
+      "error": "Não foi possível configurar seu espaço de trabalho. Tente novamente.",
+      "retry": "Tentar novamente"
+    },
+    "done": {
+      "badge": "Tudo pronto",
+      "title": "Seu espaço de trabalho está pronto",
+      "subtitle": "Aqui está um bom lugar para começar.",
+      "article": "Escreva seu primeiro artigo",
+      "competitors": "Confira seus concorrentes",
+      "instagram": "Planeje uma publicação no Instagram",
+      "roadmap": "Veja seu roteiro de SEO",
+      "dashboard": "Ir para o painel"
     }
   },
   "personaHome": {

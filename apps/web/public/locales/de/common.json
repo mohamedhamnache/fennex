@@ -1732,6 +1732,7 @@
   },
   "onboarding": {
     "title": "Richten Sie Ihren Arbeitsbereich ein",
+    "exit": "Einrichtung verlassen",
     "rail": {
       "welcome": "Willkommen",
       "discover": "Entdecken",
@@ -1744,8 +1745,13 @@
     "welcome": {
       "title": "Lass uns deinen Marketing-Arbeitsbereich aufbauen",
       "subtitle": "Erzähl uns von deinem Unternehmen und wir richten alles für dich ein.",
-      "time": "Dauert etwa 2 Minuten",
-      "start": "Loslegen"
+      "time": "3–5 Minuten",
+      "start": "Loslegen",
+      "hints": {
+        "articles": "Markenkonforme Artikel",
+        "seo": "SEO- und Wettbewerbsanalysen",
+        "brand": "Deine Marken-DNA, erfasst"
+      }
     },
     "discovery": {
       "title": "Wo sollen wir nachsehen?",
@@ -1755,12 +1761,101 @@
       "analyze": "Analysieren",
       "starting": "Wird gestartet...",
       "hint": "Das dauert normalerweise weniger als eine Minute. Du kannst hier warten.",
+      "previewHint": "Wir stellen eine Vorschau deines Arbeitsbereichs zusammen.",
+      "stages": {
+        "analyzing": "Website wird analysiert",
+        "reading": "Seiten werden gelesen",
+        "products": "Produkte werden erfasst",
+        "competitors": "Wettbewerber werden gesucht",
+        "brandDna": "Marken-DNA wird extrahiert",
+        "seo": "SEO wird analysiert",
+        "profile": "Profil wird erstellt"
+      },
       "error": {
         "startFailed": "Die Analyse konnte nicht gestartet werden. Bitte versuche es erneut.",
         "heading": "Es ist ein Problem aufgetreten",
         "retry": "Erneut versuchen",
         "continue": "Trotzdem fortfahren"
       }
+    },
+    "review": {
+      "title": "Überprüfe, was wir gefunden haben",
+      "subtitle": "Überprüfe die folgenden Angaben und korrigiere alles, was nicht stimmt, bevor wir fortfahren.",
+      "business": "Unternehmen",
+      "name": "Name",
+      "industry": "Branche",
+      "country": "Land",
+      "language": "Sprache",
+      "description": "Beschreibung",
+      "colors": "Markenfarben",
+      "colorLabel": "Farbe {{index}}",
+      "removeColor": "Farbe entfernen",
+      "addColor": "Farbe hinzufügen",
+      "competitors": "Wettbewerber",
+      "competitorName": "Name",
+      "competitorUrl": "Website",
+      "removeCompetitor": "Wettbewerber entfernen",
+      "addCompetitor": "Wettbewerber hinzufügen",
+      "confirm": "Sieht gut aus, weiter"
+    },
+    "goals": {
+      "title": "Was sind deine Ziele?",
+      "goalsLabel": "Wähle deine wichtigsten Ziele aus",
+      "metricsLabel": "Wie misst du den Erfolg?",
+      "next": "Weiter"
+    },
+    "brand": {
+      "title": "Deine Marken-DNA",
+      "tone": "Tonalität",
+      "cta": "CTA-Stil",
+      "reading": "Lesestufe",
+      "emoji": "Emoji-Richtlinie",
+      "mission": "Mission",
+      "voice": "Sprach-Prompt",
+      "use": "Diese Wörter verwenden",
+      "avoid": "Diese Wörter vermeiden",
+      "next": "Weiter"
+    },
+    "audience": {
+      "title": "Wen sprichst du an?",
+      "label": "Zielgruppensegment",
+      "profession": "Beruf",
+      "budget": "Budget",
+      "add": "Weiteres Segment hinzufügen",
+      "remove": "Segment entfernen",
+      "next": "Weiter"
+    },
+    "summary": {
+      "title": "Überprüfe deinen Arbeitsbereich",
+      "subtitle": "So richten wir alles ein. Du kannst jederzeit noch etwas ändern.",
+      "edit": "{{field}} bearbeiten",
+      "business": "Unternehmen",
+      "goals": "Ziele",
+      "brand": "Markenton",
+      "audience": "Zielgruppe",
+      "employeesNote": "Du kannst später Teammitglieder einladen und diese Angaben in den Arbeitsbereich-Einstellungen anpassen.",
+      "create": "Meinen Arbeitsbereich erstellen"
+    },
+    "provisioning": {
+      "title": "Dein Arbeitsbereich wird eingerichtet",
+      "hint": "Das dauert normalerweise nur wenige Sekunden. Einen Moment noch.",
+      "staged": [
+        "Dein Arbeitsbereich wird erstellt...",
+        "Deine Marken-DNA wird angewendet...",
+        "Deine ersten Aufgaben werden vorbereitet..."
+      ],
+      "error": "Dein Arbeitsbereich konnte nicht eingerichtet werden. Bitte versuche es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "done": {
+      "badge": "Alles bereit",
+      "title": "Dein Arbeitsbereich ist bereit",
+      "subtitle": "Hier ist ein guter Ausgangspunkt.",
+      "article": "Schreibe deinen ersten Artikel",
+      "competitors": "Sieh dir deine Wettbewerber an",
+      "instagram": "Plane einen Instagram-Beitrag",
+      "roadmap": "Sieh dir deine SEO-Roadmap an",
+      "dashboard": "Zum Dashboard"
     }
   },
   "personaHome": {

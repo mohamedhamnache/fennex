@@ -1732,6 +1732,7 @@
   },
   "onboarding": {
     "title": "Configurez votre espace de travail",
+    "exit": "Quitter la configuration",
     "rail": {
       "welcome": "Bienvenue",
       "discover": "Découverte",
@@ -1744,8 +1745,13 @@
     "welcome": {
       "title": "Créons votre espace marketing",
       "subtitle": "Parlez-nous de votre activité et nous préparerons tout pour vous.",
-      "time": "Environ 2 minutes",
-      "start": "Commencer"
+      "time": "3 à 5 minutes",
+      "start": "Commencer",
+      "hints": {
+        "articles": "Des articles à l'image de votre marque",
+        "seo": "Analyses SEO et concurrentielles",
+        "brand": "L'ADN de votre marque, capturé"
+      }
     },
     "discovery": {
       "title": "Où devons-nous regarder ?",
@@ -1755,12 +1761,101 @@
       "analyze": "Analyser",
       "starting": "Démarrage...",
       "hint": "Cela prend généralement moins d'une minute. N'hésitez pas à patienter ici.",
+      "previewHint": "Nous assemblons un aperçu de votre espace de travail.",
+      "stages": {
+        "analyzing": "Analyse du site web",
+        "reading": "Lecture des pages",
+        "products": "Compréhension des produits",
+        "competitors": "Recherche des concurrents",
+        "brandDna": "Extraction de l'ADN de marque",
+        "seo": "Analyse du SEO",
+        "profile": "Création du profil"
+      },
       "error": {
         "startFailed": "Impossible de démarrer la découverte. Veuillez réessayer.",
         "heading": "Nous avons rencontré un problème",
         "retry": "Réessayer",
         "continue": "Continuer quand même"
       }
+    },
+    "review": {
+      "title": "Vérifiez ce que nous avons trouvé",
+      "subtitle": "Vérifiez les détails ci-dessous et corrigez ce qui ne va pas avant de continuer.",
+      "business": "Entreprise",
+      "name": "Nom",
+      "industry": "Secteur d'activité",
+      "country": "Pays",
+      "language": "Langue",
+      "description": "Description",
+      "colors": "Couleurs de la marque",
+      "colorLabel": "Couleur {{index}}",
+      "removeColor": "Supprimer la couleur",
+      "addColor": "Ajouter une couleur",
+      "competitors": "Concurrents",
+      "competitorName": "Nom",
+      "competitorUrl": "Site web",
+      "removeCompetitor": "Supprimer le concurrent",
+      "addCompetitor": "Ajouter un concurrent",
+      "confirm": "Tout est correct, continuer"
+    },
+    "goals": {
+      "title": "Quels sont vos objectifs ?",
+      "goalsLabel": "Sélectionnez vos principaux objectifs",
+      "metricsLabel": "Comment mesurerez-vous le succès ?",
+      "next": "Suivant"
+    },
+    "brand": {
+      "title": "L'ADN de votre marque",
+      "tone": "Ton",
+      "cta": "Style d'appel à l'action",
+      "reading": "Niveau de lecture",
+      "emoji": "Politique sur les emojis",
+      "mission": "Mission",
+      "voice": "Consigne de voix",
+      "use": "Mots à utiliser",
+      "avoid": "Mots à éviter",
+      "next": "Suivant"
+    },
+    "audience": {
+      "title": "Qui ciblez-vous ?",
+      "label": "Segment d'audience",
+      "profession": "Profession",
+      "budget": "Budget",
+      "add": "Ajouter un autre segment",
+      "remove": "Supprimer le segment",
+      "next": "Suivant"
+    },
+    "summary": {
+      "title": "Vérifiez votre espace de travail",
+      "subtitle": "Voici ce que nous utiliserons pour tout configurer. Vous pouvez encore tout modifier.",
+      "edit": "Modifier {{field}}",
+      "business": "Entreprise",
+      "goals": "Objectifs",
+      "brand": "Ton de la marque",
+      "audience": "Audience",
+      "employeesNote": "Vous pourrez inviter des collègues et affiner ces détails plus tard depuis les paramètres de votre espace de travail.",
+      "create": "Créer mon espace de travail"
+    },
+    "provisioning": {
+      "title": "Configuration de votre espace de travail",
+      "hint": "Cela prend généralement quelques secondes. Un instant.",
+      "staged": [
+        "Création de votre espace de travail...",
+        "Application de l'ADN de votre marque...",
+        "Préparation de vos premières tâches..."
+      ],
+      "error": "Impossible de configurer votre espace de travail. Veuillez réessayer.",
+      "retry": "Réessayer"
+    },
+    "done": {
+      "badge": "Tout est prêt",
+      "title": "Votre espace de travail est prêt",
+      "subtitle": "Voici un bon point de départ.",
+      "article": "Rédigez votre premier article",
+      "competitors": "Consultez vos concurrents",
+      "instagram": "Planifiez une publication Instagram",
+      "roadmap": "Consultez votre feuille de route SEO",
+      "dashboard": "Aller au tableau de bord"
     }
   },
   "personaHome": {
