@@ -34,3 +34,4 @@ from app.models.conversation import Conversation, ConversationMessage, PendingAp
 from app.models.connector import Connector  # noqa: F401
 from app.models.saved_document import SavedDocument  # noqa: F401
 from app.models.knowledge import ProjectDocument, ProjectChunk  # noqa: F401
+from app.models.discovery import DiscoveryRun  # noqa: F401
