@@ -1899,6 +1899,15 @@
       "use": "Use these words",
       "avoid": "Avoid these words",
       "next": "Next"
+    },
+    "audience": {
+      "title": "Who are you targeting?",
+      "label": "Audience segment",
+      "profession": "Profession",
+      "budget": "Budget",
+      "add": "Add another segment",
+      "remove": "Remove segment",
+      "next": "Next"
     }
   },
   "integrations": {
