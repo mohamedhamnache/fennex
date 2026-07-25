@@ -85,3 +85,30 @@ async def test_resolve_seo_none_when_unconfigured(monkeypatch):
         oid = await _org(db, byok=False)
         prov = await registry.resolve_seo_provider(oid, db)
     assert prov is None
+
+
+async def test_platform_llm_keys_lowest_priority_wins(monkeypatch):
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "", raising=False)
+    async with Session() as db:
+        db.add(ProviderAccount(kind="llm", provider="openai", label="low",
+                               encrypted_credentials=encrypt_value("low-num-wins"),
+                               priority=50))
+        db.add(ProviderAccount(kind="llm", provider="openai", label="high",
+                               encrypted_credentials=encrypt_value("higher-num-loses"),
+                               priority=90))
+        await db.commit()
+        keys = await registry.platform_llm_keys(db)
+    assert keys["openai"] == "low-num-wins"
+
+
+async def test_resolve_seo_uses_tenant_key_with_byok(monkeypatch):
+    monkeypatch.setattr(settings, "DATAFORSEO_LOGIN", "", raising=False)
+    monkeypatch.setattr(settings, "DATAFORSEO_PASSWORD", "", raising=False)
+    async with Session() as db:
+        oid = await _org(db, byok=True)
+        db.add(APIKey(id=uuid.uuid4(), org_id=oid, provider="dataforseo",
+                      encrypted_value=encrypt_value("t-login:t-pass")))
+        await db.commit()
+        prov = await registry.resolve_seo_provider(oid, db)
+    assert isinstance(prov, DataForSEOProvider)
+    assert prov._auth == ("t-login", "t-pass")
