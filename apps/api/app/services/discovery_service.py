@@ -84,6 +84,9 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
         home = await fetch(url)
         result = extractors.merge_result(result, extractors.extract_from_page(home.get("text_html") or "", url))
         # crawler returns cleaned text under "text"; extractors want raw HTML when present.
+        # The homepage is the authoritative brand palette. Sub-pages merged below
+        # would otherwise pile on widget/section colours, so keep the homepage's.
+        home_colors = list(result["brand"]["colors"])
 
         await _set(run_id, stage="Reading pages", progress=25)
         page_urls = crawl_map.select_urls(url, home, MAX_PAGES)
@@ -96,6 +99,10 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
             result = extractors.merge_result(result, extractors.extract_from_page(page.get("text_html") or "", page_url))
             corpus.append(page.get("text") or "")
             await _set(run_id, stage="Reading pages", progress=min(45, 25 + i * 3))
+
+        # Restore the homepage palette (if any) over the multi-page accumulation.
+        if home_colors:
+            result["brand"]["colors"] = home_colors
 
         await _set(run_id, stage="Understanding products", progress=55)
         text = "\n\n".join(t for t in corpus if t)[:16000]
