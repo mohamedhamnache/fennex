@@ -17,10 +17,14 @@ export function AudienceStep({ result, onChange, onNext }: {
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-foreground">{t("onboarding.audience.title")}</h2>
+      <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.audience.title")}</h2>
       <div className="mt-6 space-y-4">
         {result.audience.map((icp, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-5">
+          <div
+            key={i}
+            className="rounded-xl border border-border bg-card p-5 animate-slide-up"
+            style={{ animationDelay: `${Math.min(i, 5) * 60}ms` }}
+          >
             <div className="flex items-center justify-between">
               <EditableField label={t("onboarding.audience.label")} value={icp.label ?? ""} onChange={(v) => setICP(i, { label: v })} />
               <button onClick={() => remove(i)} className="ml-3 mt-4 text-muted-foreground hover:text-destructive" aria-label={t("onboarding.audience.remove")}>

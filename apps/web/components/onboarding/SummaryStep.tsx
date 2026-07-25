@@ -34,10 +34,10 @@ export function SummaryStep({
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-foreground">{t("onboarding.summary.title")}</h2>
+      <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.summary.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.summary.subtitle")}</p>
 
-      <div className="mt-6 rounded-xl border border-border bg-card px-5">
+      <div className="mt-6 rounded-xl border border-border bg-card px-5 animate-slide-up">
         <Row label={t("onboarding.summary.business")} value={result.business.name ?? ""} step="review" />
         <Row label={t("onboarding.summary.goals")} value={result.goals.join(", ")} step="goals" />
         <Row label={t("onboarding.summary.brand")} value={result.brand.tone ?? ""} step="brand" />

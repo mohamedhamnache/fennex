@@ -14,10 +14,10 @@ export function ReviewStep({ result, onChange, onNext }: {
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-foreground">{t("onboarding.review.title")}</h2>
+      <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.review.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.review.subtitle")}</p>
 
-      <div className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5">
+      <div className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5 animate-slide-up">
         <p className="text-sm font-semibold text-foreground">{t("onboarding.review.business")}</p>
         <div className="grid grid-cols-2 gap-3">
           <EditableField label={t("onboarding.review.name")} value={b.name} onChange={(v) => set({ name: v })} />
@@ -29,7 +29,7 @@ export function ReviewStep({ result, onChange, onNext }: {
       </div>
 
       {result.brand.colors.length > 0 && (
-        <div className="mt-4 rounded-xl border border-border bg-card p-5">
+        <div className="mt-4 rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: "60ms" }}>
           <p className="text-sm font-semibold text-foreground">{t("onboarding.review.colors")}</p>
           <div className="mt-3 flex gap-2">
             {result.brand.colors.map((c) => (
@@ -40,7 +40,7 @@ export function ReviewStep({ result, onChange, onNext }: {
       )}
 
       {result.competitors.length > 0 && (
-        <div className="mt-4 rounded-xl border border-border bg-card p-5">
+        <div className="mt-4 rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: "120ms" }}>
           <p className="text-sm font-semibold text-foreground">{t("onboarding.review.competitors")}</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
             {result.competitors.map((c, i) => <li key={i}>{c.name || c.url}</li>)}

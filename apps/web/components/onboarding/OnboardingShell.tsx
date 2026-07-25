@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
+import { FennecMark } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { patchDiscovery, type DiscoveryResult, type ProjectPersona } from "@/lib/api";
 import { STEP_ORDER, type OnboardingStep } from "./types";
@@ -70,31 +71,52 @@ export function OnboardingShell() {
     // actually scroll (min-h-screen is only a floor, not a box overflow can
     // clip against).
     <div className="flex h-full bg-background">
-      <aside className="hidden w-64 shrink-0 border-r border-border p-6 md:block">
-        <p className="mb-6 text-sm font-semibold text-foreground">{t("onboarding.title")}</p>
+      <aside className="hidden w-64 shrink-0 border-r border-border p-6 md:flex md:flex-col">
+        <div className="mb-8 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl gradient-brand glow-primary">
+            <FennecMark className="h-5 w-5 brightness-0 invert" />
+          </div>
+          <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Fennex</span>
+        </div>
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+          {t("onboarding.title")}
+        </p>
         <ol className="space-y-1">
           {RAIL.map((item, i) => {
             const idx = STEP_ORDER.indexOf(item.step);
             const state = isTerminalStep || idx < activeIndex ? "done" : idx === activeIndex ? "active" : "todo";
+            const isLast = i === RAIL.length - 1;
             return (
-              <li
-                key={item.step}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  state === "active" && "bg-primary/10 text-primary font-medium",
-                  state === "done" && "text-muted-foreground",
-                  state === "todo" && "text-muted-foreground/60",
+              <li key={item.step} className="relative">
+                {!isLast && (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute left-[24px] top-9 h-[calc(100%-8px)] w-px transition-colors",
+                      state === "done" ? "bg-primary/40" : "bg-border",
+                    )}
+                  />
                 )}
-              >
-                <span
+                <div
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                    state === "active" ? "bg-primary text-primary-foreground" : "bg-muted",
+                    "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                    state === "active" && "bg-primary/10 text-primary font-medium",
+                    state === "done" && "text-muted-foreground",
+                    state === "todo" && "text-muted-foreground/60",
                   )}
                 >
-                  {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
-                </span>
-                {t(item.key)}
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
+                      state === "active" && "bg-primary text-primary-foreground",
+                      state === "done" && "bg-primary/15 text-primary",
+                      state === "todo" && "bg-muted",
+                    )}
+                  >
+                    {state === "done" ? <Check className="h-3 w-3" /> : i + 1}
+                  </span>
+                  {t(item.key)}
+                </div>
               </li>
             );
           })}
@@ -102,6 +124,12 @@ export function OnboardingShell() {
       </aside>
 
       <main className="flex-1 overflow-y-auto">
+        <div className="flex items-center gap-2 border-b border-border px-6 py-4 md:hidden">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg gradient-brand glow-primary">
+            <FennecMark className="h-4 w-4 brightness-0 invert" />
+          </div>
+          <span className="font-display text-sm font-bold tracking-tight text-foreground">Fennex</span>
+        </div>
         <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center p-6 animate-fade-in">
           {step === "welcome" && <WelcomeStep onStart={() => setStep("discovery")} />}
           {step === "discovery" && (

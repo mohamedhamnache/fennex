@@ -13,8 +13,8 @@ export function BrandStep({ result, onChange, onNext }: {
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-foreground">{t("onboarding.brand.title")}</h2>
-      <div className="mt-6 rounded-xl border border-border bg-card p-5 space-y-4">
+      <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.brand.title")}</h2>
+      <div className="mt-6 rounded-xl border border-border bg-card p-5 space-y-4 animate-slide-up">
         {brand.colors.length > 0 && (
           <div className="flex gap-2">
             {brand.colors.map((c) => (

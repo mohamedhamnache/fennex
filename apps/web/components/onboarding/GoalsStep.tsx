@@ -49,25 +49,29 @@ export function GoalsStep({
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold text-foreground">
+      <h2 className="font-display text-2xl font-bold text-foreground">
         {t("onboarding.goals.title")}
       </h2>
-      <p className="mt-4 mb-2 text-sm font-medium text-foreground">
-        {t("onboarding.goals.goalsLabel")}
-      </p>
-      <ChipMultiSelect
-        options={GOALS}
-        selected={result.goals}
-        onToggle={(v) => toggle("goals", v)}
-      />
-      <p className="mt-6 mb-2 text-sm font-medium text-foreground">
-        {t("onboarding.goals.metricsLabel")}
-      </p>
-      <ChipMultiSelect
-        options={METRICS}
-        selected={result.success_metrics}
-        onToggle={(v) => toggle("success_metrics", v)}
-      />
+      <div className="mt-6 animate-slide-up">
+        <p className="mb-2 text-sm font-medium text-foreground">
+          {t("onboarding.goals.goalsLabel")}
+        </p>
+        <ChipMultiSelect
+          options={GOALS}
+          selected={result.goals}
+          onToggle={(v) => toggle("goals", v)}
+        />
+      </div>
+      <div className="mt-6 animate-slide-up" style={{ animationDelay: "60ms" }}>
+        <p className="mb-2 text-sm font-medium text-foreground">
+          {t("onboarding.goals.metricsLabel")}
+        </p>
+        <ChipMultiSelect
+          options={METRICS}
+          selected={result.success_metrics}
+          onToggle={(v) => toggle("success_metrics", v)}
+        />
+      </div>
       <button
         onClick={onNext}
         className="btn-primary mt-8 px-6 py-2.5 text-sm"

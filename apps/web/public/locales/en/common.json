@@ -1851,8 +1851,13 @@
     "welcome": {
       "title": "Let's build your marketing workspace",
       "subtitle": "Tell us about your business and we'll set everything up for you.",
-      "time": "Takes about 2 minutes",
-      "start": "Get started"
+      "time": "3-5 minutes",
+      "start": "Get started",
+      "hints": {
+        "articles": "On-brand articles",
+        "seo": "SEO & competitor insights",
+        "brand": "Your brand DNA, captured"
+      }
     },
     "discovery": {
       "title": "Where should we look?",
@@ -1862,6 +1867,16 @@
       "analyze": "Analyze",
       "starting": "Getting started...",
       "hint": "This usually takes under a minute. Feel free to wait here.",
+      "previewHint": "We're piecing together a preview of your workspace.",
+      "stages": {
+        "analyzing": "Analyzing website",
+        "reading": "Reading pages",
+        "products": "Understanding products",
+        "competitors": "Finding competitors",
+        "brandDna": "Extracting Brand DNA",
+        "seo": "Analyzing SEO",
+        "profile": "Building profile"
+      },
       "error": {
         "startFailed": "We couldn't start discovery. Please try again.",
         "heading": "We ran into a problem",
@@ -1923,9 +1938,16 @@
     "provisioning": {
       "title": "Setting up your workspace",
       "hint": "This usually takes a few seconds. Hang tight.",
-      "error": "We couldn't set up your workspace. Please try again."
+      "staged": [
+        "Creating your workspace...",
+        "Applying your brand DNA...",
+        "Preparing your first tasks..."
+      ],
+      "error": "We couldn't set up your workspace. Please try again.",
+      "retry": "Try again"
     },
     "done": {
+      "badge": "All set",
       "title": "Your workspace is ready",
       "subtitle": "Here's a good place to start.",
       "article": "Write your first article",
