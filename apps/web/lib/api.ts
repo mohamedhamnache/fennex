@@ -231,6 +231,10 @@ export async function updateProject(
   return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }
 
+export async function deleteProject(projectId: string): Promise<void> {
+  await apiClient.delete<void>(`/projects/${projectId}`);
+}
+
 // ─── Onboarding discovery ──────────────────────────────────────────────────────
 
 export interface DiscoveryProduct {

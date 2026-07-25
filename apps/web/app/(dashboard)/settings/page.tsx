@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
@@ -14,7 +15,7 @@ import {
   Sun, Moon, Monitor, Search, Brush, Settings as SettingsIcon,
   FileText, Image as ImageIcon, Gauge, Mic2, Sparkles, Star,
   type LucideIcon,
-  ArrowRight,
+  ArrowRight, Pencil, X,
 } from "lucide-react";
 import {
   getMe,
@@ -22,7 +23,7 @@ import {
   listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection,
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
   createCheckoutSession, createPortalSession, getBillingUsage,
-  listProjects, updateProject, type ProjectPersona,
+  listProjects, updateProject, deleteProject, type ProjectPersona,
 } from "@/lib/api";
 import { BrandKitSection } from "@/components/settings/BrandKitSection";
 import { applyPalette, isCustomTheme } from "@/lib/palette";
@@ -1084,9 +1085,11 @@ const PALETTES: { id: string; label: string; color: string }[] = [
 
 function ProjectSection() {
   const { t } = useTranslation();
+  const router = useRouter();
   const qc = useQueryClient();
   const { success, error } = useToast();
   const currentProjectId = useProjectStore((s) => s.currentProjectId);
+  const setCurrentProject = useProjectStore((s) => s.setCurrentProject);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -1095,6 +1098,36 @@ function ProjectSection() {
   });
 
   const [editId, setEditId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateProject(id, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setRenamingId(null);
+      success(t("settings.project.renameSaved"));
+    },
+    onError: () => error(t("settings.project.renameError")),
+  });
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: (id: string) => deleteProject(id),
+    onSuccess: (_data, deletedId) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setConfirmDeleteId(null);
+      success(t("settings.project.deleteSuccess"));
+      if (deletedId === currentProjectId) {
+        const next = projects.find((p) => p.id !== deletedId);
+        if (next) {
+          setCurrentProject(next.id);
+          router.push(`/${next.id}/overview`);
+        }
+      }
+    },
+    onError: () => error(t("settings.project.deleteError")),
+  });
   const active = projects.find((p) => p.id === (editId ?? currentProjectId)) ?? projects[0];
 
   const [form, setForm] = useState({
@@ -1345,6 +1378,129 @@ function ProjectSection() {
             <span className="h-2 w-24 overflow-hidden rounded-full bg-muted"><span className="block h-full w-2/3 rounded-full gradient-brand" /></span>
           </div>
         </div>
+      </Card>
+
+      {/* Your projects — list, rename, delete */}
+      <Card className="p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Globe className="h-3.5 w-3.5" strokeWidth={2} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{t("settings.project.yourProjects")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.project.yourProjectsHint")}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {projects.map((p) => {
+            const isCurrent = p.id === currentProjectId;
+            const isRenaming = renamingId === p.id;
+            const isConfirming = confirmDeleteId === p.id;
+            const onlyProject = projects.length <= 1;
+            const isDeletingThis = deleteProjectMutation.isPending && deleteProjectMutation.variables === p.id;
+
+            return (
+              <div key={p.id} className="rounded-xl border border-border px-3.5 py-3">
+                {isConfirming ? (
+                  <div className="flex flex-col gap-2.5">
+                    <p className="text-xs font-medium text-destructive">
+                      {t("settings.project.deleteConfirm", { name: p.name })}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => deleteProjectMutation.mutate(p.id)}
+                        disabled={deleteProjectMutation.isPending}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-destructive/90 disabled:opacity-60"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        {isDeletingThis ? t("settings.project.deleting") : t("settings.project.deletePermanently")}
+                      </button>
+                      <GhostBtn onClick={() => setConfirmDeleteId(null)} disabled={deleteProjectMutation.isPending}>
+                        {t("common.cancel")}
+                      </GhostBtn>
+                    </div>
+                  </div>
+                ) : isRenaming ? (
+                  <div className="flex items-center gap-2">
+                    <Input value={renameValue} onChange={setRenameValue} className="flex-1" />
+                    <button
+                      type="button"
+                      onClick={() => renameValue.trim() && renameMutation.mutate({ id: p.id, name: renameValue.trim() })}
+                      disabled={!renameValue.trim() || renameMutation.isPending}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-success transition-colors hover:bg-success/10 disabled:opacity-40"
+                      aria-label={t("settings.project.saveRename")}
+                      title={t("settings.project.saveRename")}
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRenamingId(null)}
+                      disabled={renameMutation.isPending}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+                      aria-label={t("common.cancel")}
+                      title={t("common.cancel")}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
+                        {isCurrent && (
+                          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            {t("settings.project.current")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">{p.domain || "—"}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {!isCurrent && (
+                        <button
+                          type="button"
+                          onClick={() => { setCurrentProject(p.id); router.push(`/${p.id}/overview`); }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          aria-label={t("settings.project.switchTo", { name: p.name })}
+                          title={t("settings.project.switchTo", { name: p.name })}
+                        >
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setRenamingId(p.id); setRenameValue(p.name); }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        aria-label={t("settings.project.rename", { name: p.name })}
+                        title={t("settings.project.rename", { name: p.name })}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(p.id)}
+                        disabled={onlyProject}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                        aria-label={t("settings.project.delete", { name: p.name })}
+                        title={onlyProject ? t("settings.project.lastProjectHint") : t("settings.project.delete", { name: p.name })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {projects.length <= 1 && (
+          <p className="mt-3 text-xs text-muted-foreground/70">{t("settings.project.lastProjectHint")}</p>
+        )}
       </Card>
     </div>
   );
