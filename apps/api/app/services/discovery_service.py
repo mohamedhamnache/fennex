@@ -57,28 +57,29 @@ async def _set(run_id: uuid.UUID, *, stage=None, progress=None, status=None,
 
 async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
     fetch = fetch or _default_fetch
-    async with async_session_factory() as db:
-        run = await db.get(DiscoveryRun, run_id)
-        if run is None:
-            return
-        org_id, url, description = run.org_id, run.input_url, run.input_description
-        provider, model, api_key = await _org_model(org_id, db)
-
+    # Built up incrementally so that whatever has been gathered by the time a
+    # stage fails is still what gets persisted in the except branch below.
     result = extractors.empty_result()
-
-    # No-website path: synthesise from the typed description alone.
-    if not url:
-        await _set(run_id, status="running", stage="Building profile", progress=40)
-        result["business"]["description"] = description
-        if api_key:
-            result = await synthesis.synthesise(description or "", result,
-                                                 provider=provider, model=model,
-                                                 api_key=api_key, locale="en")
-        await _set(run_id, status="done", stage="Done", progress=100, result=result)
-        return
-
-    result["business"]["domain"] = url
     try:
+        async with async_session_factory() as db:
+            run = await db.get(DiscoveryRun, run_id)
+            if run is None:
+                return
+            org_id, url, description = run.org_id, run.input_url, run.input_description
+            provider, model, api_key = await _org_model(org_id, db)
+
+        # No-website path: synthesise from the typed description alone.
+        if not url:
+            await _set(run_id, status="running", stage="Building profile", progress=40)
+            result["business"]["description"] = description
+            if api_key:
+                result = await synthesis.synthesise(description or "", result,
+                                                     provider=provider, model=model,
+                                                     api_key=api_key, locale="en")
+            await _set(run_id, status="done", stage="Done", progress=100, result=result)
+            return
+
+        result["business"]["domain"] = url
         await _set(run_id, status="running", stage="Analyzing website", progress=8)
         home = await fetch(url)
         result = extractors.merge_result(result, extractors.extract_from_page(home.get("text_html") or "", url))
@@ -119,5 +120,11 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
         await _set(run_id, status="done", stage="Done", progress=100, result=result)
     except Exception as exc:  # noqa: BLE001
         logger.exception("discovery pipeline error")
-        await _set(run_id, status="done", stage="Done", progress=100,
-                   result=result, error=str(exc)[:400])
+        try:
+            await _set(run_id, status="done", stage="Done", progress=100,
+                       result=result, error=str(exc)[:400])
+        except Exception:
+            # Best-effort: if even the terminal write fails (e.g. DB outage),
+            # there is nothing further we can do without raising out of the
+            # pipeline and leaving the row stuck mid-flight.
+            logger.exception("discovery pipeline failed to write terminal error state")
