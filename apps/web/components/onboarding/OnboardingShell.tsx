@@ -72,10 +72,8 @@ export function OnboardingShell() {
     // clip against).
     <div className="flex h-full bg-background">
       <aside className="hidden w-64 shrink-0 border-r border-border p-6 md:flex md:flex-col">
-        <div className="mb-8 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl gradient-brand glow-primary">
-            <FennecMark className="h-5 w-5 brightness-0 invert" />
-          </div>
+        <div className="mb-8 flex items-center gap-2">
+          <FennecMark className="h-7 w-7 shrink-0 dark:brightness-0 dark:invert" />
           <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Fennex</span>
         </div>
         <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
@@ -125,9 +123,7 @@ export function OnboardingShell() {
 
       <main className="flex-1 overflow-y-auto">
         <div className="flex items-center gap-2 border-b border-border px-6 py-4 md:hidden">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg gradient-brand glow-primary">
-            <FennecMark className="h-4 w-4 brightness-0 invert" />
-          </div>
+          <FennecMark className="h-6 w-6 shrink-0 dark:brightness-0 dark:invert" />
           <span className="font-display text-sm font-bold tracking-tight text-foreground">Fennex</span>
         </div>
         <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-center p-6 animate-fade-in">

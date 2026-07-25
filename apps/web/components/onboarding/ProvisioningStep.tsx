@@ -78,13 +78,11 @@ export function ProvisioningStep({
         <>
           <div className="relative mx-auto flex h-14 w-14 items-center justify-center">
             <span
-              className="absolute -inset-1.5 rounded-2xl border-2 border-transparent border-t-primary animate-spin"
+              className="absolute -inset-1.5 rounded-full border-2 border-transparent border-t-primary animate-spin"
               style={{ animationDuration: "1.4s" }}
               aria-hidden
             />
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary">
-              <FennecMark className="h-8 w-8 brightness-0 invert" />
-            </div>
+            <FennecMark className="h-8 w-8 dark:brightness-0 dark:invert" />
           </div>
           <p className="mt-5 text-sm font-medium text-foreground">{t("onboarding.provisioning.title")}</p>
           <p className="mt-1 text-xs text-muted-foreground transition-opacity duration-300">

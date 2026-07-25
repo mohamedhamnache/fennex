@@ -14,9 +14,7 @@ export function WelcomeStep({ onStart }: { onStart: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="text-center animate-fade-in">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl gradient-brand glow-primary animate-scale-in">
-        <FennecMark className="h-8 w-8 brightness-0 invert" />
-      </div>
+      <FennecMark className="mx-auto h-12 w-12 animate-scale-in dark:brightness-0 dark:invert" />
 
       <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-foreground">
         {t("onboarding.welcome.title")}

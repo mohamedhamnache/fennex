@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Check, FileText, Search, Sparkles, TrendingUp } from "lucide-react";
+import { FennecMark } from "@fennex/ui";
 
 export function DoneStep({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
@@ -17,12 +18,11 @@ export function DoneStep({ projectId }: { projectId: string }) {
   return (
     <div className="animate-fade-in text-center">
       <span className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
         {t("onboarding.done.badge")}
       </span>
 
-      <div className="mx-auto mt-5 flex h-16 w-16 items-center justify-center rounded-2xl gradient-brand glow-primary animate-scale-in">
-        <Check className="h-9 w-9 text-primary-foreground" strokeWidth={2.5} />
-      </div>
+      <FennecMark className="mx-auto mt-5 h-14 w-14 animate-scale-in dark:brightness-0 dark:invert" />
 
       <h2 className="mt-5 font-display text-3xl font-bold text-foreground">{t("onboarding.done.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.done.subtitle")}</p>
