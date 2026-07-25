@@ -12,11 +12,16 @@ import { getBillingUsage, isAuthenticated, ApiError, listProjects } from "@/lib/
 import { useUsageStore } from "@/lib/billing-store";
 import { useProjectStore } from "@/lib/store";
 import { applyPalette } from "@/lib/palette";
+import { cn } from "@/lib/cn";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isFullScreen = /\/images\/edit\//.test(pathname ?? "");
+  // Full takeover routes (e.g. onboarding) render without the dashboard
+  // chrome entirely -- unlike isFullScreen above, which only changes the
+  // <main> wrapper's padding/overflow while Sidebar and TopBar stay mounted.
+  const isTakeover = /^\/onboarding/.test(pathname ?? "");
 
   // Per-project accent palette. Prefer the project in the route; on routes with
   // no project (e.g. /settings) fall back to the last-active project so the
@@ -107,10 +112,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           />
         )}
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
+          {!isTakeover && <Sidebar />}
           <div className="flex flex-1 flex-col overflow-hidden">
-            <TopBar />
-            <main className={isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-6 lg:p-8 xl:px-10"}>{children}</main>
+            {!isTakeover && <TopBar />}
+            <main
+              className={cn(
+                "flex-1",
+                isFullScreen || isTakeover ? "overflow-hidden" : "overflow-y-auto p-6 lg:p-8 xl:px-10",
+              )}
+            >
+              {children}
+            </main>
           </div>
         </div>
       </div>

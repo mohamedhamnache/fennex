@@ -34,6 +34,12 @@ export function OnboardingShell() {
   const [result, setResult] = useState<DiscoveryResult | null>(null);
 
   const activeIndex = STEP_ORDER.indexOf(step);
+  // "provisioning" and "done" are terminal states reached after "summary" and
+  // are not in STEP_ORDER, so activeIndex is -1 for them. Without this flag
+  // every rail item's idx (>= 0) would be neither `< -1` nor `=== -1`, and the
+  // whole rail would render as "todo" right when the user finishes the flow.
+  // Terminal steps show the rail fully completed instead.
+  const isTerminalStep = activeIndex === -1;
 
   const currentRailItem = RAIL.find((item) => item.step === step);
   const placeholderLabel = currentRailItem
@@ -47,7 +53,7 @@ export function OnboardingShell() {
         <ol className="space-y-1">
           {RAIL.map((item, i) => {
             const idx = STEP_ORDER.indexOf(item.step);
-            const state = idx < activeIndex ? "done" : idx === activeIndex ? "active" : "todo";
+            const state = isTerminalStep || idx < activeIndex ? "done" : idx === activeIndex ? "active" : "todo";
             return (
               <li
                 key={item.step}
