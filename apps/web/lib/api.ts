@@ -298,6 +298,19 @@ export async function provisionWorkspace(runId: string, persona?: ProjectPersona
   return apiClient.post<{ project_id: string }>("/onboarding/provision", { run_id: runId, persona });
 }
 
+export type SuggestField = "audience" | "goals" | "competitors";
+
+/** AI-suggest additional items for a discovery field from the analysed business.
+ * Returns [] when the org has no LLM key or the model call fails. Callers cast
+ * the result to the field's item type (ICP[] / string[] / competitor[]). */
+export async function suggestOnboarding(runId: string, field: SuggestField): Promise<unknown[]> {
+  const res = await apiClient.post<{ suggestions: unknown[] }>("/onboarding/suggest", {
+    run_id: runId,
+    field,
+  });
+  return res.suggestions ?? [];
+}
+
 export async function triggerCrawl(
   projectId: string,
   url: string,

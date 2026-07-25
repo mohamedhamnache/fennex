@@ -1,17 +1,35 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Sparkles } from "lucide-react";
 import type { DiscoveryCompetitor, DiscoveryResult } from "@/lib/api";
 import { EditableField } from "./EditableField";
+import { SuggestButton } from "./SuggestButton";
 
-export function ReviewStep({ result, onChange, onNext }: {
-  result: DiscoveryResult; onChange: (r: DiscoveryResult) => void; onNext: () => void;
+export function ReviewStep({ result, onChange, onNext, runId }: {
+  result: DiscoveryResult; onChange: (r: DiscoveryResult) => void; onNext: () => void; runId: string | null;
 }) {
   const { t } = useTranslation();
   const b = result.business;
   const set = (patch: Partial<DiscoveryResult["business"]>) =>
     onChange({ ...result, business: { ...b, ...patch } });
+
+  // The "it understands me" moment: a warm, specific read-back of what Fennex
+  // learned, built from the discovered profile. Only shown once we have enough
+  // to say something real.
+  const understanding = b.description?.trim()
+    || [b.name, b.industry].filter(Boolean).join(" — ") || "";
+
+  const appendCompetitors = (items: DiscoveryCompetitor[]) => {
+    const seen = new Set(
+      result.competitors.map((c) => (c.name || c.url || "").trim().toLowerCase()),
+    );
+    const fresh = items.filter((c) => {
+      const id = (c.name || c.url || "").trim().toLowerCase();
+      return id && !seen.has(id);
+    });
+    if (fresh.length) onChange({ ...result, competitors: [...result.competitors, ...fresh] });
+  };
 
   const setColor = (i: number, v: string) => {
     const colors = result.brand.colors.map((c, idx) => (idx === i ? v : c));
@@ -37,6 +55,18 @@ export function ReviewStep({ result, onChange, onNext }: {
     <div className="animate-fade-in">
       <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.review.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.review.subtitle")}</p>
+
+      {understanding && (
+        <div className="mt-5 flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 animate-slide-up">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              {t("onboarding.review.understandTitle")}
+            </p>
+            <p className="mt-1 text-sm text-foreground">{understanding}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5 animate-slide-up">
         <p className="text-sm font-semibold text-foreground">{t("onboarding.review.business")}</p>
@@ -84,7 +114,10 @@ export function ReviewStep({ result, onChange, onNext }: {
       </div>
 
       <div className="mt-4 rounded-xl border border-border bg-card p-5 animate-slide-up" style={{ animationDelay: "120ms" }}>
-        <p className="text-sm font-semibold text-foreground">{t("onboarding.review.competitors")}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground">{t("onboarding.review.competitors")}</p>
+          <SuggestButton<DiscoveryCompetitor> runId={runId} field="competitors" onSuggest={appendCompetitors} />
+        </div>
         <div className="mt-3 space-y-3">
           {result.competitors.map((c, i) => (
             <div key={i} className="flex items-start gap-2 rounded-lg border border-border bg-background p-3">

@@ -196,16 +196,16 @@ export function OnboardingShell() {
             />
           )}
           {step === "review" && result && (
-            <ReviewStep result={result} onChange={setResult} onNext={() => setStep("goals")} />
+            <ReviewStep result={result} onChange={setResult} onNext={() => setStep("goals")} runId={runId} />
           )}
           {step === "goals" && result && (
-            <GoalsStep result={result} onChange={setResult} onNext={() => setStep("brand")} />
+            <GoalsStep result={result} onChange={setResult} onNext={() => setStep("brand")} runId={runId} />
           )}
           {step === "brand" && result && (
             <BrandStep result={result} onChange={setResult} onNext={() => setStep("audience")} />
           )}
           {step === "audience" && result && (
-            <AudienceStep result={result} onChange={setResult} onNext={() => setStep("summary")} />
+            <AudienceStep result={result} onChange={setResult} onNext={() => setStep("summary")} runId={runId} />
           )}
           {step === "summary" && result && (
             <SummaryStep result={result} onEdit={setStep} onCreate={() => setStep("provisioning")} />

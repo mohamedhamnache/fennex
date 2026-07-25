@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 import type { DiscoveryResult, DiscoveryICP } from "@/lib/api";
 import { EditableField } from "./EditableField";
+import { SuggestButton } from "./SuggestButton";
 
-export function AudienceStep({ result, onChange, onNext }: {
-  result: DiscoveryResult; onChange: (r: DiscoveryResult) => void; onNext: () => void;
+export function AudienceStep({ result, onChange, onNext, runId }: {
+  result: DiscoveryResult; onChange: (r: DiscoveryResult) => void; onNext: () => void; runId: string | null;
 }) {
   const { t } = useTranslation();
   const setICP = (i: number, patch: Partial<DiscoveryICP>) => {
@@ -14,10 +15,18 @@ export function AudienceStep({ result, onChange, onNext }: {
   };
   const add = () => onChange({ ...result, audience: [...result.audience, { label: "" }] });
   const remove = (i: number) => onChange({ ...result, audience: result.audience.filter((_, idx) => idx !== i) });
+  const appendSuggestions = (items: DiscoveryICP[]) => {
+    const existing = new Set(result.audience.map((a) => (a.label ?? "").trim().toLowerCase()));
+    const fresh = items.filter((a) => a.label && !existing.has(a.label.trim().toLowerCase()));
+    if (fresh.length) onChange({ ...result, audience: [...result.audience, ...fresh] });
+  };
 
   return (
     <div className="animate-fade-in">
-      <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.audience.title")}</h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="font-display text-2xl font-bold text-foreground">{t("onboarding.audience.title")}</h2>
+        <SuggestButton<DiscoveryICP> runId={runId} field="audience" onSuggest={appendSuggestions} />
+      </div>
       <div className="mt-6 space-y-4">
         {result.audience.map((icp, i) => (
           <div

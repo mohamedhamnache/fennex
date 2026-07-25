@@ -1919,7 +1919,8 @@
       "competitorUrl": "Website",
       "removeCompetitor": "Remove competitor",
       "addCompetitor": "Add competitor",
-      "confirm": "Looks good, continue"
+      "confirm": "Looks good, continue",
+      "understandTitle": "Here's what I understand"
     },
     "goals": {
       "title": "What are your goals?",
@@ -1979,6 +1980,10 @@
       "instagram": "Plan an Instagram post",
       "roadmap": "See your SEO roadmap",
       "dashboard": "Go to dashboard"
+    },
+    "suggest": {
+      "label": "Suggest with AI",
+      "none": "No suggestions right now"
     }
   },
   "integrations": {
