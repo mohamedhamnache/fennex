@@ -42,11 +42,14 @@ class OrgOut(BaseModel):
     name: str
     plan_tier: str
     agent_tier: str
+    premium_models_enabled: bool
+    premium_available: bool
 
 
 class OrgUpdate(BaseModel):
     name: str | None = None
     agent_tier: str | None = None
+    premium_models_enabled: bool | None = None
 
 
 _AGENT_TIERS = {"economy", "balanced", "max"}
@@ -57,10 +60,20 @@ async def create_organization():
     return {"message": "Not implemented yet"}
 
 
+def _plan_allows_premium(org) -> bool:
+    """Whether the plan could reach premium if the flag were on -- lets the UI
+    explain why the toggle is disabled instead of just hiding it."""
+    from app.core.entitlements import max_band
+    from types import SimpleNamespace
+    return max_band(SimpleNamespace(plan_tier=org.plan_tier, premium_models_enabled=True)) == "premium"
+
+
 def _org_out(org) -> "OrgOut":
     return OrgOut(id=str(org.id), slug=org.slug, name=org.name,
                   plan_tier=org.plan_tier.value if hasattr(org.plan_tier, "value") else str(org.plan_tier),
-                  agent_tier=org.agent_tier or "balanced")
+                  agent_tier=org.agent_tier or "balanced",
+                  premium_models_enabled=bool(org.premium_models_enabled),
+                  premium_available=_plan_allows_premium(org))
 
 
 @router.get("/{org_id}", response_model=OrgOut)
@@ -86,6 +99,11 @@ async def update_organization(org_id: uuid.UUID, body: OrgUpdate, current_user: 
         if body.agent_tier not in _AGENT_TIERS:
             raise HTTPException(status_code=422, detail="agent_tier must be economy, balanced or max")
         org.agent_tier = body.agent_tier
+    if body.premium_models_enabled is not None:
+        if body.premium_models_enabled and not _plan_allows_premium(org):
+            raise HTTPException(status_code=403,
+                                detail="Premium models require the Pro plan or above")
+        org.premium_models_enabled = body.premium_models_enabled
     await db.commit()
     await db.refresh(org)
     return _org_out(org)

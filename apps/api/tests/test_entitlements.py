@@ -1,0 +1,52 @@
+from types import SimpleNamespace
+
+from app.core import entitlements
+from app.models.organization import PlanTier
+
+
+def _org(plan, flag=False):
+    return SimpleNamespace(plan_tier=plan, premium_models_enabled=flag)
+
+
+def test_premium_requires_both_plan_and_flag():
+    assert entitlements.max_band(_org(PlanTier.PRO, True)) == "premium"
+    assert entitlements.max_band(_org(PlanTier.PRO, False)) == "standard"
+    assert entitlements.max_band(_org(PlanTier.STARTER, True)) == "standard"
+
+
+def test_free_and_starter_never_reach_premium():
+    for plan in (PlanTier.FREE, PlanTier.STARTER):
+        assert entitlements.max_band(_org(plan, True)) == "standard"
+
+
+def test_agency_and_enterprise_may_reach_premium():
+    for plan in (PlanTier.AGENCY, PlanTier.ENTERPRISE):
+        assert entitlements.max_band(_org(plan, True)) == "premium"
+
+
+def test_plan_tier_accepts_a_plain_string():
+    """plan_tier is an enum on the model but a string in some payloads."""
+    assert entitlements.max_band(SimpleNamespace(plan_tier="pro", premium_models_enabled=True)) == "premium"
+
+
+def test_cap_band_clamps_down_and_never_up():
+    starter = _org(PlanTier.STARTER, True)
+    assert entitlements.cap_band("premium", starter) == "standard"
+    assert entitlements.cap_band("cheap", starter) == "cheap"
+    pro = _org(PlanTier.PRO, True)
+    assert entitlements.cap_band("premium", pro) == "premium"
+
+
+def test_missing_org_caps_at_standard():
+    assert entitlements.max_band(None) == "standard"
+    assert entitlements.cap_band("premium", None) == "standard"
+
+
+from app.api.v1.routers.organizations import _plan_allows_premium
+
+
+def test_plan_allows_premium_matches_the_entitlement_rule():
+    assert _plan_allows_premium(_org(PlanTier.PRO)) is True
+    assert _plan_allows_premium(_org(PlanTier.AGENCY)) is True
+    assert _plan_allows_premium(_org(PlanTier.STARTER)) is False
+    assert _plan_allows_premium(_org(PlanTier.FREE)) is False
