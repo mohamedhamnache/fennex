@@ -1,5 +1,6 @@
 """LLM provider dispatch: decrypt org keys, call Anthropic/OpenAI/Google."""
 import uuid
+from dataclasses import dataclass
 
 import httpx
 from anthropic import AsyncAnthropic
@@ -7,6 +8,15 @@ from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
+
+
+@dataclass
+class LLMUsage:
+    provider: str
+    model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
 
 
 async def get_org_llm_keys(org_id: uuid.UUID, db: AsyncSession) -> dict[str, str]:
@@ -77,14 +87,9 @@ async def call_llm(
     ``locale`` is the project's language code; when non-English a directive is
     appended to the system prompt so the agent answers in that language.
     """
-    system_prompt = system_prompt + language_directive(locale)
-    if provider == "anthropic":
-        return await _call_anthropic(model, api_key, system_prompt, user_prompt, max_tokens)
-    if provider == "openai":
-        return await _call_openai(model, api_key, system_prompt, user_prompt, max_tokens)
-    if provider == "google":
-        return await _call_google(model, api_key, system_prompt, user_prompt)
-    raise ValueError(f"Unknown provider: {provider}")
+    text, _ = await call_llm_usage(provider, model, api_key, system_prompt,
+                                    user_prompt, locale=locale, max_tokens=max_tokens)
+    return text
 
 
 async def _call_anthropic(
@@ -98,6 +103,57 @@ async def _call_anthropic(
         messages=[{"role": "user", "content": user_prompt}],
     )
     return message.content[0].text
+
+
+async def _openai_usage(model, api_key, system_prompt, user_prompt, max_tokens):
+    client = AsyncOpenAI(api_key=api_key)
+    resp = await client.chat.completions.create(
+        model=model,
+        messages=[{"role": "system", "content": system_prompt},
+                  {"role": "user", "content": user_prompt}],
+        max_tokens=max_tokens,
+    )
+    u = getattr(resp, "usage", None)
+    cached = 0
+    details = getattr(u, "prompt_tokens_details", None) if u else None
+    if details is not None:
+        cached = getattr(details, "cached_tokens", 0) or 0
+    usage = LLMUsage("openai", model,
+                     input_tokens=getattr(u, "prompt_tokens", 0) or 0,
+                     output_tokens=getattr(u, "completion_tokens", 0) or 0,
+                     cache_read_tokens=cached)
+    return resp.choices[0].message.content, usage
+
+
+async def _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens):
+    client = AsyncAnthropic(api_key=api_key)
+    message = await client.messages.create(
+        model=model, max_tokens=max_tokens, system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    u = getattr(message, "usage", None)
+    usage = LLMUsage("anthropic", model,
+                     input_tokens=getattr(u, "input_tokens", 0) or 0,
+                     output_tokens=getattr(u, "output_tokens", 0) or 0,
+                     cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0)
+    return message.content[0].text, usage
+
+
+async def call_llm_usage(
+    provider: str, model: str, api_key: str, system_prompt: str, user_prompt: str,
+    locale: str | None = "en", max_tokens: int = DEFAULT_MAX_TOKENS,
+) -> tuple[str, "LLMUsage"]:
+    """Like call_llm but also returns an LLMUsage (token counts). google has no
+    reliable token usage in the current call shape -> zeros."""
+    system_prompt = system_prompt + language_directive(locale)
+    if provider == "anthropic":
+        return await _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens)
+    if provider == "openai":
+        return await _openai_usage(model, api_key, system_prompt, user_prompt, max_tokens)
+    if provider == "google":
+        text = await _call_google(model, api_key, system_prompt, user_prompt)
+        return text, LLMUsage("google", model)
+    raise ValueError(f"Unknown provider: {provider}")
 
 
 async def stream_llm(
