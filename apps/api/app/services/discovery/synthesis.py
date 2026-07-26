@@ -77,7 +77,8 @@ def parse_synthesis(raw: str) -> dict:
 
 
 async def synthesise(text: str, partial: dict, *, provider: str, model: str,
-                     api_key: str, locale: str = "en") -> dict:
+                     api_key: str, locale: str = "en",
+                     meter: dict | None = None) -> dict:
     if not text.strip():
         return partial
     try:
@@ -90,7 +91,8 @@ async def synthesise(text: str, partial: dict, *, provider: str, model: str,
         # keywords) in a non-English language routinely overran a 2000-token cap,
         # truncating the JSON mid-object so it failed to parse and silently
         # dropped every interpretive field.
-        raw = await call_llm(provider, model, api_key, sysp, userp, locale=locale, max_tokens=4000)
+        raw = await call_llm(provider, model, api_key, sysp, userp, locale=locale,
+                             max_tokens=4000, meter=meter)
     except Exception:
         logger.exception("discovery synthesis LLM call failed")
         return partial

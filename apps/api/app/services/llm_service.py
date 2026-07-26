@@ -1,4 +1,5 @@
 """LLM provider dispatch: decrypt org keys, call Anthropic/OpenAI/Google."""
+import logging
 import uuid
 from dataclasses import dataclass
 
@@ -8,6 +9,8 @@ from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -81,14 +84,26 @@ async def call_llm(
     user_prompt: str,
     locale: str | None = "en",
     max_tokens: int = DEFAULT_MAX_TOKENS,
+    meter: dict | None = None,
 ) -> str:
     """Call the named provider and return the raw text response.
 
     ``locale`` is the project's language code; when non-English a directive is
     appended to the system prompt so the agent answers in that language.
+
+    When `meter` is given ({'db','org_id','project_id','feature'}), record
+    token usage/cost after the call. Metering failures never break the call.
     """
-    text, _ = await call_llm_usage(provider, model, api_key, system_prompt,
-                                    user_prompt, locale=locale, max_tokens=max_tokens)
+    text, usage = await call_llm_usage(provider, model, api_key, system_prompt,
+                                       user_prompt, locale=locale, max_tokens=max_tokens)
+    if meter is not None:
+        try:
+            from app.services.metering import meter as _m
+            await _m.record_llm(meter["db"], org_id=meter["org_id"],
+                                project_id=meter.get("project_id"), usage=usage,
+                                feature=meter.get("feature"))
+        except Exception:
+            logger.exception("usage metering failed (non-fatal)")
     return text
 
 

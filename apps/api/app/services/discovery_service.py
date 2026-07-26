@@ -73,9 +73,12 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
             await _set(run_id, status="running", stage="Building profile", progress=40)
             result["business"]["description"] = description
             if api_key:
-                result = await synthesis.synthesise(description or "", result,
-                                                     provider=provider, model=model,
-                                                     api_key=api_key, locale="en")
+                async with async_session_factory() as mdb:
+                    result = await synthesis.synthesise(
+                        description or "", result, provider=provider, model=model,
+                        api_key=api_key, locale="en",
+                        meter={"db": mdb, "org_id": org_id, "project_id": None,
+                              "feature": "discovery"})
             await _set(run_id, status="done", stage="Done", progress=100, result=result)
             return
 
@@ -111,8 +114,12 @@ async def run_discovery_pipeline(run_id: uuid.UUID, fetch=None) -> None:
             # description, mission, audience, keywords etc. match the business's
             # language rather than defaulting to English.
             locale = (result.get("business", {}).get("language")) or "en"
-            result = await synthesis.synthesise(text, result, provider=provider,
-                                                 model=model, api_key=api_key, locale=locale)
+            async with async_session_factory() as mdb:
+                result = await synthesis.synthesise(
+                    text, result, provider=provider, model=model, api_key=api_key,
+                    locale=locale,
+                    meter={"db": mdb, "org_id": org_id, "project_id": None,
+                          "feature": "discovery"})
 
         await _set(run_id, stage="Finding competitors", progress=75)
         # Real competitors = sites that rank for the same seed keywords. When a
