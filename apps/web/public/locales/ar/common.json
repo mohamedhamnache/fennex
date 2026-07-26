@@ -832,7 +832,8 @@
       "upgrade": "الترقية ←",
       "premiumModels": "النماذج المتقدمة",
       "premiumModelsHint": "السماح بأقوى النماذج للتحرير النهائي. تكلفة أعلى لكل عملية إنشاء.",
-      "premiumModelsLocked": "متاح في خطة Pro وما فوق"
+      "premiumModelsLocked": "متاح في خطة Pro وما فوق",
+      "premiumModelsError": "تعذّر التحديث. حاول مرة أخرى."
     },
     "aiKeys": {
       "title": "مفاتيح الذكاء الاصطناعي",

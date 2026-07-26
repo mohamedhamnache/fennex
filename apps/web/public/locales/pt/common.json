@@ -832,7 +832,8 @@
       "upgrade": "Melhorar →",
       "premiumModels": "Modelos premium",
       "premiumModelsHint": "Permite os modelos mais capazes para o polimento editorial. Custo por geração mais alto.",
-      "premiumModelsLocked": "Disponível no Pro e acima"
+      "premiumModelsLocked": "Disponível no Pro e acima",
+      "premiumModelsError": "Não foi possível atualizar. Tente novamente."
     },
     "aiKeys": {
       "title": "Chaves de IA",

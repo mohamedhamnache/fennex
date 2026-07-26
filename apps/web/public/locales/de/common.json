@@ -832,7 +832,8 @@
       "upgrade": "Upgraden →",
       "premiumModels": "Premium-Modelle",
       "premiumModelsHint": "Die leistungsstärksten Modelle für den redaktionellen Feinschliff zulassen. Höhere Kosten pro Generierung.",
-      "premiumModelsLocked": "Ab Pro verfügbar"
+      "premiumModelsLocked": "Ab Pro verfügbar",
+      "premiumModelsError": "Aktualisierung fehlgeschlagen. Bitte erneut versuchen."
     },
     "aiKeys": {
       "title": "KI-Schlüssel",

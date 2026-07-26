@@ -398,6 +398,7 @@ function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<Re
               />
             </button>
           </div>
+          {setPremium.isError && <ErrorMsg>{t("settings.organization.premiumModelsError")}</ErrorMsg>}
         </div>
       </Card>
     </div>
