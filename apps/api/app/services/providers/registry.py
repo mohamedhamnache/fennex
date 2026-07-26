@@ -42,6 +42,8 @@ async def _org(org_id: uuid.UUID, db) -> Organization | None:
 
 
 async def get_llm_keys(org_id: uuid.UUID, db) -> dict[str, str]:
+    from app.services.providers import catalog
+    await catalog.refresh_if_stale(db)
     keys = await platform_llm_keys(db)
     org = await _org(org_id, db)
     if org is not None and org.byok_enabled:
