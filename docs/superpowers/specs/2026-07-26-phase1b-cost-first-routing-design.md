@@ -238,8 +238,9 @@ No frontend test framework exists; the API has pytest. Verification is:
   regression guard for the Phase 1a $0-pricing bug.
 - Cascade: malformed JSON escalates once and only once; valid output does not
   escalate; both attempts appear in `usage_events`.
-- Batch: rate selection uses the `batch_*` units; the reconciler is idempotent
-  on repeated polls.
+- Batch: rate selection uses the `batch_*` units; the inline submit-and-poll
+  client falls back to the interactive path on any batch failure or timeout,
+  so a batch problem can never kill a scheduled job.
 - Routing regression: `balanced` + `heavy` resolves to `openai:gpt-4o`, never
   to an Opus model.
 - `npm run typecheck` for the Settings toggle.
