@@ -27,13 +27,14 @@ def upgrade() -> None:
     # Anthropic rows are the fallbacks. Premium is Anthropic-only until an
     # OpenAI flagship reasoning model id and price are confirmed -- seeding an
     # unpriced model would silently bill it at $0.
+    # Use jsonb_build_object() to avoid SQLAlchemy text() bind parameter collision on `:true`.
     op.execute("""
         INSERT INTO model_catalog (band, provider, model, priority, supports) VALUES
-          ('cheap','openai','gpt-4o-mini',1,'{"json_output":true,"tools":true,"vision":true}'::jsonb),
-          ('cheap','anthropic','claude-haiku-4-5-20251001',2,'{"json_output":true,"tools":true,"vision":true}'::jsonb),
-          ('standard','openai','gpt-4o',1,'{"json_output":true,"tools":true,"vision":true}'::jsonb),
-          ('standard','anthropic','claude-sonnet-5',2,'{"json_output":true,"tools":true,"vision":true}'::jsonb),
-          ('premium','anthropic','claude-opus-5',1,'{"json_output":true,"tools":true,"vision":true}'::jsonb)
+          ('cheap','openai','gpt-4o-mini',1,jsonb_build_object('json_output', true, 'tools', true, 'vision', true)),
+          ('cheap','anthropic','claude-haiku-4-5-20251001',2,jsonb_build_object('json_output', true, 'tools', true, 'vision', true)),
+          ('standard','openai','gpt-4o',1,jsonb_build_object('json_output', true, 'tools', true, 'vision', true)),
+          ('standard','anthropic','claude-sonnet-5',2,jsonb_build_object('json_output', true, 'tools', true, 'vision', true)),
+          ('premium','anthropic','claude-opus-5',1,jsonb_build_object('json_output', true, 'tools', true, 'vision', true))
         ON CONFLICT (band, provider, model) DO NOTHING
     """)
     # Every catalogued model must be priced. claude-sonnet-5 $3/$15 per 1M,
