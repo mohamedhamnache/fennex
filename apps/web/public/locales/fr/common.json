@@ -829,7 +829,10 @@
       "name": "Nom de l'organisation",
       "slug": "Slug",
       "plan": "Plan",
-      "upgrade": "Améliorer →"
+      "upgrade": "Améliorer →",
+      "premiumModels": "Modèles premium",
+      "premiumModelsHint": "Autoriser les modèles les plus performants pour la relecture éditoriale. Coût par génération plus élevé.",
+      "premiumModelsLocked": "Disponible à partir du plan Pro"
     },
     "aiKeys": {
       "title": "Clés IA",

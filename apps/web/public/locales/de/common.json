@@ -829,7 +829,10 @@
       "name": "Organisationsname",
       "slug": "Slug",
       "plan": "Plan",
-      "upgrade": "Upgraden →"
+      "upgrade": "Upgraden →",
+      "premiumModels": "Premium-Modelle",
+      "premiumModelsHint": "Die leistungsstärksten Modelle für den redaktionellen Feinschliff zulassen. Höhere Kosten pro Generierung.",
+      "premiumModelsLocked": "Ab Pro verfügbar"
     },
     "aiKeys": {
       "title": "KI-Schlüssel",
