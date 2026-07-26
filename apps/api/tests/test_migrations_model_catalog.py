@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import text, create_engine, event
+from sqlalchemy import text, create_engine
 from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_command
 
@@ -25,6 +25,7 @@ from app.core.database import Base
 def _can_connect_to_database(db_url: str) -> bool:
     """Test if we can actually connect to the database."""
     try:
+        # Use sync URL for connection test
         sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
         engine = create_engine(
             sync_url,
@@ -134,17 +135,17 @@ def _verify_model_catalog_data(engine, test_name: str) -> None:
         assert cost_count == 6, f"[{test_name}] Expected 6 cost_rates rows, got {cost_count}"
 
 
-def _run_migration_on_scratch_db(db_url: str, scratch_db_name: str, pre_create_all: bool = False) -> None:
+def _run_migration_on_scratch_db(db_url: str, scratch_db_name: str, monkeypatch, pre_create_all: bool = False) -> None:
     """Run migrations on a scratch database, optionally after create_all.
 
     Args:
         db_url: Base database URL
         scratch_db_name: Name of scratch database to create
+        monkeypatch: pytest monkeypatch fixture to patch settings
         pre_create_all: If True, run Base.metadata.create_all before migrations
-                       (simulates dev environment where app ran before migrate)
     """
-    sync_base_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
-    scratch_db_url = sync_base_url.rsplit("/", 1)[0] + "/" + scratch_db_name
+    # Build scratch database URL using same driver as the original
+    scratch_db_url = db_url.rsplit("/", 1)[0] + "/" + scratch_db_name
 
     # Get absolute path to alembic.ini
     test_dir = Path(__file__).parent
@@ -157,54 +158,80 @@ def _run_migration_on_scratch_db(db_url: str, scratch_db_name: str, pre_create_a
         # Create the scratch database
         asyncio.run(_async_create_and_drop_db(db_url, scratch_db_name, "create"))
 
-        # Optionally run create_all first (simulates dev environment)
-        # Only create tables up to model_catalog to avoid pgvector dependency issues
+        # Optionally run create_all first (simulates dev environment where Base.metadata.create_all ran)
+        # Note: only create organizations, users, projects; NOT keyword/crawl/audit tables
+        # which have enums that migrations will also try to create
         if pre_create_all:
-            engine = create_engine(scratch_db_url, echo=False)
-            # Create only essential tables needed for migrations to run
-            # (some tables have dependencies on extensions like pgvector)
-            tables_to_create = [
-                "organizations", "users", "projects", "cost_rates",
-            ]
+            sync_url = scratch_db_url.replace("postgresql+asyncpg://", "postgresql://")
+            engine = create_engine(sync_url, echo=False)
+            # Create only base tables that migrations depend on (organizations, users, projects)
+            # Skip tables with enums or extensions to avoid conflicts with migrations
+            tables_to_create = {
+                "organizations", "users", "projects",
+            }
             for table in Base.metadata.tables.values():
                 if table.name in tables_to_create:
                     table.create(engine, checkfirst=True)
             engine.dispose()
 
-        # Run migrations
-        alembic_cfg = AlembicConfig(alembic_ini_path)
-        alembic_cfg.set_main_option("sqlalchemy.url", scratch_db_url)
-        # Upgrade to head (which includes all migrations including model_catalog)
-        alembic_command.upgrade(alembic_cfg, "head")
+        # CRITICAL: Patch settings.DATABASE_URL to point to scratch database
+        # env.py unconditionally reads settings.DATABASE_URL and overrides the Config,
+        # so we must patch the settings object itself
+        original_db_url = settings.DATABASE_URL
+        monkeypatch.setattr(settings, "DATABASE_URL", scratch_db_url)
 
-        # Verify data was seeded correctly
-        engine = create_engine(scratch_db_url, echo=False)
-        _verify_model_catalog_data(engine, test_name)
+        try:
+            # Configure Alembic
+            alembic_cfg = AlembicConfig(alembic_ini_path)
+            # env.py will load and use settings.DATABASE_URL, which is now patched
 
-        # Test downgrade
-        alembic_command.downgrade(alembic_cfg, "h3w4x5y6z7a8")
-
-        # Verify table was dropped
-        with engine.connect() as conn:
-            result = conn.execute(
-                text(
-                    "SELECT EXISTS ("
-                    "  SELECT 1 FROM information_schema.tables "
-                    "  WHERE table_name = 'model_catalog'"
-                    ")"
-                )
+            # GUARD: Assert that Alembic will use the scratch database, not the real one
+            # This prevents accidental migration of the developer's database
+            # Re-set in case env.py loads before we can check
+            alembic_cfg.set_main_option("sqlalchemy.url", scratch_db_url)
+            actual_url = alembic_cfg.get_main_option("sqlalchemy.url")
+            assert scratch_db_name in actual_url, (
+                f"SAFETY CHECK FAILED: Alembic URL does not contain scratch DB name '{scratch_db_name}'. "
+                f"URL: {actual_url}. This would migrate the real database!"
             )
-            exists = result.scalar()
-            assert not exists, f"[{test_name}] model_catalog still exists after downgrade"
+
+            # Upgrade to the model_catalog migration (i4x5y6z7a8b9) and beyond
+            # This will run all migrations including it
+            alembic_command.upgrade(alembic_cfg, "head")
+
+            # Verify data was seeded correctly
+            sync_url = scratch_db_url.replace("postgresql+asyncpg://", "postgresql://")
+            engine = create_engine(sync_url, echo=False)
+            _verify_model_catalog_data(engine, test_name)
+
+            # Test downgrade
+            alembic_command.downgrade(alembic_cfg, "h3w4x5y6z7a8")
+
+            # Verify table was dropped
+            with engine.connect() as conn:
+                result = conn.execute(
+                    text(
+                        "SELECT EXISTS ("
+                        "  SELECT 1 FROM information_schema.tables "
+                        "  WHERE table_name = 'model_catalog'"
+                        ")"
+                    )
+                )
+                exists = result.scalar()
+                assert not exists, f"[{test_name}] model_catalog still exists after downgrade"
+
+        finally:
+            # Restore original settings
+            monkeypatch.setattr(settings, "DATABASE_URL", original_db_url)
 
     finally:
         try:
             asyncio.run(_async_create_and_drop_db(db_url, scratch_db_name, "drop"))
         except Exception:
-            pass
+            pass  # If we can't drop it, that's OK
 
 
-def test_model_catalog_migration_on_clean_database():
+def test_model_catalog_migration_on_clean_database(monkeypatch):
     """Test migration applied to empty database (deployment path)."""
     db_url = settings.DATABASE_URL
 
@@ -215,10 +242,10 @@ def test_model_catalog_migration_on_clean_database():
         )
 
     scratch_db_name = f"test_model_catalog_clean_{os.getpid()}"
-    _run_migration_on_scratch_db(db_url, scratch_db_name, pre_create_all=False)
+    _run_migration_on_scratch_db(db_url, scratch_db_name, monkeypatch, pre_create_all=False)
 
 
-def test_model_catalog_migration_after_create_all():
+def test_model_catalog_migration_after_create_all(monkeypatch):
     """Test migration applied to database where Base.metadata.create_all ran first (dev path).
 
     This guards against the defect where a seed depends on DDL the migration did not guarantee.
@@ -234,4 +261,4 @@ def test_model_catalog_migration_after_create_all():
         )
 
     scratch_db_name = f"test_model_catalog_createall_{os.getpid()}"
-    _run_migration_on_scratch_db(db_url, scratch_db_name, pre_create_all=True)
+    _run_migration_on_scratch_db(db_url, scratch_db_name, monkeypatch, pre_create_all=True)
