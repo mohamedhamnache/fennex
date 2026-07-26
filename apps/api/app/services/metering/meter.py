@@ -1,5 +1,6 @@
 """Price provider usage from cost_rates, append it to the usage_events ledger,
 and roll it into the current org_usage period. All money is micro-dollars."""
+import logging
 import uuid
 
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from app.models.billing import OrgUsage
 from app.models.cost_rate import CostRate
 from app.models.usage_event import UsageEvent
 from app.services.llm_service import LLMUsage
+
+logger = logging.getLogger(__name__)
 
 
 async def rate(db, provider: str, unit: str, model: str = "") -> float:
@@ -22,9 +25,12 @@ async def rate(db, provider: str, unit: str, model: str = "") -> float:
 
 async def _bump_org_usage(db, org_id, **increments) -> None:
     """Portable (SQLite + Postgres) select-then-increment-or-insert of the
-    current-period rollup. Metering is best-effort and wrapped in try/except by
-    the seam, so a rare concurrent-insert race (unique on org_id+period_start)
-    is non-fatal -- the usage_events ledger stays the source of truth."""
+    current-period rollup. This rollup update shares a single db.commit() with
+    the caller's UsageEvent insert, so it is best-effort, not independently
+    durable: under a rare concurrent first-insert unique-violation race (on
+    org_id+period_start) the whole transaction rolls back, dropping the
+    ledger row too. Full hardening (a separate transaction, or an upsert) is
+    deferred."""
     period = current_billing_period_start()
     row = (await db.execute(select(OrgUsage).where(
         OrgUsage.org_id == org_id, OrgUsage.period_start == period
@@ -41,7 +47,16 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
     in_rate = await rate(db, usage.provider, "input_token", usage.model)
     out_rate = await rate(db, usage.provider, "output_token", usage.model)
     cache_rate = await rate(db, usage.provider, "cache_read_token", usage.model)
-    cost = round(usage.input_tokens * in_rate
+    if in_rate == 0 and usage.input_tokens > 0:
+        logger.warning("no cost_rate for provider=%s model=%s; input priced to 0",
+                       usage.provider, usage.model)
+
+    billable_input = usage.input_tokens
+    if usage.provider == "openai":
+        # OpenAI prompt_tokens already includes the cached subset; bill only the
+        # non-cached remainder at the input rate (cached billed at cache_rate below).
+        billable_input = max(0, usage.input_tokens - usage.cache_read_tokens)
+    cost = round(billable_input * in_rate
                  + usage.output_tokens * out_rate
                  + usage.cache_read_tokens * cache_rate)
     db.add(UsageEvent(
