@@ -34,6 +34,7 @@ FEATURE_POLICY: dict[str, FeaturePolicy] = {
     "classification": FeaturePolicy(_CHEAP, 512, cascade=True),
     "image_prompt": FeaturePolicy(_CHEAP, 512),
     "suggest": FeaturePolicy(_CHEAP, 1024, cascade=True),
+    "document_digest": FeaturePolicy(_CHEAP, 2048, cascade=True),
 
     # The workhorse band: reasoning and long-form prose.
     "article_draft": FeaturePolicy(_STANDARD, 8192),

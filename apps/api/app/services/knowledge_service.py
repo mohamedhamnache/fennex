@@ -261,7 +261,7 @@ async def refresh_digest(project_id: uuid.UUID, org_id: uuid.UUID, keys: dict,
             from app.services.agents.tiers import resolve_model
             from app.services.llm_service import call_llm
 
-            provider, model = resolve_model("balanced", "light", providers, feature="digest")
+            provider, model = resolve_model("balanced", "light", providers, feature="document_digest")
             # Openings only: summarising every document in full would cost more
             # than the digest can ever save.
             excerpt = "\n\n".join(
@@ -275,7 +275,7 @@ async def refresh_digest(project_id: uuid.UUID, org_id: uuid.UUID, keys: dict,
                 "prompt, so anything structural becomes noise there."
             )
             summary = await call_llm(provider, model, keys[provider], system, excerpt,
-                                     locale=getattr(project, "locale", "en"), feature="digest")
+                                     locale=getattr(project, "locale", "en"), feature="document_digest")
             cleaned = _plain_prose(summary)
             if cleaned:
                 digest = cleaned[:1200]
