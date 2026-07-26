@@ -75,6 +75,20 @@ def language_directive(locale: str | None) -> str:
 DEFAULT_MAX_TOKENS = 4096
 ARTICLE_MAX_TOKENS = 8192
 
+# Anthropic bills a cache write at ~1.25x and a cache read at ~0.1x, so marking
+# a short prefix costs more than it saves. This threshold is a conservative
+# character-count proxy for the provider's minimum cacheable prompt length.
+CACHEABLE_MIN_CHARS = 4000
+
+
+def _anthropic_system_blocks(system_prompt: str):
+    """Mark a long, stable system prefix as cacheable. Anything shorter is sent
+    unchanged. OpenAI needs no equivalent: its caching is automatic once the
+    stable content leads the prompt."""
+    if len(system_prompt) < CACHEABLE_MIN_CHARS:
+        return system_prompt
+    return [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
+
 
 async def call_llm(
     provider: str,
@@ -123,7 +137,7 @@ async def _call_anthropic(
     message = await client.messages.create(
         model=model,
         max_tokens=max_tokens,
-        system=system_prompt,
+        system=_anthropic_system_blocks(system_prompt),
         messages=[{"role": "user", "content": user_prompt}],
     )
     return message.content[0].text
@@ -152,7 +166,7 @@ async def _openai_usage(model, api_key, system_prompt, user_prompt, max_tokens):
 async def _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens):
     client = AsyncAnthropic(api_key=api_key)
     message = await client.messages.create(
-        model=model, max_tokens=max_tokens, system=system_prompt,
+        model=model, max_tokens=max_tokens, system=_anthropic_system_blocks(system_prompt),
         messages=[{"role": "user", "content": user_prompt}],
     )
     u = getattr(message, "usage", None)
@@ -169,7 +183,9 @@ async def call_llm_usage(
 ) -> tuple[str, "LLMUsage"]:
     """Like call_llm but also returns an LLMUsage (token counts). google has no
     reliable token usage in the current call shape -> zeros."""
-    system_prompt = system_prompt + language_directive(locale)
+    directive = language_directive(locale)
+    if directive:
+        user_prompt = directive.strip() + "\n\n" + user_prompt
     if provider == "anthropic":
         return await _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens)
     if provider == "openai":
