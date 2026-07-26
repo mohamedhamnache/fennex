@@ -20,6 +20,7 @@ class LLMUsage:
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
+    batch: bool = False  # priced from the batch_* cost_rates units (50% off)
 
 
 async def get_org_llm_keys(org_id: uuid.UUID, db: AsyncSession) -> dict[str, str]:
@@ -51,7 +52,12 @@ _LANGUAGE_NAMES = {
 
 
 def language_directive(locale: str | None) -> str:
-    """System-prompt suffix telling the model to answer in the project's language.
+    """Directive telling the model to answer in the project's language.
+
+    Meant to be prepended to the *user* prompt (see ``call_llm_usage``), not
+    appended to the system prompt: a per-locale suffix on the system prompt
+    would make the cacheable prefix differ for every locale, so nothing
+    would ever cache-hit.
 
     Returns "" for English (the default) so existing behaviour is unchanged.
     Structure-preserving: only human-readable string values are translated;
@@ -104,7 +110,11 @@ async def call_llm(
     """Call the named provider and return the raw text response.
 
     ``locale`` is the project's language code; when non-English a directive is
-    appended to the system prompt so the agent answers in that language.
+    prepended to the *user* prompt so the agent answers in that language. It
+    goes on the user prompt rather than the system prompt so the system
+    prefix stays byte-identical across locales — a per-locale suffix there
+    would make the prefix differ per locale and defeat Anthropic prompt
+    caching for every non-English request.
 
     ``feature`` names the calling feature. It supplies the output-token ceiling
     from the routing policy when the caller passes no explicit ``max_tokens``
