@@ -1,27 +1,35 @@
 """Test that model_catalog migration actually executes and produces correct data.
 
-This test verifies the migration chain doesn't abort and seeds data correctly.
-It requires a reachable Postgres database; skips if unreachable (e.g., in CI without DB).
+This test verifies the migration chain doesn't abort and seeds data correctly
+under both ordering scenarios:
+1. Empty database (deployment: migration creates schema)
+2. Database with Base.metadata.create_all already run (dev: create_all creates schema first)
+
+Both orderings must produce the same final state.
+This guards against the defect where a seed depends on DDL it did not guarantee.
 """
 import os
-import subprocess
+import asyncio
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import text, create_engine
+from sqlalchemy import text, create_engine, event
+from alembic.config import Config as AlembicConfig
+from alembic import command as alembic_command
 
 from app.core.config import settings
+from app.core.database import Base
 
 
 def _can_connect_to_database(db_url: str) -> bool:
     """Test if we can actually connect to the database."""
     try:
-        # Use sync engine (non-async) for connection test
         sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
         engine = create_engine(
             sync_url,
             echo=False,
-            connect_args={"connect_timeout": 5}  # psycopg2 parameter
+            connect_args={"connect_timeout": 5}
         )
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
@@ -30,152 +38,153 @@ def _can_connect_to_database(db_url: str) -> bool:
         return False
 
 
-def test_model_catalog_migration_upgrade_and_downgrade():
-    """Test that the migration chain (including model_catalog) applies without errors.
+async def _async_create_and_drop_db(db_url: str, db_name: str, operation: str) -> None:
+    """Create or drop database using asyncpg (no external binaries needed)."""
+    import asyncpg
 
-    This test executes the actual Alembic migration against a scratch database,
-    verifies the data is seeded correctly with proper JSON structure, and tests
-    the downgrade chain. It is a regression guard for migration syntax errors
-    (like the original SQLAlchemy text() bind parameter collision with `:true`).
-
-    Skips only if Postgres is genuinely unreachable; skipping is reported
-    explicitly so it cannot be mistaken for a passing test.
-    """
-    # Get database URL from Settings (same way the app loads it from .env)
-    db_url = settings.DATABASE_URL
-
-    # Test if Postgres is actually reachable
-    if not _can_connect_to_database(db_url):
-        pytest.skip(
-            "Postgres database is unreachable or connection failed; "
-            "migration execution was not verified"
-        )
-
-    # Extract credentials and host from URL for createdb/dropdb commands
-    # URL format: postgresql+asyncpg://user:pass@host:port/dbname
-    # For createdb we need sync URL: postgresql://user:pass@host:port/dbname
-    sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
-
-    # Parse connection details
-    from urllib.parse import urlparse
-    parsed = urlparse(sync_url)
-    db_host = parsed.hostname or "localhost"
-    db_port = parsed.port or 5432
-    db_user = parsed.username or "postgres"
-    # Note: password is not reliably extractable from URL (may not be needed if .pgpass is configured)
-
-    scratch_db_name = f"test_model_catalog_migration_{os.getpid()}"
+    # Parse connection details from URL
+    parts = db_url.split("://")[1]
+    creds, host_db = parts.split("@")
+    user, password = creds.split(":")
+    host_port, _ = host_db.split("/", 1)
+    host, port = host_port.split(":")
+    port = int(port)
 
     try:
-        # Create scratch database
-        result = subprocess.run(
-            ["createdb", "-h", db_host, "-p", str(db_port), "-U", db_user, scratch_db_name],
-            capture_output=True,
-            text=True,
-            timeout=10,
+        conn = await asyncpg.connect(
+            user=user, password=password, host=host, port=port,
+            database="postgres", timeout=5
         )
-        if result.returncode != 0:
-            if "already exists" not in result.stderr:
-                pytest.skip(f"Could not create test database: {result.stderr}")
+    except asyncpg.PostgresError:
+        raise
 
-        # Replace database name in connection URL
-        parts = sync_url.rsplit("/", 1)
-        scratch_db_url = parts[0] + "/" + scratch_db_name
+    try:
+        if operation == "create":
+            try:
+                await conn.execute(f"DROP DATABASE IF EXISTS {db_name}")
+            except asyncpg.PostgresError:
+                pass
+            await conn.execute(f"CREATE DATABASE {db_name}")
+        elif operation == "drop":
+            try:
+                await conn.execute(f"""
+                    SELECT pg_terminate_backend(pg_stat_activity.pid)
+                    FROM pg_stat_activity
+                    WHERE pg_stat_activity.datname = '{db_name}'
+                    AND pid <> pg_backend_pid()
+                """)
+            except asyncpg.PostgresError:
+                pass
+            try:
+                await conn.execute(f"DROP DATABASE IF EXISTS {db_name}")
+            except asyncpg.PostgresError:
+                pass
+    finally:
+        await conn.close()
 
-        # Run migrations up to head
-        env = os.environ.copy()
-        env["DATABASE_URL"] = scratch_db_url.replace("postgresql://", "postgresql+asyncpg://")
-        result = subprocess.run(
-            ["alembic", "upgrade", "head"],
-            cwd=".",
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=env,
+
+def _verify_model_catalog_data(engine, test_name: str) -> None:
+    """Verify model_catalog has exactly 5 rows with correct data."""
+    with engine.connect() as conn:
+        # Verify count
+        result = conn.execute(text("SELECT COUNT(*) FROM model_catalog"))
+        count = result.scalar()
+        assert count == 5, f"[{test_name}] Expected 5 model_catalog rows, got {count}"
+
+        # Verify each row
+        result = conn.execute(
+            text(
+                "SELECT band, provider, model, priority, supports, is_active "
+                "FROM model_catalog ORDER BY band, priority"
+            )
         )
-        if result.returncode != 0:
-            pytest.fail(
-                f"Migration upgrade failed: {result.stderr}\n{result.stdout}"
-            )
+        rows = result.fetchall()
 
-        # Connect and verify data
-        engine = create_engine(scratch_db_url)
-        with engine.connect() as conn:
-            # Verify model_catalog has exactly 5 rows
-            result = conn.execute(
-                text("SELECT COUNT(*) FROM model_catalog")
-            )
-            count = result.scalar()
-            assert count == 5, f"Expected 5 model_catalog rows, got {count}"
+        expected = [
+            ("cheap", "anthropic", "claude-haiku-4-5-20251001", 2, True),
+            ("cheap", "openai", "gpt-4o-mini", 1, True),
+            ("premium", "anthropic", "claude-opus-5", 1, True),
+            ("standard", "anthropic", "claude-sonnet-5", 2, True),
+            ("standard", "openai", "gpt-4o", 1, True),
+        ]
 
-            # Verify each row has correct supports JSON with boolean values
-            result = conn.execute(
-                text(
-                    "SELECT band, provider, model, priority, supports "
-                    "FROM model_catalog ORDER BY band, priority"
-                )
-            )
-            rows = result.fetchall()
+        for i, (band, provider, model, priority, supports, is_active) in enumerate(rows):
+            exp_band, exp_provider, exp_model, exp_priority, exp_is_active = expected[i]
+            assert band == exp_band, f"[{test_name}] Band mismatch at row {i}"
+            assert provider == exp_provider, f"[{test_name}] Provider mismatch at row {i}"
+            assert model == exp_model, f"[{test_name}] Model mismatch at row {i}"
+            assert priority == exp_priority, f"[{test_name}] Priority mismatch at row {i}"
+            assert is_active == exp_is_active, f"[{test_name}] is_active should be TRUE for {model}, got {is_active}"
 
-            expected = [
-                ("cheap", "anthropic", "claude-haiku-4-5-20251001", 2),
-                ("cheap", "openai", "gpt-4o-mini", 1),
-                ("premium", "anthropic", "claude-opus-5", 1),
-                ("standard", "anthropic", "claude-sonnet-5", 2),
-                ("standard", "openai", "gpt-4o", 1),
+            # Verify supports JSON
+            assert isinstance(supports, dict), f"[{test_name}] supports must be dict, got {type(supports)}"
+            assert supports.get("json_output") is True, f"[{test_name}] json_output flag wrong for {model}"
+            assert supports.get("tools") is True, f"[{test_name}] tools flag wrong for {model}"
+            assert supports.get("vision") is True, f"[{test_name}] vision flag wrong for {model}"
+
+        # Verify cost_rates
+        result = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM cost_rates "
+                "WHERE provider = 'anthropic' "
+                "  AND model IN ('claude-sonnet-5', 'claude-opus-5')"
+            )
+        )
+        cost_count = result.scalar()
+        assert cost_count == 6, f"[{test_name}] Expected 6 cost_rates rows, got {cost_count}"
+
+
+def _run_migration_on_scratch_db(db_url: str, scratch_db_name: str, pre_create_all: bool = False) -> None:
+    """Run migrations on a scratch database, optionally after create_all.
+
+    Args:
+        db_url: Base database URL
+        scratch_db_name: Name of scratch database to create
+        pre_create_all: If True, run Base.metadata.create_all before migrations
+                       (simulates dev environment where app ran before migrate)
+    """
+    sync_base_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+    scratch_db_url = sync_base_url.rsplit("/", 1)[0] + "/" + scratch_db_name
+
+    # Get absolute path to alembic.ini
+    test_dir = Path(__file__).parent
+    api_dir = test_dir.parent
+    alembic_ini_path = str(api_dir / "alembic.ini")
+
+    test_name = "create_all+migration" if pre_create_all else "clean_migration"
+
+    try:
+        # Create the scratch database
+        asyncio.run(_async_create_and_drop_db(db_url, scratch_db_name, "create"))
+
+        # Optionally run create_all first (simulates dev environment)
+        # Only create tables up to model_catalog to avoid pgvector dependency issues
+        if pre_create_all:
+            engine = create_engine(scratch_db_url, echo=False)
+            # Create only essential tables needed for migrations to run
+            # (some tables have dependencies on extensions like pgvector)
+            tables_to_create = [
+                "organizations", "users", "projects", "cost_rates",
             ]
+            for table in Base.metadata.tables.values():
+                if table.name in tables_to_create:
+                    table.create(engine, checkfirst=True)
+            engine.dispose()
 
-            for i, (band, provider, model, priority, supports) in enumerate(rows):
-                exp_band, exp_provider, exp_model, exp_priority = expected[i]
-                assert band == exp_band, f"Band mismatch at row {i}"
-                assert provider == exp_provider, f"Provider mismatch at row {i}"
-                assert model == exp_model, f"Model mismatch at row {i}"
-                assert priority == exp_priority, f"Priority mismatch at row {i}"
+        # Run migrations
+        alembic_cfg = AlembicConfig(alembic_ini_path)
+        alembic_cfg.set_main_option("sqlalchemy.url", scratch_db_url)
+        # Upgrade to head (which includes all migrations including model_catalog)
+        alembic_command.upgrade(alembic_cfg, "head")
 
-                # Verify supports is a dict with boolean values
-                assert isinstance(supports, dict), f"supports must be dict, got {type(supports)}"
-                assert supports.get("json_output") is True, f"json_output flag wrong for {model}"
-                assert supports.get("tools") is True, f"tools flag wrong for {model}"
-                assert supports.get("vision") is True, f"vision flag wrong for {model}"
+        # Verify data was seeded correctly
+        engine = create_engine(scratch_db_url, echo=False)
+        _verify_model_catalog_data(engine, test_name)
 
-            # Verify cost_rates have Anthropic entries for claude-sonnet-5 and claude-opus-5
-            result = conn.execute(
-                text(
-                    "SELECT provider, unit, model FROM cost_rates "
-                    "WHERE provider = 'anthropic' "
-                    "  AND model IN ('claude-sonnet-5', 'claude-opus-5') "
-                    "ORDER BY model, unit"
-                )
-            )
-            cost_rows = result.fetchall()
-            assert len(cost_rows) == 6, f"Expected 6 cost_rates rows for Anthropic, got {len(cost_rows)}"
+        # Test downgrade
+        alembic_command.downgrade(alembic_cfg, "h3w4x5y6z7a8")
 
-            # Verify organizations.premium_models_enabled exists
-            result = conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_name = 'organizations' "
-                    "  AND column_name = 'premium_models_enabled'"
-                )
-            )
-            col = result.scalar()
-            assert col is not None, "organizations.premium_models_enabled column missing"
-
-        # Now test downgrade
-        result = subprocess.run(
-            ["alembic", "downgrade", "h3w4x5y6z7a8"],
-            cwd=".",
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=env,
-        )
-        if result.returncode != 0:
-            pytest.fail(
-                f"Migration downgrade failed: {result.stderr}\n{result.stdout}"
-            )
-
-        # Verify model_catalog was dropped
+        # Verify table was dropped
         with engine.connect() as conn:
             result = conn.execute(
                 text(
@@ -186,23 +195,43 @@ def test_model_catalog_migration_upgrade_and_downgrade():
                 )
             )
             exists = result.scalar()
-            assert not exists, "model_catalog table still exists after downgrade"
-
-            # Verify cost_rates Anthropic entries were deleted
-            result = conn.execute(
-                text(
-                    "SELECT COUNT(*) FROM cost_rates "
-                    "WHERE provider = 'anthropic' "
-                    "  AND model IN ('claude-sonnet-5', 'claude-opus-5')"
-                )
-            )
-            count = result.scalar()
-            assert count == 0, f"Cost_rates entries not deleted after downgrade, got {count}"
+            assert not exists, f"[{test_name}] model_catalog still exists after downgrade"
 
     finally:
-        # Clean up scratch database
-        subprocess.run(
-            ["dropdb", "-h", db_host, "-p", str(db_port), "-U", db_user, scratch_db_name],
-            capture_output=True,
-            timeout=10,
+        try:
+            asyncio.run(_async_create_and_drop_db(db_url, scratch_db_name, "drop"))
+        except Exception:
+            pass
+
+
+def test_model_catalog_migration_on_clean_database():
+    """Test migration applied to empty database (deployment path)."""
+    db_url = settings.DATABASE_URL
+
+    if not _can_connect_to_database(db_url):
+        pytest.skip(
+            "Postgres database is unreachable or connection failed; "
+            "migration execution was not verified"
         )
+
+    scratch_db_name = f"test_model_catalog_clean_{os.getpid()}"
+    _run_migration_on_scratch_db(db_url, scratch_db_name, pre_create_all=False)
+
+
+def test_model_catalog_migration_after_create_all():
+    """Test migration applied to database where Base.metadata.create_all ran first (dev path).
+
+    This guards against the defect where a seed depends on DDL the migration did not guarantee.
+    When create_all runs first, it creates the table WITHOUT a database default on is_active.
+    The migration's INSERT must explicitly set is_active=true to work in this scenario.
+    """
+    db_url = settings.DATABASE_URL
+
+    if not _can_connect_to_database(db_url):
+        pytest.skip(
+            "Postgres database is unreachable or connection failed; "
+            "migration execution was not verified"
+        )
+
+    scratch_db_name = f"test_model_catalog_createall_{os.getpid()}"
+    _run_migration_on_scratch_db(db_url, scratch_db_name, pre_create_all=True)

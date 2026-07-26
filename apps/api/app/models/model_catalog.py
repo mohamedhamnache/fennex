@@ -17,4 +17,4 @@ class ModelCatalog(Base):
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     # JSON, not JSONB: the SQLite test engine cannot create JSONB columns.
     supports: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
