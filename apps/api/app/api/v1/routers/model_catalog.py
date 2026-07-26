@@ -92,6 +92,7 @@ async def update_entry(body: EntryPatch, current_user: CurrentUser, db: DB) -> d
 async def delete_entry(band: str, provider: str, model: str,
                        current_user: CurrentUser, db: DB) -> None:
     _require_staff(current_user)
+    _validate_band(band)
     row = await db.get(ModelCatalog, (band, provider, model))
     if row is not None:
         await db.delete(row)

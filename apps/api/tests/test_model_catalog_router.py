@@ -22,3 +22,11 @@ def test_band_is_validated():
     with pytest.raises(Exception):
         router_module._validate_band("not-a-band")
     assert router_module._validate_band("cheap") == "cheap"
+
+
+def test_delete_entry_validates_band():
+    """A misspelled band on DELETE must 422 like GET/POST/PATCH do, not silently
+    no-op-and-succeed."""
+    import inspect
+    source = inspect.getsource(router_module.delete_entry)
+    assert "_validate_band" in source
