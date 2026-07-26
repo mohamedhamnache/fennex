@@ -1,11 +1,12 @@
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from app.core import entitlements
 from app.models.organization import PlanTier
 
 
-def _org(plan, flag=False):
-    return SimpleNamespace(plan_tier=plan, premium_models_enabled=flag)
+def _org(plan, flag=False, trial_ends_at=None):
+    return SimpleNamespace(plan_tier=plan, premium_models_enabled=flag, trial_ends_at=trial_ends_at)
 
 
 def test_premium_requires_both_plan_and_flag():
@@ -40,6 +41,33 @@ def test_cap_band_clamps_down_and_never_up():
 def test_missing_org_caps_at_standard():
     assert entitlements.max_band(None) == "standard"
     assert entitlements.cap_band("premium", None) == "standard"
+
+
+def test_in_trial_org_caps_at_standard_even_with_pro_plan_and_flag():
+    future = datetime.now(timezone.utc) + timedelta(days=7)
+    org = _org(PlanTier.PRO, True, trial_ends_at=future)
+    assert entitlements.max_band(org) == "standard"
+
+
+def test_org_past_trial_reaches_premium():
+    past = datetime.now(timezone.utc) - timedelta(days=1)
+    org = _org(PlanTier.PRO, True, trial_ends_at=past)
+    assert entitlements.max_band(org) == "premium"
+
+
+def test_org_with_no_trial_reaches_premium():
+    org = _org(PlanTier.PRO, True, trial_ends_at=None)
+    assert entitlements.max_band(org) == "premium"
+
+
+def test_naive_trial_ends_at_does_not_raise():
+    naive_future = datetime.now() + timedelta(days=7)
+    org = _org(PlanTier.PRO, True, trial_ends_at=naive_future)
+    assert entitlements.max_band(org) == "standard"
+
+    naive_past = datetime.now() - timedelta(days=1)
+    org = _org(PlanTier.PRO, True, trial_ends_at=naive_past)
+    assert entitlements.max_band(org) == "premium"
 
 
 from app.api.v1.routers.organizations import _plan_allows_premium
