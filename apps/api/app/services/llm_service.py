@@ -83,25 +83,34 @@ async def call_llm(
     system_prompt: str,
     user_prompt: str,
     locale: str | None = "en",
-    max_tokens: int = DEFAULT_MAX_TOKENS,
+    max_tokens: int | None = None,
     meter: dict | None = None,
+    feature: str | None = None,
 ) -> str:
     """Call the named provider and return the raw text response.
 
     ``locale`` is the project's language code; when non-English a directive is
     appended to the system prompt so the agent answers in that language.
 
+    ``feature`` names the calling feature. It supplies the output-token ceiling
+    from the routing policy when the caller passes no explicit ``max_tokens``
+    (output costs ~5x input, so an unbounded cap is a direct margin leak), and
+    it is the key the usage meter reports against.
+
     When `meter` is given ({'db','org_id','project_id','feature'}), record
     token usage/cost after the call. Metering failures never break the call.
     """
+    if max_tokens is None:
+        from app.services.agents.policy import policy_for
+        max_tokens = policy_for(feature).max_output_tokens if feature else DEFAULT_MAX_TOKENS
     text, usage = await call_llm_usage(provider, model, api_key, system_prompt,
                                        user_prompt, locale=locale, max_tokens=max_tokens)
     if meter is not None:
         try:
             from app.services.metering import meter as _m
             await _m.record_llm(meter["db"], org_id=meter["org_id"],
-                                project_id=meter.get("project_id"), usage=usage,
-                                feature=meter.get("feature"))
+                                project_id=meter.get("project_id"),
+                                usage=usage, feature=meter.get("feature") or feature)
         except Exception:
             logger.exception("usage metering failed (non-fatal)")
     return text

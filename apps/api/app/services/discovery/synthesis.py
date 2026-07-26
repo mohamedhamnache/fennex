@@ -92,7 +92,7 @@ async def synthesise(text: str, partial: dict, *, provider: str, model: str,
         # truncating the JSON mid-object so it failed to parse and silently
         # dropped every interpretive field.
         raw = await call_llm(provider, model, api_key, sysp, userp, locale=locale,
-                             max_tokens=4000, meter=meter)
+                             max_tokens=4000, meter=meter, feature="discovery")
     except Exception:
         logger.exception("discovery synthesis LLM call failed")
         return partial

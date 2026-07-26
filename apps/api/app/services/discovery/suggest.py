@@ -110,7 +110,7 @@ async def suggest(result: dict, field: str, *, provider: str, model: str,
     )
     try:
         raw = await call_llm(provider, model, api_key, _SYSTEM, user,
-                             locale=locale, max_tokens=1200)
+                             locale=locale, feature="suggest")
     except Exception:
         logger.exception("onboarding suggest LLM call failed")
         return []

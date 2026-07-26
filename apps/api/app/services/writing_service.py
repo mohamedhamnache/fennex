@@ -189,8 +189,8 @@ async def ensure_seo_quality(
         + f"\n\nARTICLE TO FIX:\n{body_md}"
     )
     try:
-        from app.services.llm_service import ARTICLE_MAX_TOKENS
-        fixed = await call_llm(provider, model, api_key, system, user, locale=locale, max_tokens=ARTICLE_MAX_TOKENS)
+        fixed = await call_llm(provider, model, api_key, system, user, locale=locale,
+                               feature="article_draft")
         fixed = fixed.strip()
         if not fixed:
             return body_md, score
