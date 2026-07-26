@@ -90,6 +90,13 @@ async def discover_competitors(result: dict, org_id, db, *, own_url: str,
         logger.info("discovery SERP batch failed")
         return []
 
+    from app.services.metering import meter as _m
+    try:
+        await _m.record_seo(db, org_id=org_id, project_id=None, unit="serp",
+                            count=len(keywords), feature="discovery")
+    except Exception:
+        logger.info("seo metering skipped")
+
     counts: dict[str, int] = {}
     best_rank: dict[str, int] = {}
     for kw in keywords:

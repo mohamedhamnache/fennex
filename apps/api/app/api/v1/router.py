@@ -52,6 +52,7 @@ from app.api.v1.routers import (
     shopify,
     woocommerce,
     store,
+    usage,
 )
 
 api_router = APIRouter()
@@ -109,3 +110,4 @@ api_router.include_router(documents.router, prefix="/documents", tags=["document
 api_router.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])
 api_router.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
 api_router.include_router(provider_accounts.router, prefix="/admin/provider-accounts", tags=["admin"])
+api_router.include_router(usage.router, prefix="/usage", tags=["usage"])
