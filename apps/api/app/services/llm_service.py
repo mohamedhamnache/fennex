@@ -226,14 +226,21 @@ async def stream_llm(
 
     Anthropic and OpenAI stream token deltas; Google degrades to a single
     chunk (its REST streaming needs a different wire format).
+
+    ``locale`` is treated the same way ``call_llm_usage`` treats it: the
+    directive is prepended to the *user* prompt, not appended to the system
+    prompt, so the system prefix stays byte-identical across locales and can
+    still cache-hit on Anthropic.
     """
-    system_prompt = system_prompt + language_directive(locale)
+    directive = language_directive(locale)
+    if directive:
+        user_prompt = directive.strip() + "\n\n" + user_prompt
     if provider == "anthropic":
         client = AsyncAnthropic(api_key=api_key)
         async with client.messages.stream(
             model=model,
             max_tokens=max_tokens,
-            system=system_prompt,
+            system=_anthropic_system_blocks(system_prompt),
             messages=[{"role": "user", "content": user_prompt}],
         ) as stream:
             async for text in stream.text_stream:
