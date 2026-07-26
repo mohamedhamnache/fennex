@@ -105,7 +105,8 @@ def is_allowed(provider: str, model_id: str, keys: dict) -> bool:
     """Only a catalogued model on a configured provider may be chosen."""
     if provider not in keys:
         return False
-    return any(m["id"] == model_id for m in CATALOGUE.get(provider, []))
+    from app.services.providers import catalog
+    return (provider, model_id) in catalog.known_models()
 
 
 def for_action(tier: str, weight: str, keys: dict, *,

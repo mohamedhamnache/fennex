@@ -1,24 +1,37 @@
-"""Resolve (provider, model) from the org's agent tier and a skill's weight."""
+"""Resolve (provider, model) from the org's agent tier, a skill's weight, and
+the feature's policy.
 
-# provider preference order when an org has multiple keys
-_ORDER = ["anthropic", "openai"]
+Bands, not model ids: the concrete model comes from model_catalog, so swapping a
+supplier is a data change. Premium is never reachable from agent_tier alone --
+it needs a needs_premium feature AND an entitled org (see core.entitlements).
+That is what keeps expensive models off by default.
+"""
+from app.core.entitlements import cap_band
+from app.services.agents.policy import policy_for
+from app.services.providers.catalog import resolve_band
 
-# grade -> provider -> model id
-_MODELS = {
-    "cheap":   {"anthropic": "claude-haiku-4-5-20251001", "openai": "gpt-4o-mini"},
-    "premium": {"anthropic": "claude-opus-4-8",           "openai": "gpt-4o"},
+# tier -> weight -> band
+_TIERS: dict[str, dict[str, str]] = {
+    "economy": {"light": "cheap", "heavy": "cheap"},
+    "balanced": {"light": "cheap", "heavy": "standard"},
+    "max": {"light": "standard", "heavy": "standard"},
 }
-# tier -> {weight -> "cheap"|"premium"}
-_TIERS = {
-    "economy":  {"light": "cheap",   "heavy": "cheap"},
-    "balanced": {"light": "cheap",   "heavy": "premium"},
-    "max":      {"light": "premium", "heavy": "premium"},
-}
 
 
-def resolve_model(tier: str, weight: str, available: list[str]) -> tuple[str, str]:
+def band_for(tier: str, weight: str) -> str:
+    return _TIERS.get(tier, _TIERS["balanced"]).get(weight, "standard")
+
+
+def resolve_model(tier: str, weight: str, available: list[str], *,
+                  feature: str | None = None, org=None,
+                  needs: dict | None = None) -> tuple[str, str]:
+    """Return (provider, model). `feature` applies the policy band; `org` allows
+    a needs_premium feature to reach premium when the org is entitled."""
     if not available:
         raise ValueError("No LLM provider keys available.")
-    grade = _TIERS.get(tier, _TIERS["balanced"]).get(weight, "premium")
-    provider = next((p for p in _ORDER if p in available), available[0])
-    return provider, _MODELS[grade][provider]
+    policy = policy_for(feature)
+    band = policy.band if feature is not None else band_for(tier, weight)
+    if policy.needs_premium:
+        band = "premium"
+    band = cap_band(band, org)
+    return resolve_band(band, available, needs)
