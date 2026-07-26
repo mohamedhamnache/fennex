@@ -70,4 +70,6 @@ class WorkerSettings:
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     max_jobs = 10
-    job_timeout = 600
+    # Batched jobs wait on the provider's batch queue; the client caps its own
+    # wait at MAX_WAIT_SECONDS and falls back, so this only has to exceed that.
+    job_timeout = 7 * 60 * 60

@@ -193,12 +193,15 @@ async def verify_exchange_link(ctx, request_id: str, side: str):
 async def weekly_backlink_discovery(ctx):
     """ARQ cron — Monday 07:00 UTC. Fan-out sync to all projects with a profile."""
     import arq
-    async with async_session_factory() as session:
-        result = await session.execute(select(BacklinkProfile))
-        profiles = result.scalars().all()
+    from app.services.batch.scope import batch_scope
 
-    redis = ctx["redis"]
-    for profile in profiles:
-        await arq.ArqRedis(redis).enqueue_job(
-            "sync_backlink_profile", str(profile.project_id)
-        )
+    with batch_scope():
+        async with async_session_factory() as session:
+            result = await session.execute(select(BacklinkProfile))
+            profiles = result.scalars().all()
+
+        redis = ctx["redis"]
+        for profile in profiles:
+            await arq.ArqRedis(redis).enqueue_job(
+                "sync_backlink_profile", str(profile.project_id)
+            )
