@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, String, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import Date, String, Integer, BigInteger, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +22,12 @@ class OrgUsage(Base):
     keywords_used: Mapped[int] = mapped_column(Integer, default=0)
     audits_used: Mapped[int] = mapped_column(Integer, default=0)
     backlinks_used: Mapped[int] = mapped_column(Integer, default=0)
+    ai_input_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    ai_output_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    ai_requests: Mapped[int] = mapped_column(BigInteger, default=0)
+    seo_serp: Mapped[int] = mapped_column(BigInteger, default=0)
+    seo_keyword_analyses: Mapped[int] = mapped_column(BigInteger, default=0)
+    cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
 
 
 class SubscriptionEvent(Base):
