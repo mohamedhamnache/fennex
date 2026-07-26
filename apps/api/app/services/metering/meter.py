@@ -44,12 +44,13 @@ async def _bump_org_usage(db, org_id, **increments) -> None:
 
 
 async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feature: str | None = None) -> int:
-    in_rate = await rate(db, usage.provider, "input_token", usage.model)
-    out_rate = await rate(db, usage.provider, "output_token", usage.model)
-    cache_rate = await rate(db, usage.provider, "cache_read_token", usage.model)
+    prefix = "batch_" if usage.batch else ""
+    in_rate = await rate(db, usage.provider, f"{prefix}input_token", usage.model)
+    out_rate = await rate(db, usage.provider, f"{prefix}output_token", usage.model)
+    cache_rate = await rate(db, usage.provider, f"{prefix}cache_read_token", usage.model)
     if in_rate == 0 and usage.input_tokens > 0:
-        logger.warning("no cost_rate for provider=%s model=%s; input priced to 0",
-                       usage.provider, usage.model)
+        logger.warning("no cost_rate for provider=%s model=%s unit=%sinput_token; input priced to 0",
+                       usage.provider, usage.model, prefix)
 
     billable_input = usage.input_tokens
     if usage.provider == "openai":
