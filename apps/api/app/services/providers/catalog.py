@@ -50,6 +50,14 @@ def known_models() -> set[tuple[str, str]]:
     return {(provider, model) for _b, provider, model, *_rest in _rows()}
 
 
+def rows() -> list[tuple[str, str, str]]:
+    """Every (band, provider, model) currently catalogued. Read-only, for
+    callers that need more than known_models()'s flat membership set -- e.g.
+    a model picker's display grouping, or an entitlement check against a
+    model's highest band (a model may be catalogued under more than one)."""
+    return [(band, provider, model) for band, provider, model, *_rest in _rows()]
+
+
 def invalidate_snapshot() -> None:
     """Drop the cached snapshot so the next refresh reloads from the DB."""
     global _snapshot, _loaded_at

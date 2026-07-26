@@ -6,6 +6,7 @@ logic must not leak into the runtime, and the runtime must not leak upward.
 
 import inspect
 import uuid
+from types import SimpleNamespace
 
 import pytest
 
@@ -17,6 +18,7 @@ from app.employees.runtime import toolbridge
 from app.employees.runtime.base import BaseEmployee
 from app.employees.runtime.telemetry import Execution
 from app.employees.spec import ALL_PERMISSIONS, P_READ_ANALYTICS
+from app.models.organization import PlanTier
 
 
 def _ctx(keys=None, granted=None):
@@ -514,6 +516,90 @@ def test_an_unusable_model_choice_falls_back_to_the_tier():
         "balanced", "light", {"openai": "k"},
         provider_override="anthropic", model_override="claude-opus-4-8")
     assert choice.provider == "openai"
+
+
+# --- available()/is_allowed() drift (round 1 fix 1) ---------------------------
+
+
+def test_available_and_is_allowed_never_disagree():
+    """Every model the picker offers must actually pass the gate it will be
+    checked against -- available() and is_allowed() must read one source."""
+    keys = {"openai": "k", "anthropic": "k"}
+    entries = model_provider.available(keys)
+    assert entries, "expected the catalog to offer at least one model"
+    for entry in entries:
+        assert model_provider.is_allowed(entry["provider"], entry["id"], keys)
+
+
+def test_available_falls_back_to_the_model_id_when_undisplayed(monkeypatch):
+    """A catalogued model with no display metadata must still be offered, with
+    its id standing in for the label, rather than being dropped."""
+    from app.services.providers import catalog
+
+    monkeypatch.setattr(catalog, "rows",
+                        lambda: [("cheap", "openai", "brand-new-model")])
+    entries = model_provider.available({"openai": "k"})
+    assert entries == [{"id": "brand-new-model", "provider": "openai",
+                        "grade": "fast", "label": "brand-new-model", "hint": ""}]
+
+
+# --- entitlement on the override path (round 1 fix 2) -------------------------
+
+
+def _org(plan=PlanTier.PRO, flag=True):
+    return SimpleNamespace(plan_tier=plan, premium_models_enabled=flag)
+
+
+def _no_strands_build(monkeypatch):
+    """for_action()/build() reach into the strands package to construct a real
+    client, which this test environment does not have installed (a
+    pre-existing, unrelated gap -- see test_an_unusable_model_choice_falls_
+    back_to_the_tier just above, which is failing for the same reason in the
+    accepted baseline). These tests are only about which (provider, model)
+    for_action *decides* on, not about client construction, so stub build()
+    to hand the ModelChoice straight back. Scoped to each test explicitly
+    (not autouse) so the unrelated pre-existing failures elsewhere in this
+    file are left exactly as they are."""
+    monkeypatch.setattr(model_provider, "build", lambda choice, api_key: choice)
+
+
+def test_override_naming_a_premium_model_is_honoured_for_an_entitled_org(monkeypatch):
+    _no_strands_build(monkeypatch)
+    _model, choice = model_provider.for_action(
+        "balanced", "heavy", {"anthropic": "k"},
+        provider_override="anthropic", model_override="claude-opus-5", org=_org())
+    assert (choice.provider, choice.model_id) == ("anthropic", "claude-opus-5")
+
+
+def test_override_naming_a_premium_model_is_rejected_without_entitlement(monkeypatch):
+    """An unentitled org (or no org at all) must not reach premium through an
+    override -- it falls back to normal tier resolution instead of raising."""
+    _no_strands_build(monkeypatch)
+    unentitled = _org(PlanTier.PRO, False)
+    for org in (unentitled, None):
+        _model, choice = model_provider.for_action(
+            "balanced", "heavy", {"anthropic": "k"},
+            provider_override="anthropic", model_override="claude-opus-5", org=org)
+        assert choice.model_id != "claude-opus-5"
+        assert (choice.provider, choice.model_id) == ("anthropic", "claude-sonnet-5")
+
+
+def test_a_standard_override_is_unaffected_by_entitlement(monkeypatch):
+    """Cheap/standard overrides were never gated by entitlement and must stay
+    that way -- only premium needs an entitled org."""
+    _no_strands_build(monkeypatch)
+    _model, choice = model_provider.for_action(
+        "balanced", "light", {"openai": "k"},
+        provider_override="openai", model_override="gpt-4o", org=None)
+    assert (choice.provider, choice.model_id) == ("openai", "gpt-4o")
+
+
+def test_for_action_without_an_override_is_unaffected_by_the_entitlement_check(monkeypatch):
+    """Plain tier resolution (no provider_override/model_override) must behave
+    exactly as before this fix."""
+    _no_strands_build(monkeypatch)
+    _model, choice = model_provider.for_action("balanced", "heavy", {"anthropic": "k"})
+    assert (choice.provider, choice.model_id) == ("anthropic", "claude-sonnet-5")
 
 
 def test_competitor_search_is_planned_from_what_the_business_is():
