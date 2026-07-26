@@ -185,8 +185,11 @@ metered separately, so the ledger shows the true cost of a cascade.
 
 ## 9. Component I — Batch API (`services/batch/`)
 
-A submit/poll client, an arq reconciler job that collects completed batches, and
-a `batch=True` path on the callers.
+A submit/poll client plus a `batch_scope()` context manager. A one-request batch
+earns the same 50% discount as a large one, so the client submits and polls
+inline and `call_llm_usage` keeps its signature — no job has to be split into
+submit and resume halves. Any batch failure or timeout falls back to the
+interactive path, so a batch problem can never kill a scheduled job.
 
 **Coverage.** Digest and monitoring go to batch unconditionally — nothing waits
 on them. Competitor re-scans, bulk keyword jobs, backlink discovery and autopilot

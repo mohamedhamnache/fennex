@@ -196,6 +196,13 @@ async def call_llm_usage(
     directive = language_directive(locale)
     if directive:
         user_prompt = directive.strip() + "\n\n" + user_prompt
+    from app.services.batch import client as _batch_client
+    from app.services.batch.scope import batch_enabled
+    if batch_enabled() and provider in _batch_client.SUPPORTED_PROVIDERS:
+        result = await _batch_client.run_batched(provider, model, api_key, system_prompt,
+                                                 user_prompt, max_tokens)
+        if result is not None:
+            return result
     if provider == "anthropic":
         return await _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens)
     if provider == "openai":
