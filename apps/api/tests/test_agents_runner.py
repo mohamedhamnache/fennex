@@ -45,7 +45,7 @@ def _mt_skill():
 
 async def test_run_passes_skill_max_tokens_to_call_llm():
     seen = {}
-    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096):
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096, feature=None):
         seen["max_tokens"] = max_tokens
         return "body"
     with patch("app.services.agents.runner.call_llm", new=fake_call):
@@ -62,7 +62,7 @@ async def test_override_bypasses_resolve_and_fills_runtime():
     from app.services.agents.spec import Skill
     skill = Skill(key="dune.generate_article", agent_id="dune", weight="heavy", tools=[],
                   build_prompt=lambda b, i, td: ("S", "U"), output="markdown", parse=lambda r: r, persist=persist)
-    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096):
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096, feature=None):
         captured["provider"] = provider; captured["model"] = model
         return "body"
     with patch("app.services.agents.runner.call_llm", new=fake_call):

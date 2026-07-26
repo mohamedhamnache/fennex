@@ -17,19 +17,21 @@ class AgentRunner:
         if not available:
             return AgentResult(ok=False, error="No AI key configured. Add an Anthropic or OpenAI key in Settings.")
         try:
+            feature = getattr(skill, "feature", None)
             if provider_override and model_override and provider_override in keys:
                 provider, model = provider_override, model_override
             else:
-                provider, model = resolve_model(tier, skill.weight, available)
+                provider, model = resolve_model(tier, skill.weight, available, feature=feature)
             tool_data = await run_tools(skill.tools, brief, db, inputs)
             system, user = skill.build_prompt(brief, inputs or {}, tool_data)
             mt = {"max_tokens": skill.max_tokens} if skill.max_tokens else {}
-            raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale, **mt)
+            raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale,
+                                 feature=feature, **mt)
             content = _parse(skill, raw)
             if content is None and skill.output == "json":
                 raw2 = await call_llm(provider, model, keys[provider], system,
                                       user + "\n\nReturn ONLY valid JSON. No prose, no code fences.",
-                                      locale=brief.locale, **mt)
+                                      locale=brief.locale, feature=feature, **mt)
                 content = _parse(skill, raw2)
             if content is None:
                 return AgentResult(ok=False, error="Agent returned an unusable format.")

@@ -31,3 +31,4 @@ class Skill:
     # persist(result_content, campaign, brief, db) -> AgentResult   (optional artifact saver)
     persist: Optional[Callable[..., Awaitable["AgentResult"]]] = None
     max_tokens: Optional[int] = None              # override call_llm's token budget when set
+    feature: Optional[str] = None                 # routing policy key; None keeps tier-only routing
