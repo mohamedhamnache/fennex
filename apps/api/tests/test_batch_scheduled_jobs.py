@@ -23,7 +23,18 @@ def test_scheduled_entrypoints_enter_a_batch_scope():
 
 def test_user_triggerable_keyword_research_is_not_unconditionally_batched():
     source = inspect.getsource(keyword_tasks.run_keyword_research)
-    if "batch_scope" in source:
-        assert "batched" in inspect.signature(keyword_tasks.run_keyword_research).parameters, (
-            "run_keyword_research is reachable from a router, so batching must be "
-            "opt-in per call, not unconditional")
+    if "batch_scope" not in source:
+        return
+
+    assert "batched" in inspect.signature(keyword_tasks.run_keyword_research).parameters, (
+        "run_keyword_research is reachable from a router, so batching must be "
+        "opt-in per call, not unconditional")
+
+    # A `batched` parameter that sits unused would still pass the check above.
+    # Confirm the batch_scope() call itself is conditioned on `batched`, e.g.
+    # `with (batch_scope() if batched else nullcontext()):`, rather than
+    # entered unconditionally regardless of the argument.
+    scope_lines = [line for line in source.splitlines() if "batch_scope(" in line]
+    assert scope_lines, "no batch_scope() call found"
+    assert all("batched" in line for line in scope_lines), (
+        "batch_scope() must be entered conditionally on `batched`, not unconditionally")
