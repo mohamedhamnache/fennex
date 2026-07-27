@@ -6,6 +6,18 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./lib/**/*.{js,ts,jsx,tsx}",
     "../../packages/ui/src/**/*.{js,ts,jsx,tsx}",
+    // Tremor generates its utility classes at runtime from the `colors`
+    // prop (e.g. `fill-emerald-500`); Tailwind only sees them if it scans
+    // the library's own source, and the safelist below covers the
+    // dynamically-composed variants it can't statically find either way.
+    "./node_modules/@tremor/react/**/*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    {
+      pattern:
+        /^(bg|text|border|fill|stroke)-(emerald|blue|indigo|cyan|amber|rose|slate)-(50|100|200|300|400|500|600|700|800|900|950)$/,
+      variants: ["hover", "dark"],
+    },
   ],
   darkMode: "class",
   theme: {
