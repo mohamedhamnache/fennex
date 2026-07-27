@@ -23,16 +23,19 @@ Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession
 ORG_ACME = uuid.uuid4()
 ORG_SUSPENDED = uuid.uuid4()
 ORG_EMPTY = uuid.uuid4()
+ORG_DEACTIVATED_OWNER = uuid.uuid4()
+ORG_ALL_INACTIVE = uuid.uuid4()
 ADMIN_ID: uuid.UUID | None = None
 
 OWNER_ID: uuid.UUID | None = None
 ADMIN_USER_ID: uuid.UUID | None = None
 VIEWER_ID: uuid.UUID | None = None
+ACTIVE_ADMIN_ID: uuid.UUID | None = None
 
 
 @pytest.fixture(autouse=True)
 async def setup_db():
-    global ADMIN_ID, OWNER_ID, ADMIN_USER_ID, VIEWER_ID
+    global ADMIN_ID, OWNER_ID, ADMIN_USER_ID, VIEWER_ID, ACTIVE_ADMIN_ID
     async with engine.begin() as c:
         await c.run_sync(Base.metadata.create_all)
     async with Session() as db:
@@ -49,7 +52,11 @@ async def setup_db():
                                  suspended_at=dt.datetime.now(dt.timezone.utc),
                                  suspended_reason="non-payment")
         empty = Organization(id=ORG_EMPTY, slug="empty", name="Empty Co", plan_tier=PlanTier.FREE)
-        db.add_all([acme, suspended, empty]); await db.flush()
+        deactivated_owner_org = Organization(id=ORG_DEACTIVATED_OWNER, slug="deactowner",
+                                             name="Deactivated Owner Co", plan_tier=PlanTier.FREE)
+        all_inactive_org = Organization(id=ORG_ALL_INACTIVE, slug="allinactive",
+                                        name="All Inactive Co", plan_tier=PlanTier.FREE)
+        db.add_all([acme, suspended, empty, deactivated_owner_org, all_inactive_org]); await db.flush()
 
         # Seed users with DISTINCT roles, VIEWER created first, to prove OWNER
         # is picked over ADMIN/VIEWER regardless of creation order.
@@ -66,6 +73,21 @@ async def setup_db():
 
         db.add(User(org_id=ORG_SUSPENDED, email="u@susp.io", hashed_password="x",
                     full_name="Susp Owner", role=UserRole.OWNER))
+
+        # Deactivated OWNER must be skipped in favor of an active ADMIN.
+        deactivated_owner = User(org_id=ORG_DEACTIVATED_OWNER, email="deactowner@d.io",
+                                 hashed_password="x", full_name="Deactivated Owner",
+                                 role=UserRole.OWNER, is_active=False)
+        active_admin = User(org_id=ORG_DEACTIVATED_OWNER, email="activeadmin@d.io",
+                            hashed_password="x", full_name="Active Admin",
+                            role=UserRole.ADMIN, is_active=True)
+        db.add_all([deactivated_owner, active_admin]); await db.flush()
+        ACTIVE_ADMIN_ID = active_admin.id
+
+        # Org where the ONLY user is a deactivated OWNER -- no active user
+        # anywhere -- must 404.
+        db.add(User(org_id=ORG_ALL_INACTIVE, email="onlyowner@ai.io", hashed_password="x",
+                    full_name="Only Deactivated Owner", role=UserRole.OWNER, is_active=False))
         await db.commit()
 
     async def _override():
@@ -154,5 +176,26 @@ async def test_impersonate_org_with_no_users_404():
 async def test_impersonate_unknown_org_404():
     async with await _client() as ac:
         r = await ac.post(f"/api/v1/admin/orgs/{uuid.uuid4()}/impersonate",
+                          headers={"Authorization": f"Bearer {_super_bearer()}"})
+        assert r.status_code == 404
+
+
+async def test_impersonate_skips_deactivated_owner_for_active_admin():
+    async with await _client() as ac:
+        r = await ac.post(f"/api/v1/admin/orgs/{ORG_DEACTIVATED_OWNER}/impersonate",
+                          headers={"Authorization": f"Bearer {_super_bearer()}"})
+        assert r.status_code == 200
+        body = r.json()
+
+        # Must pick the ACTIVE admin, never the deactivated owner.
+        assert body["user"]["id"] == str(ACTIVE_ADMIN_ID)
+
+        payload = jwt.decode(body["access_token"], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        assert payload["sub"] == str(ACTIVE_ADMIN_ID)
+
+
+async def test_impersonate_all_users_inactive_404():
+    async with await _client() as ac:
+        r = await ac.post(f"/api/v1/admin/orgs/{ORG_ALL_INACTIVE}/impersonate",
                           headers={"Authorization": f"Bearer {_super_bearer()}"})
         assert r.status_code == 404

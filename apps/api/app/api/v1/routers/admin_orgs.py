@@ -332,11 +332,14 @@ async def _select_impersonation_user(db: AsyncSession, org_id: uuid.UUID) -> Use
     """Pick the user to impersonate for an org. Preference order: the OWNER,
     then an ADMIN, then the earliest-created active user -- so impersonation
     always lands on the most representative account rather than an arbitrary
-    row."""
+    row. Every tier requires is_active=True: a deactivated owner/admin must
+    never be selected -- the product considers that account disabled, and
+    minting a live customer token for it would resurrect access that was
+    deliberately revoked."""
     owner = (
         await db.execute(
             select(User)
-            .where(User.org_id == org_id, User.role == UserRole.OWNER)
+            .where(User.org_id == org_id, User.role == UserRole.OWNER, User.is_active.is_(True))
             .order_by(User.created_at.asc())
             .limit(1)
         )
@@ -347,7 +350,7 @@ async def _select_impersonation_user(db: AsyncSession, org_id: uuid.UUID) -> Use
     admin_user = (
         await db.execute(
             select(User)
-            .where(User.org_id == org_id, User.role == UserRole.ADMIN)
+            .where(User.org_id == org_id, User.role == UserRole.ADMIN, User.is_active.is_(True))
             .order_by(User.created_at.asc())
             .limit(1)
         )
