@@ -1,38 +1,43 @@
-"""AI credits: the user-facing unit that hides model economics.
+"""Credit conversions. Money is micro-dollars ($1 = 1_000_000).
 
-A credit is a fixed amount of cost of goods, not a request. Because
-``usage_events.cost_micros`` is already priced from each model's own
-``cost_rates`` rows and its real token counts, credits are simply cost divided
-by the credit unit -- there is no multiplier table to maintain or to drift when
-a model is repriced.
+1 AI credit == $0.01 of real supplier cost. AI credits are accumulated as
+*milli-credits* (credits * 1000) so that sub-cent calls -- a gpt-4o-mini turn
+costs ~$0.002, i.e. 0.2 credits -- accumulate exactly instead of rounding to
+zero on every call. Display divides by 1000.
 
-The published ratios fall out of that automatically. At a reference request of
-3k input and 1k output tokens against the seeded rates:
-
-    gpt-4o-mini (cheap, OpenAI)      $0.00105    1.0 credit
-    claude-haiku-4-5 (cheap, fallback) $0.00800   7.6 credits
-    gpt-4o (standard, OpenAI)        $0.01750   16.7 credits
-    claude-sonnet-5 (standard, fallback) $0.02400 22.9 credits
-    claude-opus-5 (premium)          $0.04000   38.1 credits
-
-Two properties worth keeping in mind. Charging by cost rather than per request
-means a large cheap call costs more credits than a small one, which is correct:
-a 10k-token summarisation is not the same product as a 500-token tag. And a
-failover to the Anthropic side of a band charges its real 7.6x, so an outage
-cannot quietly erode margin at the same credit price.
-
-Allowances are sized so that spending an entire month's credits on the most
-expensive band a plan can reach still leaves at least the 400% markup the
-reseller spec requires. See tests/test_credits.py, which asserts that floor.
+1 SEO credit == one DataForSEO billable task; heavier endpoints are weighted.
 """
 
-# Cost of the reference cheap request above, in micro-dollars ($1 = 1_000_000).
-# This is the definition of one credit; changing it repricess every plan, so it
-# is asserted against the plan allowances in the tests.
+AI_CREDIT_MICROS = 10_000  # $0.01 per AI credit
+
+
+def ai_credits_from_micros(cost_micros: int) -> int:
+    """Convert supplier cost (micro-dollars) to milli-credits."""
+    return round(cost_micros * 1000 / AI_CREDIT_MICROS)
+
+
+def milli_to_credits(milli: int) -> int:
+    """Whole credits for display/enforcement."""
+    return round(milli / 1000)
+
+
+SEO_CREDIT_WEIGHT: dict[str, int] = {
+    "serp": 1,
+    "keyword_ideas": 1,
+    "keyword_analysis": 1,
+    "rank_check": 1,
+    "backlinks": 3,
+    "audit": 5,
+}
+
+
+def seo_credits_for(unit: str | None, count: int) -> int:
+    return count * SEO_CREDIT_WEIGHT.get(unit or "", 1)
+
+
+# Backward compatibility: old functions used by other modules
 CREDIT_MICROS = 1_050
 
-# Monthly credit allowance per plan tier. "free" is retained for orgs already on
-# it and is deliberately small; it is no longer sold.
 PLAN_CREDITS: dict[str, int] = {
     "free": 200,
     "starter": 5_000,
@@ -43,17 +48,12 @@ PLAN_CREDITS: dict[str, int] = {
 
 
 def credits_from_micros(cost_micros: int) -> int:
-    """Convert metered cost into whole credits, rounding up.
-
-    Rounding up means any billable work costs at least one credit, so a burst of
-    very small calls cannot consume real cost while registering as zero.
-    """
+    """Convert metered cost into whole credits, rounding up."""
     if cost_micros <= 0:
         return 0
     return -(-int(cost_micros) // CREDIT_MICROS)
 
 
 def credit_allowance(plan_tier: str) -> int:
-    """Monthly allowance for a tier, falling back to the smallest bucket for an
-    unrecognised tier rather than granting an unlimited one."""
+    """Monthly allowance for a tier, falling back to the smallest bucket."""
     return PLAN_CREDITS.get(str(plan_tier or "").lower(), PLAN_CREDITS["free"])
