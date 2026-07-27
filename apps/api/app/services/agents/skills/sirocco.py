@@ -81,4 +81,9 @@ GENERATE_VISUAL = Skill(
     key="sirocco.generate_visual", agent_id="sirocco", weight="heavy", tools=[],
     build_prompt=_visual_prompt, output="text", parse=lambda raw: raw, persist=_persist_visual,
     label="Generate a visual", description="Art-direct then render a campaign image.",
+    # The art director's whole output is an image-generation prompt under 80
+    # words -- exactly what image_prompt prices for. No max_tokens override
+    # existed, so this drops the ceiling from the 4096 default to 512, a
+    # decrease.
+    feature="image_prompt",
 )

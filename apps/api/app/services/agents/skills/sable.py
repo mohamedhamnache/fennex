@@ -38,4 +38,9 @@ COMPETITOR_SCAN = Skill(
     key="sable.competitor_scan", agent_id="sable", weight="heavy",
     tools=["crawl_competitor", "our_demand"], build_prompt=_scan_prompt, output="json", parse=parse_json,
     label="Scan a competitor", description="Score a competitor and find the gap to strike.",
+    # This IS a competitor gap analysis -- the policy key names exactly what
+    # the skill does, down to the "gaps" field in its own JSON schema. No
+    # max_tokens override existed (default 4096); competitor_gap's ceiling is
+    # also 4096, so this is unchanged, not a raise.
+    feature="competitor_gap",
 )

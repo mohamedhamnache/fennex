@@ -258,10 +258,8 @@ async def refresh_digest(project_id: uuid.UUID, org_id: uuid.UUID, keys: dict,
     providers = list((keys or {}).keys())
     if providers:
         try:
-            from app.services.agents.tiers import resolve_model
-            from app.services.llm_service import call_llm
+            from app.services.agents import cascade
 
-            provider, model = resolve_model("balanced", "light", providers, feature="document_digest")
             # Openings only: summarising every document in full would cost more
             # than the digest can ever save.
             excerpt = "\n\n".join(
@@ -274,8 +272,15 @@ async def refresh_digest(project_id: uuid.UUID, org_id: uuid.UUID, keys: dict,
                 "headings, no preamble. The text is pasted directly into another "
                 "prompt, so anything structural becomes noise there."
             )
-            summary = await call_llm(provider, model, keys[provider], system, excerpt,
-                                     locale=getattr(project, "locale", "en"), feature="document_digest")
+            # A cheap model's failure mode here is exactly what _plain_prose already
+            # guards against downstream: JSON or a fenced block instead of the plain
+            # prose asked for. The cascade validator reuses that same check, so a
+            # response that would be thrown away below instead gets one escalation
+            # first (spec 3.4.3 -- cheap models fail on format, not on taste).
+            summary = await cascade.call_with_cascade(
+                keys=keys, feature="document_digest", system_prompt=system,
+                user_prompt=excerpt, locale=getattr(project, "locale", "en"),
+                validate=lambda text: bool(_plain_prose(text)))
             cleaned = _plain_prose(summary)
             if cleaned:
                 digest = cleaned[:1200]
