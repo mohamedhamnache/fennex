@@ -73,6 +73,22 @@ services:
       - /app/node_modules
       - /app/apps/web/.next
 
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile.dev
+    ports:
+      - "3002:3000"
+    depends_on:
+      - api
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_ADMIN_API_URL: http://localhost:8000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/admin/.next
+
   crawler:
     build: ./services/crawler
     ports:
