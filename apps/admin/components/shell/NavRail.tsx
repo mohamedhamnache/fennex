@@ -26,7 +26,8 @@ function NavRow({ item, showLabel, active }: { item: NavItem; showLabel: boolean
     <li>
       <Link
         href={item.href}
-        title={!showLabel ? item.label : undefined}
+        title={item.label}
+        aria-label={item.label}
         aria-current={active ? "page" : undefined}
         className={cn(
           "group relative flex min-h-[40px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-lg p-2.5 text-sm font-medium",

@@ -91,6 +91,7 @@ export function TopBar({ onOpenPalette }: TopBarProps) {
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
+            aria-haspopup="menu"
             aria-expanded={menuOpen}
             className={cn(
               "flex min-h-[36px] cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-medium text-foreground transition-colors duration-150",
