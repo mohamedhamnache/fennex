@@ -20,11 +20,15 @@ from app.models.organization import PlanTier
 def test_plan_limits_free_articles():
     assert PLAN_LIMITS["free"]["articles"] == 4
 
-def test_plan_limits_agency_images_unlimited():
-    assert PLAN_LIMITS["agency"]["images"] == -1
+def test_plan_limits_agency_images_is_metered():
+    # The reseller plan table gives Agency a finite image allowance; only social,
+    # brand_voices, audits and backlinks stay unlimited there. See
+    # tests/test_plan_limits.py for the full per-tier assertions.
+    assert PLAN_LIMITS["agency"]["images"] == 1500
+    assert PLAN_LIMITS["agency"]["social"] == -1
 
 def test_plan_limits_all_tiers_present():
-    for tier in ("free", "starter", "pro", "agency"):
+    for tier in ("free", "starter", "pro", "agency", "scale"):
         for resource in ("projects", "articles", "images", "social", "keywords",
                          "seats", "brand_voices", "audits", "backlinks"):
             assert resource in PLAN_LIMITS[tier]
@@ -67,14 +71,18 @@ async def test_get_current_usage_returns_value():
 
 @pytest.mark.asyncio
 async def test_check_usage_limit_unlimited_passes():
-    """Agency tier (unlimited = -1) never raises."""
+    """An unlimited (-1) resource never raises and never queries usage.
+
+    Agency images became a finite allowance under the reseller plan table, so
+    this uses social, which is still unlimited there.
+    """
     org = MagicMock()
     org.plan_tier = "agency"
     org.id = uuid.uuid4()
     mock_db = AsyncMock()
     mock_response = MagicMock()
 
-    dep = check_usage_limit("images")
+    dep = check_usage_limit("social")
     await dep(org=org, db=mock_db, response=mock_response)
     # no exception = pass
 
@@ -97,20 +105,22 @@ async def test_check_usage_limit_under_80_pct_no_warning():
 
 @pytest.mark.asyncio
 async def test_check_usage_limit_at_80_pct_sets_warning_header():
-    """At exactly 80% — sets X-Usage-Warning, no exception."""
-    from fastapi import HTTPException
+    """At exactly 80% — sets X-Usage-Warning, no exception.
+
+    The usage figure is derived from PLAN_LIMITS rather than hard-coded, so a
+    pricing change cannot silently turn this into a test of some other ratio.
+    """
     org = MagicMock()
-    org.plan_tier = "free"   # limit = 4
+    org.plan_tier = "starter"
     org.id = uuid.uuid4()
+    limit = PLAN_LIMITS["starter"]["articles"]
     mock_db = AsyncMock()
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = 4  # 100% of 4... wait, 80% of 4 = 3.2 → use starter
-    mock_result.scalar_one_or_none.return_value = 16  # 80% of 20 (starter)
+    mock_result.scalar_one_or_none.return_value = int(limit * 0.8)
     mock_db.execute = AsyncMock(return_value=mock_result)
     mock_response = MagicMock()
     mock_response.headers = {}
 
-    org.plan_tier = "starter"  # limit = 20 articles
     dep = check_usage_limit("articles")
     await dep(org=org, db=mock_db, response=mock_response)
     assert "X-Usage-Warning" in mock_response.headers
@@ -120,11 +130,11 @@ async def test_check_usage_limit_at_100_pct_raises_429():
     """At 100% — raises HTTPException 429."""
     from fastapi import HTTPException
     org = MagicMock()
-    org.plan_tier = "starter"  # limit = 20
+    org.plan_tier = "starter"
     org.id = uuid.uuid4()
     mock_db = AsyncMock()
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = 20
+    mock_result.scalar_one_or_none.return_value = PLAN_LIMITS["starter"]["articles"]
     mock_db.execute = AsyncMock(return_value=mock_result)
     mock_response = MagicMock()
 
