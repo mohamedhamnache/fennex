@@ -20,6 +20,8 @@ class LLMUsage:
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
+    cache_write_tokens: int = 0  # Anthropic cache_creation_input_tokens; billed at
+                                 # ~1.25x the input rate (the provider's cache-write premium)
     batch: bool = False  # priced from the batch_* cost_rates units (50% off)
 
 
@@ -82,9 +84,16 @@ DEFAULT_MAX_TOKENS = 4096
 ARTICLE_MAX_TOKENS = 8192
 
 # Anthropic bills a cache write at ~1.25x and a cache read at ~0.1x, so marking
-# a short prefix costs more than it saves. This threshold is a conservative
-# character-count proxy for the provider's minimum cacheable prompt length.
-CACHEABLE_MIN_CHARS = 4000
+# a prefix that can't actually cache only pays the write premium for nothing.
+# The provider's minimum cacheable prefix is 1024 tokens for Sonnet/Opus-class
+# models and 2048 tokens for Haiku-class models. This constant marks system
+# prompts for every Anthropic model we route to (haiku, sonnet, opus -- see
+# app/services/providers/catalog.py's SEED), so it must clear the largest of
+# those minimums (2048 tokens, Haiku-class) rather than the smallest -- a
+# threshold sized for Sonnet/Opus would mark-and-never-cache on Haiku. At
+# ~4 chars/token that's ~8000 chars. Never lower this without checking which
+# models are still in rotation and their minimums.
+CACHEABLE_MIN_CHARS = 8000
 
 
 def _anthropic_system_blocks(system_prompt: str):
@@ -183,7 +192,8 @@ async def _anthropic_usage(model, api_key, system_prompt, user_prompt, max_token
     usage = LLMUsage("anthropic", model,
                      input_tokens=getattr(u, "input_tokens", 0) or 0,
                      output_tokens=getattr(u, "output_tokens", 0) or 0,
-                     cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0)
+                     cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
+                     cache_write_tokens=getattr(u, "cache_creation_input_tokens", 0) or 0)
     return message.content[0].text, usage
 
 

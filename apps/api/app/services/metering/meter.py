@@ -52,6 +52,14 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
         logger.warning("no cost_rate for provider=%s model=%s unit=%sinput_token; input priced to 0",
                        usage.provider, usage.model, prefix)
 
+    cache_write_rate = 0.0
+    if usage.cache_write_tokens > 0:
+        cache_write_rate = await rate(db, usage.provider, f"{prefix}cache_write_token", usage.model)
+        if cache_write_rate == 0:
+            logger.warning("no cost_rate for provider=%s model=%s unit=%scache_write_token; "
+                           "cache-write tokens priced to 0",
+                           usage.provider, usage.model, prefix)
+
     billable_input = usage.input_tokens
     if usage.provider == "openai":
         # OpenAI prompt_tokens already includes the cached subset; bill only the
@@ -59,11 +67,13 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
         billable_input = max(0, usage.input_tokens - usage.cache_read_tokens)
     cost = round(billable_input * in_rate
                  + usage.output_tokens * out_rate
-                 + usage.cache_read_tokens * cache_rate)
+                 + usage.cache_read_tokens * cache_rate
+                 + usage.cache_write_tokens * cache_write_rate)
     db.add(UsageEvent(
         org_id=org_id, project_id=project_id, kind="llm", provider=usage.provider,
         model=usage.model, feature=feature, input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens, cache_read_tokens=usage.cache_read_tokens,
+        cache_write_tokens=usage.cache_write_tokens,
         cost_micros=cost,
     ))
     await _bump_org_usage(db, org_id, ai_input_tokens=usage.input_tokens,
