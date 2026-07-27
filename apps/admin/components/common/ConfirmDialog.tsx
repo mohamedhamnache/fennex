@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -19,6 +20,11 @@ export interface ConfirmDialogProps {
    * the mutation is in flight. The dialog stays open — the caller closes it
    * once the request settles. */
   loading?: boolean;
+  /** Optional extra content rendered between the description and the action
+   * buttons — e.g. a reason textarea ahead of a suspend confirm, or an
+   * inline mutation error. Kept generic rather than adding a bespoke
+   * `reason` prop so any caller can extend the dialog body. */
+  children?: ReactNode;
 }
 
 const FOCUSABLE_SELECTOR =
@@ -40,6 +46,7 @@ export function ConfirmDialog({
   onConfirm,
   onClose,
   loading,
+  children,
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -122,6 +129,8 @@ export function ConfirmDialog({
             {description}
           </p>
         )}
+
+        {children}
 
         <div className="mt-5 flex items-center justify-end gap-2">
           <button

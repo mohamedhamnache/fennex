@@ -44,6 +44,22 @@ export interface AdminOrgDetail extends AdminOrgRow {
   }[];
 }
 
+/** `POST /admin/orgs/{id}/impersonate` — a short-lived session token scoped
+ * to the org's owner, plus enough of the owner's identity to show it in the
+ * confirmation dialog. There's no cross-app auto-login yet (see
+ * `orgs/[id]/page.tsx`), so this is only ever displayed, never redirected
+ * with. */
+export interface AdminImpersonateResult {
+  access_token: string;
+  token_type: string;
+  user: {
+    id: string;
+    email: string;
+    full_name: string | null;
+  };
+  expires_in: number;
+}
+
 /** One row of `GET /admin/audit`. */
 export interface AdminAuditRow {
   id: number;
