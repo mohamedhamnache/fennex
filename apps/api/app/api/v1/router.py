@@ -5,6 +5,7 @@ from app.api.v1.routers import (
     admin_overview,
     admin_audit,
     admin_orgs,
+    admin_users,
     auth,
     organizations,
     users,
@@ -65,6 +66,7 @@ api_router = APIRouter()
 api_router.include_router(admin_auth.router)
 api_router.include_router(admin_overview.router)
 api_router.include_router(admin_orgs.router)
+api_router.include_router(admin_users.router)
 api_router.include_router(admin_audit.router)
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(organizations.router, prefix="/organizations", tags=["organizations"])
