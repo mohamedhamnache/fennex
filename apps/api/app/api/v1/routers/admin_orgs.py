@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.admin_auth import AdminContext, require_admin
 from app.core.database import get_db
+from app.core.security import create_access_token
 from app.models.billing import OrgUsage
 from app.models.organization import Organization
 from app.models.project import Project
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.admin.audit import record_admin_action
 
 router = APIRouter(prefix="/admin", tags=["admin-orgs"])
@@ -325,3 +326,87 @@ async def reset_org_quotas(
     await db.commit()
 
     return {"id": str(org.id), "reset": True, "periods_reset": len(usage_rows)}
+
+
+async def _select_impersonation_user(db: AsyncSession, org_id: uuid.UUID) -> User | None:
+    """Pick the user to impersonate for an org. Preference order: the OWNER,
+    then an ADMIN, then the earliest-created active user -- so impersonation
+    always lands on the most representative account rather than an arbitrary
+    row."""
+    owner = (
+        await db.execute(
+            select(User)
+            .where(User.org_id == org_id, User.role == UserRole.OWNER)
+            .order_by(User.created_at.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if owner is not None:
+        return owner
+
+    admin_user = (
+        await db.execute(
+            select(User)
+            .where(User.org_id == org_id, User.role == UserRole.ADMIN)
+            .order_by(User.created_at.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if admin_user is not None:
+        return admin_user
+
+    return (
+        await db.execute(
+            select(User)
+            .where(User.org_id == org_id, User.is_active.is_(True))
+            .order_by(User.created_at.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+@router.post("/orgs/{org_id}/impersonate")
+async def impersonate_org(
+    org_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("org.impersonate")),
+):
+    org = await _get_org_or_404(db, org_id)
+
+    if org.suspended_at is not None:
+        # Never impersonate into a suspended org -- support must unsuspend
+        # (a separate, audited action) before assuming a customer's session.
+        raise HTTPException(status.HTTP_409_CONFLICT, "Organization is suspended")
+
+    user = await _select_impersonation_user(db, org_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization has no owner user")
+
+    # Short-lived customer access token. The `imp` claim marks this as an
+    # impersonation session so downstream code/audit can distinguish it from
+    # a normal customer login.
+    token = create_access_token(
+        {
+            "sub": str(user.id),
+            "org_id": str(org.id),
+            "role": user.role.value,
+            "imp": str(ctx.admin.id),
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="org.impersonate",
+        resource_type="organization", resource_id=str(org.id),
+        after={"impersonated_user": str(user.id)},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"id": str(user.id), "email": user.email, "full_name": user.full_name},
+        "expires_in": 1800,
+    }
