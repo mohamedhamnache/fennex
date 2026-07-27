@@ -1052,6 +1052,11 @@
     "nearLimit": "Du hast {{used}}/{{limit}} {{label}} diesen Monat verwendet.",
     "upgradeToContinue": "Upgraden um fortzufahren →"
   },
+  "credits": {
+    "ai": "KI-Guthaben",
+    "seo": "SEO-Guthaben",
+    "ariaLabel": "Guthabenstand -- Abrechnung anzeigen"
+  },
   "campaigns": {
     "title": "Kampagnen",
     "subtitle": "Ein Briefing genügt — das Pack plant und führt eine ganze Kampagne aus",

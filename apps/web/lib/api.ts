@@ -1714,6 +1714,10 @@ export interface UsageSummary {
   seo_keyword_analyses: number;
   cost_micros: number;
   cost_usd: number;
+  /** SEO credit fields are rolling out server-side; absent on older deploys. */
+  seo_credits_used?: number;
+  seo_credits_allowance?: number;
+  seo_credits_remaining?: number;
 }
 
 export async function getUsageSummary(): Promise<UsageSummary> {
