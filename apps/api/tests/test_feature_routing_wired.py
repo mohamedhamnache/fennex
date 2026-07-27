@@ -39,6 +39,13 @@ async def test_discovery_service_names_its_feature():
 
 
 async def test_knowledge_service_names_its_feature_at_both_call_sites():
+    """refresh_digest routes through cascade.call_with_cascade (commit
+    6382943), not a direct resolve_model + call_llm pair -- cascade.py
+    imports both at module level, so it binds its own local names at import
+    time. Patching app.services.agents.tiers.resolve_model or
+    app.services.llm_service.call_llm no longer intercepts this path; the
+    boundary to patch is cascade's own module attributes, same as
+    tests/test_cascade.py's `spy` fixture does for call_llm."""
     project = SimpleNamespace(locale="en", knowledge_digest=None)
 
     class _FakeDB:
@@ -52,8 +59,8 @@ async def test_knowledge_service_names_its_feature_at_both_call_sites():
     resolve = Mock(return_value=("anthropic", "claude-sonnet-5"))
     call_llm = AsyncMock(return_value="A tidy digest.")
     with patch.object(knowledge_service, "list_documents", new=AsyncMock(return_value=docs)), \
-         patch("app.services.agents.tiers.resolve_model", new=resolve), \
-         patch("app.services.llm_service.call_llm", new=call_llm):
+         patch("app.services.agents.cascade.resolve_model", new=resolve), \
+         patch("app.services.agents.cascade.call_llm", new=call_llm):
         digest = await knowledge_service.refresh_digest(uuid.uuid4(), uuid.uuid4(),
                                                          {"anthropic": "k"}, _FakeDB())
     assert resolve.call_args.kwargs.get("feature") == "document_digest"
