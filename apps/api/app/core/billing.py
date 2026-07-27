@@ -21,22 +21,42 @@ CAPACITY_RESOURCES = {"projects", "brand_voices"}
 # ── Plan limits ────────────────────────────────────────────────────────────────
 # -1 means unlimited.
 
+# projects/seats/articles/images/keywords come from the reseller spec's plan
+# table (docs/superpowers/specs/2026-07-25-reseller-billing-architecture.md, s5).
+# social/brand_voices/audits/backlinks are NOT priced there, so they keep their
+# previous per-tier values and scale inherits agency's.
+#
+# The spec also prices AI credits, raw token caps, SERP and DataForSEO calls,
+# storage, rate limits and concurrent jobs. Those are deliberately absent here:
+# nothing enforces them yet (that is the QuotaGuard phase), and a key in this
+# dict that check_usage_limit never reads would advertise a limit the app does
+# not apply.
+#
+# "free" is retained for orgs already on it, which keep working unchanged. It is
+# no longer offered to new signups and the pricing UI does not show it; the
+# spec replaces it with a 7-day trial whose expiry machinery lands later.
 PLAN_LIMITS: dict[str, dict[str, int]] = {
     "free": {
         "projects": 1, "articles": 4, "images": 5, "social": 10,
         "keywords": 50, "seats": 1, "brand_voices": 1, "audits": 1, "backlinks": 1,
     },
     "starter": {
-        "projects": 5, "articles": 20, "images": 50, "social": 50,
+        "projects": 3, "articles": 25, "images": 60, "social": 50,
         "keywords": 500, "seats": 3, "brand_voices": 3, "audits": 5, "backlinks": 5,
     },
     "pro": {
-        "projects": 10, "articles": 40, "images": 150, "social": 200,
-        "keywords": 2000, "seats": 10, "brand_voices": 10, "audits": 20, "backlinks": 20,
+        "projects": 10, "articles": 120, "images": 300, "social": 200,
+        "keywords": 2500, "seats": 10, "brand_voices": 10, "audits": 20, "backlinks": 20,
     },
     "agency": {
-        "projects": 100, "articles": 400, "images": -1, "social": -1,
-        "keywords": -1, "seats": -1, "brand_voices": -1, "audits": -1, "backlinks": -1,
+        "projects": 50, "articles": 500, "images": 1500, "social": -1,
+        "keywords": 10000, "seats": 25, "brand_voices": -1, "audits": -1, "backlinks": -1,
+    },
+    "scale": {
+        # Articles and images are "unlimited" as fair use in the spec: still
+        # bounded by the raw token and call caps the QuotaGuard phase will add.
+        "projects": 200, "articles": -1, "images": -1, "social": -1,
+        "keywords": 40000, "seats": 75, "brand_voices": -1, "audits": -1, "backlinks": -1,
     },
 }
 

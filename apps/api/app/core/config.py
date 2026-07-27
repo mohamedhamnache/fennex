@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     STRIPE_PRICE_PRO_ANNUAL: str = ""
     STRIPE_PRICE_AGENCY_MONTHLY: str = ""
     STRIPE_PRICE_AGENCY_ANNUAL: str = ""
+    STRIPE_PRICE_SCALE_MONTHLY: str = ""
+    STRIPE_PRICE_SCALE_ANNUAL: str = ""
 
     # Internal service URLs
     CRAWLER_SERVICE_URL: str = "http://crawler:8001"

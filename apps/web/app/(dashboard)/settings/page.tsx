@@ -22,7 +22,7 @@ import {
   listApiKeys, createApiKey, deleteApiKey, type ApiKey,
   listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection,
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
-  createCheckoutSession, createPortalSession, getBillingUsage,
+  createCheckoutSession, createPortalSession, getBillingUsage, getUsageSummary,
   listProjects, updateProject, deleteProject, type ProjectPersona,
   getOrganization, updateOrganization,
 } from "@/lib/api";
@@ -44,6 +44,9 @@ const PLAN_COLORS: Record<string, string> = {
   starter: "bg-teal-500/12 text-teal-500",
   pro: "bg-amber-500/12 text-amber-500",
   agency: "bg-amber-500/12 text-amber-600",
+  // Without its own entry, Scale would fall through to the default badge, which
+  // is the same muted styling free accounts get.
+  scale: "bg-violet-500/12 text-violet-500",
   enterprise: "bg-emerald-500/12 text-emerald-500",
 };
 
@@ -114,34 +117,39 @@ const PROJECT_PERSONAS: ProjectPersona[] = ["creator", "ecommerce", "freelancer"
 
 type SectionId = (typeof NAV_ITEMS)[number]["id"];
 
+// Prices and quotas come from the reseller spec's plan table
+// (docs/superpowers/specs/2026-07-25-reseller-billing-architecture.md, s5).
+// annualPrice is the per-month figure when paying yearly: twelve months for the
+// price of ten, so monthly x 10/12 rounded. There is no Free plan here — orgs
+// already on it keep working, but it is no longer sold.
 const PLANS = [
-  {
-    id: "free",
-    name: "Free",
-    monthlyPrice: 0,
-    annualPrice: 0,
-    features: ["1 project", "4 articles/month", "5 images/month", "1 seat"],
-  },
   {
     id: "starter",
     name: "Starter",
-    monthlyPrice: 49,
-    annualPrice: 39,
-    features: ["5 projects", "20 articles/month", "50 images/month", "3 seats"],
+    monthlyPrice: 29,
+    annualPrice: 24,
+    features: ["3 projects", "3 seats", "25 articles/month", "5,000 AI credits/month"],
   },
   {
     id: "pro",
     name: "Pro",
     monthlyPrice: 99,
-    annualPrice: 79,
-    features: ["10 projects", "40 articles/month", "150 images/month", "10 seats"],
+    annualPrice: 83,
+    features: ["10 projects", "10 seats", "120 articles/month", "18,000 AI credits/month", "Premium models"],
   },
   {
     id: "agency",
     name: "Agency",
-    monthlyPrice: 249,
-    annualPrice: 199,
-    features: ["100 projects", "400 articles/month", "Unlimited images", "Unlimited seats"],
+    monthlyPrice: 299,
+    annualPrice: 249,
+    features: ["50 projects", "25 seats", "500 articles/month", "55,000 AI credits/month", "Bring your own keys, -30%"],
+  },
+  {
+    id: "scale",
+    name: "Scale",
+    monthlyPrice: 799,
+    annualPrice: 666,
+    features: ["200 projects", "75 seats", "Unlimited articles", "150,000 AI credits/month", "Bring your own keys, -40%"],
   },
 ] as const;
 
@@ -193,6 +201,15 @@ function InfoRow({ icon: Icon, label, value, mono = false }: { icon: React.Eleme
         <p className="text-xs font-medium text-muted-foreground mb-0.5">{label}</p>
         <p className={`text-sm text-foreground truncate ${mono ? "font-mono" : ""}`}>{value}</p>
       </div>
+    </div>
+  );
+}
+
+function InfoStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -921,6 +938,12 @@ function BillingSection() {
     refetchInterval: 60_000,
   });
 
+  const { data: aiUsage } = useQuery({
+    queryKey: ["usage-summary"],
+    queryFn: getUsageSummary,
+    refetchInterval: 60_000,
+  });
+
   const checkoutMutation = useMutation({
     mutationFn: ({ tier, annual }: { tier: string; annual: boolean }) =>
       createCheckoutSession(
@@ -938,7 +961,10 @@ function BillingSection() {
   });
 
   const currentTier = billing?.plan_tier ?? "free";
-  const tierOrder = ["free", "starter", "pro", "agency"];
+  // Ranking only, not what is on sale: "free" stays here so orgs still on it
+  // rank below Starter and see every paid plan as an upgrade, even though Free
+  // is no longer offered in PLANS.
+  const tierOrder = ["free", "starter", "pro", "agency", "scale"];
   const currentIdx = tierOrder.indexOf(currentTier);
 
   const trialEndsAt = billing?.trial_ends_at
@@ -987,6 +1013,49 @@ function BillingSection() {
           )}
         </div>
       </div>
+
+      {/* AI credits — the unit the plan cards advertise. Derived from metered
+          cost, so it already reflects which model served each request. */}
+      {aiUsage && (
+        <Card className="p-5">
+          {(() => {
+            const { credits_used: used, credits_allowance: allowance } = aiUsage;
+            const pct = allowance > 0 ? used / allowance : 0;
+            const over = pct >= 1;
+            const near = pct >= 0.8 && pct < 1;
+            return (
+              <>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Sparkles className="h-3.5 w-3.5" strokeWidth={2} />
+                    </span>
+                    {t("settings.billing.credits.title")}
+                  </p>
+                  <span className={`shrink-0 text-xs font-medium tabular-nums ${over ? "text-destructive" : near ? "text-warning" : "text-muted-foreground"}`}>
+                    {used.toLocaleString()} / {allowance.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full transition-all ${over ? "bg-destructive" : near ? "bg-warning" : "gradient-brand"}`}
+                    style={{ width: `${Math.max(Math.min(pct * 100, 100), pct > 0 ? 4 : 0)}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {t("settings.billing.credits.hint")}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border/60 pt-4 sm:grid-cols-4">
+                  <InfoStat label={t("settings.billing.credits.requests")} value={aiUsage.ai_requests.toLocaleString()} />
+                  <InfoStat label={t("settings.billing.credits.inputTokens")} value={aiUsage.ai_input_tokens.toLocaleString()} />
+                  <InfoStat label={t("settings.billing.credits.outputTokens")} value={aiUsage.ai_output_tokens.toLocaleString()} />
+                  <InfoStat label={t("settings.billing.credits.remaining")} value={aiUsage.credits_remaining.toLocaleString()} />
+                </div>
+              </>
+            );
+          })()}
+        </Card>
+      )}
 
       {/* Usage meters */}
       {billing && Object.keys(billing.usage).length > 0 && (
@@ -1072,11 +1141,10 @@ function BillingSection() {
                 <div>
                   <p className="font-display text-lg font-bold text-foreground">{plan.name}</p>
                   <p className="mt-1 font-display text-3xl font-bold tracking-tight text-foreground">
-                    {plan.monthlyPrice === 0 ? t("settings.billing.free") : (
-                      <>${annual ? plan.annualPrice : plan.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">{t("settings.billing.perMonth")}</span></>
-                    )}
+                    ${annual ? plan.annualPrice : plan.monthlyPrice}
+                    <span className="text-sm font-normal text-muted-foreground">{t("settings.billing.perMonth")}</span>
                   </p>
-                  {annual && plan.monthlyPrice > 0 && (
+                  {annual && (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">{t("settings.billing.billedAnnually")}</p>
                   )}
                 </div>

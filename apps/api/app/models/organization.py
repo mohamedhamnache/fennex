@@ -11,10 +11,11 @@ from app.models.base import TimestampMixin
 
 
 class PlanTier(str, enum.Enum):
-    FREE = "free"
+    FREE = "free"        # retained for existing orgs; no longer sold
     STARTER = "starter"
     PRO = "pro"
     AGENCY = "agency"
+    SCALE = "scale"
     ENTERPRISE = "enterprise"
 
 

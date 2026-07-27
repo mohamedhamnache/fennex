@@ -18,6 +18,8 @@ _PRICE_MAP: dict[tuple[str, bool], str] = {
     ("pro",     True):  settings.STRIPE_PRICE_PRO_ANNUAL,
     ("agency",  False): settings.STRIPE_PRICE_AGENCY_MONTHLY,
     ("agency",  True):  settings.STRIPE_PRICE_AGENCY_ANNUAL,
+    ("scale",   False): settings.STRIPE_PRICE_SCALE_MONTHLY,
+    ("scale",   True):  settings.STRIPE_PRICE_SCALE_ANNUAL,
 }
 
 

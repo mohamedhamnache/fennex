@@ -912,7 +912,15 @@
       "popular": "Popular",
       "perMonth": "/mes",
       "billedAnnually": "facturado anualmente",
-      "free": "Gratis"
+      "free": "Gratis",
+      "credits": {
+        "title": "Créditos de IA este mes",
+        "hint": "Un crédito equivale a una petición al modelo económico. Los modelos más potentes cuestan proporcionalmente más.",
+        "requests": "Peticiones",
+        "inputTokens": "Tokens de entrada",
+        "outputTokens": "Tokens de salida",
+        "remaining": "Restantes"
+      }
     },
     "project": {
       "title": "Proyecto",
@@ -2389,28 +2397,28 @@
         "body": "Para un sitio que encuentra su ritmo.",
         "f1": "3 proyectos, 3 asientos",
         "f2": "25 artículos al mes",
-        "f3": "1.500 créditos de IA al mes"
+        "f3": "5.000 créditos de IA al mes"
       },
       "pro": {
         "name": "Pro",
         "body": "Para equipos que publican cada semana.",
         "f1": "10 proyectos, 10 asientos",
         "f2": "120 artículos al mes",
-        "f3": "6.000 créditos de IA y modelos premium"
+        "f3": "18.000 créditos de IA y modelos premium"
       },
       "agency": {
         "name": "Agency",
         "body": "Para agencias con muchos clientes.",
         "f1": "50 proyectos, 25 asientos",
         "f2": "500 artículos al mes",
-        "f3": "20.000 créditos de IA, tus propias claves"
+        "f3": "55.000 créditos de IA, tus propias claves"
       },
       "scale": {
         "name": "Scale",
         "body": "Para operaciones de contenido de gran volumen.",
         "f1": "200 proyectos, 75 asientos",
         "f2": "Artículos ilimitados",
-        "f3": "60.000 créditos de IA, tus propias claves"
+        "f3": "150.000 créditos de IA, tus propias claves"
       }
     },
     "cta": {
