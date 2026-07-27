@@ -15,8 +15,8 @@ from app.models.admin_user import AdminUser, AdminRole, AdminRoleAssignment
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "super_admin": {"read", "org.suspend", "org.impersonate", "org.reset_quotas",
                     "org.plan", "billing.write", "queue.write", "flags.write",
-                    "alerts.write", "system.write"},
-    "support":     {"read", "org.impersonate", "org.suspend", "org.reset_quotas"},
+                    "alerts.write", "system.write", "user.manage"},
+    "support":     {"read", "org.impersonate", "org.suspend", "org.reset_quotas", "user.manage"},
     "finance":     {"read", "billing.write"},
     "marketing":   {"read"},
     "operations":  {"read", "org.suspend", "org.reset_quotas", "queue.write",

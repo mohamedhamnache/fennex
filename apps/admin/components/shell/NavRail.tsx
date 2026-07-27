@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { FennecMark } from "@fennex/ui";
 import { cn } from "@/lib/cn";
 import { NAV_GROUPS, type NavItem } from "@/lib/nav";
 
@@ -74,27 +73,39 @@ export function NavRail() {
     >
       <div className="flex h-14 items-center gap-2.5 px-3.5">
         <div className="gradient-brand glow-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-          <FennecMark className="h-5 w-5 brightness-0 invert" />
+          <span className="font-display text-base font-bold leading-none text-white">F</span>
         </div>
-        <span className={cn("hidden truncate font-display text-[15px] font-bold tracking-tight text-white", showLabel && "lg:inline")}>
+        <span className={cn("hidden min-w-0 flex-1 truncate font-display text-[15px] font-bold tracking-tight text-white", showLabel && "lg:inline")}>
           Fennex Admin
         </span>
-        {mounted && (
+        {mounted && showLabel && (
           <button
             type="button"
             onClick={toggle}
             className={cn(
-              "hidden shrink-0 cursor-pointer rounded-md p-1.5 text-white/35 transition-colors duration-150 lg:inline-flex",
-              "hover:bg-white/[0.06] hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              showLabel && "ml-auto",
+              "ml-auto hidden shrink-0 cursor-pointer rounded-md p-1.5 text-white/40 transition-colors duration-150 lg:inline-flex",
+              "hover:bg-white/[0.06] hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             )}
-            title={collapsed ? "Expand rail" : "Collapse rail"}
-            aria-label={collapsed ? "Expand rail" : "Collapse rail"}
+            title="Collapse rail"
+            aria-label="Collapse rail"
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            <PanelLeftClose className="h-4 w-4" />
           </button>
         )}
       </div>
+      {mounted && collapsed && (
+        <div className="hidden justify-center pb-1 lg:flex">
+          <button
+            type="button"
+            onClick={toggle}
+            className="cursor-pointer rounded-md p-1.5 text-white/40 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Expand rail"
+            aria-label="Expand rail"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="rail-divider mx-3.5" />
 
       <nav className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-2.5 py-3">

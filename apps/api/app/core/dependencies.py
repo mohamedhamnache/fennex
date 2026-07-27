@@ -34,7 +34,7 @@ async def get_current_user(
     result = await db.execute(select(User).where(User.id == UUID(user_id)))
     user = result.scalar_one_or_none()
 
-    if not user or not user.is_active:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
@@ -45,6 +45,16 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Organization suspended",
+        )
+
+    # Admin-driven deactivate/lock actions (app/api/v1/routers/admin_users.py)
+    # must take effect immediately on the customer session, not just block
+    # new logins. Additive on top of the is_active check that used to live
+    # in the "not user" branch above (as a 401) -- locked is new.
+    if not user.is_active or user.locked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account disabled",
         )
 
     return user
