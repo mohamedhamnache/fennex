@@ -97,6 +97,23 @@ async def record_image(db, *, org_id: uuid.UUID, project_id, model: str,
     return cost
 
 
+async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
+                           feature: str | None = None) -> int:
+    """Price one Replicate prediction, falling back to the default
+    (provider='replicate', unit='run', model='') rate."""
+    per_run = await rate(db, "replicate", "run", model)
+    if not per_run:
+        per_run = await rate(db, "replicate", "run", "")
+    cost = round(per_run)
+    db.add(UsageEvent(
+        org_id=org_id, project_id=project_id, kind="edit", provider="replicate",
+        model=model, feature=feature, cost_micros=cost,
+    ))
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost)
+    await db.commit()
+    return cost
+
+
 _SEO_COLUMN = {"serp": "seo_serp", "keyword_ideas": "seo_keyword_analyses"}
 
 
