@@ -1,17 +1,22 @@
 import datetime as dt
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.admin_auth import require_admin
 from app.core.database import get_db
 from app.models.model_catalog import ModelCatalog
+from app.models.organization import Organization
 from app.models.provider_account import ProviderAccount
 from app.models.usage_daily import UsageDaily
+from app.models.usage_event import UsageEvent
 
 router = APIRouter(prefix="/admin", tags=["admin-analytics"])
+
+_USAGE_METRICS = {"cost", "tokens", "requests", "seo"}
+_USAGE_GROUP_BY = {"provider", "model", "org", "unit"}
 
 RangeStr = Literal["24h", "7d", "30d", "90d"]
 
@@ -31,6 +36,13 @@ def _month_start() -> dt.date:
     """First day of the current month, for month-to-date rollups -- always
     computed independently of the `range` query param."""
     return dt.datetime.now(dt.timezone.utc).date().replace(day=1)
+
+
+def _range_start_ts(range_: str) -> dt.datetime:
+    """Same window as `_range_start`, but as a tz-aware midnight datetime --
+    for filtering `usage_events.ts` (a timestamp column) rather than
+    `usage_daily.day` (a date column)."""
+    return dt.datetime.combine(_range_start(range_), dt.time.min, tzinfo=dt.timezone.utc)
 
 
 @router.get("/analytics/providers")
@@ -215,3 +227,165 @@ async def models_analytics(
     )
 
     return {"items": items, "cheapest": cheapest}
+
+
+@router.get("/analytics/seo")
+async def seo_analytics(
+    range: RangeStr = Query("30d"),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin("read")),
+):
+    """DataForSEO cost/volume dashboard: sourced from `usage_events` (kind='seo')
+    rather than `usage_daily`, since the daily rollup collapses seo_unit
+    (serp/keyword_ideas) into a single 'seo' unit -- the per-unit split this
+    endpoint needs only exists on the raw event ledger."""
+    start_ts = _range_start_ts(range)
+    seo_filter = (UsageEvent.kind == "seo", UsageEvent.ts >= start_ts)
+
+    totals = (
+        await db.execute(
+            select(
+                func.count(UsageEvent.id).label("total_requests"),
+                func.coalesce(func.sum(UsageEvent.seo_count), 0).label("total_seo_count"),
+                func.coalesce(func.sum(UsageEvent.cost_micros), 0).label("cost_micros"),
+            ).where(*seo_filter)
+        )
+    ).one()
+
+    unit_rows = (
+        await db.execute(
+            select(
+                UsageEvent.seo_unit,
+                func.coalesce(func.sum(UsageEvent.seo_count), 0).label("count"),
+                func.coalesce(func.sum(UsageEvent.cost_micros), 0).label("cost_micros"),
+            )
+            .where(*seo_filter)
+            .group_by(UsageEvent.seo_unit)
+        )
+    ).all()
+    by_unit = [
+        {
+            "unit": row.seo_unit,
+            "count": int(row.count),
+            "cost_usd": int(row.cost_micros) / 1_000_000,
+        }
+        for row in unit_rows
+    ]
+
+    consumer_rows = (
+        await db.execute(
+            select(
+                UsageEvent.org_id,
+                Organization.name.label("org_name"),
+                func.coalesce(func.sum(UsageEvent.seo_count), 0).label("seo_count"),
+                func.coalesce(func.sum(UsageEvent.cost_micros), 0).label("cost_micros"),
+            )
+            .join(Organization, Organization.id == UsageEvent.org_id)
+            .where(*seo_filter)
+            .group_by(UsageEvent.org_id, Organization.name)
+            .order_by(func.sum(UsageEvent.cost_micros).desc())
+            .limit(10)
+        )
+    ).all()
+    top_consumers = [
+        {
+            "org_id": str(row.org_id),
+            "org_name": row.org_name,
+            "seo_count": int(row.seo_count),
+            "cost_usd": int(row.cost_micros) / 1_000_000,
+        }
+        for row in consumer_rows
+    ]
+
+    cost_micros = int(totals.cost_micros)
+    return {
+        "total_requests": int(totals.total_requests),
+        "total_seo_count": int(totals.total_seo_count),
+        "cost_micros": cost_micros,
+        "cost_usd": cost_micros / 1_000_000,
+        "by_unit": by_unit,
+        "top_consumers": top_consumers,
+    }
+
+
+@router.get("/analytics/usage")
+async def usage_explorer(
+    metric: str = Query("cost"),
+    group_by: str = Query("provider"),
+    range: RangeStr = Query("30d"),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin("read")),
+):
+    """Free-form usage explorer over `usage_daily`: pick a metric (cost,
+    tokens, requests, seo) and a grouping dimension (provider, model, org,
+    unit), get both a breakdown and a daily trend line."""
+    if metric not in _USAGE_METRICS:
+        raise HTTPException(status_code=422, detail=f"invalid metric: {metric!r}")
+    if group_by not in _USAGE_GROUP_BY:
+        raise HTTPException(status_code=422, detail=f"invalid group_by: {group_by!r}")
+
+    start = _range_start(range)
+
+    if metric == "cost":
+        value_expr = func.coalesce(func.sum(UsageDaily.cost_micros), 0) / 1_000_000.0
+    elif metric == "tokens":
+        value_expr = func.coalesce(func.sum(UsageDaily.input_tokens), 0) + func.coalesce(
+            func.sum(UsageDaily.output_tokens), 0
+        )
+    elif metric == "requests":
+        value_expr = func.coalesce(func.sum(UsageDaily.requests), 0)
+    else:  # seo
+        value_expr = func.coalesce(func.sum(UsageDaily.seo_count), 0)
+
+    group_columns = {
+        "provider": UsageDaily.provider,
+        "model": UsageDaily.model,
+        "org": UsageDaily.org_id,
+        "unit": UsageDaily.unit,
+    }
+    group_col = group_columns[group_by]
+
+    if group_by == "org":
+        rows = (
+            await db.execute(
+                select(
+                    UsageDaily.org_id,
+                    Organization.name.label("org_name"),
+                    value_expr.label("value"),
+                )
+                .outerjoin(Organization, Organization.id == UsageDaily.org_id)
+                .where(UsageDaily.day >= start)
+                .group_by(UsageDaily.org_id, Organization.name)
+            )
+        ).all()
+        groups = [
+            {
+                "key": str(row.org_id),
+                "label": row.org_name or str(row.org_id),
+                "value": float(row.value),
+            }
+            for row in rows
+        ]
+    else:
+        rows = (
+            await db.execute(
+                select(group_col.label("key"), value_expr.label("value"))
+                .where(UsageDaily.day >= start)
+                .group_by(group_col)
+            )
+        ).all()
+        groups = [{"key": row.key, "label": row.key, "value": float(row.value)} for row in rows]
+
+    groups.sort(key=lambda g: g["value"], reverse=True)
+
+    series_rows = (
+        await db.execute(
+            select(UsageDaily.day.label("day"), value_expr.label("value"))
+            .where(UsageDaily.day >= start)
+            .group_by(UsageDaily.day)
+            .order_by(UsageDaily.day.asc())
+        )
+    ).all()
+    series = [{"day": row.day.isoformat(), "value": float(row.value)} for row in series_rows]
+
+    return {"groups": groups, "series": series}
