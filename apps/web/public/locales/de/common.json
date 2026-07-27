@@ -912,7 +912,15 @@
       "popular": "Beliebt",
       "perMonth": "/Mon.",
       "billedAnnually": "jährlich abgerechnet",
-      "free": "Kostenlos"
+      "free": "Kostenlos",
+      "credits": {
+        "title": "KI-Credits diesen Monat",
+        "hint": "Ein Credit entspricht einer Anfrage an das günstige Modell. Stärkere Modelle kosten anteilig mehr.",
+        "requests": "Anfragen",
+        "inputTokens": "Eingabe-Tokens",
+        "outputTokens": "Ausgabe-Tokens",
+        "remaining": "Verbleibend"
+      }
     },
     "project": {
       "title": "Projekt",
@@ -2389,28 +2397,28 @@
         "body": "Für eine einzelne Website im Aufbau.",
         "f1": "3 Projekte, 3 Plätze",
         "f2": "25 Artikel pro Monat",
-        "f3": "1.500 KI-Credits pro Monat"
+        "f3": "5.000 KI-Credits pro Monat"
       },
       "pro": {
         "name": "Pro",
         "body": "Für Teams, die wöchentlich veröffentlichen.",
         "f1": "10 Projekte, 10 Plätze",
         "f2": "120 Artikel pro Monat",
-        "f3": "6.000 KI-Credits und Premium-Modelle"
+        "f3": "18.000 KI-Credits und Premium-Modelle"
       },
       "agency": {
         "name": "Agency",
         "body": "Für Agenturen mit vielen Kunden.",
         "f1": "50 Projekte, 25 Plätze",
         "f2": "500 Artikel pro Monat",
-        "f3": "20.000 KI-Credits, eigene Schlüssel"
+        "f3": "55.000 KI-Credits, eigene Schlüssel"
       },
       "scale": {
         "name": "Scale",
         "body": "Für Content-Produktion in großem Umfang.",
         "f1": "200 Projekte, 75 Plätze",
         "f2": "Unbegrenzte Artikel",
-        "f3": "60.000 KI-Credits, eigene Schlüssel"
+        "f3": "150.000 KI-Credits, eigene Schlüssel"
       }
     },
     "cta": {

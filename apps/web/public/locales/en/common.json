@@ -1009,7 +1009,15 @@
       "popular": "Popular",
       "perMonth": "/mo",
       "billedAnnually": "billed annually",
-      "free": "Free"
+      "free": "Free",
+      "credits": {
+        "title": "AI credits this month",
+        "hint": "One credit is one standard cheap-model request. Heavier models cost proportionally more.",
+        "requests": "Requests",
+        "inputTokens": "Input tokens",
+        "outputTokens": "Output tokens",
+        "remaining": "Remaining"
+      }
     },
     "project": {
       "title": "Project",
@@ -2477,28 +2485,28 @@
         "body": "For a single site finding its rhythm.",
         "f1": "3 projects, 3 seats",
         "f2": "25 articles per month",
-        "f3": "1,500 AI credits per month"
+        "f3": "5,000 AI credits per month"
       },
       "pro": {
         "name": "Pro",
         "body": "For teams publishing every week.",
         "f1": "10 projects, 10 seats",
         "f2": "120 articles per month",
-        "f3": "6,000 AI credits and premium models"
+        "f3": "18,000 AI credits and premium models"
       },
       "agency": {
         "name": "Agency",
         "body": "For agencies running many clients.",
         "f1": "50 projects, 25 seats",
         "f2": "500 articles per month",
-        "f3": "20,000 AI credits, bring your own keys"
+        "f3": "55,000 AI credits, bring your own keys"
       },
       "scale": {
         "name": "Scale",
         "body": "For high-volume content operations.",
         "f1": "200 projects, 75 seats",
         "f2": "Unlimited articles",
-        "f3": "60,000 AI credits, bring your own keys"
+        "f3": "150,000 AI credits, bring your own keys"
       }
     },
     "cta": {

@@ -22,7 +22,7 @@ import {
   listApiKeys, createApiKey, deleteApiKey, type ApiKey,
   listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection,
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
-  createCheckoutSession, createPortalSession, getBillingUsage,
+  createCheckoutSession, createPortalSession, getBillingUsage, getUsageSummary,
   listProjects, updateProject, deleteProject, type ProjectPersona,
   getOrganization, updateOrganization,
 } from "@/lib/api";
@@ -128,28 +128,28 @@ const PLANS = [
     name: "Starter",
     monthlyPrice: 29,
     annualPrice: 24,
-    features: ["3 projects", "3 seats", "25 articles/month", "1,500 AI credits/month"],
+    features: ["3 projects", "3 seats", "25 articles/month", "5,000 AI credits/month"],
   },
   {
     id: "pro",
     name: "Pro",
     monthlyPrice: 99,
     annualPrice: 83,
-    features: ["10 projects", "10 seats", "120 articles/month", "6,000 AI credits/month", "Premium models"],
+    features: ["10 projects", "10 seats", "120 articles/month", "18,000 AI credits/month", "Premium models"],
   },
   {
     id: "agency",
     name: "Agency",
     monthlyPrice: 299,
     annualPrice: 249,
-    features: ["50 projects", "25 seats", "500 articles/month", "20,000 AI credits/month", "Bring your own keys, -30%"],
+    features: ["50 projects", "25 seats", "500 articles/month", "55,000 AI credits/month", "Bring your own keys, -30%"],
   },
   {
     id: "scale",
     name: "Scale",
     monthlyPrice: 799,
     annualPrice: 666,
-    features: ["200 projects", "75 seats", "Unlimited articles", "60,000 AI credits/month", "Bring your own keys, -40%"],
+    features: ["200 projects", "75 seats", "Unlimited articles", "150,000 AI credits/month", "Bring your own keys, -40%"],
   },
 ] as const;
 
@@ -201,6 +201,15 @@ function InfoRow({ icon: Icon, label, value, mono = false }: { icon: React.Eleme
         <p className="text-xs font-medium text-muted-foreground mb-0.5">{label}</p>
         <p className={`text-sm text-foreground truncate ${mono ? "font-mono" : ""}`}>{value}</p>
       </div>
+    </div>
+  );
+}
+
+function InfoStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -929,6 +938,12 @@ function BillingSection() {
     refetchInterval: 60_000,
   });
 
+  const { data: aiUsage } = useQuery({
+    queryKey: ["usage-summary"],
+    queryFn: getUsageSummary,
+    refetchInterval: 60_000,
+  });
+
   const checkoutMutation = useMutation({
     mutationFn: ({ tier, annual }: { tier: string; annual: boolean }) =>
       createCheckoutSession(
@@ -998,6 +1013,49 @@ function BillingSection() {
           )}
         </div>
       </div>
+
+      {/* AI credits — the unit the plan cards advertise. Derived from metered
+          cost, so it already reflects which model served each request. */}
+      {aiUsage && (
+        <Card className="p-5">
+          {(() => {
+            const { credits_used: used, credits_allowance: allowance } = aiUsage;
+            const pct = allowance > 0 ? used / allowance : 0;
+            const over = pct >= 1;
+            const near = pct >= 0.8 && pct < 1;
+            return (
+              <>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Sparkles className="h-3.5 w-3.5" strokeWidth={2} />
+                    </span>
+                    {t("settings.billing.credits.title")}
+                  </p>
+                  <span className={`shrink-0 text-xs font-medium tabular-nums ${over ? "text-destructive" : near ? "text-warning" : "text-muted-foreground"}`}>
+                    {used.toLocaleString()} / {allowance.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full transition-all ${over ? "bg-destructive" : near ? "bg-warning" : "gradient-brand"}`}
+                    style={{ width: `${Math.max(Math.min(pct * 100, 100), pct > 0 ? 4 : 0)}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {t("settings.billing.credits.hint")}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border/60 pt-4 sm:grid-cols-4">
+                  <InfoStat label={t("settings.billing.credits.requests")} value={aiUsage.ai_requests.toLocaleString()} />
+                  <InfoStat label={t("settings.billing.credits.inputTokens")} value={aiUsage.ai_input_tokens.toLocaleString()} />
+                  <InfoStat label={t("settings.billing.credits.outputTokens")} value={aiUsage.ai_output_tokens.toLocaleString()} />
+                  <InfoStat label={t("settings.billing.credits.remaining")} value={aiUsage.credits_remaining.toLocaleString()} />
+                </div>
+              </>
+            );
+          })()}
+        </Card>
+      )}
 
       {/* Usage meters */}
       {billing && Object.keys(billing.usage).length > 0 && (
