@@ -15,6 +15,7 @@ import { AdminShell } from "@/components/shell/AdminShell";
  */
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const hasHydrated = useAdminStore((s) => s.hasHydrated);
   const token = useAdminStore((s) => s.token);
   const admin = useAdminStore((s) => s.admin);
   const setAuth = useAdminStore((s) => s.setAuth);
@@ -22,6 +23,9 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // Wait for persisted state to load before deciding — otherwise a refresh
+    // redirects to /login while the stored token is still hydrating.
+    if (!hasHydrated) return;
     if (!token) {
       router.replace("/login");
       return;
@@ -46,9 +50,9 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     return () => {
       cancelled = true;
     };
-  }, [token, admin, setAuth, clear, router]);
+  }, [hasHydrated, token, admin, setAuth, clear, router]);
 
-  if (!token || checking) {
+  if (!hasHydrated || !token || checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="card-base card-shadow w-full max-w-sm border border-border bg-card p-6">

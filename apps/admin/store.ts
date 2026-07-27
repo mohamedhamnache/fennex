@@ -16,9 +16,17 @@ interface AdminState {
   token: string | null;
   admin: AdminUser | null;
   theme: AdminTheme;
+  /**
+   * False until zustand's persist middleware has finished reading
+   * localStorage. The auth guard must wait for this before deciding to
+   * redirect, otherwise a page refresh bounces to /login while the persisted
+   * token is still loading. Not persisted (see partialize).
+   */
+  hasHydrated: boolean;
   setAuth: (token: string, admin: AdminUser) => void;
   clear: () => void;
   toggleTheme: () => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 /**
@@ -37,14 +45,19 @@ export const useAdminStore = create<AdminState>()(
       token: null,
       admin: null,
       theme: "dark",
+      hasHydrated: false,
       setAuth: (token, admin) => set({ token, admin }),
       clear: () => set({ token: null, admin: null }),
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
+      setHasHydrated: (v) => set({ hasHydrated: v }),
     }),
     {
       name: "fennex-admin-auth",
       partialize: (state) => ({ token: state.token, theme: state.theme }),
+      // Fires after localStorage is read (even when empty) — flip the flag so
+      // the auth guard can safely evaluate the restored token.
+      onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     },
   ),
 );
