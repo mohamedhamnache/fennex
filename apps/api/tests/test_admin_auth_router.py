@@ -51,3 +51,12 @@ async def test_login_wrong_password_401():
 async def test_me_without_token_401():
     async with await _client() as ac:
         assert (await ac.get("/api/v1/admin/me")).status_code == 401
+
+async def test_me_with_non_uuid_sub_401():
+    # A validly-signed admin-scope token whose `sub` is not a UUID must 401,
+    # never 500 (regression guard for the uuid parse).
+    from app.core.admin_auth import create_admin_token
+    tok = create_admin_token("not-a-uuid", ["auditor"])
+    async with await _client() as ac:
+        r = await ac.get("/api/v1/admin/me", headers={"Authorization": f"Bearer {tok}"})
+        assert r.status_code == 401

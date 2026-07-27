@@ -55,12 +55,14 @@ async def get_current_admin(token: str | None = Depends(_oauth),
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("scope") != "admin":
             raise cred_exc
-        admin_id = payload["sub"]
+        admin_uuid = uuid.UUID(payload["sub"])
         roles = payload.get("roles", [])
-    except (JWTError, KeyError):
+    except (JWTError, KeyError, ValueError):
+        # ValueError: a validly-signed admin token whose `sub` is not a UUID ->
+        # 401, never a 500.
         raise cred_exc
     admin = (await db.execute(
-        select(AdminUser).where(AdminUser.id == uuid.UUID(admin_id)))).scalar_one_or_none()
+        select(AdminUser).where(AdminUser.id == admin_uuid))).scalar_one_or_none()
     if admin is None or not admin.is_active:
         raise cred_exc
     return AdminContext(admin=admin, roles=roles, permissions=permissions_for(roles))
