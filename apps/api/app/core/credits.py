@@ -25,6 +25,10 @@ PLAN_CREDITS: dict[str, int] = {
     "pro": 18_000,
     "agency": 55_000,
     "scale": 150_000,
+    # Enterprise is custom-priced and absent from PLAN_PRICE_USD. It still needs
+    # an explicit entry: the allowance lookup falls back to `free`, so without
+    # one an enterprise org would be hard-stopped after ~$0.21 of spend.
+    "enterprise": 500_000,
 }
 
 # Usage-event kinds whose cost consumes AI credits. 'seo' is deliberately
@@ -63,6 +67,8 @@ SEO_PLAN_CREDITS: dict[str, int] = {
     "pro": 1_500,
     "agency": 4_000,
     "scale": 12_000,
+    # See the note on PLAN_CREDITS["enterprise"].
+    "enterprise": 50_000,
 }
 
 

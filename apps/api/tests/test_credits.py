@@ -53,6 +53,24 @@ def test_seo_credit_allowance_falls_back_to_free():
     assert seo_credit_allowance("nonsense") == SEO_PLAN_CREDITS["free"]
 
 
+def test_every_sellable_tier_has_an_explicit_allowance():
+    """A tier missing from these dicts silently resolves to the free allowance.
+
+    That is invisible until hard-stop enforcement is live, at which point the
+    tier gets 429'd almost immediately -- which is exactly what happened to
+    `enterprise`. Pin every PlanTier so a newly added tier fails here instead.
+    """
+    from app.models.organization import PlanTier
+
+    for tier in PlanTier:
+        assert tier.value in PLAN_CREDITS, f"{tier.value} missing from PLAN_CREDITS"
+        assert tier.value in SEO_PLAN_CREDITS, f"{tier.value} missing from SEO_PLAN_CREDITS"
+        # and it must not silently resolve to the free bucket
+        if tier.value != "free":
+            assert credit_allowance(tier.value) != PLAN_CREDITS["free"]
+            assert seo_credit_allowance(tier.value) != SEO_PLAN_CREDITS["free"]
+
+
 def test_plan_cogs_stays_within_margin_target():
     """Both buckets together must stay well under a third of the plan price.
 
