@@ -7,7 +7,11 @@ from app.core.database import Base
 # JSONB columns are incompatible with the in-memory SQLite engine used in all
 # test files. Remove the offending table from metadata once per session so that
 # every test's Base.metadata.create_all() call works without per-file filtering.
-_JSONB_TABLES = {"subscription_events"}
+#
+# subscription_events.payload uses JSONB().with_variant(JSON, "sqlite")
+# (app/models/billing.py), so it compiles fine under SQLite and does not need
+# to be stripped -- it keeps real JSONB in Postgres, no migration involved.
+_JSONB_TABLES: set[str] = set()
 
 
 @pytest.fixture(autouse=True, scope="session")

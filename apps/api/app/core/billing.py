@@ -61,6 +61,19 @@ PLAN_LIMITS: dict[str, dict[str, int]] = {
 }
 
 
+# Whole-USD monthly list price per plan tier, used by the admin billing/MRR
+# helpers (app/services/admin/revenue.py). "enterprise" is deliberately absent:
+# those deals are custom-priced and contribute $0 of *estimated* MRR here
+# rather than a fabricated number.
+PLAN_PRICE_USD: dict[str, int] = {
+    "free": 0,
+    "starter": 29,
+    "pro": 99,
+    "agency": 299,
+    "scale": 799,
+}
+
+
 def current_billing_period_start() -> date:
     """Return the 1st of the current calendar month (v1: same for all orgs)."""
     today = date.today()

@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, String, Integer, BigInteger, ForeignKey, UniqueConstraint
+from sqlalchemy import Date, String, Integer, BigInteger, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,5 +39,8 @@ class SubscriptionEvent(Base):
     )
     stripe_event_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # JSONB in Postgres (unchanged, no migration needed); plain JSON under the
+    # SQLite test engine, which cannot compile JSONB -- same pattern as
+    # BigInteger().with_variant(Integer, "sqlite") elsewhere in app/models/.
+    payload: Mapped[dict] = mapped_column(JSONB().with_variant(JSON, "sqlite"), nullable=False)
     processed_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
