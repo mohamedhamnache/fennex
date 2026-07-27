@@ -14,6 +14,7 @@ import { useProjectStore } from "@/lib/store";
 import { useCommandPalette } from "@/components/layout/CommandPalette";
 import { LanguagePicker } from "@/components/layout/LanguagePicker";
 import { AlertsBell } from "@/components/monitoring/AlertsBell";
+import { CreditMeter } from "@/components/billing/CreditMeter";
 import { cn } from "@/lib/cn";
 
 function initials(name?: string | null): string {
@@ -130,6 +131,9 @@ export function TopBar() {
 
         {/* Language picker */}
         <LanguagePicker />
+
+        {/* Credit balance */}
+        <CreditMeter />
 
         {/* Alerts */}
         <AlertsBell />
