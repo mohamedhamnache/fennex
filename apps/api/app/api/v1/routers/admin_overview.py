@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.organization import Organization
 from app.models.usage_daily import UsageDaily
 from app.models.user import User
+from app.services.admin.revenue import plan_revenue
 
 router = APIRouter(prefix="/admin/overview", tags=["admin-overview"])
 
@@ -56,12 +57,11 @@ async def kpis(
     cost_micros = int(usage_row.cost_micros)
     cost_usd = cost_micros / 1_000_000
 
-    # MRR: `app/models/billing.py` currently has no subscription-price/MRR
-    # field (only OrgUsage + SubscriptionEvent) -- live MRR is being built on
-    # a separate, unmerged billing-plans branch. Until that lands, report
-    # mrr_usd=0.0 rather than inventing a price, and margin_pct is undefined
-    # (None) when there is no MRR to compare cost against.
-    mrr_usd = 0.0
+    # MRR: estimated from each paying org's plan-tier list price (see
+    # app/services/admin/revenue.py, reused by /admin/billing/kpis so the two
+    # dashboards never disagree). margin_pct is undefined (None) when there is
+    # no MRR to compare cost against.
+    mrr_usd = (await plan_revenue(db))["mrr_usd"]
     margin_pct = (mrr_usd - cost_usd) / mrr_usd if mrr_usd > 0 else None
 
     return {
