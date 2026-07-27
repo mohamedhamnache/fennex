@@ -214,6 +214,27 @@ export interface BillingEvent {
   processed_at: string;
 }
 
+/** One row of `GET /admin/billing/plans` (`admin_billing.py`, Phase 1b Batch
+ * 4) — the plan catalog joined against the current org distribution.
+ * `price_usd` is the plan's list price in whole dollars (`0` for the free
+ * tier and for enterprise-style tiers priced by custom quote — the page
+ * tells those apart by plan name, not by inventing a flag). `mrr_usd` is
+ * this plan's contribution to total MRR, also plain dollars — same unit as
+ * `BillingKpis`, unlike the micros used by cost/spend endpoints. Limit
+ * values of `-1` mean unlimited (mirrors `app/core/billing.py#PLAN_LIMITS`). */
+export interface PlanRow {
+  plan: string;
+  price_usd: number;
+  org_count: number;
+  mrr_usd: number;
+  limits: {
+    projects: number;
+    articles: number;
+    images: number;
+    social: number;
+  };
+}
+
 /** `GET /admin/analytics/usage` (`admin_analytics.py`, Phase 1b Batch 3) — the
  * cross-cutting usage explorer: one metric (`cost`, `tokens`, `requests`,
  * `seo`), grouped one way at a time (`provider`, `model`, `org`, `unit`), over
