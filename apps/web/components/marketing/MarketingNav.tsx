@@ -12,6 +12,7 @@ const LINKS = [
   { key: "how", href: "#loop" },
   { key: "features", href: "#features" },
   { key: "results", href: "#results" },
+  { key: "pricing", href: "#pricing" },
 ];
 
 /**

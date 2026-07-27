@@ -2379,6 +2379,7 @@
       "how": "How it works",
       "features": "Features",
       "results": "Results",
+      "pricing": "Pricing",
       "signIn": "Sign in",
       "start": "Start free"
     },
@@ -2462,6 +2463,43 @@
       "quote": "It genuinely feels like hiring a small agency. Fennex found the keywords, wrote the posts, published them, and then told us which ones were working. Our organic traffic tripled in a quarter.",
       "author": "Maya Lindqvist",
       "role": "Head of Growth, Northwind Studio"
+    },
+    "pricing": {
+      "badge": "Pricing",
+      "title": "Plans that scale with your output",
+      "subtitle": "Start with a 7-day free trial. No card required.",
+      "perMonth": "/month",
+      "popular": "Most popular",
+      "cta": "Start free trial",
+      "trial": "7-day free trial on every plan. No card required.",
+      "starter": {
+        "name": "Starter",
+        "body": "For a single site finding its rhythm.",
+        "f1": "3 projects, 3 seats",
+        "f2": "25 articles per month",
+        "f3": "1,500 AI credits per month"
+      },
+      "pro": {
+        "name": "Pro",
+        "body": "For teams publishing every week.",
+        "f1": "10 projects, 10 seats",
+        "f2": "120 articles per month",
+        "f3": "6,000 AI credits and premium models"
+      },
+      "agency": {
+        "name": "Agency",
+        "body": "For agencies running many clients.",
+        "f1": "50 projects, 25 seats",
+        "f2": "500 articles per month",
+        "f3": "20,000 AI credits, bring your own keys"
+      },
+      "scale": {
+        "name": "Scale",
+        "body": "For high-volume content operations.",
+        "f1": "200 projects, 75 seats",
+        "f2": "Unlimited articles",
+        "f3": "60,000 AI credits, bring your own keys"
+      }
     },
     "cta": {
       "title": "Your pack is ready to run",
