@@ -150,3 +150,28 @@ export interface ModelRow {
    * similar total spend but very different cost per unit of work. */
   cost_per_1k_tokens: number;
 }
+
+/** `GET /admin/analytics/seo` (`admin_analytics.py`, Phase 1b Batch 3) — spend
+ * and volume against the DataForSEO integration for the selected range.
+ * `by_unit` breaks total usage down per DataForSEO unit (`serp`,
+ * `keyword_ideas`, ...); `top_consumers` ranks orgs by SEO credit spend,
+ * highest first. */
+export interface SeoAnalytics {
+  total_requests: number;
+  total_seo_count: number;
+  /** Cost for the selected range, in micros (1 USD = 1_000_000 micros). */
+  cost_micros: number;
+  /** Same cost, pre-converted to dollars. */
+  cost_usd: number;
+  by_unit: {
+    unit: string;
+    count: number;
+    cost_usd: number;
+  }[];
+  top_consumers: {
+    org_id: string;
+    org_name: string;
+    seo_count: number;
+    cost_usd: number;
+  }[];
+}
