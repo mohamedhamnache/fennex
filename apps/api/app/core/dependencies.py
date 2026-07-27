@@ -57,6 +57,11 @@ async def get_current_user(
             detail="User account disabled",
         )
 
+    # Attribute any LLM usage during this request to the caller's org, so
+    # `call_llm` meters even paths that reuse a cached key without re-resolving.
+    from app.core.metering_context import set_metering_org
+    set_metering_org(user.org_id)
+
     return user
 
 

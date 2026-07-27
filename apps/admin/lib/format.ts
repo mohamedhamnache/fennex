@@ -38,6 +38,21 @@ export function pct(fraction: number | null | undefined, digits = 1): string {
   return `${(fraction * 100).toFixed(digits)}%`;
 }
 
+/** Format a small per-unit USD amount (e.g. cost per 1k tokens) that needs
+ * sub-cent precision — `moneyUsd`'s 2-decimal rounding would flatten
+ * $0.03 vs $0.07 (a >2x efficiency difference) down to indistinguishable
+ * cents. Renders "—" for null/undefined and a plain "$0.0000" for an exact
+ * zero (a real value, e.g. a model row with no tokens yet — not "no data"). */
+export function moneyPer1k(usd: number | null | undefined): string {
+  if (!isFiniteNumber(usd)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(usd);
+}
+
 /** Compact integer formatting for large counts (tokens, requests): 12400 ->
  * "12.4K". */
 export function compactNumber(n: number | null | undefined): string {

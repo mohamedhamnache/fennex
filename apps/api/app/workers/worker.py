@@ -73,8 +73,10 @@ class WorkerSettings:
         cron(run_competitor_monitor, weekday=1, hour=7, minute=0, run_at_startup=False),
         # Zerda's daily SERP rank tracker, ahead of the 06:00 analytics sync
         cron(run_rank_tracker, hour=5, minute=30, run_at_startup=False),
-        # Nightly usage_daily rollup for the admin usage dashboards
-        cron(rollup_daily_job, hour=2, minute=10, run_at_startup=False),
+        # Roll usage_event -> usage_daily every 10 min so the admin usage
+        # dashboards reflect activity within minutes, not next day. Idempotent
+        # (delete-then-insert per day), so frequent runs are safe.
+        cron(rollup_daily_job, minute={0, 10, 20, 30, 40, 50}, run_at_startup=True),
     ]
     on_startup = startup
     on_shutdown = shutdown

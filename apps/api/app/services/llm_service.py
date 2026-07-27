@@ -27,8 +27,14 @@ class LLMUsage:
 
 async def get_org_llm_keys(org_id: uuid.UUID, db: AsyncSession) -> dict[str, str]:
     """Return {provider: plaintext_key} for LLM calls. Platform accounts/env by
-    default; a tenant's own keys override only when the org has byok_enabled."""
+    default; a tenant's own keys override only when the org has byok_enabled.
+
+    Also records this org as the ambient metering target: every LLM call is
+    preceded by a key lookup, so `call_llm` can attribute usage to `org_id`
+    without each caller threading a meter through."""
     from app.services.providers import registry
+    from app.core.metering_context import set_metering_org
+    set_metering_org(org_id)
     return await registry.get_llm_keys(org_id, db)
 
 
@@ -157,6 +163,22 @@ async def call_llm(
                                 usage=usage, feature=meter.get("feature") or feature)
         except Exception:
             logger.exception("usage metering failed (non-fatal)")
+    else:
+        # Ambient metering: capture EVERY LLM call (requests and workers alike)
+        # against the org whose keys were resolved for it. Uses a fresh isolated
+        # session so the meter's own commit never touches a caller transaction;
+        # best-effort, never breaks the call.
+        from app.core.metering_context import get_metering_org
+        org_id = get_metering_org()
+        if org_id is not None:
+            try:
+                from app.core.database import async_session_factory
+                from app.services.metering import meter as _m
+                async with async_session_factory() as mdb:
+                    await _m.record_llm(mdb, org_id=org_id, project_id=None,
+                                        usage=usage, feature=feature)
+            except Exception:
+                logger.exception("ambient usage metering failed (non-fatal)")
     return text
 
 
