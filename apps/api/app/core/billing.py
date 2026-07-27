@@ -65,6 +65,13 @@ PLAN_LIMITS: dict[str, dict[str, int]] = {
         "projects": 50, "articles": -1, "images": -1, "social": -1,
         "keywords": 40000, "seats": 25, "brand_voices": -1, "audits": -1, "backlinks": -1,
     },
+    # Enterprise is custom-contracted and absent from PLAN_PRICE_USD, but it
+    # still needs an entry: the lookup falls back to `free`, which would cap a
+    # custom-contract customer at 1 project / 4 articles.
+    "enterprise": {
+        "projects": -1, "articles": -1, "images": -1, "social": -1,
+        "keywords": -1, "seats": -1, "brand_voices": -1, "audits": -1, "backlinks": -1,
+    },
 }
 
 
@@ -188,18 +195,25 @@ def check_usage_limit(resource: str) -> Callable:
     return _check
 
 
+def _tier_value(org: Organization) -> str:
+    """The org's plan tier as its lowercase string value.
+
+    PlanTier is a `str` subclass (class PlanTier(str, enum.Enum)), so the
+    `isinstance(org.plan_tier, str)` check used elsewhere in this file is
+    always true and leaves the enum member in place. That is harmless for
+    `PLAN_LIMITS.get(tier, ...)` (dict lookup uses __eq__/__hash__, which
+    str-mixin enums share with their value), but credit_allowance() and
+    seo_credit_allowance() call `str(tier)`, and `str(PlanTier.STARTER)` is
+    `"PlanTier.STARTER"` in this Python version, not `"starter"` -- silently
+    falling back to the free-tier allowance for every paid org. Extract
+    `.value` explicitly instead.
+    """
+    return org.plan_tier.value if hasattr(org.plan_tier, "value") else org.plan_tier
+
+
 async def current_credits(db: AsyncSession, org: Organization, bucket: str) -> tuple[int, int]:
     """Return (used, allowance) in whole credits for the current period."""
-    # NOTE: PlanTier is a `str` subclass (class PlanTier(str, enum.Enum)), so
-    # `isinstance(org.plan_tier, str)` -- the check used elsewhere in this file
-    # for PLAN_LIMITS dict lookups -- is always true and would leave `tier` as
-    # the enum member. That's harmless for `PLAN_LIMITS.get(tier, ...)` (dict
-    # lookup uses __eq__/__hash__, which str-mixin enums share with their
-    # value), but credit_allowance()/seo_credit_allowance() call `str(tier)`,
-    # and `str(PlanTier.STARTER)` is `"PlanTier.STARTER"` in this Python
-    # version, not `"starter"` -- silently falling back to the free-tier
-    # allowance for every paid org. Extract `.value` explicitly instead.
-    tier = org.plan_tier.value if hasattr(org.plan_tier, "value") else org.plan_tier
+    tier = _tier_value(org)
     result = await db.execute(
         select(OrgUsage).where(OrgUsage.org_id == org.id,
                                OrgUsage.period_start == current_billing_period_start())
@@ -230,13 +244,22 @@ def require_credits(bucket: str):
             return
         pct = used / allowance
         if pct >= 1.0:
+            # Same envelope as check_usage_limit: the web client's global 429
+            # handler keys on detail.code/detail.resource to raise the upgrade
+            # modal, so a different shape here would surface as an unhandled
+            # error at exactly the moment we want to sell an upgrade.
             raise HTTPException(status_code=429, detail={
-                "error": "credit_limit_reached", "bucket": bucket,
-                "used": used, "limit": allowance,
+                "code": "LIMIT_REACHED",
+                "resource": f"{bucket}_credits",
+                "used": used,
+                "limit": allowance,
+                "tier": _tier_value(org),
+                "bucket": bucket,
             })
         if pct >= 0.8:
             response.headers["X-Usage-Warning"] = json.dumps({
-                "bucket": bucket, "used": used, "limit": allowance, "pct": round(pct, 2),
+                "resource": f"{bucket}_credits", "bucket": bucket,
+                "used": used, "limit": allowance, "pct": round(pct, 2),
             })
     return _dep
 

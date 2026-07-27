@@ -132,8 +132,13 @@ async def test_ai_bucket_full_returns_429(client):
             json={"project_id": str(FAKE_PROJECT_ID), "prompt": "a red fox"},
         )
         assert resp.status_code == 429
-        assert resp.json()["detail"]["error"] == "credit_limit_reached"
-        assert resp.json()["detail"]["bucket"] == "ai"
+        detail = resp.json()["detail"]
+        # Same envelope as check_usage_limit: the web client's global 429
+        # handler keys on code/resource to raise the upgrade modal.
+        assert detail["code"] == "LIMIT_REACHED"
+        assert detail["resource"] == "ai_credits"
+        assert detail["bucket"] == "ai"
+        assert detail["tier"] == "starter"
     finally:
         await _teardown()
 
@@ -167,8 +172,11 @@ async def test_seo_bucket_full_returns_429(client):
             json={"project_id": str(FAKE_PROJECT_ID), "seed_keyword": "fox facts"},
         )
         assert resp.status_code == 429
-        assert resp.json()["detail"]["error"] == "credit_limit_reached"
-        assert resp.json()["detail"]["bucket"] == "seo"
+        detail = resp.json()["detail"]
+        assert detail["code"] == "LIMIT_REACHED"
+        assert detail["resource"] == "seo_credits"
+        assert detail["bucket"] == "seo"
+        assert detail["tier"] == "starter"
     finally:
         await _teardown()
 

@@ -59,16 +59,42 @@ def test_every_sellable_tier_has_an_explicit_allowance():
     That is invisible until hard-stop enforcement is live, at which point the
     tier gets 429'd almost immediately -- which is exactly what happened to
     `enterprise`. Pin every PlanTier so a newly added tier fails here instead.
+
+    PLAN_LIMITS is included deliberately: `enterprise` was missing from it too,
+    capping a custom-contract customer at the free tier's 1 project.
     """
+    from app.core.billing import PLAN_LIMITS
     from app.models.organization import PlanTier
 
     for tier in PlanTier:
         assert tier.value in PLAN_CREDITS, f"{tier.value} missing from PLAN_CREDITS"
         assert tier.value in SEO_PLAN_CREDITS, f"{tier.value} missing from SEO_PLAN_CREDITS"
+        assert tier.value in PLAN_LIMITS, f"{tier.value} missing from PLAN_LIMITS"
         # and it must not silently resolve to the free bucket
         if tier.value != "free":
             assert credit_allowance(tier.value) != PLAN_CREDITS["free"]
             assert seo_credit_allowance(tier.value) != SEO_PLAN_CREDITS["free"]
+            assert PLAN_LIMITS[tier.value] != PLAN_LIMITS["free"]
+
+
+def test_paid_tiers_resolve_from_the_enum_member_not_just_the_string():
+    """Guards the PlanTier str-enum trap end to end.
+
+    `PlanTier` subclasses `str`, so `isinstance(tier, str)` is always true and
+    `str(PlanTier.PRO)` is `"PlanTier.PRO"`. Any caller that forwards the enum
+    member without extracting `.value` silently bills a paid org against the
+    free allowance.
+    """
+    from app.core.billing import _tier_value
+    from app.models.organization import Organization, PlanTier
+
+    org = Organization(name="t", slug="t", plan_tier=PlanTier.PRO)
+    assert _tier_value(org) == "pro"
+    assert credit_allowance(_tier_value(org)) == PLAN_CREDITS["pro"]
+    # and a plain string tier still works
+    org.plan_tier = "agency"
+    assert _tier_value(org) == "agency"
+    assert credit_allowance(_tier_value(org)) == PLAN_CREDITS["agency"]
 
 
 def test_plan_cogs_stays_within_margin_target():
