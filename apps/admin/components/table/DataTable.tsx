@@ -31,6 +31,9 @@ export interface DataTableProps<T> {
   /** Right-aligned slot above the table — search, filters, export. */
   toolbar?: ReactNode;
   className?: string;
+  /** Makes rows clickable (cursor pointer, Enter/Space activation) — e.g.
+   * opening a details drawer. Omit for tables where rows aren't actionable. */
+  onRowClick?: (row: T) => void;
 }
 
 const ALIGN_CLASS: Record<"left" | "right" | "center", string> = {
@@ -60,6 +63,7 @@ export function DataTable<T>({
   onPageChange,
   toolbar,
   className,
+  onRowClick,
 }: DataTableProps<T>) {
   const hasPagination =
     typeof page === "number" &&
@@ -129,7 +133,21 @@ export function DataTable<T>({
                 <tr
                   key={rowKey ? rowKey(row, i) : i}
                   tabIndex={0}
-                  className="border-b border-border outline-none transition-colors duration-150 last:border-0 hover:bg-accent/40 focus-visible:bg-accent/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onRowClick(row);
+                          }
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    "border-b border-border outline-none transition-colors duration-150 last:border-0 hover:bg-accent/40 focus-visible:bg-accent/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
+                    onRowClick && "cursor-pointer",
+                  )}
                 >
                   {columns.map((col) => (
                     <td
