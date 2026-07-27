@@ -1,6 +1,7 @@
 import datetime as dt
+import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +27,10 @@ async def list_audit_log(
 ):
     filters = []
     if actor:
-        filters.append(AdminAuditLog.actor_admin_id == actor)
+        try:
+            filters.append(AdminAuditLog.actor_admin_id == uuid.UUID(actor))
+        except ValueError:
+            raise HTTPException(422, "actor must be a valid UUID")
     if action:
         filters.append(AdminAuditLog.action == action)
     if resource_type:

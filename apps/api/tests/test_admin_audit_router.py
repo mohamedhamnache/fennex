@@ -122,3 +122,20 @@ async def test_without_token_401():
     async with await _client() as ac:
         r = await ac.get("/api/v1/admin/audit")
         assert r.status_code == 401
+
+
+async def test_filter_by_actor_returns_only_that_actors_rows():
+    async with await _client() as ac:
+        r = await ac.get("/api/v1/admin/audit", params={"actor": str(OTHER_ACTOR_ID)},
+                         headers={"Authorization": f"Bearer {_bearer()}"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total"] == 1
+        assert body["items"][0]["actor_admin_id"] == str(OTHER_ACTOR_ID)
+
+
+async def test_filter_by_invalid_actor_422():
+    async with await _client() as ac:
+        r = await ac.get("/api/v1/admin/audit", params={"actor": "not-a-uuid"},
+                         headers={"Authorization": f"Bearer {_bearer()}"})
+        assert r.status_code == 422
