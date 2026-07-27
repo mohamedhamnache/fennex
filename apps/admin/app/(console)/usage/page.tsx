@@ -123,10 +123,11 @@ export default function UsagePage() {
             href={`/orgs/${row.key}`}
             className="rounded text-sm font-medium text-foreground transition-colors duration-150 hover:text-primary hover:underline hover:underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {row.label}
+            {row.label || "—"}
           </Link>
         ) : (
-          row.label
+          // SEO rows carry an empty model; show a dash rather than a blank cell.
+          row.label || <span className="text-muted-foreground">—</span>
         ),
     },
     {
