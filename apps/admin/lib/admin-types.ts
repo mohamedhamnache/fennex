@@ -60,6 +60,34 @@ export interface AdminImpersonateResult {
   expires_in: number;
 }
 
+/** One row of `GET /admin/users`. */
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  org_id: string;
+  org_name: string;
+  is_active: boolean;
+  locked: boolean;
+  language: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** `GET /admin/users/{id}` — the row plus profile/org detail used by the
+ * user detail page. */
+export interface AdminUserDetail extends AdminUserRow {
+  avatar_url: string | null;
+  locked_reason: string | null;
+  org: {
+    id: string;
+    name: string;
+    slug: string;
+    plan_tier: string;
+  };
+}
+
 /** One row of `GET /admin/audit`. */
 export interface AdminAuditRow {
   id: number;
