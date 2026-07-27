@@ -39,3 +39,4 @@ from app.models.provider_account import ProviderAccount  # noqa: F401
 from app.models.cost_rate import CostRate  # noqa: F401
 from app.models.usage_event import UsageEvent  # noqa: F401
 from app.models.model_catalog import ModelCatalog  # noqa: F401
+from app.models.admin_user import AdminUser, AdminRole, AdminRoleAssignment  # noqa: F401
