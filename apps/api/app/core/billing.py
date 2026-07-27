@@ -216,15 +216,24 @@ def _tier_value(org: Organization) -> str:
 BYOK_ELIGIBLE_TIERS = frozenset({"agency", "scale"})
 
 
-def byok_exempt_from_credits(org: Organization) -> bool:
-    """True when credit hard-stops should not apply to this org.
+def byok_exempt_from_credits(org: Organization, bucket: str) -> bool:
+    """True when credit hard-stops should not apply to this org for `bucket`.
 
-    A BYOK org pays its own supplier directly (see providers/registry.py and
-    llm_service, which resolve the tenant's own keys when byok_enabled), so
-    Fennex has no COGS to protect and blocking them would deny work they are
-    already paying for. Usage is still metered -- exemption is about
-    enforcement, not visibility.
+    A BYOK org pays its own supplier directly for LLM/image calls (see
+    providers/registry.py and llm_service, which resolve the tenant's own keys
+    when byok_enabled), so Fennex has no AI COGS to protect there and blocking
+    them would deny work they are already paying for. Usage is still metered
+    -- exemption is about enforcement, not visibility.
+
+    This does NOT extend to the "seo" bucket: worker SEO calls (backlink_tasks,
+    keyword_tasks) always go through get_seo_provider(), which resolves
+    Fennex's own DataForSEO account rather than a per-org BYOK provider (there
+    is no tenant-keyed SEO resolver, unlike LLM/image). A BYOK agency/scale org
+    would therefore get unbounded Fennex-paid SEO if this exemption applied
+    there too, so SEO credits stay enforced regardless of byok_enabled.
     """
+    if bucket != "ai":
+        return False
     return bool(getattr(org, "byok_enabled", False)) and _tier_value(org) in BYOK_ELIGIBLE_TIERS
 
 
@@ -256,7 +265,7 @@ def require_credits(bucket: str):
     """
     async def _dep(response: Response, current_user: CurrentUser, db: DB) -> None:
         org = await _get_org(current_user, db)
-        if byok_exempt_from_credits(org):
+        if byok_exempt_from_credits(org, bucket):
             return
         used, allowance = await current_credits(db, org, bucket)
         if allowance <= 0:

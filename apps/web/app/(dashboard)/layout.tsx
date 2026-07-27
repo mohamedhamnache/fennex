@@ -47,6 +47,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const setUsage = useUsageStore((s) => s.setUsage);
   const usage = useUsageStore((s) => s.usage);
   const [upgradeResource, setUpgradeResource] = useState<string | null>(null);
+  // Populated straight from the 429 envelope's `detail.used`/`detail.limit`
+  // when a mutation trips a LIMIT_REACHED error. Needed for ai_credits/
+  // seo_credits: those two resources are not keys of the /billing/usage
+  // response (usage.usage below), only of the credits 429 detail, so falling
+  // back to usage.usage[resource] for them would always read used=0/limit=0.
+  const [upgradeDetail, setUpgradeDetail] = useState<{ used: number; limit: number } | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -66,6 +72,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             err.detail?.code === "LIMIT_REACHED"
           ) {
             setUpgradeResource(err.detail.resource as string);
+            const { used, limit } = err.detail;
+            setUpgradeDetail(
+              typeof used === "number" && typeof limit === "number" ? { used, limit } : null,
+            );
           }
         },
       },
@@ -93,8 +103,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     upgradeResource && usage
       ? {
           resource: upgradeResource,
-          used: usage.usage[upgradeResource]?.used ?? 0,
-          limit: usage.usage[upgradeResource]?.limit ?? 0,
+          used: upgradeDetail?.used ?? usage.usage[upgradeResource]?.used ?? 0,
+          limit: upgradeDetail?.limit ?? usage.usage[upgradeResource]?.limit ?? 0,
           currentTier: usage.plan_tier,
         }
       : null;
@@ -108,6 +118,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               const warnResource =
                 Object.entries(usage.usage).find(([, r]) => r.pct >= 0.8)?.[0] ?? null;
               setUpgradeResource(warnResource);
+              // This path is a fair-use pct read from usage.usage, not a real
+              // 429 detail -- clear any stale detail from a previous LIMIT_REACHED
+              // so upgradeInfo falls back to usage.usage[resource] below.
+              setUpgradeDetail(null);
             }}
           />
         )}
@@ -132,7 +146,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           used={upgradeInfo.used}
           limit={upgradeInfo.limit}
           currentTier={upgradeInfo.currentTier}
-          onClose={() => setUpgradeResource(null)}
+          onClose={() => {
+            setUpgradeResource(null);
+            setUpgradeDetail(null);
+          }}
         />
       )}
     </CommandPaletteProvider>

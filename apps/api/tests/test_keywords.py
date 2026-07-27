@@ -255,10 +255,16 @@ async def test_run_keyword_research_task():
 async def test_run_keyword_research_task_meters_seo_credits():
     """The worker bills one 'keyword_ideas' SEO credit per completed run --
     get_keyword_ideas is one DataForSEO task per seed keyword, regardless of
-    how many ideas come back in the response."""
+    how many ideas come back in the response.
+
+    Uses a real (non-mock) provider stub: with no DataForSEO credentials in the
+    test env, get_seo_provider() would otherwise resolve to MockSEOProvider,
+    which is never billed (see test_run_keyword_research_task_does_not_meter_on_mock_provider)."""
     from sqlalchemy import select
 
+    from app.integrations.seo_apis.base import KeywordData
     from app.models.billing import OrgUsage
+    from app.workers.tasks import keyword_tasks
     from app.workers.tasks.keyword_tasks import run_keyword_research
 
     org_id = uuid.uuid4()
@@ -282,7 +288,15 @@ async def test_run_keyword_research_task_meters_seo_credits():
         await session.commit()
         job_id = str(job.id)
 
-    with patch("app.workers.tasks.keyword_tasks.async_session_factory", TestSessionLocal):
+    class _RealSEOProvider:
+        async def get_keyword_ideas(self, seed, location_code=2840):
+            return [KeywordData(
+                keyword=f"{seed} guide", search_volume=1000, difficulty=20.0,
+                cpc=1.5, intent="informational", serp_features=[],
+            )]
+
+    with patch("app.workers.tasks.keyword_tasks.async_session_factory", TestSessionLocal), \
+         patch.object(keyword_tasks, "get_seo_provider", return_value=_RealSEOProvider()):
         await run_keyword_research(ctx={}, job_id=job_id)
 
     async with TestSessionLocal() as session:
@@ -355,6 +369,59 @@ async def test_run_keyword_research_task_does_not_meter_on_provider_failure():
 
         refreshed_job = await session.get(KeywordResearchJob, uuid.UUID(job_id))
         assert refreshed_job.status == ResearchStatus.failed
+
+
+@pytest.mark.asyncio
+async def test_run_keyword_research_task_does_not_meter_on_mock_provider():
+    """get_seo_provider() falls back to MockSEOProvider whenever DataForSEO
+    credentials are absent -- the default in this test environment. Billing
+    that call would charge SEO credits for fabricated data, so
+    run_keyword_research must skip metering entirely when the resolved
+    provider is the mock (the run itself still succeeds -- MockSEOProvider
+    implements get_keyword_ideas)."""
+    from sqlalchemy import select
+
+    from app.models.billing import OrgUsage
+    from app.models.usage_event import UsageEvent
+    from app.workers.tasks import keyword_tasks
+    from app.workers.tasks.keyword_tasks import run_keyword_research
+    from app.integrations.seo_apis.mock_provider import MockSEOProvider
+
+    org_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    async with TestSessionLocal() as session:
+        org = Organization(id=org_id, slug="mock-org", name="Mock Org")
+        session.add(org)
+        await session.flush()
+
+        project = Project(id=project_id, org_id=org_id, name="Mock Project", domain="mock.com")
+        session.add(project)
+        await session.flush()
+
+        job = KeywordResearchJob(
+            org_id=org_id,
+            project_id=project_id,
+            seed_keyword="python",
+            status=ResearchStatus.pending,
+        )
+        session.add(job)
+        await session.commit()
+        job_id = str(job.id)
+
+    with patch("app.workers.tasks.keyword_tasks.async_session_factory", TestSessionLocal), \
+         patch.object(keyword_tasks, "get_seo_provider", return_value=MockSEOProvider()):
+        await run_keyword_research(ctx={}, job_id=job_id)
+
+    async with TestSessionLocal() as session:
+        ev_result = await session.execute(select(UsageEvent).where(UsageEvent.org_id == org_id))
+        assert ev_result.scalars().all() == []
+
+        ou_result = await session.execute(select(OrgUsage).where(OrgUsage.org_id == org_id))
+        ou = ou_result.scalar_one_or_none()
+        assert ou is None or ou.seo_credits_used == 0
+
+        refreshed_job = await session.get(KeywordResearchJob, uuid.UUID(job_id))
+        assert refreshed_job.status == ResearchStatus.completed
 
 
 @pytest.mark.asyncio

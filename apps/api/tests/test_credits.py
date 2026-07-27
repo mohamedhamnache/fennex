@@ -78,7 +78,8 @@ def test_every_sellable_tier_has_an_explicit_allowance():
 
 
 def test_byok_exemption_is_limited_to_agency_and_scale():
-    """BYOK waives the credit hard-stop, but only on the tiers it is sold on.
+    """BYOK waives the credit hard-stop, but only on the tiers it is sold on,
+    and only for the "ai" bucket.
 
     Otherwise setting byok_enabled on a Starter org would waive billing
     entirely. Enforcement only -- usage is still metered either way.
@@ -89,15 +90,31 @@ def test_byok_exemption_is_limited_to_agency_and_scale():
     def org(tier, byok):
         return Organization(name="t", slug="t", plan_tier=tier, byok_enabled=byok)
 
-    assert byok_exempt_from_credits(org(PlanTier.AGENCY, True)) is True
-    assert byok_exempt_from_credits(org(PlanTier.SCALE, True)) is True
+    assert byok_exempt_from_credits(org(PlanTier.AGENCY, True), "ai") is True
+    assert byok_exempt_from_credits(org(PlanTier.SCALE, True), "ai") is True
     # sold-on tiers only
-    assert byok_exempt_from_credits(org(PlanTier.STARTER, True)) is False
-    assert byok_exempt_from_credits(org(PlanTier.PRO, True)) is False
-    assert byok_exempt_from_credits(org(PlanTier.FREE, True)) is False
+    assert byok_exempt_from_credits(org(PlanTier.STARTER, True), "ai") is False
+    assert byok_exempt_from_credits(org(PlanTier.PRO, True), "ai") is False
+    assert byok_exempt_from_credits(org(PlanTier.FREE, True), "ai") is False
     # and the flag is required, not just the tier
-    assert byok_exempt_from_credits(org(PlanTier.AGENCY, False)) is False
-    assert byok_exempt_from_credits(org(PlanTier.SCALE, False)) is False
+    assert byok_exempt_from_credits(org(PlanTier.AGENCY, False), "ai") is False
+    assert byok_exempt_from_credits(org(PlanTier.SCALE, False), "ai") is False
+
+
+def test_byok_exemption_never_applies_to_seo_bucket():
+    """Worker SEO calls always run on Fennex's own DataForSEO account (there is
+    no per-org BYOK resolver for SEO, unlike LLM/image), so a BYOK agency/scale
+    org must still be enforced on the "seo" bucket even though it is exempt on
+    "ai".
+    """
+    from app.core.billing import byok_exempt_from_credits
+    from app.models.organization import Organization, PlanTier
+
+    def org(tier, byok):
+        return Organization(name="t", slug="t", plan_tier=tier, byok_enabled=byok)
+
+    assert byok_exempt_from_credits(org(PlanTier.AGENCY, True), "seo") is False
+    assert byok_exempt_from_credits(org(PlanTier.SCALE, True), "seo") is False
 
 
 def test_paid_tiers_resolve_from_the_enum_member_not_just_the_string():

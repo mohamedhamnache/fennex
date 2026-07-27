@@ -58,15 +58,58 @@ async def _make_org_and_project():
     return org_id, project_id
 
 
+class _RealSEOProvider:
+    """Stands in for DataForSEOProvider: a real (non-mock) provider that issued
+    an actual supplier task and should be billed. Not a MockSEOProvider
+    instance, which is exactly what the metering skip in sync_backlink_profile
+    checks for."""
+
+    async def get_backlink_profile(self, domain):
+        return {
+            "domain_authority": 42.0,
+            "trust_score": 30.0,
+            "spam_score": 2.0,
+            "total_backlinks": 500,
+            "referring_domains": 50,
+        }
+
+    async def get_backlinks(self, domain):
+        return [{
+            "source_url": "https://real-source.com/page-1",
+            "source_domain": "real-source.com",
+            "target_url": f"https://{domain}/",
+            "anchor_text": "anchor",
+            "domain_authority": 40.0,
+            "trust_score": 25.0,
+            "spam_score": 1.0,
+            "link_type": "dofollow",
+        }]
+
+    async def get_backlink_opportunities(self, domain):
+        return [{
+            "source_url": "https://real-opp.com/article-1",
+            "source_domain": "real-opp.com",
+            "domain_authority": 35.0,
+            "trust_score": 20.0,
+            "spam_score": 1.0,
+            "linking_to_competitor": "competitor1.com",
+        }]
+
+
 async def test_sync_backlink_profile_meters_seo_credits():
     """sync_backlink_profile bills one 'backlinks' SEO credit per run --
     get_backlink_profile is one DataForSEO task per domain, regardless of how
     many individual backlinks/opportunities are fetched afterward. 'backlinks'
     carries weight 3 (app/core/credits.py SEO_CREDIT_WEIGHT), so one call
-    should bump seo_credits_used by 3."""
+    should bump seo_credits_used by 3.
+
+    Uses a real (non-mock) provider stub: with no DataForSEO credentials in
+    the test env, get_seo_provider() would otherwise resolve to MockSEOProvider,
+    which is never billed (see test_sync_backlink_profile_does_not_meter_on_mock_provider)."""
     org_id, project_id = await _make_org_and_project()
 
-    with patch("app.workers.tasks.backlink_tasks.async_session_factory", TestSessionLocal):
+    with patch("app.workers.tasks.backlink_tasks.async_session_factory", TestSessionLocal), \
+         patch("app.workers.tasks.backlink_tasks.get_seo_provider", return_value=_RealSEOProvider()):
         await sync_backlink_profile(ctx={}, project_id=str(project_id))
 
     async with TestSessionLocal() as session:
@@ -102,3 +145,27 @@ async def test_sync_backlink_profile_does_not_meter_on_provider_failure():
         assert ev_result.scalars().all() == []
         ou_result = await session.execute(select(OrgUsage).where(OrgUsage.org_id == org_id))
         assert ou_result.scalar_one_or_none() is None
+
+
+async def test_sync_backlink_profile_does_not_meter_on_mock_provider():
+    """get_seo_provider() falls back to MockSEOProvider whenever DataForSEO
+    credentials are absent -- the default in this test environment, and the
+    ONLY provider that implements get_backlink_profile at all (DataForSEOProvider
+    does not). Billing that call would charge SEO credits for fabricated data,
+    so sync_backlink_profile must skip metering entirely when the resolved
+    provider is the mock."""
+    from app.integrations.seo_apis.mock_provider import MockSEOProvider
+
+    org_id, project_id = await _make_org_and_project()
+
+    with patch("app.workers.tasks.backlink_tasks.async_session_factory", TestSessionLocal), \
+         patch("app.workers.tasks.backlink_tasks.get_seo_provider", return_value=MockSEOProvider()):
+        await sync_backlink_profile(ctx={}, project_id=str(project_id))
+
+    async with TestSessionLocal() as session:
+        ev_result = await session.execute(select(UsageEvent).where(UsageEvent.org_id == org_id))
+        assert ev_result.scalars().all() == []
+
+        ou_result = await session.execute(select(OrgUsage).where(OrgUsage.org_id == org_id))
+        ou = ou_result.scalar_one_or_none()
+        assert ou is None or ou.seo_credits_used == 0

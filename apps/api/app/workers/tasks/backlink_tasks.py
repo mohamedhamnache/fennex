@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.core.database import async_session_factory
 from app.integrations.seo_apis import get_seo_provider
+from app.integrations.seo_apis.mock_provider import MockSEOProvider
 from app.models.backlinks import (
     BacklinkProfile, Backlink, BacklinkOpportunity,
     ExchangeRequest, ExchangeListing,
@@ -59,13 +60,20 @@ async def sync_backlink_profile(ctx, project_id: str):
         # context. Isolated session + swallow so a metering hiccup never fails
         # the sync, and only the success path bills (a raise from
         # get_backlink_profile above skips this block entirely).
-        try:
-            async with async_session_factory() as _mdb:
-                await _meter.record_seo(_mdb, org_id=org_id, project_id=pid,
-                                        unit="backlinks", count=1,
-                                        feature="backlink_sync")
-        except Exception:
-            logger.warning("backlink sync seo metering failed", exc_info=True)
+        #
+        # get_seo_provider() falls back to MockSEOProvider whenever DataForSEO
+        # credentials are absent, and MockSEOProvider is the ONLY provider that
+        # implements get_backlink_profile (DataForSEOProvider does not) -- so
+        # skip metering entirely when the resolved provider is the mock: no
+        # real supplier task was issued, so there is nothing to bill.
+        if not isinstance(provider, MockSEOProvider):
+            try:
+                async with async_session_factory() as _mdb:
+                    await _meter.record_seo(_mdb, org_id=org_id, project_id=pid,
+                                            unit="backlinks", count=1,
+                                            feature="backlink_sync")
+            except Exception:
+                logger.warning("backlink sync seo metering failed", exc_info=True)
 
         profile_stmt = (
             insert(BacklinkProfile)
