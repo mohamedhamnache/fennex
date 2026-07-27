@@ -51,4 +51,8 @@ KEYWORD_TARGETS = Skill(
     tools=["tracked_keywords", "gsc_opportunities"], build_prompt=_keyword_targets_prompt,
     output="json", parse=parse_json, label="Keyword targets",
     description="Primary + supporting keywords for the chosen angle.",
+    # Primary + secondary keyword selection is exactly what keyword_clustering
+    # prices for; no max_tokens override here, so the policy cap (2048) now
+    # applies where the default (4096) did before -- a decrease, not a raise.
+    feature="keyword_clustering",
 )
