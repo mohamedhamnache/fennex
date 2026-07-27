@@ -83,6 +83,20 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
     return cost
 
 
+async def record_image(db, *, org_id: uuid.UUID, project_id, model: str,
+                       cost_usd: float, feature: str | None = None) -> int:
+    """Price an image generation from the cost the image service already
+    computed -- it knows the size/quality that was actually billed."""
+    cost = round(cost_usd * 1_000_000)
+    db.add(UsageEvent(
+        org_id=org_id, project_id=project_id, kind="image", provider="openai",
+        model=model, feature=feature, cost_micros=cost,
+    ))
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost)
+    await db.commit()
+    return cost
+
+
 _SEO_COLUMN = {"serp": "seo_serp", "keyword_ideas": "seo_keyword_analyses"}
 
 

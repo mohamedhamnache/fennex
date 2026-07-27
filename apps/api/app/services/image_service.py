@@ -153,6 +153,23 @@ async def generate_image_dalle(
                 image_url = f"data:image/png;base64,{image_data['b64_json']}"
             else:
                 image_url = image_data.get("url", "")
+
+            # Best-effort metering: attribute to the ambient org (set at the auth
+            # boundary and at provider-key resolution). Never break image generation.
+            try:
+                from app.core.metering_context import get_metering_org
+                _org = get_metering_org()
+                if _org is not None:
+                    from app.core.database import async_session_factory
+                    from app.services.metering import meter as _meter
+                    async with async_session_factory() as _db:
+                        await _meter.record_image(
+                            _db, org_id=_org, project_id=None, model="gpt-image-1",
+                            cost_usd=cost_usd, feature=usage,
+                        )
+            except Exception:  # noqa: BLE001
+                logger.warning("image usage metering failed", exc_info=True)
+
             return {
                 "ok": True,
                 "image_url": image_url,
