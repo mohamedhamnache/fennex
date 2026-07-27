@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.permissions import Permission, has_permission
 from app.core.security import decode_token
+from app.models.organization import Organization
 from app.models.user import User
 
 security = HTTPBearer()
@@ -37,6 +38,13 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
+        )
+
+    organization = await db.get(Organization, user.org_id)
+    if organization is not None and organization.suspended_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization suspended",
         )
 
     return user
