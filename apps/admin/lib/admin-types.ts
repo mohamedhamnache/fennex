@@ -101,3 +101,88 @@ export interface AdminAuditRow {
   result: string;
   created_at: string;
 }
+
+/** One row of `GET /admin/analytics/providers` (`admin_analytics.py`, Phase
+ * 1b Batch 3). One entry per AI provider Fennex integrates with — both LLM
+ * providers (Anthropic, OpenAI, ...) and SEO data providers (DataForSEO,
+ * ...), distinguished by `kind`. `monthly_budget_usd` is `null` when no
+ * budget has been configured for the provider, in which case the page skips
+ * the budget bar rather than dividing by a phantom limit. */
+export interface ProviderRow {
+  provider: string;
+  kind: string;
+  is_configured: boolean;
+  is_active: boolean;
+  requests: number;
+  input_tokens: number;
+  output_tokens: number;
+  /** Cost for the selected range, in micros (1 USD = 1_000_000 micros). */
+  cost_micros: number;
+  /** Same cost, pre-converted to dollars. */
+  cost_usd: number;
+  model_count: number;
+  monthly_budget_usd: number | null;
+  /** Month-to-date spend against `monthly_budget_usd`, independent of the
+   * selected range (a range like "24h" would otherwise make the budget bar
+   * look emptier than the actual monthly commitment). */
+  mtd_cost_usd: number;
+}
+
+/** One row of `GET /admin/analytics/models` (`admin_analytics.py`, Phase 1b
+ * Batch 3). One entry per `(provider, model)` pair actually used in the
+ * range — `band` comes from `model_catalog` (cheap/standard/premium) and is
+ * `null` for a model Fennex called but never registered in the catalog,
+ * which the page renders as an honest "unclassified" state rather than
+ * guessing a tier. */
+export interface ModelRow {
+  provider: string;
+  model: string;
+  band: string | null;
+  requests: number;
+  input_tokens: number;
+  output_tokens: number;
+  /** Cost for the selected range, in micros (1 USD = 1_000_000 micros). */
+  cost_micros: number;
+  /** Same cost, pre-converted to dollars. */
+  cost_usd: number;
+  /** `cost_usd / (total_tokens / 1000)` — 0 when the row has zero tokens,
+   * never a divide-by-zero. The efficiency column: two models can have
+   * similar total spend but very different cost per unit of work. */
+  cost_per_1k_tokens: number;
+}
+
+/** `GET /admin/analytics/seo` (`admin_analytics.py`, Phase 1b Batch 3) — spend
+ * and volume against the DataForSEO integration for the selected range.
+ * `by_unit` breaks total usage down per DataForSEO unit (`serp`,
+ * `keyword_ideas`, ...); `top_consumers` ranks orgs by SEO credit spend,
+ * highest first. */
+export interface SeoAnalytics {
+  total_requests: number;
+  total_seo_count: number;
+  /** Cost for the selected range, in micros (1 USD = 1_000_000 micros). */
+  cost_micros: number;
+  /** Same cost, pre-converted to dollars. */
+  cost_usd: number;
+  by_unit: {
+    unit: string;
+    count: number;
+    cost_usd: number;
+  }[];
+  top_consumers: {
+    org_id: string;
+    org_name: string;
+    seo_count: number;
+    cost_usd: number;
+  }[];
+}
+
+/** `GET /admin/analytics/usage` (`admin_analytics.py`, Phase 1b Batch 3) — the
+ * cross-cutting usage explorer: one metric (`cost`, `tokens`, `requests`,
+ * `seo`), grouped one way at a time (`provider`, `model`, `org`, `unit`), over
+ * a range. `groups.value` and `series.value` are both already in the unit
+ * the selected metric implies (dollars for `cost`, a raw count otherwise) —
+ * the page's formatter switches on `metric`, not on inspecting the numbers. */
+export interface UsageExplorer {
+  groups: { key: string; label: string; value: number }[];
+  series: { day: string; value: number }[];
+}
