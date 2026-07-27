@@ -6,6 +6,7 @@ import uuid
 from sqlalchemy import select
 
 from app.core.billing import current_billing_period_start
+from app.core.credits import seo_credits_for
 from app.models.billing import OrgUsage
 from app.models.cost_rate import CostRate
 from app.models.usage_event import UsageEvent
@@ -124,7 +125,7 @@ async def record_seo(db, *, org_id: uuid.UUID, project_id, unit: str, count: int
         org_id=org_id, project_id=project_id, kind="seo", provider=provider,
         feature=feature, seo_unit=unit, seo_count=count, cost_micros=cost,
     ))
-    increments = {"cost_micros": cost}
+    increments = {"cost_micros": cost, "seo_credits_used": seo_credits_for(unit, count)}
     col = _SEO_COLUMN.get(unit)
     if col:
         increments[col] = count

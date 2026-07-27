@@ -35,12 +35,30 @@ def _project_domain(project) -> str:
     return _norm_domain(dom)
 
 
-async def fetch_serp(project, keyword: str, db) -> dict | None:
+async def fetch_serp(project, keyword: str, db, unit: str = "serp") -> dict | None:
+    """Fetch and normalize a live SERP. This is the shared chokepoint for every
+    caller that needs one keyword's SERP (rank tracking, content scoring,
+    plagiarism-adjacent research, agent tools) -- so metering lives here rather
+    than in each caller. `unit` lets the caller attribute the billable
+    DataForSEO task to the right SEO-credit bucket (default "serp";
+    rank_tracking_service passes "rank_check")."""
     provider = await get_seo_provider_for_org(project.org_id, db)
     if provider is None:
         return None
     items = await provider.serp(keyword, language_code=language_for_project(project),
                                 location_code=location_for_project(project))
+
+    # Best-effort metering: attribute to the project's org. Isolated session so a
+    # metering hiccup never breaks the SERP lookup itself.
+    try:
+        from app.core.database import async_session_factory
+        from app.services.metering import meter as _meter
+        async with async_session_factory() as _mdb:
+            await _meter.record_seo(_mdb, org_id=project.org_id, project_id=project.id,
+                                    unit=unit, count=1, feature=unit)
+    except Exception:  # noqa: BLE001
+        logger.warning("serp usage metering failed", exc_info=True)
+
     mine = _project_domain(project)
     position = None
     url = None

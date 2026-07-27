@@ -66,7 +66,7 @@ async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession) -> Ser
         SerpSnapshot.tracked_keyword_id == tk.id, SerpSnapshot.date == today))).scalars().first()
     if existing is not None:
         return None
-    res = await serp_service.fetch_serp(project, tk.keyword, db)
+    res = await serp_service.fetch_serp(project, tk.keyword, db, unit="rank_check")
     if res is None:
         return None
     snap = SerpSnapshot(org_id=project.org_id, project_id=project.id, tracked_keyword_id=tk.id,
