@@ -175,3 +175,14 @@ export interface SeoAnalytics {
     cost_usd: number;
   }[];
 }
+
+/** `GET /admin/analytics/usage` (`admin_analytics.py`, Phase 1b Batch 3) — the
+ * cross-cutting usage explorer: one metric (`cost`, `tokens`, `requests`,
+ * `seo`), grouped one way at a time (`provider`, `model`, `org`, `unit`), over
+ * a range. `groups.value` and `series.value` are both already in the unit
+ * the selected metric implies (dollars for `cost`, a raw count otherwise) —
+ * the page's formatter switches on `metric`, not on inspecting the numbers. */
+export interface UsageExplorer {
+  groups: { key: string; label: string; value: number }[];
+  series: { day: string; value: number }[];
+}
