@@ -912,7 +912,15 @@
       "popular": "Populaire",
       "perMonth": "/mois",
       "billedAnnually": "facturé annuellement",
-      "free": "Gratuit"
+      "free": "Gratuit",
+      "credits": {
+        "title": "Crédits IA ce mois-ci",
+        "hint": "Un crédit équivaut à une requête sur le modèle économique. Les modèles plus lourds coûtent proportionnellement plus.",
+        "requests": "Requêtes",
+        "inputTokens": "Jetons en entrée",
+        "outputTokens": "Jetons en sortie",
+        "remaining": "Restants"
+      }
     },
     "project": {
       "title": "Projet",
@@ -2291,6 +2299,7 @@
       "how": "Fonctionnement",
       "features": "Fonctionnalités",
       "results": "Résultats",
+      "pricing": "Tarifs",
       "signIn": "Se connecter",
       "start": "Essai gratuit"
     },
@@ -2374,6 +2383,43 @@
       "quote": "On a vraiment l'impression d'embaucher une petite agence. Fennex a trouvé les mots-clés, rédigé les articles, les a publiés, puis nous a dit lesquels fonctionnaient. Notre trafic organique a triplé en un trimestre.",
       "author": "Maya Lindqvist",
       "role": "Directrice de la croissance, Northwind Studio"
+    },
+    "pricing": {
+      "badge": "Tarifs",
+      "title": "Des formules qui suivent votre rythme",
+      "subtitle": "Commencez par un essai gratuit de 7 jours. Sans carte bancaire.",
+      "perMonth": "/mois",
+      "popular": "Le plus choisi",
+      "cta": "Démarrer l'essai gratuit",
+      "trial": "Essai gratuit de 7 jours sur toutes les formules. Sans carte bancaire.",
+      "starter": {
+        "name": "Starter",
+        "body": "Pour un site qui trouve son rythme.",
+        "f1": "3 projets, 3 sièges",
+        "f2": "25 articles par mois",
+        "f3": "5 000 crédits IA par mois"
+      },
+      "pro": {
+        "name": "Pro",
+        "body": "Pour les équipes qui publient chaque semaine.",
+        "f1": "10 projets, 10 sièges",
+        "f2": "120 articles par mois",
+        "f3": "18 000 crédits IA et modèles premium"
+      },
+      "agency": {
+        "name": "Agency",
+        "body": "Pour les agences qui gèrent plusieurs clients.",
+        "f1": "50 projets, 25 sièges",
+        "f2": "500 articles par mois",
+        "f3": "55 000 crédits IA, vos propres clés"
+      },
+      "scale": {
+        "name": "Scale",
+        "body": "Pour les gros volumes de contenu.",
+        "f1": "200 projets, 75 sièges",
+        "f2": "Articles illimités",
+        "f3": "150 000 crédits IA, vos propres clés"
+      }
     },
     "cta": {
       "title": "Votre meute est prête à passer à l'action",

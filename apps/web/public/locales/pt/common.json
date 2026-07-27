@@ -912,7 +912,15 @@
       "popular": "Popular",
       "perMonth": "/mês",
       "billedAnnually": "cobrado anualmente",
-      "free": "Grátis"
+      "free": "Grátis",
+      "credits": {
+        "title": "Créditos de IA este mês",
+        "hint": "Um crédito equivale a um pedido ao modelo económico. Modelos mais potentes custam proporcionalmente mais.",
+        "requests": "Pedidos",
+        "inputTokens": "Tokens de entrada",
+        "outputTokens": "Tokens de saída",
+        "remaining": "Restantes"
+      }
     },
     "project": {
       "title": "Projeto",
@@ -2291,6 +2299,7 @@
       "how": "Como funciona",
       "features": "Recursos",
       "results": "Resultados",
+      "pricing": "Preços",
       "signIn": "Entrar",
       "start": "Teste grátis"
     },
@@ -2374,6 +2383,43 @@
       "quote": "Realmente parece contratar uma pequena agência. A Fennex encontrou as palavras-chave, escreveu os posts, publicou e depois nos disse quais estavam funcionando. Nosso tráfego orgânico triplicou em um trimestre.",
       "author": "Maya Lindqvist",
       "role": "Head de Crescimento, Northwind Studio"
+    },
+    "pricing": {
+      "badge": "Preços",
+      "title": "Planos que acompanham a sua produção",
+      "subtitle": "Comece com 7 dias grátis. Sem cartão.",
+      "perMonth": "/mês",
+      "popular": "Mais escolhido",
+      "cta": "Iniciar teste grátis",
+      "trial": "Teste grátis de 7 dias em todos os planos. Sem cartão.",
+      "starter": {
+        "name": "Starter",
+        "body": "Para um site a encontrar o seu ritmo.",
+        "f1": "3 projetos, 3 lugares",
+        "f2": "25 artigos por mês",
+        "f3": "5.000 créditos de IA por mês"
+      },
+      "pro": {
+        "name": "Pro",
+        "body": "Para equipas que publicam todas as semanas.",
+        "f1": "10 projetos, 10 lugares",
+        "f2": "120 artigos por mês",
+        "f3": "18.000 créditos de IA e modelos premium"
+      },
+      "agency": {
+        "name": "Agency",
+        "body": "Para agências com vários clientes.",
+        "f1": "50 projetos, 25 lugares",
+        "f2": "500 artigos por mês",
+        "f3": "55.000 créditos de IA, as suas chaves"
+      },
+      "scale": {
+        "name": "Scale",
+        "body": "Para operações de conteúdo de grande volume.",
+        "f1": "200 projetos, 75 lugares",
+        "f2": "Artigos ilimitados",
+        "f3": "150.000 créditos de IA, as suas chaves"
+      }
     },
     "cta": {
       "title": "Sua matilha está pronta para agir",

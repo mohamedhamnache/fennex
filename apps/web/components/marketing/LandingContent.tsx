@@ -33,6 +33,16 @@ const LOOP: { n: string; icon: LucideIcon; key: string }[] = [
   { n: "04", icon: TrendingUp, key: "learn" },
 ];
 
+// Monthly prices from the reseller plan table
+// (docs/superpowers/specs/2026-07-25-reseller-billing-architecture.md, s5).
+// Feature strings are translation-key suffixes under landing.pricing.<key>.
+const LANDING_PLANS: { key: string; price: number; featured?: boolean; features: string[] }[] = [
+  { key: "starter", price: 29, features: ["f1", "f2", "f3"] },
+  { key: "pro", price: 99, featured: true, features: ["f1", "f2", "f3"] },
+  { key: "agency", price: 299, features: ["f1", "f2", "f3"] },
+  { key: "scale", price: 799, features: ["f1", "f2", "f3"] },
+];
+
 const FEATURES: { icon: LucideIcon; key: string; tone: string }[] = [
   { icon: Search, key: "keyword", tone: "text-amber-500 bg-amber-500/12" },
   { icon: ScrollText, key: "articles", tone: "text-primary bg-primary/12" },
@@ -356,6 +366,73 @@ export function LandingContent() {
         </div>
       </section>
 
+      {/* ──────────────────────────────  PRICING  ─────────────────────────── */}
+      <section id="pricing" className="py-24 sm:py-32">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <Reveal className="mx-auto max-w-2xl text-center">
+            <span className="badge border border-border bg-card/60 text-primary">
+              <Sparkles className="h-3.5 w-3.5" /> {t("landing.pricing.badge")}
+            </span>
+            <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              {t("landing.pricing.title")}
+            </h2>
+            <p className="mt-4 text-balance text-muted-foreground">
+              {t("landing.pricing.subtitle")}
+            </p>
+          </Reveal>
+
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {LANDING_PLANS.map((plan, i) => (
+              <Reveal key={plan.key} delay={(i % 4) * 90} as="article" className="h-full">
+                <div
+                  className={`flex h-full flex-col rounded-2xl border bg-card/60 p-6 backdrop-blur-sm ${
+                    plan.featured ? "border-primary/40 glow-primary" : "border-border"
+                  }`}
+                >
+                  {plan.featured && (
+                    <span className="badge mb-3 self-start gradient-brand text-white">
+                      {t("landing.pricing.popular")}
+                    </span>
+                  )}
+                  <h3 className="font-display text-lg font-semibold">{t(`landing.pricing.${plan.key}.name`)}</h3>
+                  <p className="mt-3 font-display text-3xl font-bold tracking-tight">
+                    ${plan.price}
+                    <span className="text-sm font-normal text-muted-foreground">{t("landing.pricing.perMonth")}</span>
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {t(`landing.pricing.${plan.key}.body`)}
+                  </p>
+                  <ul className="mt-5 flex flex-1 flex-col gap-2">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+                        {t(`landing.pricing.${plan.key}.${f}`)}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href="/register"
+                    className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors ${
+                      plan.featured
+                        ? "btn-primary"
+                        : "border border-border bg-background/50 hover:border-primary/40 hover:text-primary"
+                    }`}
+                  >
+                    {t("landing.pricing.cta")}
+                  </Link>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          <Reveal className="mt-10 text-center">
+            <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3.5 w-3.5 text-success" /> {t("landing.pricing.trial")}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ────────────────────────────  FINAL CTA  ─────────────────────────── */}
       <section className="py-24 sm:py-32">
         <div className="mx-auto max-w-5xl px-5 sm:px-8">
@@ -416,6 +493,7 @@ export function LandingContent() {
                 { label: t("landing.nav.how"), href: "#loop" },
                 { label: t("landing.nav.features"), href: "#features" },
                 { label: t("landing.nav.results"), href: "#results" },
+                { label: t("landing.nav.pricing"), href: "#pricing" },
               ]} />
               <FooterCol title={t("landing.footer.company")} links={[
                 { label: t("landing.footer.about"), href: "#" },

@@ -1700,6 +1700,26 @@ export async function getBillingUsage(): Promise<BillingUsage> {
   return apiClient.get<BillingUsage>("/billing/usage");
 }
 
+export interface UsageSummary {
+  period_start: string;
+  /** Credits are derived from metered cost, so they already account for which
+   *  model served each request. */
+  credits_used: number;
+  credits_allowance: number;
+  credits_remaining: number;
+  ai_input_tokens: number;
+  ai_output_tokens: number;
+  ai_requests: number;
+  seo_serp: number;
+  seo_keyword_analyses: number;
+  cost_micros: number;
+  cost_usd: number;
+}
+
+export async function getUsageSummary(): Promise<UsageSummary> {
+  return apiClient.get<UsageSummary>("/usage/summary");
+}
+
 // ── Brand Kit ─────────────────────────────────────────────────────────────────
 
 export interface BrandKit {
