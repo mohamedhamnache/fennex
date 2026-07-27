@@ -78,3 +78,23 @@ def test_plan_allows_premium_matches_the_entitlement_rule():
     assert _plan_allows_premium(_org(PlanTier.AGENCY)) is True
     assert _plan_allows_premium(_org(PlanTier.STARTER)) is False
     assert _plan_allows_premium(_org(PlanTier.FREE)) is False
+
+
+def test_plan_allows_premium_agrees_with_max_band_for_an_in_trial_org():
+    """Regression for the toggle lying during a trial: max_band caps an
+    in-trial pro org at "standard" regardless of plan/flag, so
+    _plan_allows_premium must say False for it too -- otherwise Settings
+    reports premium_available=true (toggle switches on, PATCH succeeds) for
+    a capability max_band would refuse the moment premium_models_enabled
+    were actually set."""
+    future = datetime.now(timezone.utc) + timedelta(days=7)
+    in_trial_pro = _org(PlanTier.PRO, trial_ends_at=future)
+    assert _plan_allows_premium(in_trial_pro) is False
+    assert entitlements.max_band(
+        SimpleNamespace(plan_tier=in_trial_pro.plan_tier, premium_models_enabled=True,
+                        trial_ends_at=in_trial_pro.trial_ends_at)
+    ) == "standard"
+
+    past = datetime.now(timezone.utc) - timedelta(days=1)
+    past_trial_pro = _org(PlanTier.PRO, trial_ends_at=past)
+    assert _plan_allows_premium(past_trial_pro) is True

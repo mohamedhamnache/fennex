@@ -62,10 +62,22 @@ async def create_organization():
 
 def _plan_allows_premium(org) -> bool:
     """Whether the plan could reach premium if the flag were on -- lets the UI
-    explain why the toggle is disabled instead of just hiding it."""
+    explain why the toggle is disabled instead of just hiding it.
+
+    Must agree with entitlements.max_band, including trial state: an
+    in-trial org caps at "standard" there (see entitlements._in_trial), so
+    this has to pass trial_ends_at through too. Omitting it previously made
+    a pro org's toggle report premium_available=true during its trial, when
+    max_band would actually cap that org at standard -- the toggle lied
+    about a capability the org didn't have yet.
+    """
     from app.core.entitlements import max_band
     from types import SimpleNamespace
-    return max_band(SimpleNamespace(plan_tier=org.plan_tier, premium_models_enabled=True)) == "premium"
+    return max_band(SimpleNamespace(
+        plan_tier=org.plan_tier,
+        premium_models_enabled=True,
+        trial_ends_at=getattr(org, "trial_ends_at", None),
+    )) == "premium"
 
 
 def _org_out(org) -> "OrgOut":
