@@ -112,11 +112,13 @@ def _catalog_rows(provider: str) -> list[tuple[str, str]]:
     return ordered
 
 
-def _highest_band(provider: str, model_id: str) -> Optional[str]:
+def highest_band(provider: str, model_id: str) -> Optional[str]:
     """The most expensive band this (provider, model) is catalogued under, or
     None if the pair is not catalogued at all. A model can be listed under
     more than one band; entitlement is checked against the priciest one so a
-    premium row cannot be laundered through a cheaper listing."""
+    premium row cannot be laundered through a cheaper listing. Public: the
+    agent runner (app.services.agents.runner) needs this too, to cap an
+    override the same way the chat picker's override path does."""
     from app.services.providers import catalog
 
     bands = {band for band, p, model in catalog.rows()
@@ -132,12 +134,29 @@ def available(keys: dict) -> list[dict]:
     Reads app.services.providers.catalog -- the same source is_allowed()
     checks -- so the picker's list and the gate it is checked against cannot
     desynchronise again.
+
+    This function has no org in scope (its only caller, the /chat/models
+    route, does not fetch one, and neither does for_action's override path
+    from base.py), so it cannot ask cap_band() for the real ceiling either --
+    it applies the same org=None default for_action would, which caps at
+    "standard" (see app.core.entitlements.max_band). That keeps the two in
+    lockstep: a premium row like anthropic:claude-opus-5 is never offered
+    here because an override picking it would be discarded there. Filtering
+    is by each model's *highest* catalogued band, matching for_action's cap,
+    not the (possibly cheaper, de-duplicated) band _catalog_rows groups it
+    under -- otherwise a dual-band model could slip the filter on its cheap
+    listing while still being offered as its expensive one.
     """
+    from app.core.entitlements import cap_band
+
     out = []
     for provider in SUPPORTED:
         if provider not in keys:
             continue
         for band, model in _catalog_rows(provider):
+            ceiling_band = highest_band(provider, model) or band
+            if cap_band(ceiling_band, None) != ceiling_band:
+                continue
             meta = _DISPLAY.get((provider, model), {})
             out.append({
                 "id": model,
@@ -175,7 +194,7 @@ def for_action(tier: str, weight: str, keys: dict, *,
     if override_ok:
         from app.core.entitlements import cap_band
 
-        band = _highest_band(provider_override, model_override or "")
+        band = highest_band(provider_override, model_override or "")
         if band is not None and cap_band(band, org) != band:
             override_ok = False
 

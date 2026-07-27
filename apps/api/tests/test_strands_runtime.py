@@ -543,6 +543,54 @@ def test_available_falls_back_to_the_model_id_when_undisplayed(monkeypatch):
                         "grade": "fast", "label": "brand-new-model", "hint": ""}]
 
 
+# --- available() never advertises what the gate would reject (round 2 fix 2) --
+#
+# Before this fix, available() listed every catalogued row including the
+# premium anthropic:claude-opus-5, but for_action's callers in base.py always
+# pass org=None, so cap_band caps at "standard" and a user picking Opus from
+# the chat picker silently got gpt-4o instead with no message. available() has
+# no org either, so the fix is to apply the same org=None ceiling for_action
+# would, rather than inventing a second, looser rule.
+
+
+def test_a_premium_model_is_never_offered_by_the_picker():
+    """anthropic:claude-opus-5 is catalogued under 'premium' only; for_action's
+    default org=None ceiling ('standard') would always discard it, so the
+    picker must not advertise it either."""
+    entries = model_provider.available({"anthropic": "k", "openai": "k"})
+    assert ("anthropic", "claude-opus-5") not in {(e["provider"], e["id"]) for e in entries}
+
+
+def test_every_available_model_survives_for_actions_default_cap(monkeypatch):
+    """The invariant the fix must hold: everything available() offers must
+    pass is_allowed() and come back unchanged from for_action's cap -- not
+    silently be swapped for something else, the exact bug this closes."""
+    _no_strands_build(monkeypatch)
+    keys = {"anthropic": "k", "openai": "k"}
+    entries = model_provider.available(keys)
+    assert entries
+    for entry in entries:
+        assert model_provider.is_allowed(entry["provider"], entry["id"], keys)
+        _model, choice = model_provider.for_action(
+            "balanced", "light", keys,
+            provider_override=entry["provider"], model_override=entry["id"])
+        assert (choice.provider, choice.model_id) == (entry["provider"], entry["id"])
+
+
+def test_a_dual_band_model_is_filtered_by_its_highest_band_not_its_cheapest(monkeypatch):
+    """A model catalogued under both 'standard' and 'premium' must be judged
+    by the priciest listing -- otherwise it could slip the filter on its cheap
+    row while still being offered as its expensive one."""
+    from app.services.providers import catalog
+
+    monkeypatch.setattr(catalog, "rows", lambda: [
+        ("standard", "anthropic", "dual-band-model"),
+        ("premium", "anthropic", "dual-band-model"),
+    ])
+    entries = model_provider.available({"anthropic": "k"})
+    assert entries == []
+
+
 # --- entitlement on the override path (round 1 fix 2) -------------------------
 
 
