@@ -1,6 +1,10 @@
 from fastapi import APIRouter
 
 from app.api.v1.routers import (
+    admin_auth,
+    admin_overview,
+    admin_audit,
+    admin_orgs,
     auth,
     organizations,
     users,
@@ -58,6 +62,10 @@ from app.api.v1.routers import (
 
 api_router = APIRouter()
 
+api_router.include_router(admin_auth.router)
+api_router.include_router(admin_overview.router)
+api_router.include_router(admin_orgs.router)
+api_router.include_router(admin_audit.router)
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(organizations.router, prefix="/organizations", tags=["organizations"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
