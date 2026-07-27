@@ -27,6 +27,15 @@ export interface AdminOrgRow {
   cost_usd: number;
   ai_requests: number;
   seo_count: number;
+  /** AI credit bucket (Billing v2) -- already whole credits, derived
+   * server-side from `ai_cost_micros` via `credits_from_micros`. Do not
+   * divide/convert; `money()` does not apply here. */
+  ai_credits_used: number;
+  ai_credits_allowance: number;
+  /** SEO credit bucket (Billing v2) -- counted per DataForSEO task, already
+   * whole credits. */
+  seo_credits_used: number;
+  seo_credits_allowance: number;
   created_at: string;
 }
 
