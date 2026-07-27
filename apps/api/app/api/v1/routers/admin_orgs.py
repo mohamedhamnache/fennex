@@ -1,16 +1,19 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.admin_auth import require_admin
+from app.core.admin_auth import AdminContext, require_admin
 from app.core.database import get_db
 from app.models.billing import OrgUsage
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.user import User
+from app.services.admin.audit import record_admin_action
 
 router = APIRouter(prefix="/admin", tags=["admin-orgs"])
 
@@ -201,3 +204,124 @@ async def get_org(
         ],
     })
     return payload
+
+
+class SuspendOrgRequest(BaseModel):
+    reason: str | None = None
+
+
+# Denormalized OrgUsage rollup counters that reset-quotas zeroes. The
+# usage_events ledger is the source of truth for historical usage and is
+# never touched by this endpoint -- see reset_org_quotas() below.
+_RESET_COUNTER_FIELDS = (
+    "ai_input_tokens",
+    "ai_output_tokens",
+    "ai_requests",
+    "seo_serp",
+    "seo_keyword_analyses",
+    "cost_micros",
+)
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+async def _get_org_or_404(db: AsyncSession, org_id: uuid.UUID) -> Organization:
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization not found")
+    return org
+
+
+@router.post("/orgs/{org_id}/suspend")
+async def suspend_org(
+    org_id: uuid.UUID,
+    request: Request,
+    body: SuspendOrgRequest = SuspendOrgRequest(),
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("org.suspend")),
+):
+    org = await _get_org_or_404(db, org_id)
+
+    if org.suspended_at is not None:
+        # Already suspended -- true no-op: no state change, no new audit row.
+        return {"id": str(org.id), "suspended": True, "suspended_reason": org.suspended_reason}
+
+    org.suspended_at = datetime.now(timezone.utc)
+    org.suspended_reason = body.reason
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="org.suspend",
+        resource_type="organization", resource_id=str(org.id),
+        before={"suspended": False},
+        after={"suspended": True, "reason": body.reason},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(org.id), "suspended": True, "suspended_reason": org.suspended_reason}
+
+
+@router.post("/orgs/{org_id}/unsuspend")
+async def unsuspend_org(
+    org_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("org.suspend")),
+):
+    org = await _get_org_or_404(db, org_id)
+
+    before = {"suspended": org.suspended_at is not None, "reason": org.suspended_reason}
+    org.suspended_at = None
+    org.suspended_reason = None
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="org.unsuspend",
+        resource_type="organization", resource_id=str(org.id),
+        before=before, after={"suspended": False},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(org.id), "suspended": False}
+
+
+@router.post("/orgs/{org_id}/reset-quotas")
+async def reset_org_quotas(
+    org_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("org.reset_quotas")),
+):
+    org = await _get_org_or_404(db, org_id)
+
+    usage_rows = (
+        await db.execute(select(OrgUsage).where(OrgUsage.org_id == org_id))
+    ).scalars().all()
+
+    before = {
+        field: sum(getattr(row, field) or 0 for row in usage_rows)
+        for field in _RESET_COUNTER_FIELDS
+    }
+
+    # NOTE: this resets the denormalized OrgUsage rollup only, across every
+    # (org_id, period_start) row the org has accumulated. The usage_events
+    # ledger (the source of truth for historical usage/billing) is
+    # intentionally left untouched by this action.
+    for row in usage_rows:
+        for field in _RESET_COUNTER_FIELDS:
+            setattr(row, field, 0)
+
+    after = {field: 0 for field in _RESET_COUNTER_FIELDS}
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="org.reset_quotas",
+        resource_type="organization", resource_id=str(org.id),
+        before=before, after=after, ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(org.id), "reset": True, "periods_reset": len(usage_rows)}
