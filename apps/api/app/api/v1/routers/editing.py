@@ -1,12 +1,13 @@
 """POST /images/{image_id}/edit — dispatch to editing_service operations."""
 import base64
 import uuid
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.billing import require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.core.storage import upload_bytes
@@ -76,6 +77,7 @@ async def edit_image(
     body: EditRequest,
     current_user: CurrentUser,
     db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
 ):
     # Fetch source image
     result = await db.execute(

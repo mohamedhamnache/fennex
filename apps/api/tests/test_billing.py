@@ -21,10 +21,10 @@ def test_plan_limits_free_articles():
     assert PLAN_LIMITS["free"]["articles"] == 4
 
 def test_plan_limits_agency_images_is_metered():
-    # The reseller plan table gives Agency a finite image allowance; only social,
-    # brand_voices, audits and backlinks stay unlimited there. See
+    # The billing v2 plan table gives Agency a finite image allowance; only
+    # social, brand_voices, audits and backlinks stay unlimited there. See
     # tests/test_plan_limits.py for the full per-tier assertions.
-    assert PLAN_LIMITS["agency"]["images"] == 1500
+    assert PLAN_LIMITS["agency"]["images"] == 800
     assert PLAN_LIMITS["agency"]["social"] == -1
 
 def test_plan_limits_all_tiers_present():

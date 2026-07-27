@@ -1,9 +1,13 @@
-"""Pins the shipped plan quotas to the reseller spec's plan table
-(docs/superpowers/specs/2026-07-25-reseller-billing-architecture.md, section 5).
+"""Pins the shipped plan quotas to the approved billing v2 plan table
+(.superpowers/sdd/2026-07-27-billing-v2-credits/task-6-brief.md).
 
 PLAN_LIMITS is what check_usage_limit enforces, so a silent edit here changes
 what paying customers can do. These assertions exist to make such an edit
 deliberate rather than incidental.
+
+Billing v2 (task 6, 2026-07-27) tightened these caps -- Starter drops from 3
+projects/3 seats to 1/1 -- superseding the original reseller-spec numbers
+below. No grandfathering: applies to every org immediately.
 """
 import pytest
 
@@ -11,12 +15,12 @@ from app.api.v1.routers.billing import _PRICE_MAP
 from app.core.billing import PLAN_LIMITS
 from app.models.organization import PlanTier
 
-# resource -> (starter, pro, agency, scale), straight from the spec table.
+# resource -> (starter, pro, agency, scale), from the approved billing v2 table.
 SPEC_QUOTAS = {
-    "projects": (3, 10, 50, 200),
-    "seats": (3, 10, 25, 75),
+    "projects": (1, 5, 15, 50),
+    "seats": (1, 3, 10, 25),
     "articles": (25, 120, 500, -1),
-    "images": (60, 300, 1500, -1),
+    "images": (40, 200, 800, -1),
     "keywords": (500, 2500, 10000, 40000),
 }
 

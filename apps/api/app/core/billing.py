@@ -9,8 +9,9 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.credits import credit_allowance, credits_from_micros, seo_credit_allowance
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import CurrentUser, DB, get_current_user
 from app.models.billing import OrgUsage
 from app.models.organization import Organization
 from app.models.user import User
@@ -35,28 +36,34 @@ CAPACITY_RESOURCES = {"projects", "brand_voices"}
 # "free" is retained for orgs already on it, which keep working unchanged. It is
 # no longer offered to new signups and the pricing UI does not show it; the
 # spec replaces it with a 7-day trial whose expiry machinery lands later.
+#
+# Billing v2 (2026-07-27, task 6): tightened structural and fair-use caps --
+# Starter drops from 3 projects/3 seats to 1/1. Applies to every org
+# immediately; no grandfathering. Credit allowances (AI/SEO) are NOT part of
+# this dict -- they live in app.core.credits and are read via
+# credit_allowance()/seo_credit_allowance() by require_credits() below.
 PLAN_LIMITS: dict[str, dict[str, int]] = {
     "free": {
         "projects": 1, "articles": 4, "images": 5, "social": 10,
         "keywords": 50, "seats": 1, "brand_voices": 1, "audits": 1, "backlinks": 1,
     },
     "starter": {
-        "projects": 3, "articles": 25, "images": 60, "social": 50,
-        "keywords": 500, "seats": 3, "brand_voices": 3, "audits": 5, "backlinks": 5,
+        "projects": 1, "articles": 25, "images": 40, "social": 50,
+        "keywords": 500, "seats": 1, "brand_voices": 3, "audits": 5, "backlinks": 5,
     },
     "pro": {
-        "projects": 10, "articles": 120, "images": 300, "social": 200,
-        "keywords": 2500, "seats": 10, "brand_voices": 10, "audits": 20, "backlinks": 20,
+        "projects": 5, "articles": 120, "images": 200, "social": 200,
+        "keywords": 2500, "seats": 3, "brand_voices": 10, "audits": 20, "backlinks": 20,
     },
     "agency": {
-        "projects": 50, "articles": 500, "images": 1500, "social": -1,
-        "keywords": 10000, "seats": 25, "brand_voices": -1, "audits": -1, "backlinks": -1,
+        "projects": 15, "articles": 500, "images": 800, "social": -1,
+        "keywords": 10000, "seats": 10, "brand_voices": -1, "audits": -1, "backlinks": -1,
     },
     "scale": {
         # Articles and images are "unlimited" as fair use in the spec: still
         # bounded by the raw token and call caps the QuotaGuard phase will add.
-        "projects": 200, "articles": -1, "images": -1, "social": -1,
-        "keywords": 40000, "seats": 75, "brand_voices": -1, "audits": -1, "backlinks": -1,
+        "projects": 50, "articles": -1, "images": -1, "social": -1,
+        "keywords": 40000, "seats": 25, "brand_voices": -1, "audits": -1, "backlinks": -1,
     },
 }
 
@@ -179,6 +186,59 @@ def check_usage_limit(resource: str) -> Callable:
             })
 
     return _check
+
+
+async def current_credits(db: AsyncSession, org: Organization, bucket: str) -> tuple[int, int]:
+    """Return (used, allowance) in whole credits for the current period."""
+    # NOTE: PlanTier is a `str` subclass (class PlanTier(str, enum.Enum)), so
+    # `isinstance(org.plan_tier, str)` -- the check used elsewhere in this file
+    # for PLAN_LIMITS dict lookups -- is always true and would leave `tier` as
+    # the enum member. That's harmless for `PLAN_LIMITS.get(tier, ...)` (dict
+    # lookup uses __eq__/__hash__, which str-mixin enums share with their
+    # value), but credit_allowance()/seo_credit_allowance() call `str(tier)`,
+    # and `str(PlanTier.STARTER)` is `"PlanTier.STARTER"` in this Python
+    # version, not `"starter"` -- silently falling back to the free-tier
+    # allowance for every paid org. Extract `.value` explicitly instead.
+    tier = org.plan_tier.value if hasattr(org.plan_tier, "value") else org.plan_tier
+    result = await db.execute(
+        select(OrgUsage).where(OrgUsage.org_id == org.id,
+                               OrgUsage.period_start == current_billing_period_start())
+    )
+    row = result.scalar_one_or_none()
+    if bucket == "ai":
+        used = credits_from_micros(getattr(row, "ai_cost_micros", 0) if row else 0)
+        return used, credit_allowance(tier)
+    used = (getattr(row, "seo_credits_used", 0) if row else 0)
+    return used, seo_credit_allowance(tier)
+
+
+def require_credits(bucket: str):
+    """Hard-stop dependency: 429 at >=100% of the bucket for EVERY plan;
+    sets X-Usage-Warning at >=80%.
+
+    Usage:
+        @router.post("/generate")
+        async def generate(
+            _: Annotated[None, Depends(require_credits("ai"))],
+            ...
+        ):
+    """
+    async def _dep(response: Response, current_user: CurrentUser, db: DB) -> None:
+        org = await _get_org(current_user, db)
+        used, allowance = await current_credits(db, org, bucket)
+        if allowance <= 0:
+            return
+        pct = used / allowance
+        if pct >= 1.0:
+            raise HTTPException(status_code=429, detail={
+                "error": "credit_limit_reached", "bucket": bucket,
+                "used": used, "limit": allowance,
+            })
+        if pct >= 0.8:
+            response.headers["X-Usage-Warning"] = json.dumps({
+                "bucket": bucket, "used": used, "limit": allowance, "pct": round(pct, 2),
+            })
+    return _dep
 
 
 async def get_billing_usage(org: Organization, db: AsyncSession) -> dict:

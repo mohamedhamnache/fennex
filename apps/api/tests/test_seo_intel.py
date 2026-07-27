@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base
 from app.core.dependencies import get_current_user, get_db
 from app.main import app
+from app.models.billing import OrgUsage  # noqa: F401 — register org_usage with Base.metadata
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.user import User, UserRole
@@ -33,11 +34,13 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
 
-# Grows over the following tasks in this feature.
+# Grows over the following tasks in this feature. org_usage is needed by
+# require_credits (app.core.billing), now attached to /keywords/{id}/refresh
+# and /score.
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects", "gsc_connections", "api_keys",
     "tracked_keywords", "serp_snapshots", "alerts", "monitor_snapshots",
-    "provider_accounts",
+    "provider_accounts", "org_usage",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()

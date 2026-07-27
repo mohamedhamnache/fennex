@@ -13,7 +13,7 @@ from sqlalchemy import or_
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
-from app.core.billing import check_usage_limit, check_project_not_locked, increment_usage
+from app.core.billing import check_usage_limit, check_project_not_locked, increment_usage, require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.image import GeneratedImage, ImageStyle, ImageStatus, ImageUsage
@@ -340,6 +340,7 @@ async def generate_image(
     current_user: CurrentUser,
     db: DB,
     _: Annotated[None, Depends(check_usage_limit("images"))],
+    __: Annotated[None, Depends(require_credits("ai"))],
 ):
     # Verify project belongs to org
     proj_result = await db.execute(

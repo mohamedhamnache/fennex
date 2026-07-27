@@ -1,10 +1,11 @@
 """Backlinks router — monitor + exchange marketplace."""
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
 import arq
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.billing import require_credits
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.schemas.backlinks import (
@@ -58,6 +59,7 @@ async def backlink_profile(
 async def analyze_backlinks(
     project_id: uuid.UUID,
     current_user: CurrentUser,
+    _: Annotated[None, Depends(require_credits("seo"))],
 ):
     redis = await arq.create_pool(settings.REDIS_SETTINGS)
     job = await redis.enqueue_job("sync_backlink_profile", str(project_id))

@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 import arq
 
-from app.core.billing import check_usage_limit, check_project_not_locked, increment_usage
+from app.core.billing import check_usage_limit, check_project_not_locked, increment_usage, require_credits
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
@@ -197,6 +197,7 @@ async def generate_article(
     current_user: CurrentUser,
     db: DB,
     _: Annotated[None, Depends(check_usage_limit("articles"))],
+    __: Annotated[None, Depends(require_credits("ai"))],
 ):
     article = await _get_article_or_404(article_id, current_user.org_id, db)
     await check_project_not_locked(article.project_id, db)
