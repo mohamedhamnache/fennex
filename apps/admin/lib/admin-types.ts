@@ -101,3 +101,29 @@ export interface AdminAuditRow {
   result: string;
   created_at: string;
 }
+
+/** One row of `GET /admin/analytics/providers` (`admin_analytics.py`, Phase
+ * 1b Batch 3). One entry per AI provider Fennex integrates with — both LLM
+ * providers (Anthropic, OpenAI, ...) and SEO data providers (DataForSEO,
+ * ...), distinguished by `kind`. `monthly_budget_usd` is `null` when no
+ * budget has been configured for the provider, in which case the page skips
+ * the budget bar rather than dividing by a phantom limit. */
+export interface ProviderRow {
+  provider: string;
+  kind: string;
+  is_configured: boolean;
+  is_active: boolean;
+  requests: number;
+  input_tokens: number;
+  output_tokens: number;
+  /** Cost for the selected range, in micros (1 USD = 1_000_000 micros). */
+  cost_micros: number;
+  /** Same cost, pre-converted to dollars. */
+  cost_usd: number;
+  model_count: number;
+  monthly_budget_usd: number | null;
+  /** Month-to-date spend against `monthly_budget_usd`, independent of the
+   * selected range (a range like "24h" would otherwise make the budget bar
+   * look emptier than the actual monthly commitment). */
+  mtd_cost_usd: number;
+}
