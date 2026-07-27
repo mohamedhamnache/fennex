@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Meter image generation, Replicate, and all DataForSEO usage into the ledger; introduce cost-based AI-credit and SEO-credit buckets; reduce plan allowances; hard-stop at 100%; show the balance in the customer app header.
+**Goal:** Meter image generation, Replicate, and all DataForSEO usage into the ledger so AI credits reflect true cost; add a second SEO credit bucket; reduce plan limits (Starter to 1 project / 1 seat); hard-stop at 100%; show both balances in the customer app header.
 
-**Architecture:** Credits are derived from real supplier cost in micro-dollars (`$1 = 1_000_000`). `1 AI credit = $0.01 of cost`, stored internally as milli-credits (integer) so sub-cent calls accumulate exactly. `1 SEO credit = 1 DataForSEO task` (weighted for heavy endpoints). New meter functions (`record_image`, `record_replicate`) attach at each service's single chokepoint and resolve the org from the existing ambient contextvar (`app/core/metering_context.py`), the same pattern that made LLM metering universal. Enforcement is a FastAPI dependency mirroring the existing `check_usage_limit`.
+**Architecture:** Fennex ALREADY has an AI credit system and it is canonical: `1 credit = $0.00105` (`CREDIT_MICROS`), allowances in `PLAN_CREDITS`, served by `GET /usage/summary`, rendered on the settings page. AI credits are **derived, not stored** — computed from accumulated cost via `credits_from_micros()`. This plan keeps that unit and that endpoint, and makes three previously-invisible cost sources flow into it (image generation, Replicate, full DataForSEO coverage). SEO gets a parallel **counted** bucket (1 DataForSEO task = 1 credit, weighted). New meter functions attach at each service's single chokepoint and resolve the org from the existing ambient contextvar (`app/core/metering_context.py`) — the pattern that made LLM metering universal.
 
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Alembic, pytest (host in-memory SQLite), Next.js 14 + TanStack Query + Tailwind (apps/web, apps/admin).
 
@@ -13,146 +13,52 @@
 ## Global Constraints
 
 - **Never use emoji** in code, UI text, comments, or commit messages.
-- Money is **micro-dollars** (integer, `$1 = 1_000_000`). Credits: AI stored as **milli-credits** (integer, `credits * 1000`); SEO stored as **whole credits**.
-- `AI_CREDIT_MICROS = 10_000` (1 AI credit = $0.01 of supplier cost).
-- Commit style `feat(scope): …` / `fix(scope):` / `docs(scope):`; every commit ends with the trailer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
-- Metering must be **best-effort**: wrap in `try/except`, never break the user-facing action if metering fails.
-- Tests: host in-memory SQLite (`sqlite+aiosqlite:///:memory:`), `asyncio_mode="auto"` (NO `@pytest.mark.asyncio`), each test file owns its engine + autouse `setup_db` fixture. Router tests use httpx `ASGITransport` + `app.dependency_overrides[get_db]`.
-- Known pre-existing test failures (do NOT treat as regressions): `test_edit_model.py` and 9x `test_strands_runtime.py`.
-- Alembic: current head is `r5scaletier1`. New revisions MUST use a **random revision id** (never a sequential/guessable one) and chain on the current head.
-- Frontend: CSS-variable tokens only (no hard-coded hex/rgb), Lucide icons, all user-visible strings via `t("key")` in apps/web, `apiClient` (never raw `fetch`), TanStack Query.
+- Money is **micro-dollars** (integer, `$1 = 1_000_000`).
+- **The credit unit is `CREDIT_MICROS = 1_050` ($0.00105/credit) and MUST NOT change** — users already see these numbers. AI credits are derived from cost with `credits_from_micros()`; they are never stored as a counter. SEO credits ARE stored as a counter (whole credits).
+- **AI bucket** = `usage_events.kind in AI_KINDS` (`llm`, `image`, `edit`). **SEO bucket** = `kind == "seo"`.
+- Credits are served from **`GET /usage/summary`** (the existing endpoint the settings page consumes). Do NOT introduce credit fields on `/billing/usage`.
+- **No grandfathering:** the new plan limits apply to ALL orgs immediately, including existing subscribers.
+- Commit style `feat(scope): …` / `fix(scope):`; every commit ends with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+- Metering is **best-effort**: wrap in `try/except`, never break the user-facing action if metering fails.
+- Tests: host in-memory SQLite (`sqlite+aiosqlite:///:memory:`), `asyncio_mode="auto"` (NO `@pytest.mark.asyncio`), each test file owns its engine + autouse `setup_db`. Router tests use httpx `ASGITransport` + `app.dependency_overrides[get_db]`.
+- Known pre-existing failures (NOT regressions): `test_edit_model.py`, 9x `test_strands_runtime.py`.
+- Alembic: head is `r5scaletier1`. New revisions use a **random** revision id chained on the current head.
+- Frontend: CSS-variable tokens only (no hex/rgb), Lucide icons, strings via `t()` in apps/web, `apiClient` (never raw `fetch`), TanStack Query.
 
 ---
 
-### Task 1: Credit constants and conversions
+### Task 1: Credit constants and conversions — COMPLETE
+
+Delivered in commits `c7f6d2e` + `8e0a185`. `app/core/credits.py` exposes the canonical AI unit (`CREDIT_MICROS`, `PLAN_CREDITS`, `credits_from_micros`, `credit_allowance`), `AI_KINDS = ("llm","image","edit")`, and the SEO bucket (`SEO_CREDIT_WEIGHT`, `SEO_PLAN_CREDITS`, `seo_credits_for`, `seo_credit_allowance`). 7 tests pass in `apps/api/tests/test_credits.py`, including a COGS-vs-price margin guard.
+
+---
+
+### Task 2: Split AI cost from SEO cost on OrgUsage
 
 **Files:**
-- Create: `apps/api/app/core/credits.py`
-- Test: `apps/api/tests/test_credits.py`
+- Modify: `apps/api/app/models/billing.py` (2 new `OrgUsage` columns)
+- Modify: `apps/api/app/services/metering/meter.py` (`record_llm` bumps `ai_cost_micros`)
+- Create: `apps/api/alembic/versions/<random_id>_org_usage_credit_split.py`
+- Test: `apps/api/tests/test_org_usage_credit_split.py`
 
 **Interfaces:**
-- Consumes: nothing (pure module).
-- Produces: `AI_CREDIT_MICROS: int`, `ai_credits_from_micros(cost_micros: int) -> int` (returns **milli-credits**), `milli_to_credits(milli: int) -> int`, `SEO_CREDIT_WEIGHT: dict[str, int]`, `seo_credits_for(unit: str | None, count: int) -> int`.
+- Consumes: `credits_from_micros`, `seo_credits_for` (Task 1).
+- Produces: `OrgUsage.ai_cost_micros` (BigInteger, default 0) — accumulated cost of AI-kind events only; `OrgUsage.seo_credits_used` (Integer, default 0) — counted SEO credits. `_bump_org_usage(db, org_id, **increments)` already takes raw column names, so no signature change.
+
+**Why:** AI credits derive from cost, but `OrgUsage.cost_micros` is the TOTAL and now includes SEO. Deriving AI credits from the total would let SEO spend eat the AI bucket. `ai_cost_micros` is the AI-only subtotal; `cost_micros` stays the true total for margin reporting.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# apps/api/tests/test_credits.py
-from app.core.credits import (
-    AI_CREDIT_MICROS, ai_credits_from_micros, milli_to_credits,
-    seo_credits_for, SEO_CREDIT_WEIGHT,
-)
-
-
-def test_ai_credit_is_one_cent_of_cost():
-    assert AI_CREDIT_MICROS == 10_000
-
-
-def test_ai_credits_from_micros_returns_milli_credits():
-    # $0.01 of cost == 1 credit == 1000 milli-credits
-    assert ai_credits_from_micros(10_000) == 1_000
-    # gpt-image-1 medium, $0.06 -> 6 credits
-    assert ai_credits_from_micros(60_000) == 6_000
-    # a sub-cent LLM call must NOT round to zero: $0.002 -> 0.2 credits
-    assert ai_credits_from_micros(2_000) == 200
-    assert ai_credits_from_micros(0) == 0
-
-
-def test_milli_to_credits_rounds_for_display():
-    assert milli_to_credits(1_000) == 1
-    assert milli_to_credits(1_600) == 2
-    assert milli_to_credits(0) == 0
-
-
-def test_seo_credits_weighted_by_unit():
-    assert seo_credits_for("serp", 3) == 3
-    assert seo_credits_for("audit", 2) == 2 * SEO_CREDIT_WEIGHT["audit"]
-    # unknown or missing unit falls back to 1x
-    assert seo_credits_for("something_new", 4) == 4
-    assert seo_credits_for(None, 5) == 5
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `cd apps/api && python -m pytest tests/test_credits.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'app.core.credits'`
-
-- [ ] **Step 3: Write minimal implementation**
-
-```python
-# apps/api/app/core/credits.py
-"""Credit conversions. Money is micro-dollars ($1 = 1_000_000).
-
-1 AI credit == $0.01 of real supplier cost. AI credits are accumulated as
-*milli-credits* (credits * 1000) so that sub-cent calls -- a gpt-4o-mini turn
-costs ~$0.002, i.e. 0.2 credits -- accumulate exactly instead of rounding to
-zero on every call. Display divides by 1000.
-
-1 SEO credit == one DataForSEO billable task; heavier endpoints are weighted.
-"""
-
-AI_CREDIT_MICROS = 10_000  # $0.01 per AI credit
-
-
-def ai_credits_from_micros(cost_micros: int) -> int:
-    """Convert supplier cost (micro-dollars) to milli-credits."""
-    return round(cost_micros * 1000 / AI_CREDIT_MICROS)
-
-
-def milli_to_credits(milli: int) -> int:
-    """Whole credits for display/enforcement."""
-    return round(milli / 1000)
-
-
-SEO_CREDIT_WEIGHT: dict[str, int] = {
-    "serp": 1,
-    "keyword_ideas": 1,
-    "keyword_analysis": 1,
-    "rank_check": 1,
-    "backlinks": 3,
-    "audit": 5,
-}
-
-
-def seo_credits_for(unit: str | None, count: int) -> int:
-    return count * SEO_CREDIT_WEIGHT.get(unit or "", 1)
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `cd apps/api && python -m pytest tests/test_credits.py -v`
-Expected: PASS (5 tests)
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add apps/api/app/core/credits.py apps/api/tests/test_credits.py
-git commit -m "feat(billing): credit conversions (AI milli-credits, SEO weights)"
-```
-
----
-
-### Task 2: OrgUsage credit columns + migration
-
-**Files:**
-- Modify: `apps/api/app/models/billing.py` (add 2 columns to `OrgUsage`)
-- Create: `apps/api/alembic/versions/<random_id>_org_usage_credits.py`
-- Test: `apps/api/tests/test_org_usage_credits.py`
-
-**Interfaces:**
-- Consumes: nothing.
-- Produces: `OrgUsage.ai_credits_used` (BigInteger, milli-credits, default 0), `OrgUsage.seo_credits_used` (Integer, whole credits, default 0). `_bump_org_usage(db, org_id, **increments)` already accepts raw column names, so no signature change is needed -- callers pass `ai_credits_used=...` / `seo_credits_used=...`.
-
-- [ ] **Step 1: Write the failing test**
-
-```python
-# apps/api/tests/test_org_usage_credits.py
-import uuid
+# apps/api/tests/test_org_usage_credit_split.py
 import datetime as dt
+import uuid
+
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-import pytest
 
+from app.core.credits import credits_from_micros
 from app.core.database import Base
 from app.models.billing import OrgUsage
 
@@ -169,84 +75,94 @@ async def setup_db():
         await c.run_sync(Base.metadata.drop_all)
 
 
-async def test_org_usage_has_credit_columns_defaulting_to_zero():
+async def test_credit_split_columns_default_to_zero():
     org = uuid.uuid4()
     async with Session() as db:
         db.add(OrgUsage(org_id=org, period_start=dt.date(2026, 7, 1)))
         await db.commit()
         row = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert row.ai_credits_used == 0
+        assert row.ai_cost_micros == 0
         assert row.seo_credits_used == 0
 
 
-async def test_credit_columns_accumulate():
+async def test_ai_credits_derive_from_ai_cost_not_total_cost():
+    """SEO spend must not consume the AI bucket."""
     org = uuid.uuid4()
     async with Session() as db:
-        db.add(OrgUsage(org_id=org, period_start=dt.date(2026, 7, 1),
-                        ai_credits_used=1_500, seo_credits_used=7))
+        db.add(OrgUsage(
+            org_id=org, period_start=dt.date(2026, 7, 1),
+            cost_micros=105_000,      # total: AI + SEO
+            ai_cost_micros=52_500,    # AI only
+            seo_credits_used=40,
+        ))
         await db.commit()
         row = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert row.ai_credits_used == 1_500   # 1.5 credits, stored as milli
-        assert row.seo_credits_used == 7
+        assert credits_from_micros(row.ai_cost_micros) == 50   # 52_500 / 1_050
+        assert credits_from_micros(row.cost_micros) == 100     # the wrong bucket: double
+        assert row.seo_credits_used == 40
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd apps/api && python -m pytest tests/test_org_usage_credits.py -v`
-Expected: FAIL with `AttributeError`/`TypeError` -- `ai_credits_used` is not a valid `OrgUsage` field.
+Run: `cd apps/api && python -m pytest tests/test_org_usage_credit_split.py -v`
+Expected: FAIL — `ai_cost_micros` is not a valid `OrgUsage` field.
 
 - [ ] **Step 3: Add the columns**
 
 In `apps/api/app/models/billing.py`, inside `class OrgUsage`, after `seo_keyword_analyses`:
 
 ```python
-    # Credits. ai_credits_used is milli-credits (credits * 1000) so sub-cent
-    # calls accumulate exactly; seo_credits_used is whole credits.
-    ai_credits_used: Mapped[int] = mapped_column(BigInteger, default=0)
+    # AI-only cost subtotal. AI credits derive from THIS, not cost_micros
+    # (which is the true total and also carries SEO spend).
+    ai_cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
+    # SEO credits are counted per DataForSEO task, not derived from cost.
     seo_credits_used: Mapped[int] = mapped_column(Integer, default=0)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Make `record_llm` populate the AI subtotal**
 
-Run: `cd apps/api && python -m pytest tests/test_org_usage_credits.py -v`
-Expected: PASS (2 tests)
+In `apps/api/app/services/metering/meter.py`, in `record_llm`'s `_bump_org_usage(...)` call, add `ai_cost_micros=cost` alongside the existing `cost_micros=cost`.
 
-- [ ] **Step 5: Generate the migration**
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `cd apps/api && python -m pytest tests/test_org_usage_credit_split.py tests/test_metering_wired.py -v`
+Expected: PASS (new tests plus the existing metering tests still green).
+
+- [ ] **Step 6: Generate and fix the migration**
 
 ```bash
-docker compose exec api alembic revision --autogenerate -m "org_usage credit columns"
+docker compose exec api alembic revision --autogenerate -m "org_usage credit split"
 ```
 
-Then EDIT the generated file: replace the auto-generated `revision` identifier with a **random** id (e.g. `c7k2credits9`), set `down_revision = "r5scaletier1"`, and verify the body is exactly the two `add_column` calls with `server_default="0"` plus their `drop_column` downgrades:
+Edit the generated file: use a **random** revision id (e.g. `k4splitcred7`), `down_revision = "r5scaletier1"`, body:
 
 ```python
-revision = "c7k2credits9"
+revision = "k4splitcred7"
 down_revision = "r5scaletier1"
 
 def upgrade() -> None:
-    op.add_column("org_usage", sa.Column("ai_credits_used", sa.BigInteger(),
+    op.add_column("org_usage", sa.Column("ai_cost_micros", sa.BigInteger(),
                                          nullable=False, server_default="0"))
     op.add_column("org_usage", sa.Column("seo_credits_used", sa.Integer(),
                                          nullable=False, server_default="0"))
 
 def downgrade() -> None:
     op.drop_column("org_usage", "seo_credits_used")
-    op.drop_column("org_usage", "ai_credits_used")
+    op.drop_column("org_usage", "ai_cost_micros")
 ```
 
-- [ ] **Step 6: Apply and verify a single head**
+- [ ] **Step 7: Apply and verify a single head**
 
 ```bash
 docker compose exec api alembic upgrade head
 docker compose exec api alembic heads   # must print exactly ONE head
 ```
-Expected: one head, `c7k2credits9`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add apps/api/app/models/billing.py apps/api/alembic/versions/ apps/api/tests/test_org_usage_credits.py
-git commit -m "feat(billing): org_usage AI/SEO credit columns + migration"
+git add apps/api/app/models/billing.py apps/api/app/services/metering/meter.py apps/api/alembic/versions/ apps/api/tests/test_org_usage_credit_split.py
+git commit -m "feat(billing): split AI cost from SEO cost on org_usage"
 ```
 
 ---
@@ -259,20 +175,22 @@ git commit -m "feat(billing): org_usage AI/SEO credit columns + migration"
 - Test: `apps/api/tests/test_metering_image.py`
 
 **Interfaces:**
-- Consumes: `ai_credits_from_micros` (Task 1), `OrgUsage.ai_credits_used` (Task 2), `_bump_org_usage` + `UsageEvent` (existing), `app.core.metering_context.get_metering_org` (existing).
+- Consumes: `OrgUsage.ai_cost_micros` (Task 2), `_bump_org_usage` + `UsageEvent` (existing), `app.core.metering_context.get_metering_org` (existing).
 - Produces: `meter.record_image(db, *, org_id, project_id, model, cost_usd, feature=None) -> int` (returns cost_micros).
 
-**Context:** `image_service.generate_image_dalle` already computes `cost_usd` from size/quality and returns it in its result dict. That value is authoritative -- do NOT re-derive cost from a rate table. `usage_events.kind` gains the value `"image"`.
+**Context:** `image_service.generate_image_dalle` already computes `cost_usd` from size/quality and returns it in its result dict — that value is authoritative; do NOT re-derive it from a rate table. `usage_events.kind` gains `"image"`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # apps/api/tests/test_metering_image.py
 import uuid
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.credits import credits_from_micros
 from app.core.database import Base
 from app.models.billing import OrgUsage
 from app.models.usage_event import UsageEvent
@@ -291,14 +209,13 @@ async def setup_db():
         await c.run_sync(Base.metadata.drop_all)
 
 
-async def test_record_image_writes_event_and_credits():
+async def test_record_image_writes_event_and_consumes_ai_credits():
     org = uuid.uuid4()
     async with Session() as db:
         cost = await meter.record_image(
             db, org_id=org, project_id=None, model="gpt-image-1",
             cost_usd=0.06, feature="article_cover",
         )
-        # $0.06 -> 60_000 micros -> 6 credits -> 6000 milli-credits
         assert cost == 60_000
 
         ev = (await db.execute(select(UsageEvent).where(UsageEvent.org_id == org))).scalar_one()
@@ -309,31 +226,29 @@ async def test_record_image_writes_event_and_credits():
         assert ev.cost_micros == 60_000
 
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert ou.cost_micros == 60_000
-        assert ou.ai_credits_used == 6_000
+        assert ou.cost_micros == 60_000       # counts toward the true total
+        assert ou.ai_cost_micros == 60_000    # and toward the AI bucket
+        assert credits_from_micros(ou.ai_cost_micros) == 58
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/api && python -m pytest tests/test_metering_image.py -v`
-Expected: FAIL with `AttributeError: module 'app.services.metering.meter' has no attribute 'record_image'`
+Expected: FAIL — `meter` has no attribute `record_image`.
 
 - [ ] **Step 3: Implement `record_image`**
-
-In `apps/api/app/services/metering/meter.py`, add the import `from app.core.credits import ai_credits_from_micros, seo_credits_for` at the top, then:
 
 ```python
 async def record_image(db, *, org_id: uuid.UUID, project_id, model: str,
                        cost_usd: float, feature: str | None = None) -> int:
     """Price an image generation from the cost the image service already
-    computed (authoritative -- it knows the size/quality that was billed)."""
+    computed -- it knows the size/quality that was actually billed."""
     cost = round(cost_usd * 1_000_000)
     db.add(UsageEvent(
         org_id=org_id, project_id=project_id, kind="image", provider="openai",
         model=model, feature=feature, cost_micros=cost,
     ))
-    await _bump_org_usage(db, org_id, cost_micros=cost,
-                          ai_credits_used=ai_credits_from_micros(cost))
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost)
     await db.commit()
     return cost
 ```
@@ -345,7 +260,7 @@ Expected: PASS
 
 - [ ] **Step 5: Wire into the image service chokepoint**
 
-In `apps/api/app/services/image_service.py`, at the end of `generate_image_dalle`, right before it returns the success dict, add a best-effort ambient-context record (mirroring how `llm_service.call_llm` does it):
+In `apps/api/app/services/image_service.py`, at the end of `generate_image_dalle`, immediately before it returns the success dict:
 
 ```python
     # Best-effort metering: attribute to the ambient org (set at the auth
@@ -365,12 +280,12 @@ In `apps/api/app/services/image_service.py`, at the end of `generate_image_dalle
         logger.warning("image usage metering failed", exc_info=True)
 ```
 
-If `image_service.py` has no module logger, add `logger = logging.getLogger(__name__)` (and `import logging`) at the top.
+If the module lacks a logger, add `import logging` and `logger = logging.getLogger(__name__)` at the top. Confirm the local names (`cost_usd`, `usage`) are actually in scope there; adapt if they differ.
 
 - [ ] **Step 6: Run the full suite**
 
 Run: `cd apps/api && python -m pytest -q`
-Expected: no NEW failures (the 10 known pre-existing failures remain).
+Expected: no NEW failures (10 known pre-existing remain).
 
 - [ ] **Step 7: Commit**
 
@@ -389,16 +304,17 @@ git commit -m "feat(metering): meter image generation into the usage ledger"
 - Test: `apps/api/tests/test_metering_replicate.py`
 
 **Interfaces:**
-- Consumes: `rate(db, provider, unit, model)` (existing in meter.py), `ai_credits_from_micros` (Task 1).
+- Consumes: `rate(db, provider, unit, model)` (existing in meter.py), `OrgUsage.ai_cost_micros` (Task 2).
 - Produces: `meter.record_replicate(db, *, org_id, project_id, model, feature=None) -> int`.
 
-**Context:** `editing_service._replicate_run(model, input_params, version=None)` is the SINGLE chokepoint for every Replicate call (background removal, upscale, etc.). Cost comes from a `cost_rate` row `(provider="replicate", unit="run", model=<slug>)`, falling back to the default row with `model=""` when the specific model has no rate. `usage_events.kind` gains the value `"edit"`.
+**Context:** `editing_service._replicate_run(model, input_params, version=None)` is the SINGLE chokepoint for every Replicate call. Cost comes from a `cost_rate` row `(provider="replicate", unit="run", model=<slug>)`, falling back to the default row with `model=""`. `usage_events.kind` gains `"edit"`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # apps/api/tests/test_metering_replicate.py
 import uuid
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -436,7 +352,7 @@ async def test_record_replicate_prices_from_model_rate():
             db, org_id=org, project_id=None,
             model="852-labs/background-remover", feature="background_removal",
         )
-        assert cost == 10_000  # $0.01 -> 1 credit
+        assert cost == 10_000
 
         ev = (await db.execute(select(UsageEvent).where(UsageEvent.org_id == org))).scalar_one()
         assert ev.kind == "edit"
@@ -445,7 +361,7 @@ async def test_record_replicate_prices_from_model_rate():
         assert ev.cost_micros == 10_000
 
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert ou.ai_credits_used == 1_000  # 1 credit
+        assert ou.ai_cost_micros == 10_000
 
 
 async def test_record_replicate_falls_back_to_default_rate():
@@ -460,16 +376,15 @@ async def test_record_replicate_falls_back_to_default_rate():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/api && python -m pytest tests/test_metering_replicate.py -v`
-Expected: FAIL -- `meter` has no attribute `record_replicate`.
+Expected: FAIL — `meter` has no attribute `record_replicate`.
 
 - [ ] **Step 3: Implement `record_replicate`**
 
 ```python
 async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
                            feature: str | None = None) -> int:
-    """Price one Replicate prediction. Falls back to the default
-    (provider='replicate', unit='run', model='') rate when the specific
-    model has no row."""
+    """Price one Replicate prediction, falling back to the default
+    (provider='replicate', unit='run', model='') rate."""
     per_run = await rate(db, "replicate", "run", model)
     if not per_run:
         per_run = await rate(db, "replicate", "run", "")
@@ -478,8 +393,7 @@ async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
         org_id=org_id, project_id=project_id, kind="edit", provider="replicate",
         model=model, feature=feature, cost_micros=cost,
     ))
-    await _bump_org_usage(db, org_id, cost_micros=cost,
-                          ai_credits_used=ai_credits_from_micros(cost))
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost)
     await db.commit()
     return cost
 ```
@@ -491,7 +405,7 @@ Expected: PASS (2 tests)
 
 - [ ] **Step 5: Wire into `_replicate_run`**
 
-In `apps/api/app/services/editing_service.py`, inside `_replicate_run`, after the prediction completes successfully and before returning, add the same best-effort ambient block as Task 3 Step 5, calling:
+In `apps/api/app/services/editing_service.py`, inside `_replicate_run`, after the prediction succeeds and before returning, add the same best-effort ambient block as Task 3 Step 5, calling:
 
 ```python
                 await _meter.record_replicate(
@@ -517,23 +431,21 @@ git commit -m "feat(metering): meter Replicate predictions into the usage ledger
 
 **Files:**
 - Modify: `apps/api/app/services/metering/meter.py` (`record_seo` bumps `seo_credits_used`)
-- Modify: DataForSEO call sites that bypass metering (audit the list below)
+- Modify: DataForSEO call sites that bypass metering
 - Test: `apps/api/tests/test_metering_seo_credits.py`
 
 **Interfaces:**
 - Consumes: `seo_credits_for` (Task 1), `OrgUsage.seo_credits_used` (Task 2).
-- Produces: unchanged `record_seo` signature; it now additionally increments `seo_credits_used`.
+- Produces: unchanged `record_seo` signature; it now also increments `seo_credits_used`. `record_seo` must NOT touch `ai_cost_micros`.
 
-**Context:** `record_seo(db, *, org_id, project_id, unit, count, provider="dataforseo", feature=None)` already exists and writes a `kind="seo"` event plus `_SEO_COLUMN` counters. It must ALSO bump `seo_credits_used` by `seo_credits_for(unit, count)`.
-
-Call sites that use DataForSEO (audit each; any that performs a billable DFS task and does not reach `record_seo` must be wired through it):
-`app/services/serp_service.py`, `app/services/providers/registry.py`, `app/services/rank_tracking_service.py`, `app/services/checks_service.py`, `app/services/analytics_service.py`, `app/services/agents/skills/oasis.py`, `app/services/discovery_service.py`, `app/services/discovery/competitors.py`, `app/services/discovery/synthesis.py`.
+**Call sites to audit** (any billable DataForSEO task that does not reach `record_seo` must be wired through it): `app/services/serp_service.py`, `app/services/providers/registry.py`, `app/services/rank_tracking_service.py`, `app/services/checks_service.py`, `app/services/analytics_service.py`, `app/services/agents/skills/oasis.py`, `app/services/discovery_service.py`, `app/services/discovery/competitors.py`, `app/services/discovery/synthesis.py`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # apps/api/tests/test_metering_seo_credits.py
 import uuid
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -562,7 +474,7 @@ async def setup_db():
         await c.run_sync(Base.metadata.drop_all)
 
 
-async def test_record_seo_bumps_seo_credits_one_per_task():
+async def test_record_seo_counts_one_credit_per_task():
     org = uuid.uuid4()
     async with Session() as db:
         await meter.record_seo(db, org_id=org, project_id=None, unit="serp", count=3)
@@ -577,29 +489,39 @@ async def test_heavy_units_are_weighted():
         await meter.record_seo(db, org_id=org, project_id=None, unit="audit", count=2)
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
         assert ou.seo_credits_used == 10  # 2 * weight 5
+
+
+async def test_seo_spend_does_not_consume_the_ai_bucket():
+    org = uuid.uuid4()
+    async with Session() as db:
+        await meter.record_seo(db, org_id=org, project_id=None, unit="serp", count=5)
+        ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
+        assert ou.ai_cost_micros == 0
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/api && python -m pytest tests/test_metering_seo_credits.py -v`
-Expected: FAIL -- `seo_credits_used` stays 0.
+Expected: FAIL — `seo_credits_used` stays 0.
 
 - [ ] **Step 3: Bump SEO credits in `record_seo`**
 
-In `record_seo`, where `increments = {"cost_micros": cost}` is built, add:
+Where `record_seo` builds `increments = {"cost_micros": cost}`, add:
 
 ```python
     increments["seo_credits_used"] = seo_credits_for(unit, count)
 ```
 
+Import `seo_credits_for` from `app.core.credits`.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd apps/api && python -m pytest tests/test_metering_seo_credits.py -v`
-Expected: PASS (2 tests)
+Expected: PASS (3 tests)
 
 - [ ] **Step 5: Audit DataForSEO call-site coverage**
 
-For each file in the list above, confirm every billable DFS request reaches `record_seo` with the correct `unit`. Where a call site issues a DFS task without metering, add the best-effort ambient metering block (same shape as Task 3 Step 5) calling `record_seo` with the matching unit (`serp`, `keyword_ideas`, `keyword_analysis`, `rank_check`, `backlinks`, `audit`). Prefer wiring at the shared client/registry chokepoint over each caller when one exists. Write the audit result (file -> metered yes/no -> action taken) into the task report.
+For each file listed above, confirm every billable DataForSEO request reaches `record_seo` with the correct `unit` (`serp`, `keyword_ideas`, `keyword_analysis`, `rank_check`, `backlinks`, `audit`). Where one does not, add the best-effort ambient metering block (same shape as Task 3 Step 5) calling `record_seo`. Prefer wiring at the shared client/registry chokepoint over per-caller. Record the audit result (file -> metered before? -> action taken) in the task report.
 
 - [ ] **Step 6: Run the full suite**
 
@@ -618,21 +540,20 @@ git commit -m "feat(metering): SEO credits and full DataForSEO coverage"
 ### Task 6: Plan restructure + credit enforcement
 
 **Files:**
-- Modify: `apps/api/app/core/billing.py` (`PLAN_LIMITS`, new `require_credits`, credit-aware `get_billing_usage`)
+- Modify: `apps/api/app/core/billing.py` (`PLAN_LIMITS`, new `require_credits`)
+- Modify: the AI/SEO-consuming routers (attach the dependency)
 - Test: `apps/api/tests/test_credit_enforcement.py`
 
 **Interfaces:**
-- Consumes: `milli_to_credits` (Task 1), `OrgUsage` credit columns (Task 2).
-- Produces: `PLAN_LIMITS[tier]["ai_credits"]` / `["seo_credits"]`, `require_credits(bucket: str)` FastAPI dependency, `get_billing_usage` returning `ai_credits` / `seo_credits` entries in whole credits.
+- Consumes: `credits_from_micros`, `credit_allowance`, `seo_credit_allowance` (Task 1); `ai_cost_micros` / `seo_credits_used` (Task 2).
+- Produces: `require_credits(bucket: str)` FastAPI dependency; `current_credits(db, org, bucket) -> tuple[int, int]`.
 
-**Approved plan table (use these exact numbers):**
+**Approved plan table — use these EXACT numbers.** Credit allowances stay at their `PLAN_CREDITS` / `SEO_PLAN_CREDITS` values in `credits.py` (Task 1); `PLAN_LIMITS` governs the structural and fair-use caps:
 
 | resource | free | starter | pro | agency | scale |
 |---|---|---|---|---|---|
-| projects | 1 | 1 | 5 | 15 | 50 |
-| seats | 1 | 1 | 3 | 10 | 25 |
-| ai_credits | 50 | 800 | 2700 | 8500 | 22000 |
-| seo_credits | 20 | 300 | 1500 | 4000 | 12000 |
+| projects | 1 | **1** | 5 | 15 | 50 |
+| seats | 1 | **1** | 3 | 10 | 25 |
 | articles | 4 | 25 | 120 | 500 | -1 |
 | images | 5 | 40 | 200 | 800 | -1 |
 | social | 10 | 50 | 200 | -1 | -1 |
@@ -641,15 +562,14 @@ git commit -m "feat(metering): SEO credits and full DataForSEO coverage"
 | audits | 1 | 5 | 20 | -1 | -1 |
 | backlinks | 1 | 5 | 20 | -1 | -1 |
 
-`PLAN_PRICE_USD` is UNCHANGED (free 0, starter 29, pro 99, agency 299, scale 799).
+`PLAN_PRICE_USD` is UNCHANGED. Credit allowances are NOT added to `PLAN_LIMITS` — they are read via `credit_allowance()` / `seo_credit_allowance()`.
+
+**No grandfathering:** these limits apply to every org immediately.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # apps/api/tests/test_credit_enforcement.py
-import pytest
-from fastapi import HTTPException
-
 from app.core.billing import PLAN_LIMITS
 
 
@@ -658,60 +578,46 @@ def test_starter_is_one_project_one_seat():
     assert PLAN_LIMITS["starter"]["seats"] == 1
 
 
-def test_every_tier_has_finite_credit_buckets():
-    for tier, limits in PLAN_LIMITS.items():
-        assert "ai_credits" in limits, tier
-        assert "seo_credits" in limits, tier
-        # credits are the governing meter -- never unlimited
-        assert limits["ai_credits"] > 0, tier
-        assert limits["seo_credits"] > 0, tier
+def test_structural_caps_match_approved_table():
+    assert PLAN_LIMITS["free"]["projects"] == 1
+    assert PLAN_LIMITS["pro"]["projects"] == 5
+    assert PLAN_LIMITS["pro"]["seats"] == 3
+    assert PLAN_LIMITS["agency"]["projects"] == 15
+    assert PLAN_LIMITS["scale"]["projects"] == 50
 
 
-def test_credit_grants_match_approved_table():
-    assert [PLAN_LIMITS[t]["ai_credits"] for t in ("free", "starter", "pro", "agency", "scale")] \
-        == [50, 800, 2700, 8500, 22000]
-    assert [PLAN_LIMITS[t]["seo_credits"] for t in ("free", "starter", "pro", "agency", "scale")] \
-        == [20, 300, 1500, 4000, 12000]
-
-
-def test_cogs_stays_under_a_third_of_price():
-    """Guards the ~68-70% margin the pricing was designed around. Worst tier is
-    agency: 8500*0.01 + 4000*0.002 = $93.00 against $299 (68.9% margin)."""
-    from app.core.billing import PLAN_PRICE_USD
-    for tier in ("starter", "pro", "agency", "scale"):
-        cogs = PLAN_LIMITS[tier]["ai_credits"] * 0.01 + PLAN_LIMITS[tier]["seo_credits"] * 0.002
-        assert cogs <= PLAN_PRICE_USD[tier] * 0.32, (tier, cogs)
+def test_fair_use_caps_match_approved_table():
+    assert [PLAN_LIMITS[t]["articles"] for t in ("free", "starter", "pro", "agency", "scale")] \
+        == [4, 25, 120, 500, -1]
+    assert [PLAN_LIMITS[t]["images"] for t in ("free", "starter", "pro", "agency", "scale")] \
+        == [5, 40, 200, 800, -1]
 ```
 
-Add an enforcement test using the existing router-test harness (httpx `ASGITransport` + `app.dependency_overrides[get_db]`, mirroring `tests/test_admin_orgs.py`): seed a Starter org whose `OrgUsage.ai_credits_used` is at 100% of the grant (`800 * 1000` milli), assert a request to an endpoint guarded by `require_credits("ai")` returns **429** with `detail["error"] == "credit_limit_reached"`; seed one at 85% and assert the response carries an `X-Usage-Warning` header and succeeds.
+Add an enforcement test with the router harness (httpx `ASGITransport` + `app.dependency_overrides[get_db]`, mirroring an existing router test): seed a Starter org whose `OrgUsage.ai_cost_micros` equals `PLAN_CREDITS["starter"] * CREDIT_MICROS` (bucket exactly full) and assert an endpoint guarded by `require_credits("ai")` returns **429** with `detail["error"] == "credit_limit_reached"`; seed one at ~85% and assert it succeeds AND sets the `X-Usage-Warning` header. Repeat once for the `seo` bucket using `seo_credits_used`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/api && python -m pytest tests/test_credit_enforcement.py -v`
-Expected: FAIL -- `PLAN_LIMITS["starter"]["projects"] == 3`, and no `ai_credits` key.
+Expected: FAIL — starter projects is 3, and `require_credits` does not exist.
 
-- [ ] **Step 3: Restructure `PLAN_LIMITS` and add `require_credits`**
+- [ ] **Step 3: Update `PLAN_LIMITS` and add `require_credits`**
 
-Update `PLAN_LIMITS` to the approved table above. Then add, next to `check_usage_limit`:
+Apply the table above, then add next to `check_usage_limit`:
 
 ```python
-CREDIT_BUCKETS = {"ai": ("ai_credits", "ai_credits_used"),
-                  "seo": ("seo_credits", "seo_credits_used")}
-
-
 async def current_credits(db, org, bucket: str) -> tuple[int, int]:
-    """Return (used, limit) in WHOLE credits for the current period."""
-    limit_key, used_key = CREDIT_BUCKETS[bucket]
+    """Return (used, allowance) in whole credits for the current period."""
     tier = org.plan_tier if isinstance(org.plan_tier, str) else org.plan_tier.value
-    limit = PLAN_LIMITS.get(tier, PLAN_LIMITS["free"])[limit_key]
     result = await db.execute(
         select(OrgUsage).where(OrgUsage.org_id == org.id,
                                OrgUsage.period_start == current_billing_period_start())
     )
     row = result.scalar_one_or_none()
-    raw = getattr(row, used_key, 0) if row else 0
-    used = milli_to_credits(raw) if bucket == "ai" else raw
-    return used, limit
+    if bucket == "ai":
+        used = credits_from_micros(getattr(row, "ai_cost_micros", 0) if row else 0)
+        return used, credit_allowance(tier)
+    used = (getattr(row, "seo_credits_used", 0) if row else 0)
+    return used, seo_credit_allowance(tier)
 
 
 def require_credits(bucket: str):
@@ -719,68 +625,62 @@ def require_credits(bucket: str):
     sets X-Usage-Warning at >=80%."""
     async def _dep(response: Response, current_user: CurrentUser, db: DB) -> None:
         org = await _get_org(current_user, db)
-        used, limit = await current_credits(db, org, bucket)
-        if limit <= 0:
+        used, allowance = await current_credits(db, org, bucket)
+        if allowance <= 0:
             return
-        pct = used / limit
+        pct = used / allowance
         if pct >= 1.0:
             raise HTTPException(status_code=429, detail={
                 "error": "credit_limit_reached", "bucket": bucket,
-                "used": used, "limit": limit,
+                "used": used, "limit": allowance,
             })
         if pct >= 0.8:
             response.headers["X-Usage-Warning"] = json.dumps({
-                "bucket": bucket, "used": used, "limit": limit, "pct": round(pct, 2),
+                "bucket": bucket, "used": used, "limit": allowance, "pct": round(pct, 2),
             })
     return _dep
 ```
 
-Import `milli_to_credits` from `app.core.credits`.
+Import `credits_from_micros`, `credit_allowance`, `seo_credit_allowance` from `app.core.credits`.
 
-- [ ] **Step 4: Make `get_billing_usage` credit-aware**
+- [ ] **Step 4: Attach the dependency to consuming endpoints**
 
-`get_billing_usage` already reads `getattr(row, f"{resource}_used", 0)`, so `ai_credits` -> `ai_credits_used` resolves automatically. Add the milli conversion so the API reports whole credits:
+Add `Depends(require_credits("ai"))` to AI-consuming routes (article generation, image generation, image editing / `ai_command`, chat and agent runs) and `Depends(require_credits("seo"))` to SEO routes (SERP, keyword research, audits, rank tracking, backlinks), following the existing `check_usage_limit` usage pattern. List every endpoint touched in the task report.
 
-```python
-        used_val = getattr(row, f"{resource}_used", 0) if row else 0
-        if resource == "ai_credits":
-            used_val = milli_to_credits(used_val)
-```
-
-- [ ] **Step 5: Attach the dependency to consuming endpoints**
-
-Add `Depends(require_credits("ai"))` to AI-consuming routes (article generation, image generation, image editing/ai_command, chat/agent runs) and `Depends(require_credits("seo"))` to SEO routes (SERP, keyword research, audits, rank tracking, backlinks), following the existing `check_usage_limit` usage pattern. List every endpoint touched in the task report.
-
-- [ ] **Step 6: Run the tests**
+- [ ] **Step 5: Run the tests**
 
 Run: `cd apps/api && python -m pytest tests/test_credit_enforcement.py -q && python -m pytest -q`
-Expected: new tests PASS; no NEW failures elsewhere. NOTE: tightening `PLAN_LIMITS` may legitimately break existing tests that assert old limits (e.g. starter projects == 3) -- update those assertions to the new table and say so in the report.
+Expected: new tests PASS. NOTE: tightening `PLAN_LIMITS` will legitimately break existing tests asserting old limits (e.g. starter projects == 3) — update those assertions to the new table and list every one you changed in the report.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add apps/api/app/core/billing.py apps/api/app/api apps/api/tests
-git commit -m "feat(billing): credit buckets in plans + hard-stop enforcement"
+git commit -m "feat(billing): reduce plan limits and hard-stop on credit exhaustion"
 ```
 
 ---
 
-### Task 7: Cost-rate seed + credit backfill
+### Task 7: Cost-rate seed + AI-cost backfill
 
 **Files:**
-- Create: `apps/api/scripts/backfill_credits.py`
-- Modify/Create: the cost-rate seed (follow the existing seeding approach used for LLM/SEO rates; if a seed module exists under `apps/api/app/services/metering/` or `apps/api/scripts/`, extend it)
-- Test: `apps/api/tests/test_backfill_credits.py`
+- Create: `apps/api/scripts/backfill_credit_split.py`
+- Modify/Create: the cost-rate seed (extend the existing rate-seeding mechanism)
+- Test: `apps/api/tests/test_backfill_credit_split.py`
 
 **Interfaces:**
-- Consumes: `ai_credits_from_micros`, `seo_credits_for` (Task 1), credit columns (Task 2).
-- Produces: `backfill_credits(db, period_start: date) -> int` (returns orgs updated).
+- Consumes: `AI_KINDS`, `seo_credits_for` (Task 1); the Task 2 columns.
+- Produces: `backfill_credit_split(db, period_start: date) -> int` (orgs updated).
+
+**Why:** existing orgs have `usage_events` but zero in the two new columns, so balances would read empty until the next event.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# apps/api/tests/test_backfill_credits.py
-import uuid, datetime as dt
+# apps/api/tests/test_backfill_credit_split.py
+import datetime as dt
+import uuid
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -788,7 +688,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base
 from app.models.billing import OrgUsage
 from app.models.usage_event import UsageEvent
-from scripts.backfill_credits import backfill_credits
+from scripts.backfill_credit_split import backfill_credit_split
 
 engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
 Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -803,282 +703,165 @@ async def setup_db():
         await c.run_sync(Base.metadata.drop_all)
 
 
-async def test_backfill_computes_both_buckets_from_events():
+async def test_backfill_splits_ai_cost_and_counts_seo_credits():
     org = uuid.uuid4()
     period = dt.date(2026, 7, 1)
     ts = dt.datetime(2026, 7, 10, tzinfo=dt.timezone.utc)
     async with Session() as db:
         db.add_all([
             UsageEvent(org_id=org, ts=ts, kind="llm", provider="openai",
-                       model="gpt-4o-mini", cost_micros=2_000),      # 0.2 cr
+                       model="gpt-4o-mini", cost_micros=2_000),
             UsageEvent(org_id=org, ts=ts, kind="image", provider="openai",
-                       model="gpt-image-1", cost_micros=60_000),      # 6 cr
+                       model="gpt-image-1", cost_micros=60_000),
             UsageEvent(org_id=org, ts=ts, kind="edit", provider="replicate",
-                       model="x/y", cost_micros=10_000),              # 1 cr
+                       model="x/y", cost_micros=10_000),
             UsageEvent(org_id=org, ts=ts, kind="seo", provider="dataforseo",
                        seo_unit="serp", seo_count=4, cost_micros=2_400),
+            UsageEvent(org_id=org, ts=ts, kind="seo", provider="dataforseo",
+                       seo_unit="audit", seo_count=1, cost_micros=3_000),
         ])
         await db.commit()
 
-        updated = await backfill_credits(db, period)
-        assert updated == 1
+        assert await backfill_credit_split(db, period) == 1
 
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert ou.ai_credits_used == 7_200   # (2_000+60_000+10_000)/10 milli-credits
-        assert ou.seo_credits_used == 4
+        assert ou.ai_cost_micros == 72_000   # llm + image + edit only
+        assert ou.seo_credits_used == 9      # 4 serp + 1 audit (weight 5)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd apps/api && python -m pytest tests/test_backfill_credits.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'scripts.backfill_credits'`
+Run: `cd apps/api && python -m pytest tests/test_backfill_credit_split.py -v`
+Expected: FAIL — `ModuleNotFoundError: No module named 'scripts.backfill_credit_split'`
 
 - [ ] **Step 3: Implement the backfill**
 
-`apps/api/scripts/backfill_credits.py` -- aggregate `usage_events` in `[period_start, next month)` per org: AI milli-credits = `ai_credits_from_micros(sum(cost_micros))` over `kind in ('llm','image','edit')`; SEO = `sum(seo_credits_for(seo_unit, seo_count))` over `kind='seo'`. Upsert into the org's `OrgUsage` row for that period (create it if missing), then `commit`. Include an `if __name__ == "__main__":` entry point that runs it for the current period using `async_session_factory`. Ensure `apps/api/scripts/` is importable (add `__init__.py` if the package lacks one).
+`apps/api/scripts/backfill_credit_split.py`: for events in `[period_start, next month)`, per org compute `ai_cost_micros = sum(cost_micros where kind in AI_KINDS)` and `seo_credits_used = sum(seo_credits_for(seo_unit, seo_count) where kind == 'seo')`; upsert into that org's `OrgUsage` row for the period (create it when missing); commit. Add an `if __name__ == "__main__":` entry point running it for the current period via `async_session_factory`. Ensure `apps/api/scripts/` is an importable package (add `__init__.py` if absent).
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd apps/api && python -m pytest tests/test_backfill_credits.py -v`
+Run: `cd apps/api && python -m pytest tests/test_backfill_credit_split.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Seed the new cost rates**
 
-Add rows: `replicate/run/` (default, e.g. 5_000 micro-dollars) plus the specific Replicate models the code calls; `dataforseo/audit/` and `dataforseo/backlinks/` if absent; `openai/image/gpt-image-1` as a documented fallback. Follow the existing rate-seeding mechanism.
+Add `cost_rate` rows: `replicate/run/` (default) plus each Replicate model the code calls; `dataforseo/audit/` and `dataforseo/backlinks/` if absent. Follow the existing rate-seeding mechanism. Use the spec's placeholder values and flag in the report that real supplier prices must be confirmed.
 
 - [ ] **Step 6: Run the full suite and the backfill against dev**
 
 ```bash
 cd apps/api && python -m pytest -q
-docker compose exec api python -m scripts.backfill_credits
+docker compose exec api python -m scripts.backfill_credit_split
 ```
-Expected: no NEW test failures; the backfill prints the number of orgs updated.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/api/scripts apps/api/tests/test_backfill_credits.py
-git commit -m "feat(billing): cost-rate seed and current-period credit backfill"
+git add apps/api/scripts apps/api/tests/test_backfill_credit_split.py
+git commit -m "feat(billing): cost-rate seed and AI/SEO credit backfill"
 ```
 
 ---
 
-### Task 8: Expose credits on the usage endpoint
+### Task 8: Serve both buckets from /usage/summary
 
 **Files:**
-- Modify: `apps/api/app/api/v1/routers/billing.py` (`GET /usage`)
-- Test: `apps/api/tests/test_billing_usage_credits.py`
+- Modify: `apps/api/app/api/v1/routers/usage.py`
+- Test: `apps/api/tests/test_usage_summary_credits.py`
 
 **Interfaces:**
-- Consumes: credit-aware `get_billing_usage` (Task 6).
-- Produces: `GET /api/v1/billing/usage` response `usage` object contains `ai_credits: {used, limit, pct}` and `seo_credits: {used, limit, pct}` (whole credits), alongside the existing resources.
+- Consumes: `current_credits` (Task 6), or `credits_from_micros`/`credit_allowance`/`seo_credit_allowance` directly.
+- Produces: `GET /usage/summary` gains `seo_credits_used`, `seo_credits_allowance`, `seo_credits_remaining`. Existing `credits_used` / `credits_allowance` / `credits_remaining` keep their names but now derive from `ai_cost_micros` (AI-only) instead of the total `cost_micros`.
+
+**This is the contract the header meter (Task 9) consumes. Do NOT rename the existing AI fields.**
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# apps/api/tests/test_billing_usage_credits.py
-# Mirror the fixture/auth harness of an existing router test (e.g.
-# tests/test_billing_router.py): in-memory SQLite engine, autouse setup_db,
-# httpx ASGITransport, app.dependency_overrides[get_db], bearer token for the
-# seeded user. Seed: a Starter org + its OrgUsage row for the current period.
-import datetime as dt
-
+# apps/api/tests/test_usage_summary_credits.py
+# Mirror the fixture/auth harness of an existing router test: in-memory SQLite,
+# autouse setup_db, httpx ASGITransport, app.dependency_overrides[get_db],
+# bearer token for the seeded user. Adapt fixture names to that harness --
+# do not invent a new one.
 from app.core.billing import current_billing_period_start
 from app.models.billing import OrgUsage
 
 
-async def test_usage_endpoint_reports_credits_in_whole_credits(client, db, org, auth_headers):
+async def test_usage_summary_reports_both_buckets(client, db, org, auth_headers):
+    # org is on starter: 5_000 AI credits, 300 SEO credits
     db.add(OrgUsage(
         org_id=org.id,
         period_start=current_billing_period_start(),
-        ai_credits_used=620_000,   # 620 credits, stored as milli-credits
+        cost_micros=1_155_000,     # total, incl. SEO
+        ai_cost_micros=1_050_000,  # AI only -> exactly 1_000 credits
         seo_credits_used=90,
     ))
     await db.commit()
 
-    resp = await client.get("/api/v1/billing/usage", headers=auth_headers)
-    assert resp.status_code == 200
-    usage = resp.json()["usage"]
+    body = (await client.get("/api/v1/usage/summary", headers=auth_headers)).json()
 
-    # AI is converted from milli-credits to whole credits for the API
-    assert usage["ai_credits"] == {"used": 620, "limit": 800, "pct": 0.78}
-    assert usage["seo_credits"]["used"] == 90
-    assert usage["seo_credits"]["limit"] == 300
+    # AI credits derive from ai_cost_micros, NOT from the larger total
+    assert body["credits_used"] == 1_000
+    assert body["credits_allowance"] == 5_000
+    assert body["credits_remaining"] == 4_000
 
-
-async def test_usage_endpoint_requires_auth(client):
-    resp = await client.get("/api/v1/billing/usage")
-    assert resp.status_code == 401
+    assert body["seo_credits_used"] == 90
+    assert body["seo_credits_allowance"] == 300
+    assert body["seo_credits_remaining"] == 210
 ```
-
-Adapt the fixture names (`client`, `db`, `org`, `auth_headers`) to whatever the existing billing router test in this repo uses -- do not invent a new harness.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd apps/api && python -m pytest tests/test_billing_usage_credits.py -v`
-Expected: FAIL -- `ai_credits` absent, or `used` reported in milli-credits.
+Run: `cd apps/api && python -m pytest tests/test_usage_summary_credits.py -v`
+Expected: FAIL — no `seo_credits_*` keys, and `credits_used` derives from the total cost.
 
 - [ ] **Step 3: Implement**
 
-If Task 6 Step 4 is correct, `ai_credits`/`seo_credits` already appear (they are `PLAN_LIMITS` keys and are not in `SKIP_RESOURCES`). Verify `SKIP_RESOURCES` does NOT exclude them and that the milli conversion is applied. Adjust only what the test demands.
+In `usage.py`, source the AI credits from `ai_cost_micros` and add the three SEO fields (`seo_credits_remaining = max(0, allowance - used)`, matching the existing AI pattern).
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd apps/api && python -m pytest tests/test_billing_usage_credits.py -v`
-Expected: PASS
+Run: `cd apps/api && python -m pytest tests/test_usage_summary_credits.py -q && python -m pytest -q`
+Expected: new tests PASS; no NEW failures.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/api/app/api/v1/routers/billing.py apps/api/tests/test_billing_usage_credits.py
-git commit -m "feat(billing): expose AI/SEO credit balances on the usage endpoint"
+git add apps/api/app/api/v1/routers/usage.py apps/api/tests/test_usage_summary_credits.py
+git commit -m "feat(billing): serve AI and SEO credit balances from /usage/summary"
 ```
 
 ---
 
-### Task 9: Credit meter in the customer app header
+### Task 9: Credit meter in the customer app header — IN PROGRESS
 
-**Files:**
-- Create: `apps/web/components/billing/CreditMeter.tsx`
-- Modify: `apps/web/components/layout/TopBar.tsx` (render it in the right-side actions cluster)
-- Modify: `apps/web/public/locales/en/common.json` (+ other locales present) for new keys
-- Modify: `apps/web/lib/api.ts` types if a usage type lives there
-
-**Interfaces:**
-- Consumes: `GET /api/v1/billing/usage` (Task 8) -> `usage.ai_credits` / `usage.seo_credits` = `{used, limit, pct}`.
-- Produces: `<CreditMeter />`.
-
-**Context:** `TopBar.tsx` renders a right-side actions cluster (`<div className="flex items-center gap-1">`, around line 115) containing the search button, `<LanguagePicker />`, and `<AlertsBell />`. `CreditMeter` goes in that cluster, before `<AlertsBell />`.
-
-- [ ] **Step 1: Build the component**
-
-```tsx
-// apps/web/components/billing/CreditMeter.tsx
-"use client";
-
-import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import Link from "next/link";
-import { Sparkles, Search } from "lucide-react";
-import { apiClient } from "@/lib/api";
-import { cn } from "@/lib/cn";
-
-type Bucket = { used: number; limit: number; pct: number };
-type UsageResponse = { usage: Record<string, Bucket> };
-
-function tone(pct: number) {
-  if (pct >= 1) return "text-destructive";
-  if (pct >= 0.8) return "text-warning";
-  return "text-muted-foreground";
-}
-
-function Meter({ icon: Icon, label, bucket }: {
-  icon: typeof Sparkles; label: string; bucket: Bucket;
-}) {
-  const pct = Math.min(bucket.pct ?? 0, 1);
-  return (
-    <span className="flex items-center gap-1.5" title={`${label}: ${bucket.used}/${bucket.limit}`}>
-      <Icon className={cn("h-3.5 w-3.5 shrink-0", tone(bucket.pct))} strokeWidth={1.9} />
-      <span className="hidden font-mono text-xs tabular-nums text-muted-foreground lg:block">
-        {bucket.used}/{bucket.limit}
-      </span>
-      <span aria-hidden className="hidden h-1 w-10 overflow-hidden rounded-full bg-muted lg:block">
-        <span
-          className={cn("block h-full rounded-full transition-all",
-            bucket.pct >= 1 ? "bg-destructive" : bucket.pct >= 0.8 ? "bg-warning" : "bg-primary")}
-          style={{ width: `${pct * 100}%` }}
-        />
-      </span>
-    </span>
-  );
-}
-
-export function CreditMeter() {
-  const { t } = useTranslation();
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["billing", "usage"],
-    queryFn: () => apiClient.get<UsageResponse>("/billing/usage"),
-    staleTime: 60_000,
-    refetchOnWindowFocus: true,
-  });
-
-  if (isLoading) return <span className="h-5 w-24 animate-pulse rounded bg-muted" />;
-  if (isError || !data) return null;
-
-  const ai = data.usage?.ai_credits;
-  const seo = data.usage?.seo_credits;
-  if (!ai || !seo) return null;
-
-  return (
-    <Link
-      href="/settings/billing"
-      aria-label={t("credits.ariaLabel")}
-      className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <Meter icon={Sparkles} label={t("credits.ai")} bucket={ai} />
-      <Meter icon={Search} label={t("credits.seo")} bucket={seo} />
-    </Link>
-  );
-}
-```
-
-Confirm the billing route path (`/settings/billing` above) matches the app's actual billing page; correct it if it differs.
-
-- [ ] **Step 2: Add translation keys**
-
-In `apps/web/public/locales/en/common.json` (and every other locale directory present, translated):
-
-```json
-"credits": {
-  "ai": "AI credits",
-  "seo": "SEO credits",
-  "ariaLabel": "Credit balance -- view billing"
-}
-```
-
-- [ ] **Step 3: Render it in TopBar**
-
-Import `CreditMeter` and place `<CreditMeter />` inside the right-side actions cluster, immediately before `<AlertsBell />`. Keep the existing divider rhythm; the component hides its numeric/bar detail below `lg` so the narrow header stays clean.
-
-- [ ] **Step 4: Verify**
-
-```bash
-cd apps/web && npm run typecheck && npm run build
-```
-Expected: both pass. No test framework in apps/web -- verification is typecheck + build.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add apps/web/components/billing/CreditMeter.tsx apps/web/components/layout/TopBar.tsx apps/web/public/locales
-git commit -m "feat(web): AI/SEO credit balance in the app header"
-```
+Running in the isolated worktree `.worktrees/billing-v2-fe` on branch `feat/billing-v2-credits-fe`, re-targeted to the Task 8 contract (`GET /usage/summary`, existing `credits_*` fields plus optional `seo_credits_*`). The header meter must agree with the settings page, which already renders the same numbers.
 
 ---
 
 ### Task 10: Credit columns in the admin console
 
 **Files:**
-- Modify: the admin org-usage/org-detail endpoint under `apps/api/app/api/v1/routers/` (admin orgs router)
+- Modify: the admin org list/detail endpoint under `apps/api/app/api/v1/routers/`
 - Modify: the corresponding admin page under `apps/admin/app/(console)/`
 - Modify: `apps/admin/lib/admin-types.ts`
 
 **Interfaces:**
-- Consumes: `OrgUsage.ai_credits_used` / `seo_credits_used` (Task 2), `PLAN_LIMITS` credit keys (Task 6), `milli_to_credits` (Task 1).
-- Produces: `ai_credits_used` / `ai_credits_limit` / `seo_credits_used` / `seo_credits_limit` on the admin org payload, surfaced in the admin UI.
+- Consumes: `credits_from_micros`, `credit_allowance`, `seo_credit_allowance` (Task 1); Task 2 columns.
+- Produces: `ai_credits_used` / `ai_credits_allowance` / `seo_credits_used` / `seo_credits_allowance` on the admin org payload.
 
 - [ ] **Step 1: Extend the admin org payload**
 
-Add the four fields (AI in WHOLE credits via `milli_to_credits`) to the admin org-detail/list response. Write a router test asserting the fields appear with correct values for a seeded org, and 401 without a token.
+Add the four fields (whole credits, AI derived from `ai_cost_micros`). Write a router test asserting correct values for a seeded org and 401 without a token.
 
 - [ ] **Step 2: Run the test**
 
-Run: `cd apps/api && python -m pytest tests/<the new test file> -v`
+Run: `cd apps/api && python -m pytest tests/<new test file> -v`
 Expected: RED then GREEN.
 
 - [ ] **Step 3: Surface in the admin UI**
 
-Add the credit usage to the admin org view: two compact used/limit meters matching the existing admin design system (CSS-variable tokens only, Lucide icons, `font-mono tabular-nums`, no emoji), consistent with the existing usage displays.
+Add two compact used/allowance meters to the admin org view, matching the existing admin design system (CSS-variable tokens only, Lucide icons, `font-mono tabular-nums`, no emoji).
 
 - [ ] **Step 4: Verify**
 
@@ -1086,7 +869,6 @@ Add the credit usage to the admin org view: two compact used/limit meters matchi
 cd apps/admin && npm run typecheck && npm run build
 cd ../api && python -m pytest -q
 ```
-Expected: typecheck + build pass; no NEW test failures.
 
 - [ ] **Step 5: Commit**
 
@@ -1099,8 +881,10 @@ git commit -m "feat(admin): AI/SEO credit usage on org views"
 
 ## Execution Notes
 
-**Ordering:** Tasks 1-8 are backend and mostly sequential (each builds on the prior). Task 9 (apps/web) and Task 10's UI half depend only on the documented response contracts and can run in an isolated worktree in parallel once Task 6's contract is fixed.
+**Ordering:** Tasks 2-8 are backend and sequential. Task 9 (apps/web) runs in an isolated worktree against the Task 8 contract. Task 10 can follow Task 2.
 
-**Migrations must run in the main worktree** (`make db-migrate` / `docker compose exec api alembic` operate on the container that mounts the main tree).
+**Migrations run in the main worktree** (`docker compose exec api alembic …` operates on the container that mounts it).
 
-**After all tasks:** run the backfill (`docker compose exec api python -m scripts.backfill_credits`) so existing orgs show correct current-period balances, and restart the API.
+**After all tasks:** run `docker compose exec api python -m scripts.backfill_credit_split` so existing orgs show correct balances, then restart the API.
+
+**Open item for the product owner:** the seeded Replicate and DataForSEO cost rates are placeholders until real supplier prices are confirmed.
