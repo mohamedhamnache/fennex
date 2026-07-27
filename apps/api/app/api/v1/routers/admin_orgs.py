@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.admin_auth import AdminContext, require_admin
+from app.core.credits import credit_allowance, credits_from_micros, seo_credit_allowance
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.models.billing import OrgUsage
@@ -38,6 +39,8 @@ def _usage_rollup_subquery():
             func.sum(OrgUsage.ai_requests).label("ai_requests"),
             func.sum(OrgUsage.seo_serp).label("seo_count"),
             func.sum(OrgUsage.cost_micros).label("cost_micros"),
+            func.sum(OrgUsage.ai_cost_micros).label("ai_cost_micros"),
+            func.sum(OrgUsage.seo_credits_used).label("seo_credits_used"),
         )
         .group_by(OrgUsage.org_id)
         .subquery()
@@ -61,13 +64,15 @@ def _project_count_subquery():
 
 
 def _serialize_row(org: Organization, user_count: int, project_count: int,
-                   ai_requests: int, seo_count: int, cost_micros: int) -> dict:
+                   ai_requests: int, seo_count: int, cost_micros: int,
+                   ai_cost_micros: int = 0, seo_credits_used: int = 0) -> dict:
     cost_micros = int(cost_micros or 0)
+    tier = org.plan_tier.value if org.plan_tier else None
     return {
         "id": str(org.id),
         "name": org.name,
         "slug": org.slug,
-        "plan_tier": org.plan_tier.value if org.plan_tier else None,
+        "plan_tier": tier,
         "byok_enabled": org.byok_enabled,
         "suspended": org.suspended_at is not None,
         "user_count": int(user_count or 0),
@@ -76,6 +81,10 @@ def _serialize_row(org: Organization, user_count: int, project_count: int,
         "cost_usd": cost_micros / 1_000_000,
         "ai_requests": int(ai_requests or 0),
         "seo_count": int(seo_count or 0),
+        "ai_credits_used": credits_from_micros(int(ai_cost_micros or 0)),
+        "ai_credits_allowance": credit_allowance(tier),
+        "seo_credits_used": int(seo_credits_used or 0),
+        "seo_credits_allowance": seo_credit_allowance(tier),
         "created_at": org.created_at.isoformat() if org.created_at else None,
     }
 
@@ -103,6 +112,8 @@ async def list_orgs(
             usage_sq.c.ai_requests,
             usage_sq.c.seo_count,
             usage_sq.c.cost_micros,
+            usage_sq.c.ai_cost_micros,
+            usage_sq.c.seo_credits_used,
         )
         .outerjoin(users_sq, users_sq.c.org_id == Organization.id)
         .outerjoin(projects_sq, projects_sq.c.org_id == Organization.id)
@@ -144,8 +155,10 @@ async def list_orgs(
     ).all()
 
     items = [
-        _serialize_row(org, user_count, project_count, ai_requests, seo_count, cost_micros)
-        for org, user_count, project_count, ai_requests, seo_count, cost_micros in rows
+        _serialize_row(org, user_count, project_count, ai_requests, seo_count, cost_micros,
+                       ai_cost_micros, seo_credits_used)
+        for org, user_count, project_count, ai_requests, seo_count, cost_micros,
+            ai_cost_micros, seo_credits_used in rows
     ]
 
     return {"items": items, "total": int(total), "page": page, "page_size": page_size}
@@ -175,6 +188,8 @@ async def get_org(
                 func.coalesce(func.sum(OrgUsage.ai_requests), 0).label("ai_requests"),
                 func.coalesce(func.sum(OrgUsage.seo_serp), 0).label("seo_count"),
                 func.coalesce(func.sum(OrgUsage.cost_micros), 0).label("cost_micros"),
+                func.coalesce(func.sum(OrgUsage.ai_cost_micros), 0).label("ai_cost_micros"),
+                func.coalesce(func.sum(OrgUsage.seo_credits_used), 0).label("seo_credits_used"),
             ).where(OrgUsage.org_id == org_id)
         )
     ).one()
@@ -189,6 +204,7 @@ async def get_org(
     payload = _serialize_row(
         org, user_count, project_count,
         usage_row.ai_requests, usage_row.seo_count, usage_row.cost_micros,
+        usage_row.ai_cost_micros, usage_row.seo_credits_used,
     )
     payload.update({
         "suspended_reason": org.suspended_reason,
