@@ -44,6 +44,9 @@ const PLAN_COLORS: Record<string, string> = {
   starter: "bg-teal-500/12 text-teal-500",
   pro: "bg-amber-500/12 text-amber-500",
   agency: "bg-amber-500/12 text-amber-600",
+  // Without its own entry, Scale would fall through to the default badge, which
+  // is the same muted styling free accounts get.
+  scale: "bg-violet-500/12 text-violet-500",
   enterprise: "bg-emerald-500/12 text-emerald-500",
 };
 
@@ -114,34 +117,39 @@ const PROJECT_PERSONAS: ProjectPersona[] = ["creator", "ecommerce", "freelancer"
 
 type SectionId = (typeof NAV_ITEMS)[number]["id"];
 
+// Prices and quotas come from the reseller spec's plan table
+// (docs/superpowers/specs/2026-07-25-reseller-billing-architecture.md, s5).
+// annualPrice is the per-month figure when paying yearly: twelve months for the
+// price of ten, so monthly x 10/12 rounded. There is no Free plan here — orgs
+// already on it keep working, but it is no longer sold.
 const PLANS = [
-  {
-    id: "free",
-    name: "Free",
-    monthlyPrice: 0,
-    annualPrice: 0,
-    features: ["1 project", "4 articles/month", "5 images/month", "1 seat"],
-  },
   {
     id: "starter",
     name: "Starter",
-    monthlyPrice: 49,
-    annualPrice: 39,
-    features: ["5 projects", "20 articles/month", "50 images/month", "3 seats"],
+    monthlyPrice: 29,
+    annualPrice: 24,
+    features: ["3 projects", "3 seats", "25 articles/month", "1,500 AI credits/month"],
   },
   {
     id: "pro",
     name: "Pro",
     monthlyPrice: 99,
-    annualPrice: 79,
-    features: ["10 projects", "40 articles/month", "150 images/month", "10 seats"],
+    annualPrice: 83,
+    features: ["10 projects", "10 seats", "120 articles/month", "6,000 AI credits/month", "Premium models"],
   },
   {
     id: "agency",
     name: "Agency",
-    monthlyPrice: 249,
-    annualPrice: 199,
-    features: ["100 projects", "400 articles/month", "Unlimited images", "Unlimited seats"],
+    monthlyPrice: 299,
+    annualPrice: 249,
+    features: ["50 projects", "25 seats", "500 articles/month", "20,000 AI credits/month", "Bring your own keys, -30%"],
+  },
+  {
+    id: "scale",
+    name: "Scale",
+    monthlyPrice: 799,
+    annualPrice: 666,
+    features: ["200 projects", "75 seats", "Unlimited articles", "60,000 AI credits/month", "Bring your own keys, -40%"],
   },
 ] as const;
 
@@ -938,7 +946,10 @@ function BillingSection() {
   });
 
   const currentTier = billing?.plan_tier ?? "free";
-  const tierOrder = ["free", "starter", "pro", "agency"];
+  // Ranking only, not what is on sale: "free" stays here so orgs still on it
+  // rank below Starter and see every paid plan as an upgrade, even though Free
+  // is no longer offered in PLANS.
+  const tierOrder = ["free", "starter", "pro", "agency", "scale"];
   const currentIdx = tierOrder.indexOf(currentTier);
 
   const trialEndsAt = billing?.trial_ends_at
@@ -1072,11 +1083,10 @@ function BillingSection() {
                 <div>
                   <p className="font-display text-lg font-bold text-foreground">{plan.name}</p>
                   <p className="mt-1 font-display text-3xl font-bold tracking-tight text-foreground">
-                    {plan.monthlyPrice === 0 ? t("settings.billing.free") : (
-                      <>${annual ? plan.annualPrice : plan.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">{t("settings.billing.perMonth")}</span></>
-                    )}
+                    ${annual ? plan.annualPrice : plan.monthlyPrice}
+                    <span className="text-sm font-normal text-muted-foreground">{t("settings.billing.perMonth")}</span>
                   </p>
-                  {annual && plan.monthlyPrice > 0 && (
+                  {annual && (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">{t("settings.billing.billedAnnually")}</p>
                   )}
                 </div>
