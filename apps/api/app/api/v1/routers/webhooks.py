@@ -26,9 +26,14 @@ PRICE_TO_TIER: dict[str, str] = {
     "pro_annual": "pro",
     "agency_monthly": "agency",
     "agency_annual": "agency",
+    "scale_monthly": "scale",
+    "scale_annual": "scale",
 }
 
-TIER_ORDER = ["free", "starter", "pro", "agency"]
+# Cheapest first. Used to tell an upgrade from a downgrade, so every sellable
+# tier must appear: an absent tier resolves to index 0 and would be treated as
+# a downgrade from anything.
+TIER_ORDER = ["free", "starter", "pro", "agency", "scale"]
 
 
 async def _get_org_by_customer(customer_id: str, db) -> Organization | None:
