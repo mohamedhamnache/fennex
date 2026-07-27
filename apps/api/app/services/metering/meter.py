@@ -77,7 +77,8 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
         cost_micros=cost,
     ))
     await _bump_org_usage(db, org_id, ai_input_tokens=usage.input_tokens,
-                          ai_output_tokens=usage.output_tokens, ai_requests=1, cost_micros=cost)
+                          ai_output_tokens=usage.output_tokens, ai_requests=1, cost_micros=cost,
+                          ai_cost_micros=cost)
     await db.commit()
     return cost
 

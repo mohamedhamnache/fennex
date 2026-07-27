@@ -27,6 +27,11 @@ class OrgUsage(Base):
     ai_requests: Mapped[int] = mapped_column(BigInteger, default=0)
     seo_serp: Mapped[int] = mapped_column(BigInteger, default=0)
     seo_keyword_analyses: Mapped[int] = mapped_column(BigInteger, default=0)
+    # AI-only cost subtotal. AI credits derive from THIS, not cost_micros
+    # (which is the true total and also carries SEO spend).
+    ai_cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
+    # SEO credits are counted per DataForSEO task, not derived from cost.
+    seo_credits_used: Mapped[int] = mapped_column(Integer, default=0)
     cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
 
 
