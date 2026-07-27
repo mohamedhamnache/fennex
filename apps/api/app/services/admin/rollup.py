@@ -27,7 +27,11 @@ async def rollup_usage_daily(db: AsyncSession, day: dt.date) -> int:
             select(
                 UsageEvent.org_id,
                 UsageEvent.provider,
-                func.coalesce(UsageEvent.model, "").label("model"),
+                # Group by the raw model column and coalesce NULL -> "" in Python
+                # below. Coalescing here would emit two separate bind params (one
+                # in SELECT, one in GROUP BY), which Postgres rejects as a
+                # non-grouped column; SQLite is lenient so tests never caught it.
+                UsageEvent.model.label("model"),
                 UsageEvent.kind.label("unit"),
                 func.count().label("requests"),
                 func.coalesce(func.sum(UsageEvent.input_tokens), 0).label("input_tokens"),
@@ -40,7 +44,7 @@ async def rollup_usage_daily(db: AsyncSession, day: dt.date) -> int:
             .group_by(
                 UsageEvent.org_id,
                 UsageEvent.provider,
-                func.coalesce(UsageEvent.model, ""),
+                UsageEvent.model,
                 UsageEvent.kind,
             )
         )
