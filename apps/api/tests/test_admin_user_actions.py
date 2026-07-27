@@ -218,6 +218,16 @@ async def test_lock_404_unknown_user():
         assert r.status_code == 404
 
 
+async def test_lock_reason_over_50_chars_is_422_not_500():
+    # locked_reason is a String(50) column; an over-length reason must be a
+    # clean validation error, not a DB DataError at flush.
+    async with await _client() as ac:
+        r = await ac.post(f"/api/v1/admin/users/{TARGET_USER_ID}/lock",
+                          json={"reason": "x" * 51},
+                          headers={"Authorization": f"Bearer {_super_bearer()}"})
+        assert r.status_code == 422
+
+
 # ----------------------------------------------------------------- unlock ---
 
 async def test_unlock_clears_locked_and_reason_and_audits():

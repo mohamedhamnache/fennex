@@ -99,7 +99,12 @@ export default function UserDetailPage() {
 
   const user = userQuery.data;
 
-  const invalidateUser = () => queryClient.invalidateQueries({ queryKey });
+  const invalidateUser = () => {
+    // Refresh this user's detail and any users list so status changes made here
+    // are reflected on the list page too.
+    queryClient.invalidateQueries({ queryKey });
+    queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+  };
 
   const deactivateMutation = useMutation({
     mutationFn: (reason: string) =>
@@ -381,13 +386,14 @@ export default function UserDetailPage() {
       >
         <div className="mt-3 flex flex-col gap-1.5">
           <label htmlFor="lock-reason" className="text-xs font-medium text-muted-foreground">
-            Reason (recorded in the audit log)
+            Reason (recorded in the audit log, max 50 chars)
           </label>
           <textarea
             id="lock-reason"
             value={lockReason}
             onChange={(e) => setLockReason(e.target.value)}
             rows={3}
+            maxLength={50}
             placeholder="e.g. suspicious activity, security review..."
             className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />

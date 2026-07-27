@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,7 +114,9 @@ class DeactivateUserRequest(BaseModel):
 
 
 class LockUserRequest(BaseModel):
-    reason: str | None = None
+    # locked_reason is a String(50) column — cap here so an over-length reason
+    # is a clean 422 rather than a Postgres DataError (500) at flush.
+    reason: str | None = Field(None, max_length=50)
 
 
 def _client_ip(request: Request) -> str | None:
