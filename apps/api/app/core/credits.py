@@ -1,25 +1,52 @@
 """Credit conversions. Money is micro-dollars ($1 = 1_000_000).
 
-1 AI credit == $0.01 of real supplier cost. AI credits are accumulated as
-*milli-credits* (credits * 1000) so that sub-cent calls -- a gpt-4o-mini turn
-costs ~$0.002, i.e. 0.2 credits -- accumulate exactly instead of rounding to
-zero on every call. Display divides by 1000.
+Two user-facing buckets:
 
-1 SEO credit == one DataForSEO billable task; heavier endpoints are weighted.
+* **AI credits** -- derived from real supplier cost. ``1 credit == $0.00105``
+  (:data:`CREDIT_MICROS`). Credits are never stored: they are computed from the
+  period's accumulated AI cost via :func:`credits_from_micros`, so adding a new
+  cost source (image generation, Replicate) automatically consumes credits with
+  no schema change. The AI bucket covers ``usage_events.kind`` in
+  :data:`AI_KINDS`.
+* **SEO credits** -- one DataForSEO billable task is one credit, with heavier
+  endpoints weighted (:data:`SEO_CREDIT_WEIGHT`). Counted rather than derived,
+  because "tasks" is the unit both users and DataForSEO bill in.
 """
 
-AI_CREDIT_MICROS = 10_000  # $0.01 per AI credit
+# --------------------------------------------------------------------------
+# AI credits (derived from cost)
+# --------------------------------------------------------------------------
+
+CREDIT_MICROS = 1_050  # $0.00105 of supplier cost per AI credit
+
+PLAN_CREDITS: dict[str, int] = {
+    "free": 200,
+    "starter": 5_000,
+    "pro": 18_000,
+    "agency": 55_000,
+    "scale": 150_000,
+}
+
+# Usage-event kinds whose cost consumes AI credits. 'seo' is deliberately
+# excluded -- it has its own bucket.
+AI_KINDS = ("llm", "image", "edit")
 
 
-def ai_credits_from_micros(cost_micros: int) -> int:
-    """Convert supplier cost (micro-dollars) to milli-credits."""
-    return round(cost_micros * 1000 / AI_CREDIT_MICROS)
+def credits_from_micros(cost_micros: int) -> int:
+    """Convert metered AI cost into whole credits, rounding up."""
+    if cost_micros <= 0:
+        return 0
+    return -(-int(cost_micros) // CREDIT_MICROS)
 
 
-def milli_to_credits(milli: int) -> int:
-    """Whole credits for display/enforcement."""
-    return round(milli / 1000)
+def credit_allowance(plan_tier: str) -> int:
+    """Monthly AI credit allowance for a tier, falling back to the smallest."""
+    return PLAN_CREDITS.get(str(plan_tier or "").lower(), PLAN_CREDITS["free"])
 
+
+# --------------------------------------------------------------------------
+# SEO credits (counted per DataForSEO task)
+# --------------------------------------------------------------------------
 
 SEO_CREDIT_WEIGHT: dict[str, int] = {
     "serp": 1,
@@ -30,30 +57,22 @@ SEO_CREDIT_WEIGHT: dict[str, int] = {
     "audit": 5,
 }
 
-
-def seo_credits_for(unit: str | None, count: int) -> int:
-    return count * SEO_CREDIT_WEIGHT.get(unit or "", 1)
-
-
-# Backward compatibility: old functions used by other modules
-CREDIT_MICROS = 1_050
-
-PLAN_CREDITS: dict[str, int] = {
-    "free": 200,
-    "starter": 5_000,
-    "pro": 18_000,
-    "agency": 55_000,
-    "scale": 150_000,
+SEO_PLAN_CREDITS: dict[str, int] = {
+    "free": 20,
+    "starter": 300,
+    "pro": 1_500,
+    "agency": 4_000,
+    "scale": 12_000,
 }
 
 
-def credits_from_micros(cost_micros: int) -> int:
-    """Convert metered cost into whole credits, rounding up."""
-    if cost_micros <= 0:
+def seo_credits_for(unit: str | None, count: int) -> int:
+    """Credits consumed by `count` DataForSEO tasks of type `unit`."""
+    if count <= 0:
         return 0
-    return -(-int(cost_micros) // CREDIT_MICROS)
+    return count * SEO_CREDIT_WEIGHT.get(unit or "", 1)
 
 
-def credit_allowance(plan_tier: str) -> int:
-    """Monthly allowance for a tier, falling back to the smallest bucket."""
-    return PLAN_CREDITS.get(str(plan_tier or "").lower(), PLAN_CREDITS["free"])
+def seo_credit_allowance(plan_tier: str) -> int:
+    """Monthly SEO credit allowance for a tier, falling back to the smallest."""
+    return SEO_PLAN_CREDITS.get(str(plan_tier or "").lower(), SEO_PLAN_CREDITS["free"])
