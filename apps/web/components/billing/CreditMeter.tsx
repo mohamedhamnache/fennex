@@ -58,9 +58,13 @@ export function CreditMeter() {
 
   const ai: Bucket = { used: data.credits_used, allowance: data.credits_allowance };
 
+  // Render the SEO meter only when the backend sends the fields AND the plan
+  // actually grants SEO credits -- an allowance of 0 would otherwise show a
+  // meaningless "0/0" bar.
   const hasSeo =
     data.seo_credits_used !== undefined &&
-    data.seo_credits_allowance !== undefined;
+    data.seo_credits_allowance !== undefined &&
+    data.seo_credits_allowance > 0;
   const seo: Bucket | null = hasSeo
     ? { used: data.seo_credits_used as number, allowance: data.seo_credits_allowance as number }
     : null;
