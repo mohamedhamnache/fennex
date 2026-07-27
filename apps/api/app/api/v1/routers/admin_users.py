@@ -1,13 +1,15 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.admin_auth import require_admin
+from app.core.admin_auth import AdminContext, require_admin
 from app.core.database import get_db
 from app.models.organization import Organization
 from app.models.user import User
+from app.services.admin.audit import record_admin_action
 
 router = APIRouter(prefix="/admin", tags=["admin-users"])
 
@@ -105,3 +107,124 @@ async def get_user(
         },
     })
     return payload
+
+
+class DeactivateUserRequest(BaseModel):
+    reason: str | None = None
+
+
+class LockUserRequest(BaseModel):
+    reason: str | None = None
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+async def _get_user_or_404(db: AsyncSession, user_id: uuid.UUID) -> User:
+    user = (
+        await db.execute(select(User).where(User.id == user_id))
+    ).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    return user
+
+
+@router.post("/users/{user_id}/deactivate")
+async def deactivate_user(
+    user_id: uuid.UUID,
+    request: Request,
+    body: DeactivateUserRequest = DeactivateUserRequest(),
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("user.manage")),
+):
+    user = await _get_user_or_404(db, user_id)
+
+    if not user.is_active:
+        # Already inactive -- true no-op: no state change, no new audit row.
+        return {"id": str(user.id), "is_active": False}
+
+    user.is_active = False
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="user.deactivate",
+        resource_type="user", resource_id=str(user.id),
+        before={"is_active": True},
+        after={"is_active": False, "reason": body.reason},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(user.id), "is_active": False}
+
+
+@router.post("/users/{user_id}/reactivate")
+async def reactivate_user(
+    user_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("user.manage")),
+):
+    user = await _get_user_or_404(db, user_id)
+
+    before = {"is_active": user.is_active}
+    user.is_active = True
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="user.reactivate",
+        resource_type="user", resource_id=str(user.id),
+        before=before, after={"is_active": True},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(user.id), "is_active": True}
+
+
+@router.post("/users/{user_id}/lock")
+async def lock_user(
+    user_id: uuid.UUID,
+    request: Request,
+    body: LockUserRequest = LockUserRequest(),
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("user.manage")),
+):
+    user = await _get_user_or_404(db, user_id)
+
+    before = {"locked": user.locked, "locked_reason": user.locked_reason}
+    user.locked = True
+    user.locked_reason = body.reason
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="user.lock",
+        resource_type="user", resource_id=str(user.id),
+        before=before, after={"locked": True, "locked_reason": body.reason},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(user.id), "locked": True, "locked_reason": user.locked_reason}
+
+
+@router.post("/users/{user_id}/unlock")
+async def unlock_user(
+    user_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    ctx: AdminContext = Depends(require_admin("user.manage")),
+):
+    user = await _get_user_or_404(db, user_id)
+
+    before = {"locked": user.locked, "locked_reason": user.locked_reason}
+    user.locked = False
+    user.locked_reason = None
+
+    await record_admin_action(
+        db, actor_admin_id=ctx.admin.id, action="user.unlock",
+        resource_type="user", resource_id=str(user.id),
+        before=before, after={"locked": False, "locked_reason": None},
+        ip=_client_ip(request),
+    )
+    await db.commit()
+
+    return {"id": str(user.id), "locked": False, "locked_reason": None}
