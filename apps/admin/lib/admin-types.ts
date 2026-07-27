@@ -127,3 +127,26 @@ export interface ProviderRow {
    * look emptier than the actual monthly commitment). */
   mtd_cost_usd: number;
 }
+
+/** One row of `GET /admin/analytics/models` (`admin_analytics.py`, Phase 1b
+ * Batch 3). One entry per `(provider, model)` pair actually used in the
+ * range — `band` comes from `model_catalog` (cheap/standard/premium) and is
+ * `null` for a model Fennex called but never registered in the catalog,
+ * which the page renders as an honest "unclassified" state rather than
+ * guessing a tier. */
+export interface ModelRow {
+  provider: string;
+  model: string;
+  band: string | null;
+  requests: number;
+  input_tokens: number;
+  output_tokens: number;
+  /** Cost for the selected range, in micros (1 USD = 1_000_000 micros). */
+  cost_micros: number;
+  /** Same cost, pre-converted to dollars. */
+  cost_usd: number;
+  /** `cost_usd / (total_tokens / 1000)` — 0 when the row has zero tokens,
+   * never a divide-by-zero. The efficiency column: two models can have
+   * similar total spend but very different cost per unit of work. */
+  cost_per_1k_tokens: number;
+}
