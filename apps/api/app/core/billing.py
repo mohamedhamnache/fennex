@@ -211,6 +211,23 @@ def _tier_value(org: Organization) -> str:
     return org.plan_tier.value if hasattr(org.plan_tier, "value") else org.plan_tier
 
 
+# BYOK is only sold on these tiers. A byok_enabled flag on any other tier does
+# NOT grant an exemption -- otherwise the flag alone would waive billing.
+BYOK_ELIGIBLE_TIERS = frozenset({"agency", "scale"})
+
+
+def byok_exempt_from_credits(org: Organization) -> bool:
+    """True when credit hard-stops should not apply to this org.
+
+    A BYOK org pays its own supplier directly (see providers/registry.py and
+    llm_service, which resolve the tenant's own keys when byok_enabled), so
+    Fennex has no COGS to protect and blocking them would deny work they are
+    already paying for. Usage is still metered -- exemption is about
+    enforcement, not visibility.
+    """
+    return bool(getattr(org, "byok_enabled", False)) and _tier_value(org) in BYOK_ELIGIBLE_TIERS
+
+
 async def current_credits(db: AsyncSession, org: Organization, bucket: str) -> tuple[int, int]:
     """Return (used, allowance) in whole credits for the current period."""
     tier = _tier_value(org)
@@ -239,6 +256,8 @@ def require_credits(bucket: str):
     """
     async def _dep(response: Response, current_user: CurrentUser, db: DB) -> None:
         org = await _get_org(current_user, db)
+        if byok_exempt_from_credits(org):
+            return
         used, allowance = await current_credits(db, org, bucket)
         if allowance <= 0:
             return
