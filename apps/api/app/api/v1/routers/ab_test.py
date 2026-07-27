@@ -1,13 +1,13 @@
 """POST /images/ab-test — generate N creative variants of the same concept."""
 import asyncio
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 
-from app.core.billing import check_project_not_locked, increment_usage
+from app.core.billing import check_project_not_locked, increment_usage, require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.ab_test import ABTest, ABTestVariant
@@ -63,7 +63,12 @@ async def _get_openai_key(org_id: uuid.UUID, db) -> Optional[str]:
 
 
 @router.post("/ab-test", response_model=ABTestOut)
-async def create_ab_test(body: ABTestRequest, current_user: CurrentUser, db: DB):
+async def create_ab_test(
+    body: ABTestRequest,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     proj = await db.execute(
         select(Project).where(Project.id == body.project_id, Project.org_id == current_user.org_id)
     )

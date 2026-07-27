@@ -77,11 +77,21 @@ def _bearer():
 
 
 def _expected_ai_credits() -> int:
-    return credits_from_micros(AI_COST_MICROS_1 + AI_COST_MICROS_2)
+    # Credits are MONTHLY: only the current-period row (AI_COST_MICROS_1)
+    # counts. AI_COST_MICROS_2 sits in a prior period and must NOT be summed
+    # in, or a long-lived org would read permanently over its allowance.
+    return credits_from_micros(AI_COST_MICROS_1)
 
 
 def _expected_seo_credits() -> int:
-    return SEO_CREDITS_1 + SEO_CREDITS_2
+    # Same monthly semantics as AI credits -- current period only.
+    return SEO_CREDITS_1
+
+
+def _expected_cost_micros() -> int:
+    # cost_micros is deliberately LIFETIME (not a credit bucket, no monthly
+    # allowance to compare against), so both periods are summed.
+    return AI_COST_MICROS_1 + AI_COST_MICROS_2
 
 
 async def test_list_orgs_includes_credit_fields():
@@ -95,6 +105,7 @@ async def test_list_orgs_includes_credit_fields():
         assert acme["ai_credits_allowance"] == credit_allowance("pro")
         assert acme["seo_credits_used"] == _expected_seo_credits()
         assert acme["seo_credits_allowance"] == seo_credit_allowance("pro")
+        assert acme["cost_micros"] == _expected_cost_micros()
 
 
 async def test_get_org_detail_includes_credit_fields():
@@ -107,6 +118,7 @@ async def test_get_org_detail_includes_credit_fields():
         assert body["ai_credits_allowance"] == credit_allowance("pro")
         assert body["seo_credits_used"] == _expected_seo_credits()
         assert body["seo_credits_allowance"] == seo_credit_allowance("pro")
+        assert body["cost_micros"] == _expected_cost_micros()
 
 
 async def test_list_orgs_credit_fields_without_token_401():

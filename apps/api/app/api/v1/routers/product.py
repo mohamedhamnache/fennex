@@ -3,8 +3,9 @@ import io
 import base64
 import asyncio
 import urllib.request
+from typing import Annotated
 import httpx
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from PIL import Image
 from sqlalchemy import select
@@ -18,7 +19,7 @@ from app.services.product_service import PRODUCT_SCENES, build_scene_prompt
 from app.services.image_service import generate_image_dalle
 from app.services.editing_service import _replicate_run, _download_and_upload_url
 from app.api.v1.routers.images import ImageOut
-from app.core.billing import check_project_not_locked, increment_usage
+from app.core.billing import check_project_not_locked, increment_usage, require_credits
 from app.core.security import decrypt_api_key
 
 router = APIRouter()
@@ -129,7 +130,12 @@ async def _run_flux_kontext(product_url: str, prompt: str) -> dict:
 
 
 @router.post("/product-scene", response_model=ImageOut)
-async def generate_product_scene(body: ProductSceneRequest, current_user: CurrentUser, db: DB):
+async def generate_product_scene(
+    body: ProductSceneRequest,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     if body.scene_id not in PRODUCT_SCENES:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,

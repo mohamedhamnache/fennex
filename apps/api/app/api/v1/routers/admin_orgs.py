@@ -4,10 +4,11 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.admin_auth import AdminContext, require_admin
+from app.core.billing import current_billing_period_start
 from app.core.credits import credit_allowance, credits_from_micros, seo_credit_allowance
 from app.core.database import get_db
 from app.core.security import create_access_token
@@ -29,18 +30,30 @@ def _mask_stripe_id(stripe_customer_id: str | None) -> str | None:
 
 
 def _usage_rollup_subquery():
-    """Per-org lifetime rollup of OrgUsage. OrgUsage has one row per
-    (org_id, period_start) -- SUM across all periods rather than reading a
-    single "current" row, so an org's totals don't silently drop history as
-    months roll over."""
+    """Per-org rollup of OrgUsage. OrgUsage has one row per (org_id,
+    period_start).
+
+    ai_requests/seo_count/cost_micros are summed across ALL periods
+    (lifetime) -- deliberate, since those are cumulative historical figures
+    with no monthly cap to compare against, and an org's totals shouldn't
+    silently drop history as months roll over.
+
+    ai_cost_micros/seo_credits_used are summed for the CURRENT period ONLY.
+    These feed ai_credits_used/seo_credits_used in _serialize_row, which are
+    compared against credit_allowance()/seo_credit_allowance() -- MONTHLY
+    allowances (see app.core.credits, app.core.billing.require_credits).
+    Summing them lifetime would show every long-lived org permanently over
+    100%, disagreeing with /usage/summary and with enforcement.
+    """
+    current_period = OrgUsage.period_start == current_billing_period_start()
     return (
         select(
             OrgUsage.org_id.label("org_id"),
             func.sum(OrgUsage.ai_requests).label("ai_requests"),
             func.sum(OrgUsage.seo_serp).label("seo_count"),
             func.sum(OrgUsage.cost_micros).label("cost_micros"),
-            func.sum(OrgUsage.ai_cost_micros).label("ai_cost_micros"),
-            func.sum(OrgUsage.seo_credits_used).label("seo_credits_used"),
+            func.sum(case((current_period, OrgUsage.ai_cost_micros), else_=0)).label("ai_cost_micros"),
+            func.sum(case((current_period, OrgUsage.seo_credits_used), else_=0)).label("seo_credits_used"),
         )
         .group_by(OrgUsage.org_id)
         .subquery()
@@ -182,14 +195,21 @@ async def get_org(
         )
     ).scalar_one()
 
+    # See _usage_rollup_subquery: ai_cost_micros/seo_credits_used are current-
+    # period only (compared against monthly allowances); the rest stay lifetime.
+    current_period = OrgUsage.period_start == current_billing_period_start()
     usage_row = (
         await db.execute(
             select(
                 func.coalesce(func.sum(OrgUsage.ai_requests), 0).label("ai_requests"),
                 func.coalesce(func.sum(OrgUsage.seo_serp), 0).label("seo_count"),
                 func.coalesce(func.sum(OrgUsage.cost_micros), 0).label("cost_micros"),
-                func.coalesce(func.sum(OrgUsage.ai_cost_micros), 0).label("ai_cost_micros"),
-                func.coalesce(func.sum(OrgUsage.seo_credits_used), 0).label("seo_credits_used"),
+                func.coalesce(
+                    func.sum(case((current_period, OrgUsage.ai_cost_micros), else_=0)), 0
+                ).label("ai_cost_micros"),
+                func.coalesce(
+                    func.sum(case((current_period, OrgUsage.seo_credits_used), else_=0)), 0
+                ).label("seo_credits_used"),
             ).where(OrgUsage.org_id == org_id)
         )
     ).one()

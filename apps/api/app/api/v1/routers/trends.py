@@ -1,12 +1,12 @@
 """GET /trends and POST /images/from-trend — visual trend catalog and trend-based generation."""
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
-from app.core.billing import check_project_not_locked, increment_usage
+from app.core.billing import check_project_not_locked, increment_usage, require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.api_key import APIKey
@@ -53,7 +53,12 @@ async def list_trends():
 
 
 @image_router.post("/from-trend", response_model=ImageOut)
-async def generate_from_trend(body: FromTrendRequest, current_user: CurrentUser, db: DB):
+async def generate_from_trend(
+    body: FromTrendRequest,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     if body.trend_id not in TRENDS_CATALOG:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown trend: {body.trend_id}")
 
