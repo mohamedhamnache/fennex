@@ -51,31 +51,24 @@ class WorkerSettings:
         run_rank_tracker,
         run_discovery,
     ]
-    # Batched jobs enter batch_scope() unconditionally, so they wait on the
-    # provider's batch queue instead of an interactive response. The batch
-    # client caps its own wait at MAX_WAIT_SECONDS and falls back to the
-    # interactive path on timeout/failure, so this only has to exceed that --
-    # it does not need (and must not get) the worker-wide default, or a hung
-    # non-batched job would hold a worker slot for hours instead of minutes.
-    BATCHED_JOB_TIMEOUT = 7 * 60 * 60
-
+    # None of the cron jobs below reach an LLM call (see monitoring_service,
+    # autopilot_service, digest_service, and the SEO-provider-only backlink
+    # sync -- all deterministic / third-party-API work, zero call_llm). They
+    # run on the worker-wide job_timeout default; do not add a batch-sized
+    # timeout override here unless the job is actually wrapped in
+    # batch_scope() (app/services/batch/scope.py) and genuinely non-interactive.
     cron_jobs = [
         cron(sync_analytics_data, hour=6, minute=0, run_at_startup=False),
-        cron(weekly_backlink_discovery, weekday=0, hour=7, minute=0, run_at_startup=False,
-             timeout=BATCHED_JOB_TIMEOUT),
+        cron(weekly_backlink_discovery, weekday=0, hour=7, minute=0, run_at_startup=False),
         # Monday-morning persona digest, after the daily analytics sync
-        cron(send_weekly_digests, weekday=0, hour=8, minute=0, run_at_startup=False,
-             timeout=BATCHED_JOB_TIMEOUT),
+        cron(send_weekly_digests, weekday=0, hour=8, minute=0, run_at_startup=False),
         cron(run_content_scheduler, minute={0, 15, 30, 45}, run_at_startup=False),
         # Monday-morning autopilot planning, after the 06:00 analytics sync
-        cron(run_autopilot_planner, weekday=0, hour=7, minute=30, run_at_startup=False,
-             timeout=BATCHED_JOB_TIMEOUT),
+        cron(run_autopilot_planner, weekday=0, hour=7, minute=30, run_at_startup=False),
         # The Pack keeps watch: Oasis market shifts Monday (before the 08:00 digest),
         # Sable competitor re-scans Tuesday.
-        cron(run_market_monitor, weekday=0, hour=7, minute=0, run_at_startup=False,
-             timeout=BATCHED_JOB_TIMEOUT),
-        cron(run_competitor_monitor, weekday=1, hour=7, minute=0, run_at_startup=False,
-             timeout=BATCHED_JOB_TIMEOUT),
+        cron(run_market_monitor, weekday=0, hour=7, minute=0, run_at_startup=False),
+        cron(run_competitor_monitor, weekday=1, hour=7, minute=0, run_at_startup=False),
         # Zerda's daily SERP rank tracker, ahead of the 06:00 analytics sync
         cron(run_rank_tracker, hour=5, minute=30, run_at_startup=False),
     ]
