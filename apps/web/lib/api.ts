@@ -1638,6 +1638,27 @@ export async function deactivateMember(orgId: string, userId: string): Promise<v
   return apiClient.delete<void>(`/organizations/${orgId}/members/${userId}`);
 }
 
+export interface Organization {
+  id: string;
+  slug: string;
+  name: string;
+  plan_tier: string;
+  agent_tier: string;
+  premium_models_enabled: boolean;
+  premium_available: boolean;
+}
+
+export async function getOrganization(orgId: string): Promise<Organization> {
+  return apiClient.get<Organization>(`/organizations/${orgId}`);
+}
+
+export async function updateOrganization(
+  orgId: string,
+  body: Partial<Pick<Organization, "name" | "agent_tier" | "premium_models_enabled">>,
+): Promise<Organization> {
+  return apiClient.patch<Organization>(`/organizations/${orgId}`, body);
+}
+
 // ── Billing ────────────────────────────────────────────────────────────────
 
 export interface BillingUsageResource {

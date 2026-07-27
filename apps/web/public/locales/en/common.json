@@ -926,7 +926,11 @@
       "name": "Organization name",
       "slug": "Slug",
       "plan": "Plan",
-      "upgrade": "Upgrade →"
+      "upgrade": "Upgrade →",
+      "premiumModels": "Premium models",
+      "premiumModelsHint": "Allow the highest-capability models for editorial polish. Costs more per generation.",
+      "premiumModelsLocked": "Available on Pro and above",
+      "premiumModelsError": "Could not update. Try again."
     },
     "aiKeys": {
       "title": "AI Keys",

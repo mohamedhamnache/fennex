@@ -51,6 +51,12 @@ class WorkerSettings:
         run_rank_tracker,
         run_discovery,
     ]
+    # None of the cron jobs below reach an LLM call (see monitoring_service,
+    # autopilot_service, digest_service, and the SEO-provider-only backlink
+    # sync -- all deterministic / third-party-API work, zero call_llm). They
+    # run on the worker-wide job_timeout default; do not add a batch-sized
+    # timeout override here unless the job is actually wrapped in
+    # batch_scope() (app/services/batch/scope.py) and genuinely non-interactive.
     cron_jobs = [
         cron(sync_analytics_data, hour=6, minute=0, run_at_startup=False),
         cron(weekly_backlink_discovery, weekday=0, hour=7, minute=0, run_at_startup=False),

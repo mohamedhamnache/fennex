@@ -39,4 +39,8 @@ PRODUCT_SHOT = Skill(
     key="mirage.product_shot", agent_id="mirage", weight="heavy", tools=[],
     build_prompt=_shot_prompt, output="text", parse=lambda raw: raw, persist=_persist_shot,
     label="Product shot", description="Art-direct then render a product photo.",
+    # Same shape as sirocco.generate_visual: the whole output is an
+    # image-generation prompt under 80 words. No max_tokens override existed,
+    # so this drops the ceiling from the 4096 default to 512, a decrease.
+    feature="image_prompt",
 )

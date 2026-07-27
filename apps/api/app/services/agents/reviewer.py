@@ -16,14 +16,15 @@ async def review(brief, skill, result, tier, keys, db) -> dict:
     available = list((keys or {}).keys())
     if not available:
         return {"passed": True, "score": 75, "feedback": ""}   # no key to judge with; accept
-    provider, model = resolve_model(tier, "light", available)
+    provider, model = resolve_model(tier, "light", available, feature="agent_reasoning")
     system = ('You are a strict editor. Judge the ARTIFACT against the GOAL. Return ONLY JSON: '
               '{"score": 0-100, "feedback": one actionable sentence}. Score low if generic, off-goal, '
               'off-angle, or vague.')
     artifact = result.content if result.content is not None else result.summary
     user = f"GOAL: {brief.goal}\nARTIFACT SUMMARY: {result.summary}\nARTIFACT: {str(artifact)[:4000]}"
     try:
-        raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale)
+        raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale,
+                             feature="agent_reasoning")
         data = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
         score = int(data.get("score", 70))
         return {"passed": score >= 70, "score": score, "feedback": str(data.get("feedback", ""))}

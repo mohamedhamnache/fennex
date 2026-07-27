@@ -20,6 +20,10 @@ async def lifespan(app: FastAPI):
     # Startup: create tables if they don't exist (dev only; prod uses Alembic)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    from app.core.database import async_session_factory
+    from app.services.providers import catalog
+    async with async_session_factory() as db:
+        await catalog.refresh_snapshot(db)
     if not (settings.OPENAI_API_KEY or settings.ANTHROPIC_API_KEY or settings.GOOGLE_API_KEY):
         logger.warning(
             "No platform LLM key configured (OPENAI_API_KEY/ANTHROPIC_API_KEY/GOOGLE_API_KEY). "

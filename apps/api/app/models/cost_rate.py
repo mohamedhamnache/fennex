@@ -6,8 +6,11 @@ from app.core.database import Base
 
 class CostRate(Base):
     """Per-unit provider cost, used to price usage_events. Money is micro-dollars
-    ($1 = 1_000_000). unit ∈ input_token|output_token|cache_read_token|serp|
-    keyword_ideas. model is NULL for SEO units. Rates are versioned by
+    ($1 = 1_000_000). unit ∈ input_token|output_token|cache_read_token|
+    cache_write_token|serp|keyword_ideas, plus a batch_ prefixed variant of
+    every token unit (batch_input_token, batch_output_token,
+    batch_cache_read_token, batch_cache_write_token) for the batch API's 50%
+    discount. model is NULL for SEO units. Rates are versioned by
     effective_from so a price change never rewrites history."""
     __tablename__ = "cost_rates"
 

@@ -24,7 +24,9 @@ import {
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
   createCheckoutSession, createPortalSession, getBillingUsage,
   listProjects, updateProject, deleteProject, type ProjectPersona,
+  getOrganization, updateOrganization,
 } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { BrandKitSection } from "@/components/settings/BrandKitSection";
 import { applyPalette, isCustomTheme } from "@/lib/palette";
 import { useProjectStore } from "@/lib/store";
@@ -321,6 +323,17 @@ function AccountSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnT
 
 function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<ReturnType<typeof getMe>>>>["data"] }) {
   const { t } = useTranslation();
+  const qc = useQueryClient();
+  const org = useQuery({
+    queryKey: ["organization", me?.org_id],
+    queryFn: () => getOrganization(me!.org_id),
+    enabled: !!me?.org_id,
+  });
+  const setPremium = useMutation({
+    mutationFn: (enabled: boolean) => updateOrganization(me!.org_id, { premium_models_enabled: enabled }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["organization", me?.org_id] }),
+  });
+
   if (!me) return null;
 
   const planLabel = me.plan_tier.charAt(0).toUpperCase() + me.plan_tier.slice(1);
@@ -352,6 +365,40 @@ function OrganizationSection({ me }: { me: ReturnType<typeof useQuery<Awaited<Re
               </div>
             </div>
           </div>
+          <div className="flex items-start gap-4 py-3.5">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                {t("settings.organization.premiumModels")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {org.data?.premium_available
+                  ? t("settings.organization.premiumModelsHint")
+                  : t("settings.organization.premiumModelsLocked")}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!org.data?.premium_models_enabled}
+              disabled={!org.data?.premium_available || setPremium.isPending}
+              onClick={() => setPremium.mutate(!org.data?.premium_models_enabled)}
+              className={cn(
+                "mt-1 h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40",
+                org.data?.premium_models_enabled ? "bg-primary" : "bg-muted",
+              )}
+            >
+              <span
+                className={cn(
+                  "block h-4 w-4 rounded-full bg-background transition-transform",
+                  org.data?.premium_models_enabled ? "translate-x-4" : "translate-x-0.5",
+                )}
+              />
+            </button>
+          </div>
+          {setPremium.isError && <ErrorMsg>{t("settings.organization.premiumModelsError")}</ErrorMsg>}
         </div>
       </Card>
     </div>

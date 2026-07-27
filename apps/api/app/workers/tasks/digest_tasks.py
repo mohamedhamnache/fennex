@@ -7,7 +7,11 @@ from app.services.digest_service import send_project_digest
 
 
 async def send_weekly_digests(ctx):
-    """ARQ cron: email each connected project's weekly digest to its org users."""
+    """ARQ cron: email each connected project's weekly digest to its org users.
+
+    digest_service composes the email from analytics data only (no LLM call),
+    so this never enters batch_scope().
+    """
     async with async_session_factory() as db:
         result = await db.execute(
             select(GscConnection.project_id).where(GscConnection.is_active.is_(True))
@@ -21,5 +25,5 @@ async def send_weekly_digests(ctx):
                 r = await send_project_digest(pid, db)
                 sent_total += r.get("sent", 0)
             except Exception:
-                continue  # one bad project shouldn't stop the batch
+                continue  # one bad project shouldn't stop the run
     return {"projects": len(project_ids), "emails_sent": sent_total}

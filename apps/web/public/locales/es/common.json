@@ -829,7 +829,11 @@
       "name": "Nombre de la organización",
       "slug": "Slug",
       "plan": "Plan",
-      "upgrade": "Mejorar →"
+      "upgrade": "Mejorar →",
+      "premiumModels": "Modelos premium",
+      "premiumModelsHint": "Permite los modelos más potentes para el pulido editorial. Mayor coste por generación.",
+      "premiumModelsLocked": "Disponible en Pro y superiores",
+      "premiumModelsError": "No se pudo actualizar. Inténtalo de nuevo."
     },
     "aiKeys": {
       "title": "Claves IA",

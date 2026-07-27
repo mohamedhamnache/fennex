@@ -20,6 +20,9 @@ class LLMUsage:
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
+    cache_write_tokens: int = 0  # Anthropic cache_creation_input_tokens; billed at
+                                 # ~1.25x the input rate (the provider's cache-write premium)
+    batch: bool = False  # priced from the batch_* cost_rates units (50% off)
 
 
 async def get_org_llm_keys(org_id: uuid.UUID, db: AsyncSession) -> dict[str, str]:
@@ -51,7 +54,12 @@ _LANGUAGE_NAMES = {
 
 
 def language_directive(locale: str | None) -> str:
-    """System-prompt suffix telling the model to answer in the project's language.
+    """Directive telling the model to answer in the project's language.
+
+    Meant to be prepended to the *user* prompt (see ``call_llm_usage``), not
+    appended to the system prompt: a per-locale suffix on the system prompt
+    would make the cacheable prefix differ for every locale, so nothing
+    would ever cache-hit.
 
     Returns "" for English (the default) so existing behaviour is unchanged.
     Structure-preserving: only human-readable string values are translated;
@@ -75,6 +83,38 @@ def language_directive(locale: str | None) -> str:
 DEFAULT_MAX_TOKENS = 4096
 ARTICLE_MAX_TOKENS = 8192
 
+# Anthropic bills a cache write at ~1.25x and a cache read at ~0.1x, so marking
+# a prefix below the provider's minimum cacheable length only pays the write
+# premium and never actually caches -- it fails silently too, surfacing as
+# cache_creation_input_tokens: 0 rather than an error, so a too-low threshold
+# looks fine in testing and just quietly burns money in production.
+#
+# Anthropic's documented per-model minimums (as of this writing): Opus 5 --
+# 512 tokens; Sonnet 5 -- 1024 tokens; Haiku 3.5 / Opus 4.7 -- 2048 tokens;
+# Haiku 4.5 -- 4096 tokens. This constant marks system prompts for every
+# Anthropic model we route to (see app/services/providers/catalog.py's SEED),
+# and claude-haiku-4-5 is the cheap-band row in that rotation -- so its 4096
+# token minimum is the one that governs: the threshold must clear the LARGEST
+# minimum among models actually in rotation, not the smallest, because a
+# prefix that clears Sonnet/Opus's lower minimum but not Haiku's still
+# mark-and-never-caches on Haiku calls. At ~4 chars/token that's ~16000 chars.
+#
+# IMPORTANT: this minimum is NOT monotonic across model generations (Opus 5 is
+# lower than Opus 4.6/4.5, e.g.) -- it dropped, in this codebase's history, to
+# a value below Haiku 4.5's actual minimum more than once. Never lower this
+# constant without re-checking the documented minimum for every model in
+# catalog.py's SEED, and re-deriving the max across all of them.
+CACHEABLE_MIN_CHARS = 16000
+
+
+def _anthropic_system_blocks(system_prompt: str):
+    """Mark a long, stable system prefix as cacheable. Anything shorter is sent
+    unchanged. OpenAI needs no equivalent: its caching is automatic once the
+    stable content leads the prompt."""
+    if len(system_prompt) < CACHEABLE_MIN_CHARS:
+        return system_prompt
+    return [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
+
 
 async def call_llm(
     provider: str,
@@ -83,25 +123,38 @@ async def call_llm(
     system_prompt: str,
     user_prompt: str,
     locale: str | None = "en",
-    max_tokens: int = DEFAULT_MAX_TOKENS,
+    max_tokens: int | None = None,
     meter: dict | None = None,
+    feature: str | None = None,
 ) -> str:
     """Call the named provider and return the raw text response.
 
     ``locale`` is the project's language code; when non-English a directive is
-    appended to the system prompt so the agent answers in that language.
+    prepended to the *user* prompt so the agent answers in that language. It
+    goes on the user prompt rather than the system prompt so the system
+    prefix stays byte-identical across locales — a per-locale suffix there
+    would make the prefix differ per locale and defeat Anthropic prompt
+    caching for every non-English request.
+
+    ``feature`` names the calling feature. It supplies the output-token ceiling
+    from the routing policy when the caller passes no explicit ``max_tokens``
+    (output costs ~5x input, so an unbounded cap is a direct margin leak), and
+    it is the key the usage meter reports against.
 
     When `meter` is given ({'db','org_id','project_id','feature'}), record
     token usage/cost after the call. Metering failures never break the call.
     """
+    if max_tokens is None:
+        from app.services.agents.policy import policy_for
+        max_tokens = policy_for(feature).max_output_tokens if feature else DEFAULT_MAX_TOKENS
     text, usage = await call_llm_usage(provider, model, api_key, system_prompt,
                                        user_prompt, locale=locale, max_tokens=max_tokens)
     if meter is not None:
         try:
             from app.services.metering import meter as _m
             await _m.record_llm(meter["db"], org_id=meter["org_id"],
-                                project_id=meter.get("project_id"), usage=usage,
-                                feature=meter.get("feature"))
+                                project_id=meter.get("project_id"),
+                                usage=usage, feature=meter.get("feature") or feature)
         except Exception:
             logger.exception("usage metering failed (non-fatal)")
     return text
@@ -114,7 +167,7 @@ async def _call_anthropic(
     message = await client.messages.create(
         model=model,
         max_tokens=max_tokens,
-        system=system_prompt,
+        system=_anthropic_system_blocks(system_prompt),
         messages=[{"role": "user", "content": user_prompt}],
     )
     return message.content[0].text
@@ -143,14 +196,15 @@ async def _openai_usage(model, api_key, system_prompt, user_prompt, max_tokens):
 async def _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens):
     client = AsyncAnthropic(api_key=api_key)
     message = await client.messages.create(
-        model=model, max_tokens=max_tokens, system=system_prompt,
+        model=model, max_tokens=max_tokens, system=_anthropic_system_blocks(system_prompt),
         messages=[{"role": "user", "content": user_prompt}],
     )
     u = getattr(message, "usage", None)
     usage = LLMUsage("anthropic", model,
                      input_tokens=getattr(u, "input_tokens", 0) or 0,
                      output_tokens=getattr(u, "output_tokens", 0) or 0,
-                     cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0)
+                     cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
+                     cache_write_tokens=getattr(u, "cache_creation_input_tokens", 0) or 0)
     return message.content[0].text, usage
 
 
@@ -160,7 +214,16 @@ async def call_llm_usage(
 ) -> tuple[str, "LLMUsage"]:
     """Like call_llm but also returns an LLMUsage (token counts). google has no
     reliable token usage in the current call shape -> zeros."""
-    system_prompt = system_prompt + language_directive(locale)
+    directive = language_directive(locale)
+    if directive:
+        user_prompt = directive.strip() + "\n\n" + user_prompt
+    from app.services.batch import client as _batch_client
+    from app.services.batch.scope import batch_enabled
+    if batch_enabled() and provider in _batch_client.SUPPORTED_PROVIDERS:
+        result = await _batch_client.run_batched(provider, model, api_key, system_prompt,
+                                                 user_prompt, max_tokens)
+        if result is not None:
+            return result
     if provider == "anthropic":
         return await _anthropic_usage(model, api_key, system_prompt, user_prompt, max_tokens)
     if provider == "openai":
@@ -184,14 +247,21 @@ async def stream_llm(
 
     Anthropic and OpenAI stream token deltas; Google degrades to a single
     chunk (its REST streaming needs a different wire format).
+
+    ``locale`` is treated the same way ``call_llm_usage`` treats it: the
+    directive is prepended to the *user* prompt, not appended to the system
+    prompt, so the system prefix stays byte-identical across locales and can
+    still cache-hit on Anthropic.
     """
-    system_prompt = system_prompt + language_directive(locale)
+    directive = language_directive(locale)
+    if directive:
+        user_prompt = directive.strip() + "\n\n" + user_prompt
     if provider == "anthropic":
         client = AsyncAnthropic(api_key=api_key)
         async with client.messages.stream(
             model=model,
             max_tokens=max_tokens,
-            system=system_prompt,
+            system=_anthropic_system_blocks(system_prompt),
             messages=[{"role": "user", "content": user_prompt}],
         ) as stream:
             async for text in stream.text_stream:

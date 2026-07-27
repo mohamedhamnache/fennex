@@ -28,6 +28,7 @@ class UsageEvent(Base):
     input_tokens: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     output_tokens: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     cache_read_tokens: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    cache_write_tokens: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     seo_unit: Mapped[str | None] = mapped_column(String(30), nullable=True)
     seo_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     cost_micros: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)

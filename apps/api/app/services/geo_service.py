@@ -106,9 +106,8 @@ _REPAIR_SYSTEM = (
 async def _repair_geo(provider, model, api_key, title, keyword, body_md, meta, locale) -> str | None:
     user = (f"TITLE: {title}\nPRIMARY KEYWORD: {keyword or title}\n\nARTICLE:\n{body_md}")
     try:
-        from app.services.llm_service import ARTICLE_MAX_TOKENS
         out = (await call_llm(provider, model, api_key, _REPAIR_SYSTEM, user,
-                              locale=locale, max_tokens=ARTICLE_MAX_TOKENS)).strip()
+                              locale=locale, feature="article_draft")).strip()
         return out or None
     except Exception:
         return None

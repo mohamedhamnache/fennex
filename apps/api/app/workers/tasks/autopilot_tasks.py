@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 async def run_autopilot_planner(ctx) -> None:
+    """Deterministic planning from GSC opportunities (see autopilot_service) --
+    zero LLM cost, so this never enters batch_scope()."""
     async with async_session_factory() as db:
         projects = (await db.execute(
             select(Project).where(Project.autopilot_enabled.is_(True))
@@ -19,5 +21,5 @@ async def run_autopilot_planner(ctx) -> None:
         try:
             async with async_session_factory() as db:
                 await generate_weekly_plan(project, db)
-        except Exception:  # noqa: BLE001 - one project must not break the batch
+        except Exception:  # noqa: BLE001 - one project must not break the run
             logger.exception("autopilot planning failed for project %s", project.id)

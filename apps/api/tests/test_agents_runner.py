@@ -1,5 +1,7 @@
 import uuid, json, pytest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from app.models.organization import PlanTier
 from app.services.agents.brief import Brief
 from app.services.agents.spec import Skill, AgentResult
 from app.services.agents.runner import AgentRunner
@@ -45,7 +47,7 @@ def _mt_skill():
 
 async def test_run_passes_skill_max_tokens_to_call_llm():
     seen = {}
-    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096):
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096, feature=None):
         seen["max_tokens"] = max_tokens
         return "body"
     with patch("app.services.agents.runner.call_llm", new=fake_call):
@@ -62,7 +64,7 @@ async def test_override_bypasses_resolve_and_fills_runtime():
     from app.services.agents.spec import Skill
     skill = Skill(key="dune.generate_article", agent_id="dune", weight="heavy", tools=[],
                   build_prompt=lambda b, i, td: ("S", "U"), output="markdown", parse=lambda r: r, persist=persist)
-    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096):
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096, feature=None):
         captured["provider"] = provider; captured["model"] = model
         return "body"
     with patch("app.services.agents.runner.call_llm", new=fake_call):
@@ -72,3 +74,93 @@ async def test_override_bypasses_resolve_and_fills_runtime():
     assert r.ok and captured["provider"] == "openai" and captured["model"] == "gpt-4o"
     assert captured["runtime"]["provider"] == "openai" and captured["runtime"]["api_key"] == "y"
     assert captured["runtime"]["inputs"] == {"a": 1}
+
+
+# --- entitlement gate on the runner's override path (finding 1) ---------------
+#
+# The runner used to honour provider_override/model_override with no catalog
+# check and no entitlement cap at all -- an authenticated user on any plan
+# could name claude-opus-5 directly and get it, every article generation.
+# These tests pin the fix: an override is only honoured when it is catalogued
+# AND within the org's entitlement (app.core.entitlements.cap_band, applied to
+# the model's *highest* catalogued band); anything else falls back to normal
+# tier resolution instead of raising or silently granting premium.
+
+
+class _FakeDB:
+    """Stands in for the AsyncSession: only `.get(Organization, id)` is used
+    by the override path, and only when a premium-band override is named."""
+
+    def __init__(self, org):
+        self._org = org
+        self.get_calls = 0
+
+    async def get(self, model, pk):
+        self.get_calls += 1
+        return self._org
+
+
+def _org(plan=PlanTier.PRO, flag=True):
+    return SimpleNamespace(plan_tier=plan, premium_models_enabled=flag, trial_ends_at=None)
+
+
+def _heavy_skill():
+    return Skill(key="dune.generate_article", agent_id="dune", weight="heavy", tools=[],
+                 build_prompt=lambda b, i, td: ("S", "U"), output="markdown", parse=lambda r: r)
+
+
+async def _run_and_capture(skill, db, provider_override, model_override):
+    captured = {}
+
+    async def fake_call(provider, model, key, system, user, locale="en", max_tokens=4096, feature=None):
+        captured["provider"] = provider
+        captured["model"] = model
+        return "body"
+
+    with patch("app.services.agents.runner.call_llm", new=fake_call):
+        r = await AgentRunner.run(skill, _brief(), inputs={}, tier="balanced", db=db,
+                                  keys={"anthropic": "x"},
+                                  provider_override=provider_override,
+                                  model_override=model_override)
+    assert r.ok
+    return captured
+
+
+async def test_premium_override_is_refused_for_an_unentitled_org_and_falls_back():
+    """PRO plan but premium_models_enabled is False -- entitlement is opt-in,
+    not implied by plan alone."""
+    db = _FakeDB(_org(PlanTier.PRO, flag=False))
+    captured = await _run_and_capture(_heavy_skill(), db, "anthropic", "claude-opus-5")
+    assert captured["model"] != "claude-opus-5"
+    assert (captured["provider"], captured["model"]) == ("anthropic", "claude-sonnet-5")
+    assert db.get_calls == 1  # only queried because the override named a premium model
+
+
+async def test_premium_override_is_refused_when_no_org_is_reachable():
+    """db=None (no org to check) must cap at the safe default, not raise or
+    silently grant premium."""
+    captured = await _run_and_capture(_heavy_skill(), None, "anthropic", "claude-opus-5")
+    assert (captured["provider"], captured["model"]) == ("anthropic", "claude-sonnet-5")
+
+
+async def test_premium_override_is_honoured_for_an_entitled_org():
+    db = _FakeDB(_org(PlanTier.PRO, flag=True))
+    captured = await _run_and_capture(_heavy_skill(), db, "anthropic", "claude-opus-5")
+    assert (captured["provider"], captured["model"]) == ("anthropic", "claude-opus-5")
+
+
+async def test_an_uncatalogued_override_falls_back_without_raising():
+    """A model string that prices to $0 must not be honoured just because a
+    key is configured for its provider."""
+    captured = await _run_and_capture(_heavy_skill(), None, "anthropic", "not-a-real-model")
+    assert (captured["provider"], captured["model"]) == ("anthropic", "claude-sonnet-5")
+
+
+async def test_a_legitimate_standard_band_override_is_still_honoured_without_a_query():
+    """Cheap/standard overrides were never gated by entitlement and must not
+    start paying for an org lookup either -- cap_band(band, None) already
+    equals band for them, so the real org can never change the outcome."""
+    db = _FakeDB(_org(PlanTier.PRO, flag=False))
+    captured = await _run_and_capture(_heavy_skill(), db, "anthropic", "claude-sonnet-5")
+    assert (captured["provider"], captured["model"]) == ("anthropic", "claude-sonnet-5")
+    assert db.get_calls == 0

@@ -104,6 +104,12 @@ WRITE_ARTICLE = Skill(
     # A 1600-word article does not fit in the default budget; without this the
     # draft is truncated mid-flow and lands as a stub.
     max_tokens=ARTICLE_MAX_TOKENS,
+    # Same content, same cap as writing_service/geo_service's repair passes on
+    # this article (both already tag feature="article_draft"): max_tokens above
+    # already equals the policy's own ceiling (8192), so this only aligns the
+    # band selection with how the rest of the pipeline already treats a draft,
+    # not a token change.
+    feature="article_draft",
 )
 
 
@@ -184,4 +190,8 @@ GENERATE_ARTICLE = Skill(
     output="markdown", parse=lambda raw: raw, persist=_persist_generated_article,
     max_tokens=ARTICLE_MAX_TOKENS, label="Generate the article",
     description="Generate an existing article in place with SEO grounding + quality repair.",
+    # Same reasoning as dune.write_article: max_tokens above already equals the
+    # article_draft policy's ceiling (8192), so this is a band alignment, not a
+    # token change.
+    feature="article_draft",
 )

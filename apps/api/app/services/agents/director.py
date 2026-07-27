@@ -32,7 +32,7 @@ async def plan(brief, tier, keys, db) -> list[dict]:
     available = list((keys or {}).keys())
     if not available:
         return _fallback(brief.persona)
-    provider, model = resolve_model(tier, "light", available)
+    provider, model = resolve_model(tier, "light", available, feature="agent_reasoning")
     recommended = " -> ".join(_persona_flow(brief.persona))
     system = (
         "You are the campaign director leading a squad. Design a COMPLETE campaign for the GOAL: research/target "
@@ -43,7 +43,8 @@ async def plan(brief, tier, keys, db) -> list[dict]:
     )
     user = f"GOAL: {brief.goal}\nPERSONA: {brief.persona}" + (f"\nPROFILE: {brief.project_profile}" if brief.project_profile else "")
     try:
-        raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale)
+        raw = await call_llm(provider, model, keys[provider], system, user, locale=brief.locale,
+                             feature="agent_reasoning")
         parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
         steps = [{"skill": s["skill"], "why": str(s.get("why", ""))[:300], "inputs": {}}
                  for s in parsed.get("steps", []) if s.get("skill") in SKILLS][:8]

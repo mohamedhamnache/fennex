@@ -32,7 +32,7 @@ async def _org_model(org_id: uuid.UUID, db):
     keys = await get_org_llm_keys(org_id, db)
     if not keys:
         return None, None, None
-    provider, model = resolve_model("balanced", "heavy", list(keys))
+    provider, model = resolve_model("balanced", "heavy", list(keys), feature="discovery")
     return provider, model, keys[provider]
 
 
