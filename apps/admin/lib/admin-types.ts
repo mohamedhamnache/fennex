@@ -176,6 +176,44 @@ export interface SeoAnalytics {
   }[];
 }
 
+/** `GET /admin/billing/kpis` (`admin_billing.py`, Phase 1b Batch 4) — revenue
+ * and margin, estimated from plan tier (no direct Stripe MRR API call).
+ * `gross_margin_pct` is `(mrr_usd - mtd_cost_usd) / mrr_usd`, a fraction —
+ * `null` when there's no MRR yet to compare cost against, rendered "—" by
+ * `lib/format.ts#pct` rather than a misleading 0%. `by_plan` is sorted
+ * server-side by `mrr_usd` descending. */
+export interface BillingKpis {
+  mrr_usd: number;
+  arr_usd: number;
+  /** AI + infra spend, month-to-date, in dollars. */
+  mtd_cost_usd: number;
+  gross_margin_pct: number | null;
+  arpu_usd: number;
+  paying_orgs: number;
+  trialing_orgs: number;
+  enterprise_orgs: number;
+  /** Failed Stripe payments in the trailing 30 days. */
+  failed_payments_30d: number;
+  by_plan: {
+    plan: string;
+    orgs: number;
+    mrr_usd: number;
+  }[];
+}
+
+/** One row of `GET /admin/billing/events` — a recent Stripe webhook event
+ * (invoice paid, payment failed, subscription updated, ...). `org_id` and
+ * `amount_usd` are `null` when the event isn't tied to an org or doesn't
+ * carry an amount (e.g. a non-invoice event), rendered "—" rather than a
+ * fabricated value. */
+export interface BillingEvent {
+  id: string;
+  org_id: string | null;
+  event_type: string;
+  amount_usd: number | null;
+  processed_at: string;
+}
+
 /** `GET /admin/analytics/usage` (`admin_analytics.py`, Phase 1b Batch 3) — the
  * cross-cutting usage explorer: one metric (`cost`, `tokens`, `requests`,
  * `seo`), grouped one way at a time (`provider`, `model`, `org`, `unit`), over
