@@ -64,3 +64,22 @@ async def test_call_llm_without_meter_records_nothing():
         assert out == "ok"
         rows = (await db.execute(select(OrgUsage))).scalars().all()
         assert rows == []
+
+
+async def test_call_llm_ambient_org_context_records_usage(monkeypatch):
+    # No explicit `meter`, but an org is set in the ambient context (as
+    # get_org_llm_keys and the auth boundary do) -> usage IS recorded, on a
+    # fresh session (patched to the test engine here).
+    from app.core import metering_context
+    from app.core import database as db_mod
+    monkeypatch.setattr(db_mod, "async_session_factory", Session)
+    org = uuid.uuid4()
+    metering_context.set_metering_org(org)
+    try:
+        out = await llm_service.call_llm("openai", "gpt-4o-mini", "k", "sys", "user")
+        assert out == "ok"
+        async with Session() as db:
+            ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
+            assert ou.ai_requests == 1 and ou.ai_input_tokens == 500 and ou.cost_micros == 135
+    finally:
+        metering_context.set_metering_org(None)
