@@ -83,6 +83,8 @@ class Settings(BaseSettings):
     # Staff allowed to manage provider accounts. Parsed as a JSON array by
     # pydantic-settings, e.g. PLATFORM_ADMIN_EMAILS=["a@b.com","c@d.com"]
     PLATFORM_ADMIN_EMAILS: list[str] = []
+    ADMIN_BOOTSTRAP_EMAIL: str = ""
+    ADMIN_BOOTSTRAP_PASSWORD: str = ""
 
     @property
     def REDIS_SETTINGS(self) -> Any:
