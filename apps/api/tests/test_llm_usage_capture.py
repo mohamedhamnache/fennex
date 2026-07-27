@@ -46,6 +46,7 @@ class _FakeAnthropicUsage:
     input_tokens = 111
     output_tokens = 22
     cache_read_input_tokens = 5
+    cache_creation_input_tokens = 7
 
 
 class _FakeAnthropicContentBlock:
@@ -73,14 +74,16 @@ async def test_call_llm_usage_captures_anthropic_tokens(monkeypatch):
     assert usage.input_tokens == 111
     assert usage.output_tokens == 22
     assert usage.cache_read_tokens == 5
+    assert usage.cache_write_tokens == 7
     assert usage.provider == "anthropic" and usage.model == "claude-3-5-sonnet-20241022"
 
 
 class _FakeAnthropicUsageNoCache:
     input_tokens = 50
     output_tokens = 10
-    # cache_read_input_tokens intentionally absent, mirrors a provider response
-    # that predates prompt caching / doesn't report it.
+    # cache_read_input_tokens and cache_creation_input_tokens intentionally
+    # absent, mirrors a provider response that predates prompt caching (or an
+    # uncached call) and doesn't report either field.
 
 
 class _FakeAnthropicRespNoCache:
@@ -104,3 +107,4 @@ async def test_call_llm_usage_anthropic_defaults_missing_cache_read_to_zero(monk
     assert usage.input_tokens == 50
     assert usage.output_tokens == 10
     assert usage.cache_read_tokens == 0
+    assert usage.cache_write_tokens == 0

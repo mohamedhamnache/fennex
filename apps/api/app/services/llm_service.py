@@ -84,16 +84,27 @@ DEFAULT_MAX_TOKENS = 4096
 ARTICLE_MAX_TOKENS = 8192
 
 # Anthropic bills a cache write at ~1.25x and a cache read at ~0.1x, so marking
-# a prefix that can't actually cache only pays the write premium for nothing.
-# The provider's minimum cacheable prefix is 1024 tokens for Sonnet/Opus-class
-# models and 2048 tokens for Haiku-class models. This constant marks system
-# prompts for every Anthropic model we route to (haiku, sonnet, opus -- see
-# app/services/providers/catalog.py's SEED), so it must clear the largest of
-# those minimums (2048 tokens, Haiku-class) rather than the smallest -- a
-# threshold sized for Sonnet/Opus would mark-and-never-cache on Haiku. At
-# ~4 chars/token that's ~8000 chars. Never lower this without checking which
-# models are still in rotation and their minimums.
-CACHEABLE_MIN_CHARS = 8000
+# a prefix below the provider's minimum cacheable length only pays the write
+# premium and never actually caches -- it fails silently too, surfacing as
+# cache_creation_input_tokens: 0 rather than an error, so a too-low threshold
+# looks fine in testing and just quietly burns money in production.
+#
+# Anthropic's documented per-model minimums (as of this writing): Opus 5 --
+# 512 tokens; Sonnet 5 -- 1024 tokens; Haiku 3.5 / Opus 4.7 -- 2048 tokens;
+# Haiku 4.5 -- 4096 tokens. This constant marks system prompts for every
+# Anthropic model we route to (see app/services/providers/catalog.py's SEED),
+# and claude-haiku-4-5 is the cheap-band row in that rotation -- so its 4096
+# token minimum is the one that governs: the threshold must clear the LARGEST
+# minimum among models actually in rotation, not the smallest, because a
+# prefix that clears Sonnet/Opus's lower minimum but not Haiku's still
+# mark-and-never-caches on Haiku calls. At ~4 chars/token that's ~16000 chars.
+#
+# IMPORTANT: this minimum is NOT monotonic across model generations (Opus 5 is
+# lower than Opus 4.6/4.5, e.g.) -- it dropped, in this codebase's history, to
+# a value below Haiku 4.5's actual minimum more than once. Never lower this
+# constant without re-checking the documented minimum for every model in
+# catalog.py's SEED, and re-deriving the max across all of them.
+CACHEABLE_MIN_CHARS = 16000
 
 
 def _anthropic_system_blocks(system_prompt: str):
