@@ -25,12 +25,15 @@ export const PRODUCT_SHOWCASE_CREDIT_COST = 39;
  * regardless of which formats the user selects.
  *
  * Source: docs/superpowers/specs/2026-07-28-product-ai-studio-design.md,
- * section 4 -- Trellis is listed at 100,000 micro-$ ($0.10/run) as an
- * explicit PLACEHOLDER, not yet seeded as a `cost_rates` row the way
- * `y5kontextrate9` seeded flux-kontext-pro (task-8-brief.md: "the Trellis
- * rate is a placeholder until real per-run pricing is confirmed"). Converted
- * to credits the same way the backend does it -- ceil(cost_micros /
+ * section 4. Trellis is seeded by migration `h4trellisrate6` at 35,000
+ * micro-$ ($0.035/run) -- Replicate's published figure for `firtoz/trellis`.
+ * Converted to credits the same way the backend does -- ceil(cost_micros /
  * CREDIT_MICROS), CREDIT_MICROS = 1_050 (apps/api/app/core/credits.py) --
- * ceil(100_000 / 1_050) = 96. Replace once the real rate is seeded.
+ * ceil(35_000 / 1_050) = 34.
+ *
+ * This is still a supplier price we looked up rather than one reconciled
+ * against a Replicate invoice, so it can move. Keep it here, in one place,
+ * and delete both constants the moment the backend exposes a per-operation
+ * cost endpoint -- a number duplicated between client and server drifts.
  */
-export const PRODUCT_3D_CREDIT_COST = 96;
+export const PRODUCT_3D_CREDIT_COST = 34;
