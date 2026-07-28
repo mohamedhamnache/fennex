@@ -1,4 +1,5 @@
 """ARQ tasks for backlink sync and exchange link verification."""
+import logging
 import uuid
 from datetime import date, timezone, datetime
 
@@ -7,11 +8,15 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.core.database import async_session_factory
 from app.integrations.seo_apis import get_seo_provider
+from app.integrations.seo_apis.mock_provider import MockSEOProvider
 from app.models.backlinks import (
     BacklinkProfile, Backlink, BacklinkOpportunity,
     ExchangeRequest, ExchangeListing,
 )
 from app.models.project import Project
+from app.services.metering import meter as _meter
+
+logger = logging.getLogger(__name__)
 
 SPAM_TLDS = {'.xyz', '.top', '.click', '.loan', '.gq', '.tk', '.ml', '.ga', '.cf'}
 SPAM_KEYWORDS = {'casino', 'pharma', 'adult', 'dating', 'poker', 'viagra'}
@@ -28,8 +33,15 @@ def _is_spam(domain: str, da: float | None) -> bool:
     return False
 
 
-async def sync_backlink_profile(ctx, project_id: str):
-    """Fetch and upsert backlink profile, backlinks, and opportunities for a project."""
+async def sync_backlink_profile(ctx, project_id: str, bill_credits: bool = True):
+    """Fetch and upsert backlink profile, backlinks, and opportunities for a project.
+
+    `bill_credits` threads through to the metering call below: the weekly
+    cron (weekly_backlink_discovery) enqueues this with bill_credits=False so
+    its fan-out across every tracked project can never exhaust an org's
+    enforced SEO credit bucket, while the user-initiated "Analyze" endpoint
+    (POST /backlinks/analyze) enqueues it with the default True and keeps
+    billing as before."""
     pid = uuid.UUID(project_id)
     provider = get_seo_provider()
     today = date.today().isoformat()
@@ -47,6 +59,29 @@ async def sync_backlink_profile(ctx, project_id: str):
 
         # Upsert profile
         profile_data = await provider.get_backlink_profile(domain)
+
+        # Best-effort metering: get_backlink_profile issues ONE DataForSEO task
+        # per call (one domain), so count=1. org_id is passed explicitly
+        # (already loaded from project.org_id above) rather than relying on
+        # the request-scoped contextvar -- this is a worker with no request
+        # context. Isolated session + swallow so a metering hiccup never fails
+        # the sync, and only the success path bills (a raise from
+        # get_backlink_profile above skips this block entirely).
+        #
+        # get_seo_provider() falls back to MockSEOProvider whenever DataForSEO
+        # credentials are absent, and MockSEOProvider is the ONLY provider that
+        # implements get_backlink_profile (DataForSEOProvider does not) -- so
+        # skip metering entirely when the resolved provider is the mock: no
+        # real supplier task was issued, so there is nothing to bill.
+        if not isinstance(provider, MockSEOProvider):
+            try:
+                async with async_session_factory() as _mdb:
+                    await _meter.record_seo(_mdb, org_id=org_id, project_id=pid,
+                                            unit="backlinks", count=1,
+                                            feature="backlink_sync", bill_credits=bill_credits)
+            except Exception:
+                logger.warning("backlink sync seo metering failed", exc_info=True)
+
         profile_stmt = (
             insert(BacklinkProfile)
             .values(
@@ -195,6 +230,11 @@ async def weekly_backlink_discovery(ctx):
 
     sync_backlink_profile only calls the SEO data provider (no LLM), so this
     never enters batch_scope().
+
+    Enqueues with bill_credits=False: this is background/cron work, so it
+    must still be metered for cost visibility but must never consume the
+    enforced SEO credit bucket -- only the user-initiated "Analyze" endpoint
+    (POST /backlinks/analyze) enqueues sync_backlink_profile with billing on.
     """
     import arq
 
@@ -205,5 +245,5 @@ async def weekly_backlink_discovery(ctx):
     redis = ctx["redis"]
     for profile in profiles:
         await arq.ArqRedis(redis).enqueue_job(
-            "sync_backlink_profile", str(profile.project_id)
+            "sync_backlink_profile", str(profile.project_id), bill_credits=False
         )

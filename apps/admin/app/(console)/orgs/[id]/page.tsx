@@ -15,6 +15,7 @@ import {
   Info,
   KeyRound,
   RotateCcw,
+  SearchCheck,
   ShieldAlert,
   Users,
   Wallet,
@@ -24,6 +25,7 @@ import { apiClient, ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { DataTable, type DataTableColumn } from "@/components/table/DataTable";
 import { StatCard } from "@/components/kpi/StatCard";
+import { CreditMeter } from "@/components/credits/CreditMeter";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RoleGate } from "@/components/common/RoleGate";
 import { money, compactNumber } from "@/lib/format";
@@ -333,6 +335,24 @@ export default function OrgDetailPage() {
             <StatCard label="Users" value={org.user_count.toLocaleString("en-US")} icon={Users} />
             <StatCard label="Projects" value={org.project_count.toLocaleString("en-US")} icon={FolderKanban} />
             <StatCard label="AI requests" value={compactNumber(org.ai_requests)} icon={Zap} />
+          </div>
+
+          <div className="card-base card-shadow flex flex-col gap-4 border border-border bg-card p-4">
+            <h2 className="font-display text-sm font-semibold text-foreground">Credit usage</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <CreditMeter
+                label="AI credits"
+                icon={Zap}
+                used={org.ai_credits_used}
+                allowance={org.ai_credits_allowance}
+              />
+              <CreditMeter
+                label="SEO credits"
+                icon={SearchCheck}
+                used={org.seo_credits_used}
+                allowance={org.seo_credits_allowance}
+              />
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

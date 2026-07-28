@@ -210,13 +210,13 @@ async def test_webhook_subscription_updated_downgrades_locks_excess_projects(cli
     await db_session.refresh(org)
     assert org.plan_tier == PlanTier.STARTER
 
-    # starter allows 5 projects — all 3 should remain unlocked
+    # Billing v2 (task 6): starter allows only 1 project — 2 of the 3 must lock.
     from sqlalchemy import select
     result = await db_session.execute(
         select(Project).where(Project.org_id == org.id, Project.locked == True)  # noqa: E712
     )
     locked_projects = result.scalars().all()
-    assert len(locked_projects) == 0  # starter allows 5, we only have 3
+    assert len(locked_projects) == 2  # starter allows 1, we have 3
 
 
 async def test_webhook_subscription_deleted_locks_excess_projects(client, db_session):

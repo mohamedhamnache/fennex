@@ -1,8 +1,13 @@
+import logging
 import uuid
 from app.core.database import async_session_factory
 from app.models.keyword import KeywordResearchJob, Keyword, KeywordCluster, ResearchStatus, KeywordIntent
 from app.integrations.seo_apis import get_seo_provider
+from app.integrations.seo_apis.mock_provider import MockSEOProvider
 from app.services.keyword_service import cluster_keywords, _get_cluster_key_for
+from app.services.metering import meter as _meter
+
+logger = logging.getLogger(__name__)
 
 
 async def run_keyword_research(ctx, job_id: str, batched: bool = False):
@@ -32,6 +37,30 @@ async def run_keyword_research(ctx, job_id: str, batched: bool = False):
         try:
             provider = get_seo_provider()
             keyword_data_list = await provider.get_keyword_ideas(seed)
+
+            # Best-effort metering: get_keyword_ideas issues ONE DataForSEO task
+            # per call (a single seed keyword request) regardless of how many
+            # ideas come back, so count=1. org_id is passed explicitly (already
+            # loaded from job.org_id above) rather than relying on the
+            # request-scoped contextvar -- this is a worker with no request
+            # context. Isolated session + swallow so a metering hiccup never
+            # fails keyword research, and only the success path bills (a raise
+            # from get_keyword_ideas above skips this block entirely).
+            #
+            # get_seo_provider() falls back to MockSEOProvider whenever
+            # DataForSEO credentials are absent. Skip metering entirely when
+            # the resolved provider is the mock: no real supplier task was
+            # issued, so there is nothing to bill (unlike backlink_tasks,
+            # DataForSEOProvider does implement get_keyword_ideas too -- but
+            # the mock fallback path is exactly as fabricated here).
+            if not isinstance(provider, MockSEOProvider):
+                try:
+                    async with async_session_factory() as _mdb:
+                        await _meter.record_seo(_mdb, org_id=org_id, project_id=project_id,
+                                                unit="keyword_ideas", count=1,
+                                                feature="keyword_research")
+                except Exception:
+                    logger.warning("keyword research seo metering failed", exc_info=True)
 
             # Cluster keywords
             kw_strings = [kd.keyword for kd in keyword_data_list]

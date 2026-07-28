@@ -1,13 +1,13 @@
 """POST /images/competitor-analysis — analyze a competitor ad and generate an improved version."""
 import json
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.core.billing import check_project_not_locked, increment_usage
+from app.core.billing import check_project_not_locked, increment_usage, require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
 from app.models.api_key import APIKey
@@ -52,7 +52,12 @@ class CompetitorOut(BaseModel):
 
 
 @router.post("/competitor-analysis", response_model=CompetitorOut)
-async def competitor_analysis(body: CompetitorRequest, current_user: CurrentUser, db: DB):
+async def competitor_analysis(
+    body: CompetitorRequest,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     proj = await db.execute(
         select(Project).where(Project.id == body.project_id, Project.org_id == current_user.org_id)
     )

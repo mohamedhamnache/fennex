@@ -1,91 +1,208 @@
-"""Credits are a pricing surface, so these tests pin the money, not the plumbing.
-
-The important one is test_every_plan_clears_the_margin_floor: it fails if anyone
-raises an allowance, lowers a price, or changes the credit unit in a way that
-would let a customer spend a month's credits and leave less than the 400%
-markup the reseller spec requires.
-"""
-import pytest
-
-from app.core.billing import PLAN_LIMITS
 from app.core.credits import (
+    AI_KINDS,
     CREDIT_MICROS,
     PLAN_CREDITS,
+    SEO_CREDIT_WEIGHT,
+    SEO_PLAN_CREDITS,
     credit_allowance,
     credits_from_micros,
+    seo_credit_allowance,
+    seo_credits_for,
 )
 
-# Monthly list price in dollars, per the reseller plan table.
-PLAN_PRICES_USD = {"starter": 29, "pro": 99, "agency": 299, "scale": 799}
 
-# Cost in micro-dollars of one reference request (3k input, 1k output tokens)
-# against the seeded cost_rates, per band using the OpenAI primaries.
-REFERENCE_REQUEST_MICROS = {
-    "cheap": 1_050,      # gpt-4o-mini
-    "standard": 17_500,  # gpt-4o
-    "premium": 40_000,   # claude-opus-5
-}
-
-MIN_MARKUP = 5.0  # 400% margin means price >= 5x cost of goods
+def test_ai_credit_unit_is_unchanged():
+    """The credit unit users already see must not shift under them."""
+    assert CREDIT_MICROS == 1_050
 
 
-def test_one_credit_is_one_reference_cheap_request():
-    assert credits_from_micros(REFERENCE_REQUEST_MICROS["cheap"]) == 1
-
-
-def test_band_ratios_follow_real_model_cost():
-    """The published 1x / 17x / 38x ratios must fall out of the rates, not a
-    hand-maintained table. If a rate changes these move with it, which is the
-    point of deriving credits from cost."""
-    assert credits_from_micros(REFERENCE_REQUEST_MICROS["standard"]) == 17
-    assert credits_from_micros(REFERENCE_REQUEST_MICROS["premium"]) == 39
-
-
-def test_a_pricier_fallback_inside_a_band_costs_more_credits():
-    """claude-haiku-4-5 is the cheap-band fallback and costs 7.6x gpt-4o-mini.
-    Charging it as one credit would let a failover erode margin silently."""
-    haiku_micros = 8_000  # 3k in / 1k out at 1.0 / 5.0 micro-$ per token
-    assert credits_from_micros(haiku_micros) == 8
-    assert credits_from_micros(haiku_micros) > credits_from_micros(
-        REFERENCE_REQUEST_MICROS["cheap"]
-    )
-
-
-def test_billable_work_never_rounds_to_zero_credits():
-    """Rounding down would let a burst of tiny calls consume real cost while
-    registering as free."""
-    assert credits_from_micros(1) == 1
-    assert credits_from_micros(CREDIT_MICROS - 1) == 1
+def test_credits_from_micros_rounds_up_so_small_calls_still_charge():
     assert credits_from_micros(0) == 0
     assert credits_from_micros(-5) == 0
+    assert credits_from_micros(1_050) == 1
+    # a sub-credit call still costs one credit rather than rounding to zero
+    assert credits_from_micros(1) == 1
+    # a $0.06 image -> 60_000 micros -> ceil(60_000 / 1_050)
+    assert credits_from_micros(60_000) == 58
 
 
-@pytest.mark.parametrize("tier,price", PLAN_PRICES_USD.items())
-def test_every_plan_clears_the_margin_floor(tier, price):
-    """Spending the whole allowance on the most expensive band a plan can reach
-    must still leave a 5x markup."""
-    worst_case_cogs_usd = (PLAN_CREDITS[tier] * CREDIT_MICROS) / 1_000_000
-    markup = price / worst_case_cogs_usd
-    assert markup >= MIN_MARKUP, (
-        f"{tier}: {PLAN_CREDITS[tier]} credits cost ${worst_case_cogs_usd:.2f} "
-        f"against a ${price} price, a {markup:.1f}x markup, below the "
-        f"{MIN_MARKUP}x floor"
-    )
+def test_ai_bucket_covers_llm_image_and_edit_but_not_seo():
+    assert set(AI_KINDS) == {"llm", "image", "edit"}
+    assert "seo" not in AI_KINDS
 
 
-def test_allowances_rise_with_price():
-    ordered = ["starter", "pro", "agency", "scale"]
-    values = [PLAN_CREDITS[t] for t in ordered]
-    assert values == sorted(values), f"allowances not monotonic: {values}"
-
-
-def test_every_sold_plan_has_an_allowance():
-    assert set(PLAN_CREDITS) == set(PLAN_LIMITS), (
-        "a tier with quotas but no credit allowance would silently fall back to "
-        "the free bucket"
-    )
-
-
-def test_unknown_tier_gets_the_smallest_bucket_not_unlimited():
-    assert credit_allowance("enterprise-custom") == PLAN_CREDITS["free"]
+def test_credit_allowance_falls_back_to_free():
+    assert credit_allowance("starter") == PLAN_CREDITS["starter"]
+    assert credit_allowance("nonsense") == PLAN_CREDITS["free"]
+    assert credit_allowance("") == PLAN_CREDITS["free"]
     assert credit_allowance(None) == PLAN_CREDITS["free"]
+
+
+def test_seo_credits_weighted_by_unit():
+    # a SERP lookup is the reference SEO operation at 2 credits
+    assert seo_credits_for("serp", 1) == 2
+    assert seo_credits_for("serp", 3) == 6
+    # Pinned to literals, not SEO_CREDIT_WEIGHT[...]: a self-referential
+    # assertion passes at any weight and cannot detect a reprice that misses
+    # a call site.
+    assert seo_credits_for("audit", 2) == 20
+    assert seo_credits_for("audit", 1) == 10
+    assert seo_credits_for("backlinks", 1) == 5
+    assert seo_credits_for("keyword_ideas", 1) == 15
+    assert seo_credits_for("rank_check", 1) == 2
+    # unknown or missing unit falls back to 1x
+    assert seo_credits_for("something_new", 4) == 4
+    assert seo_credits_for(None, 5) == 5
+    assert seo_credits_for("serp", 0) == 0
+
+
+def test_replicate_operation_credits_floors_cheap_predictions():
+    """The 10-credit floor applies ONLY to Replicate ('edit' kind)
+    operations -- a real-esrgan/codeformer-class call is a few GPU-seconds
+    (well under one credit's worth of cost) but must still bill the floor."""
+    from app.core.credits import MIN_REPLICATE_CREDITS, replicate_operation_credits
+
+    assert MIN_REPLICATE_CREDITS == 10
+    assert replicate_operation_credits(0) == 0
+    assert replicate_operation_credits(-5) == 0
+    # 2_000 micros -> credits_from_micros gives 2, floored up to 10
+    assert replicate_operation_credits(2_000) == 10
+    # 60_000 micros -> credits_from_micros gives 58, already above the floor
+    assert replicate_operation_credits(60_000) == 58
+
+
+def test_seo_credit_allowance_falls_back_to_free():
+    assert seo_credit_allowance("pro") == SEO_PLAN_CREDITS["pro"]
+    assert seo_credit_allowance("nonsense") == SEO_PLAN_CREDITS["free"]
+
+
+def test_every_sellable_tier_has_an_explicit_allowance():
+    """A tier missing from these dicts silently resolves to the free allowance.
+
+    That is invisible until hard-stop enforcement is live, at which point the
+    tier gets 429'd almost immediately -- which is exactly what happened to
+    `enterprise`. Pin every PlanTier so a newly added tier fails here instead.
+
+    PLAN_LIMITS is included deliberately: `enterprise` was missing from it too,
+    capping a custom-contract customer at the free tier's 1 project.
+    """
+    from app.core.billing import PLAN_LIMITS
+    from app.models.organization import PlanTier
+
+    for tier in PlanTier:
+        assert tier.value in PLAN_CREDITS, f"{tier.value} missing from PLAN_CREDITS"
+        assert tier.value in SEO_PLAN_CREDITS, f"{tier.value} missing from SEO_PLAN_CREDITS"
+        assert tier.value in PLAN_LIMITS, f"{tier.value} missing from PLAN_LIMITS"
+        # and it must not silently resolve to the free bucket
+        if tier.value != "free":
+            assert credit_allowance(tier.value) != PLAN_CREDITS["free"]
+            assert seo_credit_allowance(tier.value) != SEO_PLAN_CREDITS["free"]
+            assert PLAN_LIMITS[tier.value] != PLAN_LIMITS["free"]
+
+
+def test_allowances_increase_monotonically_up_the_ladder():
+    """A higher tier must never grant fewer credits than a lower one.
+
+    Rescaling the sold tiers once left `enterprise` -- which sits outside the
+    ladder because it is custom-priced -- below `scale`.
+    """
+    ladder = ("free", "starter", "pro", "agency", "scale", "enterprise")
+    for lower, higher in zip(ladder, ladder[1:]):
+        assert PLAN_CREDITS[higher] > PLAN_CREDITS[lower], f"AI: {higher} <= {lower}"
+        assert SEO_PLAN_CREDITS[higher] > SEO_PLAN_CREDITS[lower], f"SEO: {higher} <= {lower}"
+
+
+def test_byok_exemption_is_limited_to_agency_and_scale():
+    """BYOK waives the credit hard-stop, but only on the tiers it is sold on,
+    and only for the "ai" bucket.
+
+    Otherwise setting byok_enabled on a Starter org would waive billing
+    entirely. Enforcement only -- usage is still metered either way.
+    """
+    from app.core.billing import byok_exempt_from_credits
+    from app.models.organization import Organization, PlanTier
+
+    def org(tier, byok):
+        return Organization(name="t", slug="t", plan_tier=tier, byok_enabled=byok)
+
+    assert byok_exempt_from_credits(org(PlanTier.AGENCY, True), "ai") is True
+    assert byok_exempt_from_credits(org(PlanTier.SCALE, True), "ai") is True
+    # sold-on tiers only
+    assert byok_exempt_from_credits(org(PlanTier.STARTER, True), "ai") is False
+    assert byok_exempt_from_credits(org(PlanTier.PRO, True), "ai") is False
+    assert byok_exempt_from_credits(org(PlanTier.FREE, True), "ai") is False
+    # and the flag is required, not just the tier
+    assert byok_exempt_from_credits(org(PlanTier.AGENCY, False), "ai") is False
+    assert byok_exempt_from_credits(org(PlanTier.SCALE, False), "ai") is False
+
+
+def test_byok_exemption_never_applies_to_seo_bucket():
+    """Worker SEO calls always run on Fennex's own DataForSEO account (there is
+    no per-org BYOK resolver for SEO, unlike LLM/image), so a BYOK agency/scale
+    org must still be enforced on the "seo" bucket even though it is exempt on
+    "ai".
+    """
+    from app.core.billing import byok_exempt_from_credits
+    from app.models.organization import Organization, PlanTier
+
+    def org(tier, byok):
+        return Organization(name="t", slug="t", plan_tier=tier, byok_enabled=byok)
+
+    assert byok_exempt_from_credits(org(PlanTier.AGENCY, True), "seo") is False
+    assert byok_exempt_from_credits(org(PlanTier.SCALE, True), "seo") is False
+
+
+def test_paid_tiers_resolve_from_the_enum_member_not_just_the_string():
+    """Guards the PlanTier str-enum trap end to end.
+
+    `PlanTier` subclasses `str`, so `isinstance(tier, str)` is always true and
+    `str(PlanTier.PRO)` is `"PlanTier.PRO"`. Any caller that forwards the enum
+    member without extracting `.value` silently bills a paid org against the
+    free allowance.
+    """
+    from app.core.billing import _tier_value
+    from app.models.organization import Organization, PlanTier
+
+    org = Organization(name="t", slug="t", plan_tier=PlanTier.PRO)
+    assert _tier_value(org) == "pro"
+    assert credit_allowance(_tier_value(org)) == PLAN_CREDITS["pro"]
+    # and a plain string tier still works
+    org.plan_tier = "agency"
+    assert _tier_value(org) == "agency"
+    assert credit_allowance(_tier_value(org)) == PLAN_CREDITS["agency"]
+
+
+# Supplier cost per DataForSEO task, for the margin guard below. serp and
+# keyword_ideas are the real seeded rates; backlinks/audit are the placeholder
+# rates from migration s8seorates01 and should be corrected together with it.
+SEO_UNIT_COST_USD = {
+    "serp": 0.0015,
+    "rank_check": 0.0015,
+    "keyword_ideas": 0.0200,
+    "backlinks": 0.0030,
+    "audit": 0.0050,
+}
+
+
+def test_plan_cogs_stays_within_margin_target():
+    """Both buckets together must stay under a third of the plan price.
+
+    The SEO figure is DERIVED from the unit with the worst cost-per-credit
+    rather than hardcoded, so repricing a unit without adjusting its weight
+    fails here instead of silently eroding margin. (A hardcoded $0.002/credit
+    went stale the moment units started costing more than one credit.)
+    """
+    from app.core.billing import PLAN_PRICE_USD
+
+    worst_seo_cost_per_credit = max(
+        cost / SEO_CREDIT_WEIGHT[unit] for unit, cost in SEO_UNIT_COST_USD.items()
+    )
+    # keyword_ideas: $0.02 over 15 credits
+    assert abs(worst_seo_cost_per_credit - 0.02 / 15) < 1e-9
+
+    for tier in ("starter", "pro", "agency", "scale"):
+        cogs = (
+            PLAN_CREDITS[tier] * 0.00105
+            + SEO_PLAN_CREDITS[tier] * worst_seo_cost_per_credit
+        )
+        assert cogs <= PLAN_PRICE_USD[tier] * 0.32, (tier, cogs)

@@ -468,6 +468,19 @@ async def plagiarism_scan(project, article, db) -> dict:
         if urls:
             matches.append({"sentence": sentence, "urls": urls})
 
+    # Best-effort metering: one billable DataForSEO SERP task per sentence that
+    # was actually queried (skipped/failed ones are not billed). Isolated
+    # session so a metering hiccup never breaks the scan result.
+    if checked:
+        try:
+            from app.core.database import async_session_factory
+            from app.services.metering import meter as _meter
+            async with async_session_factory() as _mdb:
+                await _meter.record_seo(_mdb, org_id=project.org_id, project_id=project.id,
+                                        unit="serp", count=checked, feature="plagiarism_scan")
+        except Exception:  # noqa: BLE001
+            logger.warning("plagiarism scan seo metering failed", exc_info=True)
+
     return {"checked": checked, "matches": matches}
 
 

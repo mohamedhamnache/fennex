@@ -1,12 +1,13 @@
 """POST /images/{id}/ai-command — natural-language editing via LLM dispatch."""
 import base64
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.billing import require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.storage import upload_bytes
 from app.models.image import GeneratedImage, ImageStatus
@@ -55,7 +56,10 @@ async def _upload_mask(mask_base64: str, org_id: uuid.UUID) -> str:
 
 
 @router.post("/{image_id}/ai-command", response_model=ImageOut)
-async def ai_command(image_id: uuid.UUID, body: AiCommandRequest, current_user: CurrentUser, db: DB):
+async def ai_command(
+    image_id: uuid.UUID, body: AiCommandRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     result = await db.execute(
         select(GeneratedImage).where(
             GeneratedImage.id == image_id,

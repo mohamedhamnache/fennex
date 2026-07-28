@@ -3,12 +3,14 @@
 import json
 import logging
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.billing import require_credits
 from app.core.database import async_session_factory
 from app.core.dependencies import CurrentUser, DB
 from app.employees import registry
@@ -96,7 +98,10 @@ async def delete_conversation(conversation_id: uuid.UUID, current_user: CurrentU
 
 
 @router.post("/stream")
-async def chat_stream(body: ChatRequest, current_user: CurrentUser, db: DB):
+async def chat_stream(
+    body: ChatRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     """Stream a turn: routing, joins, handoffs, reply text, approvals.
 
     The turn runs on its own session so the stream is not bound to the
@@ -198,7 +203,10 @@ class RunStepRequest(BaseModel):
 
 
 @router.post("/workflow/step")
-async def run_workflow_step(body: RunStepRequest, current_user: CurrentUser, db: DB):
+async def run_workflow_step(
+    body: RunStepRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     """Run one approved step of a workflow, streaming its progress."""
     convo = await db.get(Conversation, body.conversation_id)
     if convo is None or convo.org_id != current_user.org_id:
@@ -226,7 +234,10 @@ async def run_workflow_step(body: RunStepRequest, current_user: CurrentUser, db:
 
 
 @router.post("/workflow/run")
-async def run_workflow(body: RunWorkflowRequest, current_user: CurrentUser, db: DB):
+async def run_workflow(
+    body: RunWorkflowRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     """Execute an approved multi-specialist workflow, streaming each step."""
     convo = await db.get(Conversation, body.conversation_id)
     if convo is None or convo.org_id != current_user.org_id:
@@ -256,7 +267,10 @@ async def run_workflow(body: RunWorkflowRequest, current_user: CurrentUser, db: 
 
 
 @router.post("/actions/run")
-async def run_action(body: RunActionRequest, current_user: CurrentUser, db: DB):
+async def run_action(
+    body: RunActionRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     """Run an action the user picked from the offered buttons."""
     convo = await db.get(Conversation, body.conversation_id)
     if convo is None or convo.org_id != current_user.org_id:
@@ -284,7 +298,10 @@ async def run_action(body: RunActionRequest, current_user: CurrentUser, db: DB):
 
 
 @router.post("/approvals/{approval_id}/run")
-async def approve_and_run(approval_id: uuid.UUID, current_user: CurrentUser, db: DB):
+async def approve_and_run(
+    approval_id: uuid.UUID, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     """Validate the proposed action and actually execute it, streaming progress.
 
     Approval and execution are one call so an approved action cannot be left

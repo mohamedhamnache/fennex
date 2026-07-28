@@ -1052,6 +1052,11 @@
     "nearLimit": "Has usado {{used}}/{{limit}} {{label}} este mes.",
     "upgradeToContinue": "Mejorar para continuar →"
   },
+  "credits": {
+    "ai": "Créditos de IA",
+    "seo": "Créditos SEO",
+    "ariaLabel": "Saldo de créditos -- ver facturación"
+  },
   "campaigns": {
     "title": "Campañas",
     "subtitle": "Informa al Pack una vez: planifica y ejecuta toda una campaña",

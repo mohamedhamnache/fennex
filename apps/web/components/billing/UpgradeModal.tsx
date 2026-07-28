@@ -16,6 +16,16 @@ const RESOURCE_LABELS: Record<string, string> = {
   backlinks: "backlink analyses",
 };
 
+// ai_credits/seo_credits come from the require_credits() 429 envelope
+// (app/core/billing.py), not from /billing/usage, so they are not keys of
+// RESOURCE_LABELS above. They already have translated labels under the
+// "credits" namespace (used by the credits balance pill), so reuse those
+// instead of duplicating the same strings under a new key in every locale.
+const CREDIT_RESOURCE_LABEL_KEYS: Record<string, string> = {
+  ai_credits: "credits.ai",
+  seo_credits: "credits.seo",
+};
+
 const NEXT_TIER: Record<string, { name: string; tier: string; price: number }> = {
   free:    { name: "Starter", tier: "starter", price: 49 },
   starter: { name: "Pro",     tier: "pro",     price: 99 },
@@ -33,7 +43,8 @@ interface UpgradeModalProps {
 export function UpgradeModal({ resource, used, limit, currentTier, onClose }: UpgradeModalProps) {
   const { t } = useTranslation();
   const next = NEXT_TIER[currentTier];
-  const label = RESOURCE_LABELS[resource] ?? resource;
+  const creditLabelKey = CREDIT_RESOURCE_LABEL_KEYS[resource];
+  const label = creditLabelKey ? t(creditLabelKey) : (RESOURCE_LABELS[resource] ?? resource);
 
   const checkoutMutation = useMutation({
     mutationFn: () => {

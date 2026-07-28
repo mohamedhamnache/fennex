@@ -6,6 +6,7 @@ import uuid
 from sqlalchemy import select
 
 from app.core.billing import current_billing_period_start
+from app.core.credits import credits_from_micros, replicate_operation_credits, seo_credits_for
 from app.models.billing import OrgUsage
 from app.models.cost_rate import CostRate
 from app.models.usage_event import UsageEvent
@@ -77,7 +78,43 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
         cost_micros=cost,
     ))
     await _bump_org_usage(db, org_id, ai_input_tokens=usage.input_tokens,
-                          ai_output_tokens=usage.output_tokens, ai_requests=1, cost_micros=cost)
+                          ai_output_tokens=usage.output_tokens, ai_requests=1, cost_micros=cost,
+                          ai_cost_micros=cost, ai_credits_used=credits_from_micros(cost))
+    await db.commit()
+    return cost
+
+
+async def record_image(db, *, org_id: uuid.UUID, project_id, model: str,
+                       cost_usd: float, feature: str | None = None) -> int:
+    """Price an image generation from the cost the image service already
+    computed -- it knows the size/quality that was actually billed."""
+    cost = round(cost_usd * 1_000_000)
+    db.add(UsageEvent(
+        org_id=org_id, project_id=project_id, kind="image", provider="openai",
+        model=model, feature=feature, cost_micros=cost,
+    ))
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost,
+                          ai_credits_used=credits_from_micros(cost))
+    await db.commit()
+    return cost
+
+
+async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
+                           feature: str | None = None) -> int:
+    """Price one Replicate prediction, falling back to the default
+    (provider='replicate', unit='run', model='') rate."""
+    per_run = await rate(db, "replicate", "run", model)
+    if not per_run:
+        per_run = await rate(db, "replicate", "run", "")
+    cost = round(per_run)
+    db.add(UsageEvent(
+        org_id=org_id, project_id=project_id, kind="edit", provider="replicate",
+        model=model, feature=feature, cost_micros=cost,
+    ))
+    # cost_micros/ai_cost_micros stay the TRUE unfloored cost; only the
+    # credit counter gets the Replicate pricing floor.
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost,
+                          ai_credits_used=replicate_operation_credits(cost))
     await db.commit()
     return cost
 
@@ -86,13 +123,22 @@ _SEO_COLUMN = {"serp": "seo_serp", "keyword_ideas": "seo_keyword_analyses"}
 
 
 async def record_seo(db, *, org_id: uuid.UUID, project_id, unit: str, count: int,
-                     provider: str = "dataforseo", feature: str | None = None) -> int:
+                     provider: str = "dataforseo", feature: str | None = None,
+                     bill_credits: bool = True) -> int:
+    """`bill_credits=False` still writes the UsageEvent and still bumps
+    cost_micros (and the per-unit _SEO_COLUMN counter) so COGS/margin
+    reporting stays complete -- it just skips the seo_credits_used increment,
+    so background/cron work can never trip the enforced credit bucket that
+    only user-initiated calls draw from. Default True keeps every existing
+    caller unchanged."""
     cost = round(count * await rate(db, provider, unit, ""))
     db.add(UsageEvent(
         org_id=org_id, project_id=project_id, kind="seo", provider=provider,
         feature=feature, seo_unit=unit, seo_count=count, cost_micros=cost,
     ))
     increments = {"cost_micros": cost}
+    if bill_credits:
+        increments["seo_credits_used"] = seo_credits_for(unit, count)
     col = _SEO_COLUMN.get(unit)
     if col:
         increments[col] = count

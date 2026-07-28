@@ -1,11 +1,12 @@
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
 import arq
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.billing import require_credits
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.crawl import SEOAudit, AuditStatus
@@ -45,6 +46,7 @@ async def trigger_audit(
     body: AuditRequest,
     current_user: CurrentUser,
     db: DB,
+    _: Annotated[None, Depends(require_credits("seo"))],
 ):
     proj_result = await db.execute(
         select(Project).where(Project.id == body.project_id, Project.org_id == current_user.org_id)

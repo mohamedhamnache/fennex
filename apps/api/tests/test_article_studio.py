@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base
 from app.core.dependencies import get_current_user, get_db
 from app.main import app
+from app.models.billing import OrgUsage  # noqa: F401 — register org_usage with Base.metadata
+from app.models.organization import Organization, PlanTier
 from app.models.project import Project
 from app.models.analytics import GscConnection
 from app.models.api_key import APIKey  # noqa: F401
@@ -29,8 +31,11 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
 
+# organizations/org_usage are needed by require_credits (app.core.billing),
+# now attached to /transform, /chat and /chat/stream below.
 SQLITE_COMPATIBLE_TABLES = [
     "projects", "gsc_connections", "api_keys", "articles", "gsc_query_stats",
+    "organizations", "org_usage",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
@@ -60,6 +65,10 @@ async def setup_db():
     ]
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all, tables=tables)
+    # Seed the fake org so require_credits (app.core.billing) can find it.
+    async with TestSessionLocal() as session:
+        session.add(Organization(id=FAKE_ORG_ID, slug="test-org", name="Test Org", plan_tier=PlanTier.PRO))
+        await session.commit()
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all, tables=tables)

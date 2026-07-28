@@ -2,6 +2,7 @@
 import asyncio
 import base64
 import io
+import logging
 import time
 import uuid
 from typing import Optional
@@ -9,6 +10,8 @@ import httpx
 from PIL import Image as PILImage, ImageEnhance, ImageFilter, ImageOps
 from app.core.config import settings
 from app.core.storage import upload_bytes
+
+logger = logging.getLogger(__name__)
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -271,6 +274,22 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
             status = status_data.get("status")
             if status == "succeeded":
                 output = status_data.get("output")
+
+                # Best-effort metering: attribute to the ambient org (set at the auth
+                # boundary). Never break image editing.
+                try:
+                    from app.core.metering_context import get_metering_org
+                    _org = get_metering_org()
+                    if _org is not None:
+                        from app.core.database import async_session_factory
+                        from app.services.metering import meter as _meter
+                        async with async_session_factory() as _db:
+                            await _meter.record_replicate(
+                                _db, org_id=_org, project_id=None, model=model, feature="image_edit",
+                            )
+                except Exception:  # noqa: BLE001
+                    logger.warning("replicate usage metering failed", exc_info=True)
+
                 if isinstance(output, list):
                     return output[0]
                 return str(output)

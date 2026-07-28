@@ -1,7 +1,7 @@
 import asyncio
 import uuid
-from typing import Optional
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from app.core.dependencies import CurrentUser, DB
@@ -13,7 +13,7 @@ from app.models.project import Project
 from app.services.banner_service import BANNER_FORMATS, build_banner_prompts
 from app.services.image_service import generate_image_dalle
 from app.api.v1.routers.images import ImageOut
-from app.core.billing import check_project_not_locked, increment_usage
+from app.core.billing import check_project_not_locked, increment_usage, require_credits
 
 router = APIRouter()
 
@@ -37,7 +37,12 @@ async def _get_openai_key(org_id: uuid.UUID, db) -> Optional[str]:
 
 
 @router.post("/marketing-banners", response_model=list[ImageOut])
-async def generate_marketing_banners(body: MarketingBannerRequest, current_user: CurrentUser, db: DB):
+async def generate_marketing_banners(
+    body: MarketingBannerRequest,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     if body.format_ids:
         unknown = [f for f in body.format_ids if f not in BANNER_FORMATS]
         if unknown:

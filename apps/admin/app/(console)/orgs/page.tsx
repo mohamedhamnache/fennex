@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Ban, CheckCircle2, KeyRound, Search } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, KeyRound, Search, SearchCheck, Zap } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { DataTable, type DataTableColumn } from "@/components/table/DataTable";
+import { CreditMeter } from "@/components/credits/CreditMeter";
 import { money, compactNumber } from "@/lib/format";
 import type { AdminOrgRow, Paginated } from "@/lib/admin-types";
 
@@ -143,6 +144,32 @@ export default function OrgsPage() {
       mono: true,
       align: "right",
       render: (row) => compactNumber(row.ai_requests),
+    },
+    {
+      key: "ai_credits",
+      header: "AI credits",
+      render: (row) => (
+        <CreditMeter
+          className="min-w-[8rem]"
+          label="AI"
+          icon={Zap}
+          used={row.ai_credits_used}
+          allowance={row.ai_credits_allowance}
+        />
+      ),
+    },
+    {
+      key: "seo_credits",
+      header: "SEO credits",
+      render: (row) => (
+        <CreditMeter
+          className="min-w-[8rem]"
+          label="SEO"
+          icon={SearchCheck}
+          used={row.seo_credits_used}
+          allowance={row.seo_credits_allowance}
+        />
+      ),
     },
     {
       key: "created_at",

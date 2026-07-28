@@ -1,59 +1,126 @@
-"""AI credits: the user-facing unit that hides model economics.
+"""Credit conversions. Money is micro-dollars ($1 = 1_000_000).
 
-A credit is a fixed amount of cost of goods, not a request. Because
-``usage_events.cost_micros`` is already priced from each model's own
-``cost_rates`` rows and its real token counts, credits are simply cost divided
-by the credit unit -- there is no multiplier table to maintain or to drift when
-a model is repriced.
+Two user-facing buckets:
 
-The published ratios fall out of that automatically. At a reference request of
-3k input and 1k output tokens against the seeded rates:
+* **AI credits** -- priced from real supplier cost at ``1 credit == $0.00105``
+  (:data:`CREDIT_MICROS`), then **accumulated into the
+  ``OrgUsage.ai_credits_used`` counter**, one charge per operation. They are NOT
+  derived from accumulated cost at read time: Replicate operations carry a
+  pricing floor (:func:`replicate_operation_credits`), which cannot be expressed
+  as a function of a summed total. The AI bucket covers ``usage_events.kind`` in
+  :data:`AI_KINDS`.
 
-    gpt-4o-mini (cheap, OpenAI)      $0.00105    1.0 credit
-    claude-haiku-4-5 (cheap, fallback) $0.00800   7.6 credits
-    gpt-4o (standard, OpenAI)        $0.01750   16.7 credits
-    claude-sonnet-5 (standard, fallback) $0.02400 22.9 credits
-    claude-opus-5 (premium)          $0.04000   38.1 credits
+  **If you add a writer for an AI_KINDS event, it MUST bump
+  ``ai_credits_used`` as well as ``ai_cost_micros``** -- bumping only the cost
+  records the spend but bills the customer nothing.
 
-Two properties worth keeping in mind. Charging by cost rather than per request
-means a large cheap call costs more credits than a small one, which is correct:
-a 10k-token summarisation is not the same product as a 500-token tag. And a
-failover to the Anthropic side of a band charges its real 7.6x, so an outage
-cannot quietly erode margin at the same credit price.
-
-Allowances are sized so that spending an entire month's credits on the most
-expensive band a plan can reach still leaves at least the 400% markup the
-reseller spec requires. See tests/test_credits.py, which asserts that floor.
+  ``cost_micros``/``ai_cost_micros`` always hold the TRUE unfloored supplier
+  cost, because COGS and margin reporting read them. The floor lives only in the
+  billed counter, so a markup never masquerades as cost.
+* **SEO credits** -- charged per DataForSEO task, weighted per unit
+  (:data:`SEO_CREDIT_WEIGHT`) against that unit's real supplier cost. Counted
+  rather than derived, because "tasks" is the unit both users and DataForSEO
+  bill in.
 """
 
-# Cost of the reference cheap request above, in micro-dollars ($1 = 1_000_000).
-# This is the definition of one credit; changing it repricess every plan, so it
-# is asserted against the plan allowances in the tests.
-CREDIT_MICROS = 1_050
+# --------------------------------------------------------------------------
+# AI credits (derived from cost)
+# --------------------------------------------------------------------------
 
-# Monthly credit allowance per plan tier. "free" is retained for orgs already on
-# it and is deliberately small; it is no longer sold.
+CREDIT_MICROS = 1_050  # $0.00105 of supplier cost per AI credit
+
 PLAN_CREDITS: dict[str, int] = {
     "free": 200,
     "starter": 5_000,
     "pro": 18_000,
     "agency": 55_000,
     "scale": 150_000,
+    # Enterprise is custom-priced and absent from PLAN_PRICE_USD. It still needs
+    # an explicit entry: the allowance lookup falls back to `free`, so without
+    # one an enterprise org would be hard-stopped after ~$0.21 of spend.
+    "enterprise": 500_000,
 }
+
+# Usage-event kinds whose cost consumes AI credits. 'seo' is deliberately
+# excluded -- it has its own bucket.
+AI_KINDS = ("llm", "image", "edit")
 
 
 def credits_from_micros(cost_micros: int) -> int:
-    """Convert metered cost into whole credits, rounding up.
-
-    Rounding up means any billable work costs at least one credit, so a burst of
-    very small calls cannot consume real cost while registering as zero.
-    """
+    """Convert metered AI cost into whole credits, rounding up."""
     if cost_micros <= 0:
         return 0
     return -(-int(cost_micros) // CREDIT_MICROS)
 
 
 def credit_allowance(plan_tier: str) -> int:
-    """Monthly allowance for a tier, falling back to the smallest bucket for an
-    unrecognised tier rather than granting an unlimited one."""
+    """Monthly AI credit allowance for a tier, falling back to the smallest."""
     return PLAN_CREDITS.get(str(plan_tier or "").lower(), PLAN_CREDITS["free"])
+
+
+# --------------------------------------------------------------------------
+# Replicate pricing floor (billing v2, 2026-07-28)
+# --------------------------------------------------------------------------
+
+MIN_REPLICATE_CREDITS = 10  # pricing floor: a Replicate edit never bills less
+
+
+def replicate_operation_credits(cost_micros: int) -> int:
+    """Credits billed for ONE Replicate prediction: the cost-derived amount,
+    floored.
+
+    Only Replicate ("edit" kind) operations get this floor -- several of the
+    cheaper community models cost a few GPU-seconds, well under one credit's
+    worth. A free/zero-cost run bills nothing; anything that cost real money
+    bills at least MIN_REPLICATE_CREDITS. LLM and image credits are NOT
+    floored (see record_llm/record_image in app/services/metering/meter.py).
+    """
+    if cost_micros <= 0:
+        return 0
+    return max(MIN_REPLICATE_CREDITS, credits_from_micros(cost_micros))
+
+
+# --------------------------------------------------------------------------
+# SEO credits (counted per DataForSEO task)
+# --------------------------------------------------------------------------
+
+# Credits billed per DataForSEO task, by unit. A SERP lookup is the reference
+# operation at 2 credits; the rest are priced relative to it and to their real
+# supplier cost (keyword_ideas costs ~13x a SERP task, hence 15).
+SEO_CREDIT_WEIGHT: dict[str, int] = {
+    "serp": 2,
+    # rank_check runs through the same fetch_serp chokepoint as `serp`, so it
+    # is the same underlying task and must bill the same.
+    "rank_check": 2,
+    "keyword_ideas": 15,
+    "backlinks": 5,
+    "audit": 10,
+    # No live call site yet; left at the historical weight until one exists.
+    "keyword_analysis": 1,
+}
+
+# Scaled 5x alongside the per-unit reprice (serp 1->2, keyword_ideas 1->15,
+# etc). Without this the weight increase would have silently cut entitlements
+# by the same factor -- Starter's keyword research would have gone from 300
+# runs a month to 20.
+SEO_PLAN_CREDITS: dict[str, int] = {
+    "free": 100,
+    "starter": 1_500,
+    "pro": 7_500,
+    "agency": 20_000,
+    "scale": 60_000,
+    # See the note on PLAN_CREDITS["enterprise"]. Must stay above `scale`.
+    "enterprise": 250_000,
+}
+
+
+def seo_credits_for(unit: str | None, count: int) -> int:
+    """Credits consumed by `count` DataForSEO tasks of type `unit`."""
+    if count <= 0:
+        return 0
+    return count * SEO_CREDIT_WEIGHT.get(unit or "", 1)
+
+
+def seo_credit_allowance(plan_tier: str) -> int:
+    """Monthly SEO credit allowance for a tier, falling back to the smallest."""
+    return SEO_PLAN_CREDITS.get(str(plan_tier or "").lower(), SEO_PLAN_CREDITS["free"])

@@ -18,13 +18,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base
 from app.core.dependencies import get_current_user, get_db
 from app.main import app
+from app.models.billing import OrgUsage  # noqa: F401 — register org_usage with Base.metadata
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.user import User, UserRole
 from app.models.analytics import GscConnection
 from app.models.api_key import APIKey  # noqa: F401
+from app.models.cost_rate import CostRate
 from app.models.monitoring import Alert, MonitorSnapshot  # noqa: F401
 from app.models.seo_intel import TrackedKeyword, SerpSnapshot
+from app.models.usage_event import UsageEvent
 
 # ── Test DB (SQLite in-memory) ────────────────────────────────────────────────
 
@@ -33,11 +36,13 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
 
-# Grows over the following tasks in this feature.
+# Grows over the following tasks in this feature. org_usage is needed by
+# require_credits (app.core.billing), now attached to /keywords/{id}/refresh
+# and /score.
 SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects", "gsc_connections", "api_keys",
     "tracked_keywords", "serp_snapshots", "alerts", "monitor_snapshots",
-    "provider_accounts",
+    "provider_accounts", "org_usage", "cost_rates", "usage_events",
 ]
 
 FAKE_ORG_ID = uuid.uuid4()
@@ -347,7 +352,7 @@ async def test_rank_tracker_cron_isolates_and_filters(db_session):
     await _mk_project(db_session)  # no tracked keywords -> skipped
     calls = []
 
-    async def fake_snapshot_project(project, db):
+    async def fake_snapshot_project(project, db, bill_credits=True):
         calls.append(project.id)
         raise RuntimeError("boom")
 
@@ -355,6 +360,82 @@ async def test_rank_tracker_cron_isolates_and_filters(db_session):
          patch.object(seo_tasks, "async_session_factory", new=lambda: _single_session(db_session)):
         await seo_tasks.run_rank_tracker(None)
     assert calls == [p_ok.id]
+
+
+@pytest.mark.asyncio
+async def test_rank_tracker_cron_does_not_bill_seo_credits(db_session):
+    """The daily rank-tracking cron must meter its DataForSEO spend for
+    COGS/margin visibility but must never increment seo_credits_used --
+    background work must not be able to trip the enforced bucket a user's own
+    searches would then get 429'd against. Asserted by spying on
+    snapshot_project's bill_credits kwarg, since that's the exact thread this
+    cron is required to pull."""
+    from app.workers.tasks import seo_tasks
+    from app.services import rank_tracking_service as rts
+    p_ok = await _mk_project(db_session)
+    await rts.add_keyword(p_ok, "kw", db_session)
+    calls = []
+
+    async def fake_snapshot_project(project, db, bill_credits=True):
+        calls.append(bill_credits)
+        return 0
+
+    with patch.object(seo_tasks, "snapshot_project", new=fake_snapshot_project), \
+         patch.object(seo_tasks, "async_session_factory", new=lambda: _single_session(db_session)):
+        await seo_tasks.run_rank_tracker(None)
+    assert calls == [False]
+
+
+@pytest.mark.asyncio
+async def test_snapshot_keyword_bill_credits_false_meters_without_crediting(db_session, monkeypatch):
+    """Cron path (bill_credits=False): fetch_serp's metering write still lands
+    (usage_event + cost_micros for COGS), but seo_credits_used must stay at 0
+    so a Starter org's cron-driven rank checks can never exhaust the bucket a
+    user's own searches draw from."""
+    from app.core import database as db_mod
+    from app.services import serp_service, rank_tracking_service as rts
+
+    monkeypatch.setattr(db_mod, "async_session_factory", TestSessionLocal)
+    db_session.add(CostRate(provider="dataforseo", unit="rank_check", model="", micro_dollars_per_unit=600))
+    await db_session.commit()
+
+    p = await _mk_project(db_session)
+    tk = await rts.add_keyword(p, "menu digital", db_session)
+
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(2)))):
+        snap = await rts.snapshot_keyword(p, tk, db_session, bill_credits=False)
+    assert snap is not None
+
+    ev = (await db_session.execute(select(UsageEvent).where(UsageEvent.org_id == FAKE_ORG_ID))).scalars().one()
+    assert ev.cost_micros == 600
+    ou = (await db_session.execute(select(OrgUsage).where(OrgUsage.org_id == FAKE_ORG_ID))).scalar_one()
+    assert ou.cost_micros == 600
+    assert ou.seo_credits_used == 0
+
+
+@pytest.mark.asyncio
+async def test_snapshot_keyword_default_still_bills_seo_credits(db_session, monkeypatch):
+    """User-initiated path (default bill_credits=True, e.g. the /refresh
+    endpoint) must keep billing exactly as before: rank_check carries weight 2
+    (app/core/credits.py SEO_CREDIT_WEIGHT)."""
+    from app.core import database as db_mod
+    from app.services import serp_service, rank_tracking_service as rts
+
+    monkeypatch.setattr(db_mod, "async_session_factory", TestSessionLocal)
+    db_session.add(CostRate(provider="dataforseo", unit="rank_check", model="", micro_dollars_per_unit=600))
+    await db_session.commit()
+
+    p = await _mk_project(db_session)
+    tk = await rts.add_keyword(p, "menu digital", db_session)
+
+    with patch.object(serp_service, "get_seo_provider_for_org",
+                      new=AsyncMock(return_value=_FakeProvider(_serp_items(2)))):
+        snap = await rts.snapshot_keyword(p, tk, db_session)
+    assert snap is not None
+
+    ou = (await db_session.execute(select(OrgUsage).where(OrgUsage.org_id == FAKE_ORG_ID))).scalar_one()
+    assert ou.seo_credits_used == 2
 
 
 # ── Task 5: /seo router (CRUD, history, refresh, provider-status, suggestions) ──

@@ -1,10 +1,12 @@
 """SERP Intelligence: tracked-keyword CRUD, history, refresh, provider-status, GSC suggestions."""
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.billing import require_credits
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.project import Project
@@ -74,7 +76,10 @@ async def remove_keyword(keyword_id: uuid.UUID, current_user: CurrentUser, db: D
 
 
 @router.post("/keywords/{keyword_id}/refresh")
-async def refresh_keyword(keyword_id: uuid.UUID, current_user: CurrentUser, db: DB):
+async def refresh_keyword(
+    keyword_id: uuid.UUID, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("seo"))],
+):
     tk = (await db.execute(select(TrackedKeyword).where(
         TrackedKeyword.id == keyword_id, TrackedKeyword.org_id == current_user.org_id))).scalars().first()
     if tk is None:
@@ -122,7 +127,10 @@ class ScoreContentIn(BaseModel):
 
 
 @router.post("/score")
-async def score_content(body: ScoreContentIn, current_user: CurrentUser, db: DB):
+async def score_content(
+    body: ScoreContentIn, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("seo"))],
+):
     project = await _assert_project(body.project_id, current_user.org_id, db)
     if body.article_id is None and body.url is None and body.text is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,

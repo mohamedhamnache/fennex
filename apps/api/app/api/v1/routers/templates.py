@@ -1,14 +1,14 @@
 """GET /templates and POST /images/from-template — template catalog and slot-based generation."""
 import uuid
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
 from app.core.dependencies import CurrentUser, DB
 from app.core.security import decrypt_api_key
-from app.core.billing import check_project_not_locked, increment_usage
+from app.core.billing import check_project_not_locked, increment_usage, require_credits
 from app.models.api_key import APIKey
 from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.image import GeneratedImage, ImageStatus, ImageUsage, ImageStyle
@@ -64,7 +64,12 @@ async def list_templates():
 
 
 @image_router.post("/from-template", response_model=ImageOut)
-async def generate_from_template(body: FromTemplateRequest, current_user: CurrentUser, db: DB):
+async def generate_from_template(
+    body: FromTemplateRequest,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     if body.template_id not in TEMPLATE_CATALOG:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown template: {body.template_id}")
 

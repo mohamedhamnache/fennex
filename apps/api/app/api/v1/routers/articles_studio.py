@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.core.billing import check_project_not_locked, check_usage_limit, increment_usage
+from app.core.billing import check_project_not_locked, check_usage_limit, increment_usage, require_credits
 from app.core.database import async_session_factory
 from app.core.dependencies import CurrentUser, DB
 from app.models.article import Article, ArticleRevision, ArticleStatus
@@ -72,7 +72,10 @@ async def _load_article_and_project(article_id: uuid.UUID, current_user: Current
 
 
 @router.post("/{article_id}/transform", response_model=TransformResponse)
-async def transform_selection(article_id: uuid.UUID, body: TransformRequest, current_user: CurrentUser, db: DB):
+async def transform_selection(
+    article_id: uuid.UUID, body: TransformRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     article, project = await _load_article_and_project(article_id, current_user, db)
     try:
         text = await writing_service.transform(project, body.mode, body.text, db)
@@ -88,7 +91,10 @@ async def transform_selection(article_id: uuid.UUID, body: TransformRequest, cur
 
 
 @router.post("/{article_id}/chat", response_model=ChatResponse)
-async def studio_chat(article_id: uuid.UUID, body: ChatRequest, current_user: CurrentUser, db: DB):
+async def studio_chat(
+    article_id: uuid.UUID, body: ChatRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     article, project = await _load_article_and_project(article_id, current_user, db)
     try:
         result = await writing_service.chat(
@@ -102,7 +108,10 @@ async def studio_chat(article_id: uuid.UUID, body: ChatRequest, current_user: Cu
 
 
 @router.post("/{article_id}/chat/stream")
-async def studio_chat_stream(article_id: uuid.UUID, body: ChatRequest, current_user: CurrentUser, db: DB):
+async def studio_chat_stream(
+    article_id: uuid.UUID, body: ChatRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
     """SSE variant of /chat: streams raw text chunks ({"d": ...}) and finishes
     with the parsed skill payload ({"done": true, "result": {...}})."""
     article, project = await _load_article_and_project(article_id, current_user, db)
@@ -145,6 +154,7 @@ async def studio_generate_stream(
     current_user: CurrentUser,
     db: DB,
     _: Annotated[None, Depends(check_usage_limit("articles"))],
+    __: Annotated[None, Depends(require_credits("ai"))],
 ):
     """SSE article generation: streams the draft as Dune writes it, then
     persists the finished article (meta, html, word count, SEO score,
