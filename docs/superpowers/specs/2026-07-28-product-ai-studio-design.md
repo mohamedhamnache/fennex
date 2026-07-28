@@ -27,7 +27,7 @@ Three gaps:
 - A composable `PromptBuilder` service, used by Product Showcase, Product to 3D
   **and the existing image tools**, with no prompt strings inside React.
 - **Product Showcase**: 15 premium environments plus full photographic control.
-- **Product to 3D**: Trellis, async, with an in-app viewer and 4 export formats.
+- **Product to 3D**: Trellis, async, with an in-app viewer and GLB + OBJ export.
 - Correct credit metering and cost for every new operation.
 - New tools (Product Video, Virtual Try-On, Relighting, Configurator) addable
   without touching the architecture.
@@ -165,29 +165,33 @@ while migrations create VALUES — the exact defect fixed by `x2planlabels3`.
 
 - quality: draft / high / ultra
 - texture_resolution: 2K / 4K / 8K
-- formats: GLB, OBJ, FBX, USDZ (multi-select)
+- formats: **GLB and OBJ** (multi-select)
 
 ### Format conversion
 
-Trellis emits **GLB only**. The other three are produced by a converter in
+Trellis emits **GLB only**. OBJ is produced by a converter in
 `apps/api/app/services/product3d/convert.py`, behind one interface so the
-backing tool can change:
+backing tool can change and further formats can be added later:
 
 ```python
 async def convert(glb_bytes: bytes, target: ModelFormat) -> bytes
 ```
 
-- **OBJ** — `trimesh` (pure Python, already-solvable, ships in the api image).
-- **FBX / USDZ** — require heavier tooling (assimp for FBX, `usd-core`/pxr for
-  USDZ) and materially grow the api image.
+- **GLB** — Trellis output, passed through unchanged.
+- **OBJ** — `trimesh` (pure Python, ships in the api image; exports the mesh
+  plus its `.mtl` and texture maps as a zip, since OBJ is multi-file).
 
-> **RISK, explicitly accepted by the product owner.** FBX is a proprietary
-> format and assimp's exporter loses PBR fidelity in some material setups; USDZ
-> conversion is sensitive to texture packing. Each format is implemented behind
-> `convert()` and gated by a capability probe: **a format that cannot be
-> produced reliably is not offered in the UI rather than silently returning a
-> broken asset.** If FBX or USDZ cannot be made to work within the task, the
-> implementer reports it instead of shipping a placeholder.
+**FBX and USDZ are deliberately out of scope for this iteration.** FBX is
+proprietary and assimp's exporter loses PBR fidelity in some material setups;
+USDZ is sensitive to texture packing. Both materially grow the api image. The
+`ModelFormat` enum and the `convert()` interface are shaped so either can be
+added later without touching callers, the job model or the UI wiring — but they
+are not offered in the UI now, rather than shipping a format that might return a
+broken asset.
+
+Conversion is gated by a capability probe: if a requested format cannot be
+produced, the job records the failure for that format and still returns the
+formats that succeeded, rather than failing the whole job.
 
 Conversions are metered (they consume compute) but are not separate Replicate
 calls, so they carry no supplier cost — only GLB generation does.
@@ -215,6 +219,10 @@ generic `replicate/run` default:
 |---|---|---|---|---|
 | replicate | run | `black-forest-labs/flux-kontext-pro` | 40_000 | $0.04/image, Replicate's published FLUX Kontext pro price |
 | replicate | run | Trellis (exact slug resolved at implementation) | 100_000 | $0.10/run placeholder — per-second GPU model, must be reconciled |
+
+`flux-kontext-pro` was seeded by migration `y5kontextrate9` (2026-07-28): it now
+bills 39 credits at $0.04 instead of 10 at the $0.01 default. Trellis remains
+outstanding and must be seeded with its task.
 
 **`flux-kontext-pro` is live today and has no rate**, so it currently bills at
 the `$0.01` default — a 4x under-charge on every existing product-scene call.
@@ -251,7 +259,9 @@ A 3D job that fails before Trellis returns must not bill.
   PromptBuilder (their existing tests must stay green).
 - **3D job**: enqueue → status transitions → asset urls; a Trellis failure marks
   the job failed, bills nothing, and surfaces the error.
-- **Conversion**: each supported format round-trips to a loadable mesh.
+- **Conversion**: GLB passes through unchanged; OBJ round-trips to a loadable
+  mesh with its material file. An unsupported format is rejected at the schema
+  boundary, not attempted.
 - **Credits**: a showcase run bills the Kontext rate; a 3D run bills the Trellis
   rate; both respect the floor; a failed run bills nothing.
 
