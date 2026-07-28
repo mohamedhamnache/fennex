@@ -8,6 +8,7 @@ import { generateProductScene, type GeneratedImage } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, XCircle, Store, ArrowRight, RefreshCw, ShoppingBag } from "lucide-react";
 import { ShowcaseControls, type ShowcaseAdvancedValues } from "./product/ShowcaseControls";
+import { ImageUrlField } from "./product/ImageUrlField";
 
 const SCENES = [
   { id: "white_studio",      label: "White Studio",  category: "packshot"  },
@@ -119,18 +120,7 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
 
       {/* Product inputs */}
       <div className="flex flex-col gap-3">
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
-            Product Image URL
-          </label>
-          <input
-            type="url"
-            value={productUrl}
-            onChange={(e) => setProductUrl(e.target.value)}
-            placeholder="https://your-store.com/product.jpg"
-            className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
+        <ImageUrlField value={productUrl} onChange={setProductUrl} />
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
             Product Description

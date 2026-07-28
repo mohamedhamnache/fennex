@@ -10,6 +10,7 @@ import { StyleGrid } from "./StyleGrid";
 import { PromptToolbar } from "./PromptToolbar";
 import { SocialTab } from "./SocialTab";
 import { ProductTab } from "./ProductTab";
+import { Product3DTab } from "./product3d/Product3DTab";
 import { MarketingTab } from "./MarketingTab";
 import { TemplatesTab } from "./TemplatesTab";
 import { PremiumTab } from "./PremiumTab";
@@ -131,7 +132,9 @@ export function StudioLeftPanel({
     ((brandKit.colors?.length ?? 0) > 0 || brandKit.style_rules || brandKit.tone)
   );
 
-  const [activeTab, setActiveTab] = useState<"generate" | "social" | "product" | "marketing" | "templates" | "premium">("generate");
+  const [activeTab, setActiveTab] = useState<
+    "generate" | "social" | "product" | "product3d" | "marketing" | "templates" | "premium"
+  >("generate");
   // When launched with an intent, force the matching content and hide the tab grid.
   const currentTab = intent ? INTENT_TO_TAB[intent] : activeTab;
   const [negExpanded, setNegExpanded] = useState(false);
@@ -203,12 +206,13 @@ export function StudioLeftPanel({
           <span className="text-sm font-semibold text-foreground">{INTENT_LABEL[intent]}</span>
         </div>
       ) : (
-        <div className="shrink-0 border-b border-border px-3 pt-2 pb-0 grid grid-cols-3 gap-x-1">
+        <div className="shrink-0 border-b border-border px-3 pt-2 pb-0 grid grid-cols-4 gap-x-1">
           {(
             [
               { id: "generate",  label: "Generate"  },
               { id: "social",    label: "Social"    },
               { id: "product",   label: "Product"   },
+              { id: "product3d", label: "3D"         },
               { id: "marketing", label: "Marketing" },
               { id: "templates", label: "Templates" },
               { id: "premium",   label: "Premium"   },
@@ -249,6 +253,13 @@ export function StudioLeftPanel({
       {currentTab === "product" && (
         <div className="flex-1 overflow-y-auto">
           <ProductTab projectId={projectId} useBrandKit={useBrandKit} />
+        </div>
+      )}
+
+      {/* Product-to-3D tab */}
+      {currentTab === "product3d" && (
+        <div className="flex-1 overflow-y-auto">
+          <Product3DTab projectId={projectId} />
         </div>
       )}
 

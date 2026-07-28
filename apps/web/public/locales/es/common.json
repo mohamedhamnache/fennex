@@ -2051,6 +2051,10 @@
       "title": "Fotografía tus productos",
       "desc": "Abre el Estudio de Producto para sincronizar Shopify / WooCommerce y fotografiar SKUs reales."
     },
+    "imageUrl": {
+      "label": "URL de la imagen del producto",
+      "placeholder": "https://tu-tienda.com/producto.jpg"
+    },
     "showcase": {
       "advanced": "Controles avanzados",
       "lighting": "Iluminación",
@@ -2073,6 +2077,49 @@
       "cost": "{{count}} créditos por ejecución",
       "remaining": "{{count}} restantes",
       "insufficientCredits": "No hay créditos suficientes para esta ejecución"
+    }
+  },
+  "product3dTab": {
+    "title": "Convierte una foto de producto en un modelo 3D",
+    "subtitle": "Genera un modelo GLB/OBJ giratorio que puedes previsualizar aquí e incorporar a una ficha de producto o una vista AR.",
+    "quality": "Calidad",
+    "qualityOption": {
+      "draft": "Borrador",
+      "high": "Alta",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Resolución de textura",
+    "formats": "Formatos",
+    "formatsRequired": "Elige al menos un formato",
+    "cost": "{{count}} créditos por ejecución",
+    "submitting": "Iniciando…",
+    "submit": "Convertir a 3D",
+    "genericFailure": "La conversión a 3D ha fallado.",
+    "status": {
+      "running": "Generando tu modelo 3D…",
+      "pending": "En cola…"
+    },
+    "noPreview": "No se generó ningún GLB, así que no hay nada que previsualizar aquí — el formato de abajo se descargó correctamente.",
+    "noOutput": "El trabajo terminó pero no produjo archivos utilizables.",
+    "newModel": "Convertir otro producto",
+    "viewer": {
+      "loading": "Cargando modelo…",
+      "loadError": "No se pudo cargar el modelo 3D.",
+      "autoRotate": "Rotación automática",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "wireframe": "Malla de alambre",
+      "materialPreview": "Vista previa de material",
+      "lighting": "Iluminación",
+      "lightingPreset": {
+        "studio": "Estudio",
+        "warm": "Cálida",
+        "neutral": "Neutra",
+        "dark": "Oscura"
+      },
+      "download": "Descargar {{format}}",
+      "fullscreen": "Pantalla completa",
+      "exitFullscreen": "Salir de pantalla completa"
     }
   },
   "productCopy": {

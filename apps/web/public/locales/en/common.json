@@ -2139,6 +2139,10 @@
       "title": "Shoot your store products",
       "desc": "Open the Product Studio to sync Shopify / WooCommerce and shoot real SKUs."
     },
+    "imageUrl": {
+      "label": "Product Image URL",
+      "placeholder": "https://your-store.com/product.jpg"
+    },
     "showcase": {
       "advanced": "Advanced controls",
       "lighting": "Lighting",
@@ -2161,6 +2165,49 @@
       "cost": "{{count}} credits per run",
       "remaining": "{{count}} remaining",
       "insufficientCredits": "Not enough credits for this run"
+    }
+  },
+  "product3dTab": {
+    "title": "Turn a product photo into a 3D model",
+    "subtitle": "Generates a rotatable GLB/OBJ model you can preview here and drop into a store listing or AR view.",
+    "quality": "Quality",
+    "qualityOption": {
+      "draft": "Draft",
+      "high": "High",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Texture resolution",
+    "formats": "Formats",
+    "formatsRequired": "Pick at least one format",
+    "cost": "{{count}} credits per run",
+    "submitting": "Starting…",
+    "submit": "Convert to 3D",
+    "genericFailure": "The 3D conversion failed.",
+    "status": {
+      "running": "Generating your 3D model…",
+      "pending": "Queued…"
+    },
+    "noPreview": "No GLB was produced, so there is nothing to preview here — the format below still downloaded successfully.",
+    "noOutput": "The job finished but produced no usable files.",
+    "newModel": "Convert another product",
+    "viewer": {
+      "loading": "Loading model…",
+      "loadError": "Could not load the 3D model.",
+      "autoRotate": "Auto-rotate",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "wireframe": "Wireframe",
+      "materialPreview": "Material preview",
+      "lighting": "Lighting",
+      "lightingPreset": {
+        "studio": "Studio",
+        "warm": "Warm",
+        "neutral": "Neutral",
+        "dark": "Dark"
+      },
+      "download": "Download {{format}}",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen"
     }
   },
   "productCopy": {

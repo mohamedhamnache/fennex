@@ -2051,6 +2051,10 @@
       "title": "Deine Store-Produkte shooten",
       "desc": "Öffne das Produktstudio, um Shopify / WooCommerce zu synchronisieren und echte SKUs zu shooten."
     },
+    "imageUrl": {
+      "label": "Produktbild-URL",
+      "placeholder": "https://dein-shop.com/produkt.jpg"
+    },
     "showcase": {
       "advanced": "Erweiterte Einstellungen",
       "lighting": "Beleuchtung",
@@ -2073,6 +2077,49 @@
       "cost": "{{count}} Credits pro Durchlauf",
       "remaining": "{{count}} übrig",
       "insufficientCredits": "Nicht genügend Credits für diesen Durchlauf"
+    }
+  },
+  "product3dTab": {
+    "title": "Aus einem Produktfoto ein 3D-Modell erstellen",
+    "subtitle": "Erzeugt ein drehbares GLB/OBJ-Modell, das du hier direkt ansehen und in einen Shop-Eintrag oder eine AR-Ansicht einbinden kannst.",
+    "quality": "Qualität",
+    "qualityOption": {
+      "draft": "Entwurf",
+      "high": "Hoch",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Texturauflösung",
+    "formats": "Formate",
+    "formatsRequired": "Wähle mindestens ein Format",
+    "cost": "{{count}} Credits pro Durchlauf",
+    "submitting": "Wird gestartet…",
+    "submit": "In 3D umwandeln",
+    "genericFailure": "Die 3D-Umwandlung ist fehlgeschlagen.",
+    "status": {
+      "running": "Dein 3D-Modell wird erstellt…",
+      "pending": "In Warteschlange…"
+    },
+    "noPreview": "Es wurde keine GLB-Datei erzeugt, daher gibt es hier nichts zum Anzeigen — das Format unten wurde trotzdem erfolgreich heruntergeladen.",
+    "noOutput": "Der Auftrag wurde abgeschlossen, hat aber keine verwendbaren Dateien erzeugt.",
+    "newModel": "Weiteres Produkt umwandeln",
+    "viewer": {
+      "loading": "Modell wird geladen…",
+      "loadError": "Das 3D-Modell konnte nicht geladen werden.",
+      "autoRotate": "Automatische Drehung",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "wireframe": "Drahtgitter",
+      "materialPreview": "Materialvorschau",
+      "lighting": "Beleuchtung",
+      "lightingPreset": {
+        "studio": "Studio",
+        "warm": "Warm",
+        "neutral": "Neutral",
+        "dark": "Dunkel"
+      },
+      "download": "{{format}} herunterladen",
+      "fullscreen": "Vollbild",
+      "exitFullscreen": "Vollbild beenden"
     }
   },
   "productCopy": {
