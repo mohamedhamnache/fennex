@@ -5,8 +5,14 @@ Revises: t9scaleenum1
 
 s8seorates01 seeded every replicate/run row at a flat 5000 micro-$ ($0.005)
 placeholder. That is materially wrong for the one model that is billed
-per-image rather than per-second, so this migration replaces the flat rate
-with per-model values derived from Replicate's published pricing.
+per-image rather than per-second, so this migration versions in per-model
+values derived from Replicate's published pricing, superseding the flat rate
+without rewriting it: cost_rates rows are versioned by effective_from (part
+of the primary key -- see app/models/cost_rate.py), so a price change is a
+new row at a later effective_from, never an UPDATE of an existing one.
+meter.rate() resolves the newest row per (provider, unit, model), so the
+s8seorates01 rows stay in place as history and the new rows below take over
+automatically once their effective_from is reached.
 
 Sourcing (retrieved 2026-07-28):
   * https://replicate.com/pricing -- hardware per-second rates:
@@ -39,9 +45,10 @@ CONFIDENCE -- read before trusting these for margin reporting:
   should be estimated conservatively (over- rather than under-charging Fennex's
   own margin model) rather than assumed cheap.
 
-TO CORRECT: these are cost_rates rows -- a plain UPDATE, no redeploy needed.
-Replicate's billing dashboard reports actual per-model spend; reconcile against
-it once there is production volume.
+TO CORRECT: insert another versioned row at a later effective_from -- never
+UPDATE an existing cost_rates row, that destroys the audit trail of what was
+charged when. Replicate's billing dashboard reports actual per-model spend;
+reconcile against it once there is production volume.
 """
 from alembic import op
 
@@ -50,6 +57,11 @@ down_revision = "t9scaleenum1"
 branch_labels = None
 depends_on = None
 
+# Fixed, deterministic effective_from -- strictly later than the
+# s8seorates01 seed rows (which default to insert-time now()) -- so this
+# migration is reproducible and testable rather than depending on wall-clock
+# time at apply-time.
+_EFFECTIVE_FROM = "2026-07-28 00:00:00+00"
 
 _RATES = {
     "": 10_000,
@@ -65,15 +77,19 @@ _RATES = {
 def upgrade() -> None:
     for model, micros in _RATES.items():
         op.execute(
-            "UPDATE cost_rates SET micro_dollars_per_unit = %d "
-            "WHERE provider = 'replicate' AND unit = 'run' AND model = '%s'"
-            % (micros, model)
+            "INSERT INTO cost_rates (provider, unit, model, effective_from, micro_dollars_per_unit) "
+            "VALUES ('replicate', 'run', '%s', '%s', %d)"
+            % (model, _EFFECTIVE_FROM, micros)
         )
 
 
 def downgrade() -> None:
-    # Back to the flat placeholder s8seorates01 established.
-    op.execute(
-        "UPDATE cost_rates SET micro_dollars_per_unit = 5000 "
-        "WHERE provider = 'replicate' AND unit = 'run'"
-    )
+    # Delete exactly the rows this migration inserted (matched on the full
+    # PK, including effective_from), leaving the s8seorates01 placeholder
+    # rows -- and any other history -- untouched.
+    for model in _RATES:
+        op.execute(
+            "DELETE FROM cost_rates "
+            "WHERE provider = 'replicate' AND unit = 'run' AND model = '%s' AND effective_from = '%s'"
+            % (model, _EFFECTIVE_FROM)
+        )

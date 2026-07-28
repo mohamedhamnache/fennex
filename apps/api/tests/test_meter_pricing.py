@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import select
@@ -72,6 +73,24 @@ async def test_anthropic_cache_read_is_additive_not_subtracted():
         cost = await meter.record_llm(db, org_id=org, project_id=None, usage=usage)
         # 100*5.0 + 10*25.0 + 20*0.5 = 500 + 250 + 10 = 760
         assert cost == 760
+
+
+async def test_rate_resolves_to_newest_effective_from_row():
+    """cost_rates are versioned by effective_from (part of the PK) so a price
+    change inserts a new row rather than rewriting the old one. rate() must
+    pick the newest row, not the first/oldest, for the same
+    (provider, unit, model)."""
+    await _seed(
+        CostRate(provider="replicate", unit="run", model="black-forest-labs/flux-fill-pro",
+                  micro_dollars_per_unit=5_000,
+                  effective_from=datetime(2026, 1, 1, tzinfo=timezone.utc)),
+        CostRate(provider="replicate", unit="run", model="black-forest-labs/flux-fill-pro",
+                  micro_dollars_per_unit=50_000,
+                  effective_from=datetime(2026, 7, 28, tzinfo=timezone.utc)),
+    )
+    async with Session() as db:
+        resolved = await meter.rate(db, "replicate", "run", "black-forest-labs/flux-fill-pro")
+        assert resolved == 50_000
 
 
 async def test_missing_cost_rate_logs_warning_and_prices_zero(caplog):
