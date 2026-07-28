@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.credits import credit_allowance, credits_from_micros, seo_credit_allowance
+from app.core.credits import credit_allowance, seo_credit_allowance
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser, DB, get_current_user
 from app.models.billing import OrgUsage
@@ -246,7 +246,10 @@ async def current_credits(db: AsyncSession, org: Organization, bucket: str) -> t
     )
     row = result.scalar_one_or_none()
     if bucket == "ai":
-        used = credits_from_micros(getattr(row, "ai_cost_micros", 0) if row else 0)
+        # ai_credits_used is a COUNTER accumulated per operation at meter
+        # time (with the Replicate pricing floor baked in), not a
+        # derivation from ai_cost_micros -- see app.core.credits.
+        used = (getattr(row, "ai_credits_used", 0) if row else 0)
         return used, credit_allowance(tier)
     used = (getattr(row, "seo_credits_used", 0) if row else 0)
     return used, seo_credit_allowance(tier)

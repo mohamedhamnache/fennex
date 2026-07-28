@@ -44,6 +44,10 @@ async def test_record_llm_prices_and_rolls_up():
         ))).scalar_one()
         assert ou.ai_input_tokens == 1000 and ou.ai_output_tokens == 200
         assert ou.ai_requests == 1 and ou.cost_micros == 270
+        # LLM credits are cost-derived and UNFLOORED -- the 10-credit floor
+        # applies only to Replicate ("edit") operations. 270 micros is well
+        # under one credit's floor value, proving it does not leak here.
+        assert ou.ai_credits_used == 1
 
 
 async def test_record_seo_prices_and_rolls_up():

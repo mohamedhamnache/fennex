@@ -49,6 +49,28 @@ def credit_allowance(plan_tier: str) -> int:
 
 
 # --------------------------------------------------------------------------
+# Replicate pricing floor (billing v2, 2026-07-28)
+# --------------------------------------------------------------------------
+
+MIN_REPLICATE_CREDITS = 10  # pricing floor: a Replicate edit never bills less
+
+
+def replicate_operation_credits(cost_micros: int) -> int:
+    """Credits billed for ONE Replicate prediction: the cost-derived amount,
+    floored.
+
+    Only Replicate ("edit" kind) operations get this floor -- several of the
+    cheaper community models cost a few GPU-seconds, well under one credit's
+    worth. A free/zero-cost run bills nothing; anything that cost real money
+    bills at least MIN_REPLICATE_CREDITS. LLM and image credits are NOT
+    floored (see record_llm/record_image in app/services/metering/meter.py).
+    """
+    if cost_micros <= 0:
+        return 0
+    return max(MIN_REPLICATE_CREDITS, credits_from_micros(cost_micros))
+
+
+# --------------------------------------------------------------------------
 # SEO credits (counted per DataForSEO task)
 # --------------------------------------------------------------------------
 

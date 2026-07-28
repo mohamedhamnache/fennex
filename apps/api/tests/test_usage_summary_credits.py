@@ -1,9 +1,11 @@
 """Task 8: GET /usage/summary serves both the AI and SEO credit buckets.
 
 Mirrors the router-test harness used by test_credit_enforcement.py (in-memory
-SQLite, ASGITransport, get_db/get_current_user overrides). AI credits must
-derive from ai_cost_micros (AI-only), not the total cost_micros which also
-carries SEO spend.
+SQLite, ASGITransport, get_db/get_current_user overrides). AI credits are a
+COUNTER (ai_credits_used) accumulated per operation at meter time -- not
+derived from ai_cost_micros. ai_cost_micros stays the true, unfloored
+supplier cost and is seeded here only to prove the endpoint does NOT
+re-derive credits from it.
 """
 import uuid
 from types import SimpleNamespace
@@ -99,14 +101,18 @@ async def test_usage_summary_reports_both_buckets(client, db, org, auth_headers)
         org_id=org.id,
         period_start=current_billing_period_start(),
         cost_micros=1_155_000,     # total, incl. SEO
-        ai_cost_micros=1_050_000,  # AI only -> exactly 1_000 credits
+        # Deliberately NOT ai_credits_used's credits_from_micros() value --
+        # if the endpoint re-derived from cost instead of reading the
+        # counter, this assertion would catch it.
+        ai_cost_micros=1_050_000,
+        ai_credits_used=1_000,
         seo_credits_used=90,
     ))
     await db.commit()
 
     body = (await client.get("/api/v1/usage/summary", headers=auth_headers)).json()
 
-    # AI credits derive from ai_cost_micros, NOT from the larger total
+    # AI credits come from the ai_credits_used counter, NOT derived from cost
     assert body["credits_used"] == 1_000
     assert body["credits_allowance"] == 5_000
     assert body["credits_remaining"] == 4_000

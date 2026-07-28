@@ -47,3 +47,51 @@ async def test_backfill_splits_ai_cost_and_counts_seo_credits():
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
         assert ou.ai_cost_micros == 72_000   # llm + image + edit only
         assert ou.seo_credits_used == 9      # 4 serp + 1 audit (weight 5)
+        # ai_credits_used: llm 2_000 -> 2 (unfloored) + image 60_000 -> 58
+        # (unfloored) + edit 10_000 -> 10 (Replicate floor, already at 10
+        # unfloored so this case doesn't exercise it -- see the dedicated
+        # floor tests below).
+        assert ou.ai_credits_used == 70
+
+
+async def test_backfill_floors_cheap_replicate_events_per_event():
+    """The Replicate pricing floor must be applied to EACH event before
+    summing, not to the org's total -- flooring the total would badly
+    under-count an org with several cheap predictions."""
+    org = uuid.uuid4()
+    period = dt.date(2026, 7, 1)
+    ts = dt.datetime(2026, 7, 10, tzinfo=dt.timezone.utc)
+    async with Session() as db:
+        db.add_all([
+            UsageEvent(org_id=org, ts=ts, kind="edit", provider="replicate",
+                       model="nightmareai/real-esrgan", cost_micros=2_000)
+            for _ in range(3)
+        ])
+        await db.commit()
+
+        assert await backfill_credit_split(db, period) == 1
+
+        ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
+        assert ou.ai_cost_micros == 6_000   # true cost: unfloored, summed
+        assert ou.ai_credits_used == 30     # 3 * MIN_REPLICATE_CREDITS -- per-event floor
+
+
+async def test_backfill_does_not_floor_cheap_llm_events():
+    """The floor is Replicate-only -- cheap LLM events must NOT be floored,
+    even though they are just as cheap as the Replicate case above."""
+    org = uuid.uuid4()
+    period = dt.date(2026, 7, 1)
+    ts = dt.datetime(2026, 7, 10, tzinfo=dt.timezone.utc)
+    async with Session() as db:
+        db.add_all([
+            UsageEvent(org_id=org, ts=ts, kind="llm", provider="openai",
+                       model="gpt-4o-mini", cost_micros=2_000)
+            for _ in range(3)
+        ])
+        await db.commit()
+
+        assert await backfill_credit_split(db, period) == 1
+
+        ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
+        assert ou.ai_cost_micros == 6_000
+        assert ou.ai_credits_used == 6   # 3 * credits_from_micros(2_000) == 3*2, unfloored

@@ -27,9 +27,14 @@ class OrgUsage(Base):
     ai_requests: Mapped[int] = mapped_column(BigInteger, default=0)
     seo_serp: Mapped[int] = mapped_column(BigInteger, default=0)
     seo_keyword_analyses: Mapped[int] = mapped_column(BigInteger, default=0)
-    # AI-only cost subtotal. AI credits derive from THIS, not cost_micros
-    # (which is the true total and also carries SEO spend).
+    # AI-only cost subtotal: the TRUE, unfloored supplier cost. Feeds
+    # COGS/margin reporting (admin dashboard) -- must never be inflated.
     ai_cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
+    # AI credits billed, accumulated per operation at meter time (NOT
+    # derived from ai_cost_micros). Replicate ("edit") operations have the
+    # MIN_REPLICATE_CREDITS floor baked in here; LLM/image do not -- see
+    # app.core.credits.
+    ai_credits_used: Mapped[int] = mapped_column(BigInteger, default=0)
     # SEO credits are counted per DataForSEO task, not derived from cost.
     seo_credits_used: Mapped[int] = mapped_column(Integer, default=0)
     cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)

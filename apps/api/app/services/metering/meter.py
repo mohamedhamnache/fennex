@@ -6,7 +6,7 @@ import uuid
 from sqlalchemy import select
 
 from app.core.billing import current_billing_period_start
-from app.core.credits import seo_credits_for
+from app.core.credits import credits_from_micros, replicate_operation_credits, seo_credits_for
 from app.models.billing import OrgUsage
 from app.models.cost_rate import CostRate
 from app.models.usage_event import UsageEvent
@@ -79,7 +79,7 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
     ))
     await _bump_org_usage(db, org_id, ai_input_tokens=usage.input_tokens,
                           ai_output_tokens=usage.output_tokens, ai_requests=1, cost_micros=cost,
-                          ai_cost_micros=cost)
+                          ai_cost_micros=cost, ai_credits_used=credits_from_micros(cost))
     await db.commit()
     return cost
 
@@ -93,7 +93,8 @@ async def record_image(db, *, org_id: uuid.UUID, project_id, model: str,
         org_id=org_id, project_id=project_id, kind="image", provider="openai",
         model=model, feature=feature, cost_micros=cost,
     ))
-    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost)
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost,
+                          ai_credits_used=credits_from_micros(cost))
     await db.commit()
     return cost
 
@@ -110,7 +111,10 @@ async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
         org_id=org_id, project_id=project_id, kind="edit", provider="replicate",
         model=model, feature=feature, cost_micros=cost,
     ))
-    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost)
+    # cost_micros/ai_cost_micros stay the TRUE unfloored cost; only the
+    # credit counter gets the Replicate pricing floor.
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost,
+                          ai_credits_used=replicate_operation_credits(cost))
     await db.commit()
     return cost
 

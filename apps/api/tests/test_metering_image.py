@@ -43,3 +43,6 @@ async def test_record_image_writes_event_and_consumes_ai_credits():
         assert ou.cost_micros == 60_000       # counts toward the true total
         assert ou.ai_cost_micros == 60_000    # and toward the AI bucket
         assert credits_from_micros(ou.ai_cost_micros) == 58
+        # Image generation is NOT subject to the Replicate-only floor -- the
+        # counter matches the unfloored cost-derived credits.
+        assert ou.ai_credits_used == 58

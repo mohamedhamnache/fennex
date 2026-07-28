@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.admin_auth import AdminContext, require_admin
 from app.core.billing import current_billing_period_start
-from app.core.credits import credit_allowance, credits_from_micros, seo_credit_allowance
+from app.core.credits import credit_allowance, seo_credit_allowance
 from app.core.database import get_db
 from app.core.security import create_access_token
 from app.models.billing import OrgUsage
@@ -38,12 +38,16 @@ def _usage_rollup_subquery():
     with no monthly cap to compare against, and an org's totals shouldn't
     silently drop history as months roll over.
 
-    ai_cost_micros/seo_credits_used are summed for the CURRENT period ONLY.
+    ai_credits_used/seo_credits_used are summed for the CURRENT period ONLY.
     These feed ai_credits_used/seo_credits_used in _serialize_row, which are
     compared against credit_allowance()/seo_credit_allowance() -- MONTHLY
     allowances (see app.core.credits, app.core.billing.require_credits).
     Summing them lifetime would show every long-lived org permanently over
     100%, disagreeing with /usage/summary and with enforcement.
+
+    ai_credits_used is the billed-credit COUNTER (with the Replicate pricing
+    floor baked in at meter time), not a derivation from ai_cost_micros --
+    see app.core.credits.
     """
     current_period = OrgUsage.period_start == current_billing_period_start()
     return (
@@ -52,7 +56,7 @@ def _usage_rollup_subquery():
             func.sum(OrgUsage.ai_requests).label("ai_requests"),
             func.sum(OrgUsage.seo_serp).label("seo_count"),
             func.sum(OrgUsage.cost_micros).label("cost_micros"),
-            func.sum(case((current_period, OrgUsage.ai_cost_micros), else_=0)).label("ai_cost_micros"),
+            func.sum(case((current_period, OrgUsage.ai_credits_used), else_=0)).label("ai_credits_used"),
             func.sum(case((current_period, OrgUsage.seo_credits_used), else_=0)).label("seo_credits_used"),
         )
         .group_by(OrgUsage.org_id)
@@ -78,7 +82,7 @@ def _project_count_subquery():
 
 def _serialize_row(org: Organization, user_count: int, project_count: int,
                    ai_requests: int, seo_count: int, cost_micros: int,
-                   ai_cost_micros: int = 0, seo_credits_used: int = 0) -> dict:
+                   ai_credits_used: int = 0, seo_credits_used: int = 0) -> dict:
     cost_micros = int(cost_micros or 0)
     tier = org.plan_tier.value if org.plan_tier else None
     return {
@@ -94,7 +98,7 @@ def _serialize_row(org: Organization, user_count: int, project_count: int,
         "cost_usd": cost_micros / 1_000_000,
         "ai_requests": int(ai_requests or 0),
         "seo_count": int(seo_count or 0),
-        "ai_credits_used": credits_from_micros(int(ai_cost_micros or 0)),
+        "ai_credits_used": int(ai_credits_used or 0),
         "ai_credits_allowance": credit_allowance(tier),
         "seo_credits_used": int(seo_credits_used or 0),
         "seo_credits_allowance": seo_credit_allowance(tier),
@@ -125,7 +129,7 @@ async def list_orgs(
             usage_sq.c.ai_requests,
             usage_sq.c.seo_count,
             usage_sq.c.cost_micros,
-            usage_sq.c.ai_cost_micros,
+            usage_sq.c.ai_credits_used,
             usage_sq.c.seo_credits_used,
         )
         .outerjoin(users_sq, users_sq.c.org_id == Organization.id)
@@ -169,9 +173,9 @@ async def list_orgs(
 
     items = [
         _serialize_row(org, user_count, project_count, ai_requests, seo_count, cost_micros,
-                       ai_cost_micros, seo_credits_used)
+                       ai_credits_used, seo_credits_used)
         for org, user_count, project_count, ai_requests, seo_count, cost_micros,
-            ai_cost_micros, seo_credits_used in rows
+            ai_credits_used, seo_credits_used in rows
     ]
 
     return {"items": items, "total": int(total), "page": page, "page_size": page_size}
@@ -195,7 +199,7 @@ async def get_org(
         )
     ).scalar_one()
 
-    # See _usage_rollup_subquery: ai_cost_micros/seo_credits_used are current-
+    # See _usage_rollup_subquery: ai_credits_used/seo_credits_used are current-
     # period only (compared against monthly allowances); the rest stay lifetime.
     current_period = OrgUsage.period_start == current_billing_period_start()
     usage_row = (
@@ -205,8 +209,8 @@ async def get_org(
                 func.coalesce(func.sum(OrgUsage.seo_serp), 0).label("seo_count"),
                 func.coalesce(func.sum(OrgUsage.cost_micros), 0).label("cost_micros"),
                 func.coalesce(
-                    func.sum(case((current_period, OrgUsage.ai_cost_micros), else_=0)), 0
-                ).label("ai_cost_micros"),
+                    func.sum(case((current_period, OrgUsage.ai_credits_used), else_=0)), 0
+                ).label("ai_credits_used"),
                 func.coalesce(
                     func.sum(case((current_period, OrgUsage.seo_credits_used), else_=0)), 0
                 ).label("seo_credits_used"),
@@ -224,7 +228,7 @@ async def get_org(
     payload = _serialize_row(
         org, user_count, project_count,
         usage_row.ai_requests, usage_row.seo_count, usage_row.cost_micros,
-        usage_row.ai_cost_micros, usage_row.seo_credits_used,
+        usage_row.ai_credits_used, usage_row.seo_credits_used,
     )
     payload.update({
         "suspended_reason": org.suspended_reason,

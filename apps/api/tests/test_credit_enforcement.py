@@ -14,7 +14,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.billing import PLAN_LIMITS, current_billing_period_start
-from app.core.credits import CREDIT_MICROS, PLAN_CREDITS, SEO_PLAN_CREDITS
+from app.core.credits import PLAN_CREDITS, SEO_PLAN_CREDITS
 from app.core.database import Base, get_db
 from app.core.dependencies import get_current_user
 from app.main import app
@@ -83,7 +83,7 @@ async def override_get_current_user():
     return fake_user
 
 
-async def _seed(ai_cost_micros: int = 0, seo_credits_used: int = 0):
+async def _seed(ai_credits_used: int = 0, seo_credits_used: int = 0):
     tables = [Base.metadata.tables[name] for name in SQLITE_COMPATIBLE_TABLES if name in Base.metadata.tables]
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all, tables=tables)
@@ -92,7 +92,7 @@ async def _seed(ai_cost_micros: int = 0, seo_credits_used: int = 0):
         session.add(Project(id=FAKE_PROJECT_ID, org_id=FAKE_ORG_ID, name="Site", domain="site.example"))
         session.add(OrgUsage(
             org_id=FAKE_ORG_ID, period_start=current_billing_period_start(),
-            ai_cost_micros=ai_cost_micros, seo_credits_used=seo_credits_used,
+            ai_credits_used=ai_credits_used, seo_credits_used=seo_credits_used,
         ))
         await session.commit()
 
@@ -121,11 +121,10 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_ai_bucket_full_returns_429(client):
-    """Starter org whose ai_cost_micros exactly fills the AI credit bucket
-    gets a 429 credit_limit_reached on an endpoint guarded by
+    """Starter org whose ai_credits_used counter exactly fills the AI credit
+    bucket gets a 429 credit_limit_reached on an endpoint guarded by
     require_credits("ai") -- here, image generation."""
-    full_micros = PLAN_CREDITS["starter"] * CREDIT_MICROS
-    await _seed(ai_cost_micros=full_micros)
+    await _seed(ai_credits_used=PLAN_CREDITS["starter"])
     try:
         resp = await client.post(
             "/api/v1/images/generate",
@@ -147,8 +146,8 @@ async def test_ai_bucket_full_returns_429(client):
 async def test_ai_bucket_at_85_pct_succeeds_with_warning_header(client):
     """At ~85% of the AI bucket, the request still succeeds but carries
     X-Usage-Warning."""
-    near_full_micros = int(PLAN_CREDITS["starter"] * CREDIT_MICROS * 0.85)
-    await _seed(ai_cost_micros=near_full_micros)
+    near_full = int(PLAN_CREDITS["starter"] * 0.85)
+    await _seed(ai_credits_used=near_full)
     try:
         resp = await client.post(
             "/api/v1/images/generate",

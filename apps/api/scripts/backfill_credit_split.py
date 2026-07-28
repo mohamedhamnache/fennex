@@ -1,14 +1,20 @@
 """One-off backfill: split existing usage_events into the org_usage credit
-columns added by the "org_usage credit split" migration (ai_cost_micros,
-seo_credits_used).
+columns (ai_cost_micros, ai_credits_used, seo_credits_used).
 
-Why: those two columns default to 0. Orgs metered before this split shipped
-have real usage_events but zero in the new columns, so their credit balance
-would read empty (unspent) until their next metered event recomputes it --
-wrong for anyone checking balance today. This script recomputes both columns
-from the ledger (the source of truth) for a given billing period and upserts
-them into org_usage, without touching the pre-existing cost_micros/*_used
+Why: those columns default to 0. Orgs metered before this split (or before
+the min-credits floor) shipped have real usage_events but zero/stale values
+in these columns, so their credit balance would read empty (unspent) or
+wrong until their next metered event recomputes it -- wrong for anyone
+checking balance today. This script recomputes all three columns from the
+ledger (the source of truth) for a given billing period and upserts them
+into org_usage, without touching the pre-existing cost_micros/*_used
 columns.
+
+ai_credits_used is summed PER EVENT, not from the org's total cost: the
+Replicate pricing floor (app.core.credits.replicate_operation_credits)
+applies per prediction, so flooring an org's summed total instead would
+under-count every org with more than one cheap Replicate call. LLM/image
+events are never floored -- only kind == "edit" (Replicate) is.
 
 Usage:
     python -m scripts.backfill_credit_split               # current period
@@ -21,10 +27,10 @@ import logging
 import sys
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.credits import AI_KINDS, seo_credits_for
+from app.core.credits import AI_KINDS, credits_from_micros, replicate_operation_credits, seo_credits_for
 from app.core.database import async_session_factory
 from app.core.billing import current_billing_period_start
 from app.models.billing import OrgUsage
@@ -39,21 +45,29 @@ def _next_month(period_start: dt.date) -> dt.date:
 
 
 async def backfill_credit_split(db: AsyncSession, period_start: dt.date) -> int:
-    """Recompute ai_cost_micros and seo_credits_used from usage_events for every
-    org active in `[period_start, next month)`, upserting into that org's
-    org_usage row for the period. Returns the number of orgs updated."""
+    """Recompute ai_cost_micros, ai_credits_used, and seo_credits_used from
+    usage_events for every org active in `[period_start, next month)`,
+    upserting into that org's org_usage row for the period. Returns the
+    number of orgs updated."""
     period_end = _next_month(period_start)
 
-    ai_cost_rows = (await db.execute(
-        select(UsageEvent.org_id, func.sum(UsageEvent.cost_micros))
+    ai_event_rows = (await db.execute(
+        select(UsageEvent.org_id, UsageEvent.kind, UsageEvent.cost_micros)
         .where(
             UsageEvent.ts >= period_start,
             UsageEvent.ts < period_end,
             UsageEvent.kind.in_(AI_KINDS),
         )
-        .group_by(UsageEvent.org_id)
     )).all()
-    ai_cost_by_org: dict[uuid.UUID, int] = {org_id: int(total or 0) for org_id, total in ai_cost_rows}
+    ai_cost_by_org: dict[uuid.UUID, int] = {}
+    ai_credits_by_org: dict[uuid.UUID, int] = {}
+    for org_id, kind, cost_micros in ai_event_rows:
+        cost_micros = int(cost_micros or 0)
+        ai_cost_by_org[org_id] = ai_cost_by_org.get(org_id, 0) + cost_micros
+        # Only Replicate ("edit") predictions get the pricing floor.
+        credits = (replicate_operation_credits(cost_micros) if kind == "edit"
+                  else credits_from_micros(cost_micros))
+        ai_credits_by_org[org_id] = ai_credits_by_org.get(org_id, 0) + credits
 
     seo_event_rows = (await db.execute(
         select(UsageEvent.org_id, UsageEvent.seo_unit, UsageEvent.seo_count)
@@ -77,6 +91,7 @@ async def backfill_credit_split(db: AsyncSession, period_start: dt.date) -> int:
             row = OrgUsage(org_id=org_id, period_start=period_start)
             db.add(row)
         row.ai_cost_micros = ai_cost_by_org.get(org_id, 0)
+        row.ai_credits_used = ai_credits_by_org.get(org_id, 0)
         row.seo_credits_used = seo_credits_by_org.get(org_id, 0)
         updated += 1
 

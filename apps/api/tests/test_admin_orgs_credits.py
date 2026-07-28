@@ -6,7 +6,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.admin_auth import create_admin_token
-from app.core.credits import credits_from_micros, credit_allowance, seo_credit_allowance
+from app.core.credits import credit_allowance, seo_credit_allowance
 from app.core.database import Base, get_db
 from app.core.security import pwd_context
 from app.main import app
@@ -26,6 +26,11 @@ TODAY = dt.date.today()
 # pattern used in test_admin_orgs.py.
 AI_COST_MICROS_1 = 3_000_000
 AI_COST_MICROS_2 = 1_500_000
+# Deliberately NOT credits_from_micros(AI_COST_MICROS_*) -- ai_credits_used
+# is a counter, not a cost derivation, and these values prove the admin
+# payload reads the counter rather than re-deriving from ai_cost_micros.
+AI_CREDITS_USED_1 = 2_858
+AI_CREDITS_USED_2 = 1_429
 SEO_CREDITS_1 = 12
 SEO_CREDITS_2 = 4
 
@@ -50,11 +55,11 @@ async def setup_db():
 
         db.add_all([
             OrgUsage(org_id=ORG_ACME, period_start=TODAY.replace(day=1),
-                    ai_cost_micros=AI_COST_MICROS_1, seo_credits_used=SEO_CREDITS_1,
-                    cost_micros=AI_COST_MICROS_1),
+                    ai_cost_micros=AI_COST_MICROS_1, ai_credits_used=AI_CREDITS_USED_1,
+                    seo_credits_used=SEO_CREDITS_1, cost_micros=AI_COST_MICROS_1),
             OrgUsage(org_id=ORG_ACME, period_start=TODAY.replace(day=1) - dt.timedelta(days=31),
-                    ai_cost_micros=AI_COST_MICROS_2, seo_credits_used=SEO_CREDITS_2,
-                    cost_micros=AI_COST_MICROS_2),
+                    ai_cost_micros=AI_COST_MICROS_2, ai_credits_used=AI_CREDITS_USED_2,
+                    seo_credits_used=SEO_CREDITS_2, cost_micros=AI_COST_MICROS_2),
         ])
         await db.commit()
 
@@ -77,10 +82,11 @@ def _bearer():
 
 
 def _expected_ai_credits() -> int:
-    # Credits are MONTHLY: only the current-period row (AI_COST_MICROS_1)
-    # counts. AI_COST_MICROS_2 sits in a prior period and must NOT be summed
-    # in, or a long-lived org would read permanently over its allowance.
-    return credits_from_micros(AI_COST_MICROS_1)
+    # Credits are MONTHLY: only the current-period row (AI_CREDITS_USED_1)
+    # counts. AI_CREDITS_USED_2 sits in a prior period and must NOT be
+    # summed in, or a long-lived org would read permanently over its
+    # allowance.
+    return AI_CREDITS_USED_1
 
 
 def _expected_seo_credits() -> int:

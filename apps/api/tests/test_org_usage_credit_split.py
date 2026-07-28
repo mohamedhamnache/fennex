@@ -30,6 +30,7 @@ async def test_credit_split_columns_default_to_zero():
         row = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
         assert row.ai_cost_micros == 0
         assert row.seo_credits_used == 0
+        assert row.ai_credits_used == 0
 
 
 async def test_ai_credits_derive_from_ai_cost_not_total_cost():

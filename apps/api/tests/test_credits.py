@@ -48,6 +48,21 @@ def test_seo_credits_weighted_by_unit():
     assert seo_credits_for("serp", 0) == 0
 
 
+def test_replicate_operation_credits_floors_cheap_predictions():
+    """The 10-credit floor applies ONLY to Replicate ('edit' kind)
+    operations -- a real-esrgan/codeformer-class call is a few GPU-seconds
+    (well under one credit's worth of cost) but must still bill the floor."""
+    from app.core.credits import MIN_REPLICATE_CREDITS, replicate_operation_credits
+
+    assert MIN_REPLICATE_CREDITS == 10
+    assert replicate_operation_credits(0) == 0
+    assert replicate_operation_credits(-5) == 0
+    # 2_000 micros -> credits_from_micros gives 2, floored up to 10
+    assert replicate_operation_credits(2_000) == 10
+    # 60_000 micros -> credits_from_micros gives 58, already above the floor
+    assert replicate_operation_credits(60_000) == 58
+
+
 def test_seo_credit_allowance_falls_back_to_free():
     assert seo_credit_allowance("pro") == SEO_PLAN_CREDITS["pro"]
     assert seo_credit_allowance("nonsense") == SEO_PLAN_CREDITS["free"]
