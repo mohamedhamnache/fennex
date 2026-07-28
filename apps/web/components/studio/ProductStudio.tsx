@@ -18,32 +18,18 @@ import {
 import { PublishModal } from "./PublishModal";
 import { ProductCopyModal } from "./ProductCopyModal";
 import { SaveCollectionButton } from "./SaveCollectionButton";
+import {
+  PRODUCT_SCENES as SCENES,
+  SCENE_CATEGORIES as CATEGORIES,
+  SCENE_LABEL,
+  type CategoryFilter as Category,
+} from "@/lib/productScenes";
+import {
+  ShowcaseControls,
+  showcaseOverrides,
+  type ShowcaseAdvancedValues,
+} from "./product/ShowcaseControls";
 
-const SCENES = [
-  { id: "white_studio",      label: "White Studio",  category: "packshot"  },
-  { id: "gradient_studio",   label: "Gradient BG",   category: "packshot"  },
-  { id: "floating_shadow",   label: "Floating",      category: "packshot"  },
-  { id: "marble_countertop", label: "Marble",        category: "lifestyle" },
-  { id: "cafe_table",        label: "Café Table",    category: "lifestyle" },
-  { id: "home_living_room",  label: "Living Room",   category: "lifestyle" },
-  { id: "outdoor_nature",    label: "Nature",        category: "lifestyle" },
-  { id: "food_table_scene",  label: "Food Scene",    category: "food"      },
-  { id: "desk_setup",        label: "Desk Setup",    category: "tech"      },
-  { id: "model_studio",      label: "Model Studio",  category: "fashion"   },
-  { id: "athlete_action",    label: "Athlete",       category: "fashion"   },
-] as const;
-
-type Category = "all" | "packshot" | "lifestyle" | "food" | "tech" | "fashion";
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "packshot", label: "Packshot" },
-  { id: "lifestyle", label: "Lifestyle" },
-  { id: "food", label: "Food" },
-  { id: "tech", label: "Tech" },
-  { id: "fashion", label: "Fashion" },
-];
-
-const SCENE_LABEL: Record<string, string> = Object.fromEntries(SCENES.map((s) => [s.id, s.label]));
 
 type SceneResult = { sceneId: string; status: "loading" | "ready" | "error"; image?: GeneratedImage; error?: string };
 
@@ -77,6 +63,8 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
   // Config
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Category>("all");
+  const [advanced, setAdvanced] = useState<ShowcaseAdvancedValues>({});
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [selectedScenes, setSelectedScenes] = useState<Set<string>>(new Set(["white_studio"]));
 
   // Results
@@ -182,6 +170,7 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
           product_description: description.trim(),
           scene_id: sceneId,
           use_brand_kit: useBrandKit,
+          ...showcaseOverrides(advanced),
         });
         setResults((prev) => {
           const n = [...prev];
@@ -466,6 +455,13 @@ export function ProductStudio({ projectId, useBrandKit, onBack }: ProductStudioP
               })}
             </div>
           </div>
+
+          <ShowcaseControls
+            value={advanced}
+            onChange={setAdvanced}
+            isOpen={advancedOpen}
+            onToggle={() => setAdvancedOpen((v) => !v)}
+          />
         </div>
 
         {/* Results column */}

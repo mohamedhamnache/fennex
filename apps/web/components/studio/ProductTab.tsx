@@ -7,52 +7,16 @@ import { cn } from "@/lib/cn";
 import { generateProductScene, type GeneratedImage } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, XCircle, Store, ArrowRight, RefreshCw, ShoppingBag } from "lucide-react";
-import { ShowcaseControls, type ShowcaseAdvancedValues } from "./product/ShowcaseControls";
+import { ShowcaseControls, showcaseOverrides, type ShowcaseAdvancedValues } from "./product/ShowcaseControls";
 import { ImageUrlField } from "./product/ImageUrlField";
+import {
+  PRODUCT_SCENES as SCENES,
+  SCENE_CATEGORIES as CATEGORIES,
+  type CategoryFilter as Category,
+} from "@/lib/productScenes";
 
-const SCENES = [
-  { id: "white_studio",      label: "White Studio",  category: "packshot"  },
-  { id: "gradient_studio",   label: "Gradient BG",   category: "packshot"  },
-  { id: "floating_shadow",   label: "Floating",      category: "packshot"  },
-  { id: "marble_countertop", label: "Marble",        category: "lifestyle" },
-  { id: "cafe_table",        label: "Cafe Table",    category: "lifestyle" },
-  { id: "home_living_room",  label: "Living Room",   category: "lifestyle" },
-  { id: "outdoor_nature",    label: "Nature",        category: "lifestyle" },
-  { id: "food_table_scene",  label: "Food Scene",    category: "food"      },
-  { id: "desk_setup",        label: "Desk Setup",    category: "tech"      },
-  { id: "model_studio",      label: "Model Studio",  category: "fashion"   },
-  { id: "athlete_action",    label: "Athlete",       category: "fashion"   },
-  // Premium environments (Task 7 / Product AI Studio). white_studio above
-  // already covers the "white_studio" id from the premium set, so it is not
-  // duplicated here -- see docs/superpowers/specs/2026-07-28-product-ai-studio-design.md sec. 2.
-  { id: "luxury_studio",     label: "Luxury Studio", category: "premium"   },
-  { id: "bathroom",          label: "Bathroom",      category: "premium"   },
-  { id: "spa",               label: "Spa",           category: "premium"   },
-  { id: "travertine",        label: "Travertine",    category: "premium"   },
-  { id: "marble",            label: "Marble",        category: "premium"   },
-  { id: "limestone",         label: "Limestone",     category: "premium"   },
-  { id: "botanical",         label: "Botanical",     category: "premium"   },
-  { id: "mediterranean",     label: "Mediterranean", category: "premium"   },
-  { id: "luxury_hotel",      label: "Luxury Hotel",  category: "premium"   },
-  { id: "editorial",         label: "Editorial",     category: "premium"   },
-  { id: "lifestyle",         label: "Lifestyle",     category: "premium"   },
-  { id: "minimal",           label: "Minimal",       category: "premium"   },
-  { id: "scandinavian",      label: "Scandinavian",  category: "premium"   },
-  { id: "dark_luxury",       label: "Dark Luxury",   category: "premium"   },
-] as const;
 
-type SceneId = typeof SCENES[number]["id"];
-type Category = "all" | "packshot" | "lifestyle" | "food" | "tech" | "fashion" | "premium";
 
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: "all",      label: "All" },
-  { id: "packshot", label: "Packshot" },
-  { id: "lifestyle",label: "Lifestyle" },
-  { id: "food",     label: "Food" },
-  { id: "tech",     label: "Tech" },
-  { id: "fashion",  label: "Fashion" },
-  { id: "premium",  label: "Premium" },
-];
 
 interface ProductTabProps {
   projectId: string;
@@ -62,7 +26,7 @@ interface ProductTabProps {
 export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
   const { t } = useTranslation();
   const [category, setCategory] = useState<Category>("all");
-  const [selectedScene, setSelectedScene] = useState<SceneId>("white_studio");
+  const [selectedScene, setSelectedScene] = useState<string>("white_studio");
   const [productUrl, setProductUrl] = useState("");
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<GeneratedImage | null>(null);
@@ -80,15 +44,7 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
         product_description: description.trim(),
         scene_id: selectedScene,
         use_brand_kit: useBrandKit,
-        ...(advanced.lighting !== undefined ? { lighting: advanced.lighting } : {}),
-        ...(advanced.camera !== undefined ? { camera: advanced.camera } : {}),
-        ...(advanced.aspect_ratio !== undefined ? { aspect_ratio: advanced.aspect_ratio } : {}),
-        ...(advanced.creativity !== undefined ? { creativity: advanced.creativity } : {}),
-        ...(advanced.product_preservation !== undefined ? { product_preservation: advanced.product_preservation } : {}),
-        ...(advanced.prompt?.trim() ? { prompt: advanced.prompt.trim() } : {}),
-        ...(advanced.negative_prompt?.trim() ? { negative_prompt: advanced.negative_prompt.trim() } : {}),
-        ...(advanced.seed !== undefined ? { seed: advanced.seed } : {}),
-        ...(advanced.quality !== undefined ? { quality: advanced.quality } : {}),
+        ...showcaseOverrides(advanced),
       }),
     onSuccess: (data) => setResult(data),
   });

@@ -67,6 +67,26 @@ interface ShowcaseControlsProps {
   onToggle: () => void;
 }
 
+/**
+ * Maps the advanced panel onto request fields, omitting anything the user has
+ * not set. Every showcase control is optional server-side, so an untouched
+ * panel must produce a payload byte-identical to the pre-controls one --
+ * shared by ProductStudio and ProductTab so the two cannot drift.
+ */
+export function showcaseOverrides(v: ShowcaseAdvancedValues): Record<string, unknown> {
+  return {
+    ...(v.lighting !== undefined ? { lighting: v.lighting } : {}),
+    ...(v.camera !== undefined ? { camera: v.camera } : {}),
+    ...(v.aspect_ratio !== undefined ? { aspect_ratio: v.aspect_ratio } : {}),
+    ...(v.creativity !== undefined ? { creativity: v.creativity } : {}),
+    ...(v.product_preservation !== undefined ? { product_preservation: v.product_preservation } : {}),
+    ...(v.prompt?.trim() ? { prompt: v.prompt.trim() } : {}),
+    ...(v.negative_prompt?.trim() ? { negative_prompt: v.negative_prompt.trim() } : {}),
+    ...(v.seed !== undefined ? { seed: v.seed } : {}),
+    ...(v.quality !== undefined ? { quality: v.quality } : {}),
+  };
+}
+
 const selectClass =
   "w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
