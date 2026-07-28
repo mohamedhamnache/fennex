@@ -33,6 +33,19 @@ def upgrade() -> None:
     content_item_status_enum.create(op.get_bind(), checkfirst=True)
     content_item_type_enum.create(op.get_bind(), checkfirst=True)
 
+    # Reference the already-created types without re-creating them when used
+    # as column types below (op.create_table would otherwise re-emit CREATE TYPE).
+    content_item_status_col_enum = postgresql.ENUM(
+        "idea", "draft", "in_review", "approved", "published",
+        name="content_item_status_enum",
+        create_type=False,
+    )
+    content_item_type_col_enum = postgresql.ENUM(
+        "article", "landing_page", "social_post", "email",
+        name="content_item_type_enum",
+        create_type=False,
+    )
+
     # ── content_plans ─────────────────────────────────────────────────────────
     op.create_table(
         "content_plans",
@@ -54,8 +67,8 @@ def upgrade() -> None:
         sa.Column("org_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False),
         sa.Column("project_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("title", sa.String(500), nullable=False),
-        sa.Column("content_type", content_item_type_enum, nullable=True),
-        sa.Column("status", content_item_status_enum, nullable=True),
+        sa.Column("content_type", content_item_type_col_enum, nullable=True),
+        sa.Column("status", content_item_status_col_enum, nullable=True),
         sa.Column("target_keyword", sa.String(500), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("scheduled_date", sa.String(20), nullable=True),

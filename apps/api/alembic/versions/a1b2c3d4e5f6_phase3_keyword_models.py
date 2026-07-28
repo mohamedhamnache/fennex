@@ -33,6 +33,19 @@ def upgrade() -> None:
     research_status_enum.create(op.get_bind(), checkfirst=True)
     keyword_intent_enum.create(op.get_bind(), checkfirst=True)
 
+    # Reference the already-created types without re-creating them when used
+    # as column types below (op.create_table would otherwise re-emit CREATE TYPE).
+    research_status_col_enum = postgresql.ENUM(
+        "pending", "running", "completed", "failed",
+        name="research_status_enum",
+        create_type=False,
+    )
+    keyword_intent_col_enum = postgresql.ENUM(
+        "informational", "navigational", "commercial", "transactional",
+        name="keyword_intent_enum",
+        create_type=False,
+    )
+
     # ── keyword_research_jobs ─────────────────────────────────────────────────
     op.create_table(
         "keyword_research_jobs",
@@ -40,7 +53,7 @@ def upgrade() -> None:
         sa.Column("org_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False),
         sa.Column("project_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("seed_keyword", sa.String(500), nullable=False),
-        sa.Column("status", research_status_enum, nullable=False, server_default="pending"),
+        sa.Column("status", research_status_col_enum, nullable=False, server_default="pending"),
         sa.Column("keywords_found", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("error", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
@@ -75,7 +88,7 @@ def upgrade() -> None:
         sa.Column("search_volume", sa.Integer(), nullable=True),
         sa.Column("difficulty", sa.Float(), nullable=True),
         sa.Column("cpc", sa.Float(), nullable=True),
-        sa.Column("intent", keyword_intent_enum, nullable=True),
+        sa.Column("intent", keyword_intent_col_enum, nullable=True),
         sa.Column("cluster_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("keyword_clusters.id"), nullable=True),
         sa.Column("is_seed", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("serp_features", postgresql.JSON(), nullable=True),
