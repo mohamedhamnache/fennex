@@ -118,5 +118,5 @@ async def test_usage_summary_reports_both_buckets(client, db, org, auth_headers)
     assert body["credits_remaining"] == 4_000
 
     assert body["seo_credits_used"] == 90
-    assert body["seo_credits_allowance"] == 300
-    assert body["seo_credits_remaining"] == 210
+    assert body["seo_credits_allowance"] == 1_500  # SEO_PLAN_CREDITS["starter"]
+    assert body["seo_credits_remaining"] == 1_410
