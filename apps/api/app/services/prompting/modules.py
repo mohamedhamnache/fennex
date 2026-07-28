@@ -31,6 +31,7 @@ class BrandKitLike(Protocol):
 
     colors: list[str]
     style_rules: str | None
+    tone: str | None
 
 
 def role(role_name: str) -> str | None:
@@ -113,18 +114,24 @@ def materials(product_description: str) -> str | None:
     return f"For reference, the product is {stripped}"
 
 
-def environment(scene_id: str) -> str | None:
-    """Environment fragment derived from a scene id.
+def environment(scene_id: str, description: str = "") -> str | None:
+    """Environment fragment derived from a scene id, or a curated description.
 
     Scene catalogues (labels, categories, full descriptions) live in
     `product_service.PRODUCT_SCENES`, which this pure package must not
-    import. This module only turns the id into a readable phrase; resolving
-    it to the full curated scene description is the caller's job.
+    import -- resolving a scene id to its curated text is the caller's job.
+    When the caller supplies that resolved `description`, it is used
+    verbatim (this is the real environment direction and takes priority).
+    When it is blank, this falls back to a generic phrase built from the
+    scene id alone, exactly as before.
     """
-    stripped = scene_id.strip()
-    if not stripped:
+    stripped_description = description.strip()
+    if stripped_description:
+        return stripped_description
+    stripped_id = scene_id.strip()
+    if not stripped_id:
         return None
-    return f"Scene: {stripped.replace('_', ' ')}"
+    return f"Scene: {stripped_id.replace('_', ' ')}"
 
 
 def rendering_style(creativity: int) -> str:
@@ -141,8 +148,13 @@ def rendering_style(creativity: int) -> str:
 
 
 def brand_style(brand_kit: BrandKitLike | None) -> str | None:
-    """Brand-alignment fragment. None when there is no brand kit or the kit
-    carries no usable guidance."""
+    """Brand-alignment fragment: palette, style rules, and tone. None when
+    there is no brand kit or the kit carries no usable guidance.
+
+    `tone` is read directly off `brand_kit` (part of `BrandKitLike`) rather
+    than smuggled in by a caller through `user_prompt` -- this is the single
+    place brand tone is expressed as a brand fragment.
+    """
     if brand_kit is None:
         return None
 
@@ -151,6 +163,8 @@ def brand_style(brand_kit: BrandKitLike | None) -> str | None:
         parts.append(f"echo the brand palette ({', '.join(brand_kit.colors)}) subtly in the styling and props")
     if brand_kit.style_rules and brand_kit.style_rules.strip():
         parts.append(brand_kit.style_rules.strip())
+    if brand_kit.tone and brand_kit.tone.strip():
+        parts.append(f"Tone: {brand_kit.tone.strip()}")
 
     if not parts:
         return None

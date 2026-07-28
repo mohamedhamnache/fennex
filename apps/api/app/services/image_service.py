@@ -23,20 +23,16 @@ def build_image_prompt(
     """Thin wrapper: builds an ImageSpec and delegates to PromptBuilder.
 
     `PromptBuilder.build_image` covers title/usage (via `role`+`objective`),
-    keyword-as-topic (via `materials`) and style (via `rendering_style`).
-    Two things it can't carry without loss go through `ImageSpec.user_prompt`
-    instead, verbatim, so nothing the old prompt said is dropped:
+    keyword-as-topic (via `materials`), style (via `rendering_style`), and
+    now the full brand-kit block -- palette, style rules, and tone -- via
+    `brand_style`, since `modules.brand_style` reads `tone` directly off
+    `brand_kit` (part of `BrandKitLike`). `brand_kit` is passed straight
+    through to the builder instead of being hand-rendered here.
 
-    - The per-usage format directive ("Wide format, no text overlays...",
-      "Square format, bold and eye-catching.", "Clean, professional.") --
-      there's no module for this; it's specific to this function.
-    - Brand-kit `tone`. `modules.brand_style` only reads `colors` and
-      `style_rules` (see its `BrandKitLike` protocol) -- it has no field for
-      tone at all, so passing `brand_kit` straight into `PromptBuilder.
-      build_image` would silently drop the tone instruction. Instead the
-      full brand-kit block (palette, style rules, tone) is rendered here in
-      its original wording and passed via `user_prompt`; `brand_kit` is not
-      also passed to the builder, so the two renderings don't both fire.
+    Only the per-usage format directive ("Wide format, no text overlays...",
+    "Square format, bold and eye-catching.", "Clean, professional.") has no
+    matching module -- it's specific to this function, not user intent --
+    so it alone still goes through `ImageSpec.user_prompt`.
     """
     if usage == "article_cover":
         format_hint = "Wide format, no text overlays, suitable for a tech/marketing blog."
@@ -47,26 +43,14 @@ def build_image_prompt(
     else:
         format_hint = ""
 
-    extra_parts = [format_hint] if format_hint else []
-    if brand_kit:
-        bk_parts = []
-        if brand_kit.colors:
-            bk_parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
-        if brand_kit.style_rules:
-            bk_parts.append(f"Style: {brand_kit.style_rules}")
-        if brand_kit.tone:
-            bk_parts.append(f"Tone: {brand_kit.tone}")
-        if bk_parts:
-            extra_parts.append(". ".join(bk_parts) + ".")
-
     spec = ImageSpec(
         title=title,
         usage=usage,
         style=style,
         keyword=keyword,
-        user_prompt=" ".join(extra_parts),
+        user_prompt=format_hint,
     )
-    return PromptBuilder.build_image(spec, None).prompt
+    return PromptBuilder.build_image(spec, brand_kit).prompt
 
 
 SOCIAL_PRESETS: dict[str, dict] = {
@@ -92,12 +76,20 @@ def build_social_prompt(
     `title=subject` and `usage="social_post"` route the subject and the
     "produce a social post" framing through `role`/`objective`, and `style`
     carries the old "Bold, eye-catching..." composition directive through
-    `rendering_style`. The platform label/aspect-ratio descriptor and the
-    "No text overlays. High quality, vibrant." line have no matching module,
-    and (as in `build_image_prompt`) `modules.brand_style` can't carry
-    `tone` -- both go through `ImageSpec.user_prompt` verbatim instead, with
-    `brand_kit` not also passed to the builder, so nothing is dropped or
-    duplicated. See `build_image_prompt` for the fuller rationale.
+    `rendering_style`. Brand-kit rendering now flows through `brand_style`
+    via the real `brand_kit` object (which reads `tone` directly), instead
+    of being hand-rendered and routed around `modules.brand_style` through
+    `user_prompt`. Note this also means `style_rules` -- previously ignored
+    entirely for social prompts -- is now included when present, since
+    `brand_style` renders palette/style-rules/tone as one unit and there is
+    no documented reason social prompts should drop it; this is additive,
+    not a dropped instruction.
+
+    Only the platform label/aspect-ratio descriptor and the "No text
+    overlays. High quality, vibrant." line have no matching module -- both
+    specific to this function, not user intent -- so they alone still go
+    through `ImageSpec.user_prompt`. See `build_image_prompt` for the fuller
+    rationale on brand-kit routing.
     """
     meta = SOCIAL_PRESETS.get(platform, {})
     label = meta.get("label", platform.replace("_", " ").title())
@@ -107,14 +99,6 @@ def build_social_prompt(
         f"Professional {label} image ({aspect} aspect ratio).",
         "No text overlays. High quality, vibrant.",
     ]
-    if brand_kit:
-        bk_parts = []
-        if brand_kit.colors:
-            bk_parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
-        if brand_kit.tone:
-            bk_parts.append(f"Tone: {brand_kit.tone}")
-        if bk_parts:
-            extra_parts.append(". ".join(bk_parts) + ".")
 
     spec = ImageSpec(
         title=subject,
@@ -122,7 +106,7 @@ def build_social_prompt(
         style="Bold, eye-catching composition optimised for social media engagement",
         user_prompt=" ".join(extra_parts),
     )
-    return PromptBuilder.build_image(spec, None).prompt
+    return PromptBuilder.build_image(spec, brand_kit).prompt
 
 
 async def generate_image_dalle(

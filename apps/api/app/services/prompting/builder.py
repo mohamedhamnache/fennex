@@ -39,6 +39,7 @@ class ShowcaseSpec:
     seed: int | None
     quality: vocab.QualityToken
     product_description: str
+    environment_description: str = ""
 
 
 @dataclass(frozen=True)
@@ -90,7 +91,7 @@ class PromptBuilder:
             ("lighting", modules.lighting(spec.lighting)),
             ("camera", modules.camera(spec.camera)),
             ("materials", modules.materials(spec.product_description)),
-            ("environment", modules.environment(spec.scene_id)),
+            ("environment", modules.environment(spec.scene_id, spec.environment_description)),
             ("rendering_style", modules.rendering_style(spec.creativity)),
             ("brand_style", modules.brand_style(brand_kit)),
             ("quality", modules.quality(spec.quality)),
