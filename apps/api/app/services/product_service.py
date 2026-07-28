@@ -42,7 +42,7 @@ PRODUCT_SCENES: dict[str, dict] = {
     },
     "white_studio": {
         "label": "White Studio",
-        "category": "packshot",
+        "category": "premium",
         "prompt_template": "on a seamless pure white studio background with soft even professional lighting and a subtle natural contact shadow, clean ecommerce packshot",
     },
     "gradient_studio": {
@@ -64,6 +64,88 @@ PRODUCT_SCENES: dict[str, dict] = {
         "label": "Desk Setup",
         "category": "tech",
         "prompt_template": "on a clean modern desk with minimal tasteful accessories, soft neutral office lighting, professional tech product flat-lay feel",
+    },
+
+    # -------------------------------------------------------------------
+    # Premium environments (category: "premium"). `white_studio` above is
+    # also part of this set (recategorised from "packshot", its id and
+    # label unchanged). The other 14 ids below are new. `marble` here is
+    # deliberately distinct from `marble_countertop` above (a bright white
+    # kitchen counter) -- this one is a darker, gallery-lit stone pedestal
+    # treatment. `lifestyle` here is a scene id, distinct from the
+    # `category: "lifestyle"` used by cafe_table/marble_countertop/etc.
+    # above; both keep working since scene ids and category values are
+    # independent namespaces.
+    # -------------------------------------------------------------------
+    "luxury_studio": {
+        "label": "Luxury Studio",
+        "category": "premium",
+        "prompt_template": "on a sculptural pedestal within a hushed, minimalist luxury studio, deep charcoal backdrop with a single controlled key light and a mirror-polished floor reflection, gallery-grade premium presentation",
+    },
+    "bathroom": {
+        "label": "Bathroom",
+        "category": "premium",
+        "prompt_template": "beside a matte stone bathroom vanity with a folded white linen towel and a sprig of eucalyptus, soft diffused light through a frosted window, serene spa-clean atmosphere",
+    },
+    "spa": {
+        "label": "Spa",
+        "category": "premium",
+        "prompt_template": "on a woven bamboo tray beside smooth river stones and a single lit candle, warm low-key ambient light with a faint steam haze, tranquil wellness-retreat mood",
+    },
+    "travertine": {
+        "label": "Travertine",
+        "category": "premium",
+        "prompt_template": "resting on a raw-edged travertine slab, its warm honeycombed texture catching soft directional light, sand-toned minimalist backdrop, quarried-stone editorial mood",
+    },
+    "marble": {
+        "label": "Marble",
+        "category": "premium",
+        "prompt_template": "on a dark veined marble pedestal with dramatic raking sidelight tracing the stone's natural pattern, deep shadow falloff into a near-black backdrop, gallery-grade luxury mood",
+    },
+    "limestone": {
+        "label": "Limestone",
+        "category": "premium",
+        "prompt_template": "on a pale limestone block with a chalky matte texture, soft overcast daylight and a faint natural shadow, quiet Mediterranean-quarry aesthetic",
+    },
+    "botanical": {
+        "label": "Botanical",
+        "category": "premium",
+        "prompt_template": "nestled among lush trailing botanicals and glossy monstera leaves, dappled natural light filtering through foliage, lush greenhouse-editorial atmosphere",
+    },
+    "mediterranean": {
+        "label": "Mediterranean",
+        "category": "premium",
+        "prompt_template": "on a sun-bleached whitewashed terrace ledge overlooking a soft-focus turquoise coastline, bright clean midday Mediterranean light, breezy coastal-luxury mood",
+    },
+    "luxury_hotel": {
+        "label": "Luxury Hotel",
+        "category": "premium",
+        "prompt_template": "on a lacquered console table in a five-star hotel suite, warm ambient designer lamplight with a soft-focus skyline visible beyond sheer curtains, discreet five-star hospitality mood",
+    },
+    "editorial": {
+        "label": "Editorial",
+        "category": "premium",
+        "prompt_template": "isolated against a bold graphic studio backdrop with hard directional light and a crisp graphic shadow, high-contrast fashion-magazine editorial styling",
+    },
+    "lifestyle": {
+        "label": "Lifestyle",
+        "category": "premium",
+        "prompt_template": "held in use within a candid, sunlit everyday moment, natural home surroundings softly out of focus, authentic warm lifestyle-editorial feel",
+    },
+    "minimal": {
+        "label": "Minimal",
+        "category": "premium",
+        "prompt_template": "centred alone against a single seamless pastel backdrop with a barely-there shadow, restrained negative space, quiet minimalist gallery presentation",
+    },
+    "scandinavian": {
+        "label": "Scandinavian",
+        "category": "premium",
+        "prompt_template": "on a pale oak side table beside a linen-draped armchair, soft northern daylight through sheer curtains, calm airy Scandinavian interior mood",
+    },
+    "dark_luxury": {
+        "label": "Dark Luxury",
+        "category": "premium",
+        "prompt_template": "on a black lacquered surface under a single dramatic spotlight with deep velvety shadow, moody chiaroscuro contrast, dark-luxury campaign mood",
     },
 }
 
