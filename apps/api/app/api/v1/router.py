@@ -30,6 +30,7 @@ from app.api.v1.routers import (
     editing,
     seo,
     product,
+    product3d,
     banners,
     image_folders,
     collections,
@@ -94,6 +95,7 @@ api_router.include_router(images.router, prefix="/images", tags=["images"])
 api_router.include_router(editing.router, prefix="/images", tags=["editing"])
 api_router.include_router(seo.router, prefix="/images", tags=["seo"])
 api_router.include_router(product.router, prefix="/images", tags=["product"])
+api_router.include_router(product3d.router, prefix="/product", tags=["product-3d"])
 api_router.include_router(banners.router, prefix="/images", tags=["banners"])
 api_router.include_router(image_folders.router, prefix="/image-folders", tags=["dam"])
 api_router.include_router(collections.router, prefix="/collections", tags=["collections"])
