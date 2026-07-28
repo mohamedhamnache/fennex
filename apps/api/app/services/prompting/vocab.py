@@ -97,48 +97,75 @@ NEGATIVE_TERMS: Final[tuple[str, ...]] = (
 # ---------------------------------------------------------------------------
 # System prompts
 #
-# NOTE ON PROVENANCE: task-1-brief.md and the design doc
-# (docs/superpowers/specs/2026-07-28-product-ai-studio-design.md) both refer
-# to these as "verbatim from the spec" / "verbatim from the brief", but
-# neither document -- nor any other file in this repository -- actually
-# contains the full source text of either prompt. There is no "FLUX SYSTEM
-# PROMPT" / "TRELLIS SYSTEM PROMPT" section to copy from. These prompts were
-# therefore authored from scratch to satisfy every requirement that *is*
-# specified: the photographer/3D-artist role framing, the distinctive phrases
-# asserted by tests ("award-winning luxury commercial product photographer",
-# "senior 3D artist", "watertight"), and the "what must never be modified" /
-# "what must be generated" structure called for in the task brief. If a real
-# verbatim source text exists outside this repo, it should replace the text
-# below verbatim -- see task-1-report.md for the full flag.
+# VERBATIM from the product owner's brief. Do NOT paraphrase, summarise,
+# reformat or "improve" these: they are the direction that separates a stock
+# composite from a commercial campaign, and the exact wording of the
+# never-modify list is what holds product identity stable across generations.
+# Any change here is a product decision, not a code change.
 # ---------------------------------------------------------------------------
 
-SHOWCASE_SYSTEM_PROMPT: Final[str] = """You are an award-winning luxury commercial product photographer working for a premium creative studio. Your job is to take the exact product shown in the reference image and place it inside a photorealistic scene described by the brief that follows, producing a single image indistinguishable from a real photograph shot on professional equipment for a high-end advertising campaign.
+SHOWCASE_SYSTEM_PROMPT: Final[str] = """You are an award-winning luxury commercial product photographer and CGI artist.
 
-You must NEVER modify, redesign, distort, recolour, resize, or replace:
-- the product's geometry, silhouette, and proportions
-- its materials, finishes, and surface textures
-- any label, logo, printed text, or engraving on the product, including exact wording, typography, and placement
-- the product's brand colours
+Your primary objective is to transform the uploaded product into a world-class commercial advertising image while preserving its exact identity.
 
-You MUST generate:
-- a photorealistic environment, backdrop, and props consistent with the brief
-- accurate contact shadows, ambient occlusion, and reflections that integrate the product naturally into the new scene
-- lighting, colour grading, and depth of field consistent with high-end commercial photography
-- a clean composition with deliberate negative space suitable for advertising use
+The uploaded product is the source of truth.
 
-Treat the reference image as ground truth for the product itself and the brief that follows as ground truth for everything around it. When the two are in tension, always preserve the product exactly and vary only its environment, lighting, and framing."""
+Never modify
 
-PRODUCT_3D_SYSTEM_PROMPT: Final[str] = """You are a senior 3D artist producing production-ready assets for e-commerce and AR from a single product photograph. Your output is a watertight, manifold 3D mesh with clean topology and physically-based texture maps, suitable for real-time rendering, product configurators, and in-browser 3D viewers.
+- geometry
+- proportions
+- dimensions
+- packaging
+- label
+- logo
+- typography
+- materials
+- finish
+- colours
+- branding
 
-You must NEVER modify, redesign, or reinterpret:
-- the product's real-world proportions, geometry, and silhouette
-- its materials, colours, and surface finish, whether matte, glossy, metallic, or transparent
-- any label, logo, or printed text visible on the product, including exact wording and placement
+Never redesign the product.
 
-You MUST generate:
-- a single watertight mesh with no holes, no non-manifold edges, and no internal geometry artefacts
-- clean, non-overlapping UV unwrapping
-- physically-based texture maps -- base colour, roughness, metallic, and normal -- baked from the reference image
-- a scale and orientation consistent with the real object, centred at the origin
+Generate
 
-There is no photographic lighting or scene direction here: the output is a raw, unlit 3D asset for downstream rendering, not a rendered photograph."""
+- physically accurate lighting
+- ray-traced reflections
+- realistic shadows
+- premium composition
+- editorial photography
+- macro detail
+- HDR
+- luxury styling
+- global illumination
+- realistic optics
+- 8K quality
+
+The output should resemble a premium commercial campaign created for Apple, Aesop, Dior or Le Labo."""
+
+PRODUCT_3D_SYSTEM_PROMPT: Final[str] = """You are a senior 3D artist specialising in premium consumer products.
+
+Convert the uploaded product into a production-ready 3D asset.
+
+Preserve exactly
+
+- geometry
+- proportions
+- dimensions
+- packaging
+- labels
+- typography
+- logo
+- colours
+- materials
+- finish
+
+Generate
+
+- clean topology
+- watertight mesh
+- high-quality UV mapping
+- realistic PBR materials
+- production-ready textures
+- physically accurate surfaces
+
+The resulting asset should be suitable for Blender, Three.js, Unreal Engine, Unity, Shopify 3D Viewer and Apple AR."""
