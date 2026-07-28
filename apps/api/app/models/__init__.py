@@ -42,3 +42,4 @@ from app.models.usage_daily import UsageDaily  # noqa: F401
 from app.models.model_catalog import ModelCatalog  # noqa: F401
 from app.models.admin_user import AdminUser, AdminRole, AdminRoleAssignment  # noqa: F401
 from app.models.admin_audit_log import AdminAuditLog  # noqa: F401
+from app.models.product3d import Product3DJob  # noqa: F401
