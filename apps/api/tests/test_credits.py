@@ -100,6 +100,18 @@ def test_every_sellable_tier_has_an_explicit_allowance():
             assert PLAN_LIMITS[tier.value] != PLAN_LIMITS["free"]
 
 
+def test_allowances_increase_monotonically_up_the_ladder():
+    """A higher tier must never grant fewer credits than a lower one.
+
+    Rescaling the sold tiers once left `enterprise` -- which sits outside the
+    ladder because it is custom-priced -- below `scale`.
+    """
+    ladder = ("free", "starter", "pro", "agency", "scale", "enterprise")
+    for lower, higher in zip(ladder, ladder[1:]):
+        assert PLAN_CREDITS[higher] > PLAN_CREDITS[lower], f"AI: {higher} <= {lower}"
+        assert SEO_PLAN_CREDITS[higher] > SEO_PLAN_CREDITS[lower], f"SEO: {higher} <= {lower}"
+
+
 def test_byok_exemption_is_limited_to_agency_and_scale():
     """BYOK waives the credit hard-stop, but only on the tiers it is sold on,
     and only for the "ai" bucket.
@@ -160,13 +172,37 @@ def test_paid_tiers_resolve_from_the_enum_member_not_just_the_string():
     assert credit_allowance(_tier_value(org)) == PLAN_CREDITS["agency"]
 
 
-def test_plan_cogs_stays_within_margin_target():
-    """Both buckets together must stay well under a third of the plan price.
+# Supplier cost per DataForSEO task, for the margin guard below. serp and
+# keyword_ideas are the real seeded rates; backlinks/audit are the placeholder
+# rates from migration s8seorates01 and should be corrected together with it.
+SEO_UNIT_COST_USD = {
+    "serp": 0.0015,
+    "rank_check": 0.0015,
+    "keyword_ideas": 0.0200,
+    "backlinks": 0.0030,
+    "audit": 0.0050,
+}
 
-    AI: credits * $0.00105. SEO: credits * ~$0.002 per DataForSEO task.
+
+def test_plan_cogs_stays_within_margin_target():
+    """Both buckets together must stay under a third of the plan price.
+
+    The SEO figure is DERIVED from the unit with the worst cost-per-credit
+    rather than hardcoded, so repricing a unit without adjusting its weight
+    fails here instead of silently eroding margin. (A hardcoded $0.002/credit
+    went stale the moment units started costing more than one credit.)
     """
     from app.core.billing import PLAN_PRICE_USD
 
+    worst_seo_cost_per_credit = max(
+        cost / SEO_CREDIT_WEIGHT[unit] for unit, cost in SEO_UNIT_COST_USD.items()
+    )
+    # keyword_ideas: $0.02 over 15 credits
+    assert abs(worst_seo_cost_per_credit - 0.02 / 15) < 1e-9
+
     for tier in ("starter", "pro", "agency", "scale"):
-        cogs = PLAN_CREDITS[tier] * 0.00105 + SEO_PLAN_CREDITS[tier] * 0.002
+        cogs = (
+            PLAN_CREDITS[tier] * 0.00105
+            + SEO_PLAN_CREDITS[tier] * worst_seo_cost_per_credit
+        )
         assert cogs <= PLAN_PRICE_USD[tier] * 0.32, (tier, cogs)

@@ -99,14 +99,18 @@ SEO_CREDIT_WEIGHT: dict[str, int] = {
     "keyword_analysis": 1,
 }
 
+# Scaled 5x alongside the per-unit reprice (serp 1->2, keyword_ideas 1->15,
+# etc). Without this the weight increase would have silently cut entitlements
+# by the same factor -- Starter's keyword research would have gone from 300
+# runs a month to 20.
 SEO_PLAN_CREDITS: dict[str, int] = {
-    "free": 20,
-    "starter": 300,
-    "pro": 1_500,
-    "agency": 4_000,
-    "scale": 12_000,
-    # See the note on PLAN_CREDITS["enterprise"].
-    "enterprise": 50_000,
+    "free": 100,
+    "starter": 1_500,
+    "pro": 7_500,
+    "agency": 20_000,
+    "scale": 60_000,
+    # See the note on PLAN_CREDITS["enterprise"]. Must stay above `scale`.
+    "enterprise": 250_000,
 }
 
 
