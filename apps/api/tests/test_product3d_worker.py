@@ -156,6 +156,57 @@ async def test_run_product_3d_meters_exactly_one_replicate_call_regardless_of_fo
         assert events[0].model == "firtoz/trellis"
 
 
+async def test_run_product_3d_partial_format_failure_still_completes_with_the_other_format():
+    """One requested format (obj) fails to convert; the other (glb) must
+    still be produced, uploaded and recorded, and the job must still reach
+    `completed` -- not `failed` -- per design spec section 3: "the job
+    records the failure for that format and still returns the formats that
+    succeeded"."""
+    org_id, job_id = await _make_job(formats=("glb", "obj"))
+
+    async def _flaky_convert(glb_bytes, target):
+        from app.models.product3d import ModelFormat as _MF
+        if target == _MF.obj:
+            raise RuntimeError("trimesh boom: simulated OBJ conversion failure")
+        return glb_bytes
+
+    mock_replicate = AsyncMock(side_effect=_stub_replicate_run)
+    with patch("app.services.product3d.generate._replicate_run", mock_replicate), \
+         patch("app.workers.tasks.product3d_tasks.convert", AsyncMock(side_effect=_flaky_convert)), \
+         patch("app.workers.tasks.product3d_tasks.async_session_factory", TestSessionLocal):
+        await run_product_3d(ctx={}, job_id=str(job_id))
+
+    async with TestSessionLocal() as session:
+        job = await session.get(Product3DJob, job_id)
+        assert job.status == Product3DStatus.completed
+        assert "glb" in job.output_urls
+        assert "obj" not in job.output_urls
+        decoded = base64.b64decode(job.output_urls["glb"].split(",", 1)[1])
+        assert decoded == _FAKE_GLB_BYTES
+
+
+async def test_run_product_3d_all_formats_failing_marks_the_job_failed():
+    """If every requested format fails to convert/upload, nothing was
+    actually delivered -- the job must be marked failed rather than a
+    silent, empty "completed" with no assets."""
+    org_id, job_id = await _make_job(formats=("glb", "obj"))
+
+    async def _always_fails(glb_bytes, target):
+        raise RuntimeError("simulated total conversion failure")
+
+    mock_replicate = AsyncMock(side_effect=_stub_replicate_run)
+    with patch("app.services.product3d.generate._replicate_run", mock_replicate), \
+         patch("app.workers.tasks.product3d_tasks.convert", AsyncMock(side_effect=_always_fails)), \
+         patch("app.workers.tasks.product3d_tasks.async_session_factory", TestSessionLocal):
+        await run_product_3d(ctx={}, job_id=str(job_id))
+
+    async with TestSessionLocal() as session:
+        job = await session.get(Product3DJob, job_id)
+        assert job.status == Product3DStatus.failed
+        assert job.output_urls == {}
+        assert job.error
+
+
 async def test_run_product_3d_success_meters_replicate_floor_credits():
     """With a seeded cost_rates row, a successful run bills the Replicate
     10-credit floor (app.core.credits.replicate_operation_credits) into
