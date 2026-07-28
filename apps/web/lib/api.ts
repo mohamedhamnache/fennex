@@ -858,6 +858,9 @@ export interface GeneratedImage {
   tags?: string[];
   is_deleted?: boolean;
   banner_format?: string | null;
+  /** Echoed back by /images/product-scene when a seed was supplied or the
+   *  server picked one, so a run can be reproduced. */
+  seed?: number | null;
 }
 
 export async function listImages(projectId: string, usage?: ImageUsage, folderId?: string | null): Promise<GeneratedImage[]> {
@@ -1866,12 +1869,46 @@ export async function suggestImagesForArticle(articleId: string): Promise<ImageS
   return apiClient.post<ImageSuggestion[]>(`/articles/${articleId}/suggest-images`, {});
 }
 
+export type ShowcaseLighting =
+  | "softbox"
+  | "golden_hour"
+  | "hard_sun"
+  | "rim"
+  | "diffused_daylight"
+  | "chiaroscuro"
+  | "candlelit";
+
+export type ShowcaseCamera =
+  | "macro"
+  | "35mm"
+  | "50mm"
+  | "85mm"
+  | "tilt_shift"
+  | "top_down"
+  | "three_quarter";
+
+export type ShowcaseAspectRatio = "1:1" | "4:5" | "3:2" | "16:9" | "9:16";
+
+export type ShowcaseQuality = "draft" | "high" | "ultra";
+
 export interface ProductSceneRequest {
   project_id: string;
   product_image_url: string;
   product_description: string;
   scene_id: string;
   use_brand_kit: boolean;
+  // Photographic controls -- all optional with server-side defaults. Only
+  // send a field once the user has actually changed it, so a run that
+  // touches nothing behaves exactly like the endpoint's current contract.
+  lighting?: ShowcaseLighting;
+  camera?: ShowcaseCamera;
+  aspect_ratio?: ShowcaseAspectRatio;
+  creativity?: number;
+  product_preservation?: number;
+  prompt?: string;
+  negative_prompt?: string;
+  seed?: number | null;
+  quality?: ShowcaseQuality;
 }
 
 export async function generateProductScene(body: ProductSceneRequest): Promise<GeneratedImage> {

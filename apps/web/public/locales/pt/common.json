@@ -2050,6 +2050,29 @@
     "openStudio": {
       "title": "Fotografe seus produtos",
       "desc": "Abra o Estúdio de Produto para sincronizar Shopify / WooCommerce e fotografar SKUs reais."
+    },
+    "showcase": {
+      "advanced": "Controles avançados",
+      "lighting": "Iluminação",
+      "camera": "Câmera",
+      "aspectRatio": "Proporção",
+      "creativity": "Criatividade",
+      "preservation": "Preservação do produto",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Descreva a cena que você quer…",
+      "negativePrompt": "Prompt negativo",
+      "negativePromptPlaceholder": "desfocado, baixa qualidade, marca d'água, texto…",
+      "seed": "Seed",
+      "seedPlaceholder": "Aleatória",
+      "randomizeSeed": "Gerar seed aleatória",
+      "quality": "Qualidade",
+      "qualityDraft": "Rascunho",
+      "qualityHigh": "Alta",
+      "qualityUltra": "Ultra",
+      "auto": "Automático",
+      "cost": "{{count}} créditos por geração",
+      "remaining": "{{count}} restantes",
+      "insufficientCredits": "Créditos insuficientes para esta geração"
     }
   },
   "productCopy": {

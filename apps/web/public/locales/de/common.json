@@ -2050,6 +2050,29 @@
     "openStudio": {
       "title": "Deine Store-Produkte shooten",
       "desc": "Öffne das Produktstudio, um Shopify / WooCommerce zu synchronisieren und echte SKUs zu shooten."
+    },
+    "showcase": {
+      "advanced": "Erweiterte Einstellungen",
+      "lighting": "Beleuchtung",
+      "camera": "Kamera",
+      "aspectRatio": "Seitenverhältnis",
+      "creativity": "Kreativität",
+      "preservation": "Produkterhaltung",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Beschreibe die gewünschte Aufnahme…",
+      "negativePrompt": "Negativ-Prompt",
+      "negativePromptPlaceholder": "unscharf, geringe Qualität, Wasserzeichen, Text…",
+      "seed": "Seed",
+      "seedPlaceholder": "Zufällig",
+      "randomizeSeed": "Seed zufällig wählen",
+      "quality": "Qualität",
+      "qualityDraft": "Entwurf",
+      "qualityHigh": "Hoch",
+      "qualityUltra": "Ultra",
+      "auto": "Automatisch",
+      "cost": "{{count}} Credits pro Durchlauf",
+      "remaining": "{{count}} übrig",
+      "insufficientCredits": "Nicht genügend Credits für diesen Durchlauf"
     }
   },
   "productCopy": {

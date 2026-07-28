@@ -2050,6 +2050,29 @@
     "openStudio": {
       "title": "Fotografía tus productos",
       "desc": "Abre el Estudio de Producto para sincronizar Shopify / WooCommerce y fotografiar SKUs reales."
+    },
+    "showcase": {
+      "advanced": "Controles avanzados",
+      "lighting": "Iluminación",
+      "camera": "Cámara",
+      "aspectRatio": "Relación de aspecto",
+      "creativity": "Creatividad",
+      "preservation": "Preservación del producto",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Describe la toma que quieres…",
+      "negativePrompt": "Prompt negativo",
+      "negativePromptPlaceholder": "borroso, baja calidad, marca de agua, texto…",
+      "seed": "Semilla",
+      "seedPlaceholder": "Aleatoria",
+      "randomizeSeed": "Aleatorizar semilla",
+      "quality": "Calidad",
+      "qualityDraft": "Borrador",
+      "qualityHigh": "Alta",
+      "qualityUltra": "Ultra",
+      "auto": "Automático",
+      "cost": "{{count}} créditos por ejecución",
+      "remaining": "{{count}} restantes",
+      "insufficientCredits": "No hay créditos suficientes para esta ejecución"
     }
   },
   "productCopy": {

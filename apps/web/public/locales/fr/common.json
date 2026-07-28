@@ -2050,6 +2050,29 @@
     "openStudio": {
       "title": "Photographiez vos produits",
       "desc": "Ouvrez le Studio Produit pour synchroniser Shopify / WooCommerce et photographier vos vrais produits."
+    },
+    "showcase": {
+      "advanced": "Contrôles avancés",
+      "lighting": "Éclairage",
+      "camera": "Caméra",
+      "aspectRatio": "Format d'image",
+      "creativity": "Créativité",
+      "preservation": "Préservation du produit",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Décrivez la prise de vue souhaitée…",
+      "negativePrompt": "Prompt négatif",
+      "negativePromptPlaceholder": "flou, basse qualité, filigrane, texte…",
+      "seed": "Graine",
+      "seedPlaceholder": "Aléatoire",
+      "randomizeSeed": "Générer une graine aléatoire",
+      "quality": "Qualité",
+      "qualityDraft": "Brouillon",
+      "qualityHigh": "Élevée",
+      "qualityUltra": "Ultra",
+      "auto": "Automatique",
+      "cost": "{{count}} crédits par génération",
+      "remaining": "{{count}} restants",
+      "insufficientCredits": "Crédits insuffisants pour cette génération"
     }
   },
   "productCopy": {
