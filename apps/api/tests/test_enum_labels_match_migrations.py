@@ -75,13 +75,32 @@ def test_every_plan_tier_label_exists_in_a_migration():
     )
 
 
+# Wrong-case labels already shipped and now unremovable: Postgres cannot drop
+# a value from an enum type without recreating it and rewriting every dependent
+# column. These are inert -- nothing emits them -- and their correctly-cased
+# counterparts were added by a later migration. Nothing may be added here
+# without the same being true.
+_ACCEPTED_INERT_LABELS = {
+    # r5scaletier1 added 'scale'; t9scaleenum1 added the emitted 'SCALE'.
+    "scale",
+    # 08cba287fccb created the type with the lowercase VALUES; x2planlabels3
+    # added the uppercase NAMES the app actually emits.
+    "free", "starter", "pro", "agency", "enterprise",
+}
+
+
 def test_no_migration_adds_a_plan_tier_label_in_the_wrong_case():
     """Catches the original defect directly: adding 'scale' when SQLAlchemy
-    emits 'SCALE'."""
+    emits 'SCALE'.
+
+    Labels in _ACCEPTED_INERT_LABELS are grandfathered -- they shipped before
+    the defect was understood and cannot be dropped -- but a NEW wrong-case
+    label still fails here.
+    """
     emitted = set(Organization.__table__.c.plan_tier.type.enums)
     emitted_upper = {e.upper() for e in emitted}
     for label in _added_labels("plan_tier_enum"):
-        if label in emitted:
+        if label in emitted or label in _ACCEPTED_INERT_LABELS:
             continue
         assert label.upper() not in emitted_upper, (
             f"migration adds plan_tier_enum label {label!r}, but SQLAlchemy "
