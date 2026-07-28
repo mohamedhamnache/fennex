@@ -299,6 +299,16 @@ async def get_billing_usage(org: Organization, db: AsyncSession) -> dict:
     """
     Return current usage + limits for all resources.
     Shape: { resource: { used, limit, pct } }
+
+    Includes the "ai_credits"/"seo_credits" buckets enforced by
+    require_credits() (app/core/credits.py), NOT just the PLAN_LIMITS
+    resources -- otherwise the frontend usage banner has no data to warn on
+    before the hard-stop 429 (billing v2, 2026-07-28). These must agree with
+    /usage/summary, current_credits(), and the admin payload: same OrgUsage
+    columns (ai_credits_used/seo_credits_used, counters -- NOT derived from
+    ai_cost_micros), same credit_allowance()/seo_credit_allowance() functions,
+    resolved via _tier_value() rather than str(tier) (see its docstring for
+    why that matters).
     """
     tier = org.plan_tier if isinstance(org.plan_tier, str) else org.plan_tier.value
     limits = PLAN_LIMITS.get(tier, PLAN_LIMITS["free"])
@@ -325,6 +335,25 @@ async def get_billing_usage(org: Organization, db: AsyncSession) -> dict:
             "limit": limit,
             "pct": round(used_val / limit, 2) if limit > 0 else 0.0,
         }
+
+    credit_tier = _tier_value(org)
+
+    ai_used = row.ai_credits_used if row else 0
+    ai_limit = credit_allowance(credit_tier)
+    usage["ai_credits"] = {
+        "used": ai_used,
+        "limit": ai_limit,
+        "pct": round(ai_used / ai_limit, 2) if ai_limit > 0 else 0.0,
+    }
+
+    seo_used = row.seo_credits_used if row else 0
+    seo_limit = seo_credit_allowance(credit_tier)
+    usage["seo_credits"] = {
+        "used": seo_used,
+        "limit": seo_limit,
+        "pct": round(seo_used / seo_limit, 2) if seo_limit > 0 else 0.0,
+    }
+
     return usage
 
 

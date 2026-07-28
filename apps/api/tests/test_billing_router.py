@@ -140,3 +140,34 @@ async def test_get_billing_usage(client):
     assert "usage" in data
     assert "articles" in data["usage"]
     assert data["usage"]["articles"]["limit"] == 4  # free tier
+
+
+async def test_get_billing_usage_includes_credit_buckets(client):
+    """GET /billing/usage exposes ai_credits/seo_credits so the frontend can
+    warn before the require_credits() hard-stop, not just at the 429.
+
+    Org is seeded on FREE (PLAN_CREDITS["free"]=200, SEO_PLAN_CREDITS["free"]=100
+    — see app/core/credits.py). Also asserts the pre-existing PLAN_LIMITS-derived
+    entries are unchanged, since this endpoint has other consumers.
+    """
+    async with TestSessionLocal() as session:
+        session.add(OrgUsage(
+            org_id=FAKE_ORG_ID,
+            period_start=datetime.now().date().replace(day=1),
+            ai_credits_used=160,
+            seo_credits_used=90,
+        ))
+        await session.commit()
+
+    resp = await client.get(
+        "/api/v1/billing/usage",
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 200
+    usage = resp.json()["usage"]
+
+    assert usage["ai_credits"] == {"used": 160, "limit": 200, "pct": 0.8}
+    assert usage["seo_credits"] == {"used": 90, "limit": 100, "pct": 0.9}
+
+    # Pre-existing resources still built from PLAN_LIMITS, unaffected.
+    assert usage["articles"] == {"used": 0, "limit": 4, "pct": 0.0}

@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { useUsageStore } from "@/lib/billing-store";
 import { cn } from "@/lib/cn";
 
+// Plain (non-i18n) labels -- see the note on RESOURCE_LABELS lookup below for
+// why ai_credits/seo_credits are NOT added here.
 const RESOURCE_LABELS: Record<string, string> = {
   articles: "articles",
   images: "images",
@@ -14,6 +16,14 @@ const RESOURCE_LABELS: Record<string, string> = {
   brand_voices: "brand voices",
   audits: "audit runs",
   backlinks: "backlink analyses",
+};
+
+// ai_credits/seo_credits reuse the existing credits.ai/credits.seo i18n keys
+// (already translated for every locale, shared with CreditMeter) rather than
+// duplicating them as untranslated entries in RESOURCE_LABELS above.
+const CREDIT_LABEL_KEYS: Record<string, string> = {
+  ai_credits: "credits.ai",
+  seo_credits: "credits.seo",
 };
 
 interface UsageBannerProps {
@@ -33,7 +43,9 @@ export function UsageBanner({ onUpgrade }: UsageBannerProps) {
 
   const { used, limit, pct } = usage.usage[resource];
   const isAtLimit = pct >= 1.0;
-  const label = RESOURCE_LABELS[resource] ?? resource;
+  const label = CREDIT_LABEL_KEYS[resource]
+    ? t(CREDIT_LABEL_KEYS[resource])
+    : (RESOURCE_LABELS[resource] ?? resource);
 
   return (
     <div
