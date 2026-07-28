@@ -20,15 +20,22 @@ reporting (mirrors w3repricing7's confidence framing):
   ~25s. That figure is for firtoz's specific default configuration and is
   itself community-reported rather than an official per-model rate card entry
   (unlike the FLUX prices in w3repricing7 / y5kontextrate9, which trace to
-  Black Forest Labs / Replicate blog posts). This migration seeds 100000
-  micro-$ ($0.10/run) -- roughly 3x the $0.035 headline figure -- as a
-  deliberately conservative placeholder, matching w3repricing7's stated
-  approach of "an unknown model should be estimated conservatively
-  (over- rather than under-charging Fennex's own margin model) rather than
-  assumed cheap." This also accounts for texture_size/sampling_steps being
-  driven higher than firtoz's default for "high"/"ultra" quality requests
-  (see generate.py's _TEXTURE_SIZE / _SAMPLING_STEPS), which run longer (and
-  cost more) than the headline $0.035 configuration.
+  Black Forest Labs / Replicate blog posts). This migration seeds 35000
+  micro-$ ($0.035/run), the published figure, rather than a padded estimate.
+
+  WHY NOT PAD IT: cost_micros here drives BOTH margin reporting AND what the
+  customer is billed -- AI credits are derived from cost. Over-estimating an
+  unknown rate is only "conservative" when it affects margin alone; on a rate
+  that bills users it simply overcharges them (at 100000 micro-$ a single 3D
+  generation would cost 96 credits instead of 34). w3repricing7's
+  estimate-conservatively guidance applies to the generic default row for
+  models we cannot identify, not to a model whose price we have looked up.
+  Where evidence exists, use the evidence.
+
+  Higher "high"/"ultra" settings (see generate.py's _TEXTURE_SIZE /
+  _SAMPLING_STEPS) do run longer than firtoz's default configuration, so the
+  true cost varies per request. A per-quality rate is the correct fix if that
+  variance proves material; a flat 3x markup on every request is not.
 
   TO CORRECT: reconcile against Replicate's billing dashboard once there is
   real production volume, then insert ANOTHER versioned row at a later
@@ -49,7 +56,7 @@ depends_on = None
 # reproducible and testable rather than depending on wall-clock apply time.
 _EFFECTIVE_FROM = "2026-07-29 00:00:00+00"
 _MODEL = "firtoz/trellis"
-_MICROS = 100_000
+_MICROS = 35_000
 
 
 def upgrade() -> None:
