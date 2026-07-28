@@ -18,11 +18,15 @@ import type { CreateIntent } from "./CreateLauncher";
 import { addToHistory, getHistory, getSaved, savePrompt, removeSaved } from "./prompt-storage";
 
 // Maps an intent from the Create launcher to the internal panel content.
-const INTENT_TO_TAB: Record<CreateIntent, "generate" | "social" | "product" | "marketing"> = {
+const INTENT_TO_TAB: Record<CreateIntent, "generate" | "social" | "product" | "product3d" | "marketing"> = {
   freeform: "generate",
   blog: "generate",
   social: "social",
   product: "product",
+  // Product-to-3D is rendered by the studio page as its own intent panel, so
+  // this mapping is never exercised -- but CreateIntent is a closed union and
+  // omitting it would silently break the next intent added here.
+  product3d: "product3d",
   banner: "marketing",
 };
 
@@ -31,6 +35,7 @@ const INTENT_LABEL: Record<CreateIntent, string> = {
   blog: "Blog image",
   social: "Social post",
   product: "Product shot",
+  product3d: "Product to 3D",
   banner: "Banner / Ad",
 };
 

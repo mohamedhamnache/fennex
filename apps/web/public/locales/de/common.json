@@ -1326,6 +1326,10 @@
         "freeform": {
           "label": "Freiform",
           "desc": "Beschreibe alles und generiere — volle Kontrolle über Stil und Qualität."
+        },
+        "product3d": {
+          "label": "Produkt zu 3D",
+          "desc": "Verwandeln Sie ein Produktfoto in ein produktionsreifes 3D-Modell zum Drehen, Herunterladen und fuer AR."
         }
       }
     }

@@ -1423,6 +1423,10 @@
         "freeform": {
           "label": "Free-form",
           "desc": "Describe anything and generate — full control over style and quality."
+        },
+        "product3d": {
+          "label": "Product to 3D",
+          "desc": "Turn a product photo into a production-ready 3D model you can spin, download and drop into AR."
         }
       }
     }

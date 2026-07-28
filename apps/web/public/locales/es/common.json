@@ -1326,6 +1326,10 @@
         "freeform": {
           "label": "Libre",
           "desc": "Describe lo que sea y genera — control total del estilo y la calidad."
+        },
+        "product3d": {
+          "label": "Producto a 3D",
+          "desc": "Convierte la foto de un producto en un modelo 3D listo para produccion: girarlo, descargarlo y usarlo en RA."
         }
       }
     }

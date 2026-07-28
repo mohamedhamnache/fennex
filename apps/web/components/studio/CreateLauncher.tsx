@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { Share2, ShoppingBag, Newspaper, Megaphone, Wand2, ArrowRight, Sparkles, type LucideIcon } from "lucide-react";
+import { Share2, ShoppingBag, Box, Newspaper, Megaphone, Wand2, ArrowRight, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export type CreateIntent = "social" | "product" | "blog" | "banner" | "freeform";
+export type CreateIntent = "social" | "product" | "product3d" | "blog" | "banner" | "freeform";
 
 interface IntentDef {
   id: CreateIntent;
@@ -20,6 +20,7 @@ interface IntentDef {
 const INTENTS: IntentDef[] = [
   { id: "social", Icon: Share2, featured: true, chip: "bg-sky-500/12 text-sky-500", glow: "56 189 248", tags: ["Instagram", "TikTok", "LinkedIn"] },
   { id: "product", Icon: ShoppingBag, featured: true, chip: "bg-amber-500/12 text-amber-500", glow: "245 158 11", tags: ["Shopify", "WordPress", "Lifestyle"] },
+  { id: "product3d", Icon: Box, featured: true, chip: "bg-emerald-500/12 text-emerald-500", glow: "16 185 129", tags: ["GLB", "OBJ", "AR-ready"] },
   { id: "blog", Icon: Newspaper, featured: true, chip: "bg-primary/12 text-primary", glow: "217 120 72", tags: ["Covers", "Inline", "Alt-text"] },
   { id: "banner", Icon: Megaphone, chip: "bg-rose-500/12 text-rose-500", glow: "244 63 94", tags: ["Ads", "Display", "Promo"] },
   { id: "freeform", Icon: Wand2, chip: "bg-violet-500/12 text-violet-500", glow: "168 85 247", tags: ["Any prompt", "Full control"] },

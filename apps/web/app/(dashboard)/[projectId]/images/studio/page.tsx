@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Wand2, Sparkles, Pencil, type LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ import { CreateLauncher, type CreateIntent } from "@/components/studio/CreateLau
 import { EditLauncher } from "@/components/studio/EditLauncher";
 import { AiStudioChat } from "@/components/studio/AiStudioChat";
 import { ProductStudio } from "@/components/studio/ProductStudio";
+import { Product3DTab } from "@/components/studio/product3d/Product3DTab";
 import { SocialStudio } from "@/components/studio/SocialStudio";
 
 type StudioMode = "create" | "edit" | "ai";
@@ -37,6 +39,7 @@ interface PastRun {
 
 export default function StudioPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setCurrentProject } = useProjectStore();
@@ -44,7 +47,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
   // Studio shell: which front door is active, and (for Create) the chosen intent.
   // Initial values can be deep-linked from the dashboard via ?mode= and ?intent=.
   const VALID_MODES: StudioMode[] = ["create", "edit", "ai"];
-  const VALID_INTENTS: CreateIntent[] = ["social", "product", "blog", "banner", "freeform"];
+  const VALID_INTENTS: CreateIntent[] = ["social", "product", "product3d", "blog", "banner", "freeform"];
   const paramMode = searchParams.get("mode") as StudioMode | null;
   const paramIntent = searchParams.get("intent") as CreateIntent | null;
   const [mode, setMode] = useState<StudioMode>(
@@ -288,6 +291,27 @@ export default function StudioPage({ params }: { params: { projectId: string } }
           />
         )}
 
+        {/* Product-to-3D gets its own intent panel, like product and social: the
+            tab grid in StudioLeftPanel never renders here, since this page only
+            mounts that panel with an `intent` set, which replaces the grid. */}
+        {mode === "create" && createIntent === "product3d" && (
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="shrink-0 border-b border-border px-4 py-2.5">
+              <button
+                type="button"
+                onClick={() => setCreateIntent(null)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                {t("studio.createLauncher.intents.product3d.label")}
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <Product3DTab projectId={projectId} />
+            </div>
+          </div>
+        )}
+
         {/* Social gets a dedicated full-width studio (topic → platforms → set + captions) */}
         {mode === "create" && createIntent === "social" && (
           <SocialStudio
@@ -297,7 +321,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
           />
         )}
 
-        {mode === "create" && createIntent !== null && createIntent !== "product" && createIntent !== "social" && (
+        {mode === "create" && createIntent !== null && createIntent !== "product" && createIntent !== "social" && createIntent !== "product3d" && (
           <div className="flex h-full overflow-hidden">
             <div className="w-[380px] shrink-0 border-r border-border overflow-hidden">
               <StudioLeftPanel
