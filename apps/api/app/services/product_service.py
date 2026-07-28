@@ -1,6 +1,8 @@
 """Product photography scene catalog and prompt builder."""
 from typing import Optional, TYPE_CHECKING
 
+from app.services.prompting import PromptBuilder, ShowcaseSpec
+
 if TYPE_CHECKING:
     from app.models.brand_kit import BrandKit
 
@@ -71,32 +73,59 @@ def build_scene_prompt(
     product_description: str,
     brand_kit: Optional["BrandKit"],
 ) -> str:
+    """Thin wrapper: builds a ShowcaseSpec and delegates to PromptBuilder.
+
+    Preservation, quality and photography direction now come from the shared
+    `prompting` modules (role, product_preservation, composition, lighting,
+    camera, rendering_style, quality) instead of a single hand-rolled
+    f-string. Two pieces of this scene's direction aren't representable by
+    those modules without loss, so they're carried verbatim through
+    `ShowcaseSpec.user_prompt` (appended last by the builder, so it still
+    reads as instruction rather than being overridden):
+
+    - The curated environment description in `PRODUCT_SCENES[...]
+      ["prompt_template"]`. `modules.environment()` only turns the scene id
+      into a generic "Scene: cafe table" stub -- resolving the full
+      description is explicitly documented as the caller's job.
+    - The "integrate realistically with natural contact shadows, accurate
+      reflections..." sentence: this instruction lives in
+      `vocab.SHOWCASE_SYSTEM_PROMPT` (`PromptResult.system_prompt`), but this
+      function's return type is a single `str` and its only caller
+      (`routers/product.py`, not touched by this refactor) only ever sends
+      the `.prompt` half to the model, never the system prompt. Dropping it
+      here would silently lose the instruction, so it stays in the prompt
+      body.
+
+    Fixed defaults below (lighting, camera, aspect_ratio, creativity,
+    quality) are new controls the old signature never exposed. They're
+    chosen to be neutral/non-contradictory with every existing scene
+    description and consistent with what the caller already does today:
+    `_run_flux_kontext` hard-codes `aspect_ratio="1:1"` on the Replicate call
+    regardless of prompt text, so stating it here matches real output rather
+    than introducing a new one.
+    """
     scene = PRODUCT_SCENES.get(scene_id)
     if not scene:
         raise ValueError(f"Unknown scene: {scene_id}")
 
-    # Instruction-style prompt for flux-kontext: lead with the action, describe the
-    # scene, then strongly constrain the model to preserve the product's identity.
-    instruction = (
+    scene_instruction = (
         f"Place the product from the image {scene['prompt_template']}. "
-        "Keep the product itself completely unchanged — identical shape, colours, materials, "
-        "proportions, textures, and any text, logo or label. Do not redesign, distort, recolour, "
-        "or replace the product; only change the environment around it. "
         "Integrate it realistically with natural contact shadows, accurate reflections and "
         "lighting that matches the scene. Photorealistic, ultra-detailed, high-resolution "
         "professional commercial product photography, sharp focus on the product."
     )
 
-    if product_description.strip():
-        instruction += f" For reference, the product is {product_description.strip()}."
-
-    if brand_kit:
-        parts = []
-        if brand_kit.colors:
-            parts.append(f"echo the brand palette ({', '.join(brand_kit.colors)}) subtly in the styling and props")
-        if brand_kit.style_rules:
-            parts.append(brand_kit.style_rules)
-        if parts:
-            instruction += " " + ". ".join(parts) + "."
-
-    return instruction
+    spec = ShowcaseSpec(
+        scene_id=scene_id,
+        lighting="diffused_daylight",
+        camera="50mm",
+        aspect_ratio="1:1",
+        creativity=30,
+        product_preservation=100,
+        user_prompt=scene_instruction,
+        negative_prompt="",
+        seed=None,
+        quality="ultra",
+        product_description=product_description,
+    )
+    return PromptBuilder.build_product_showcase(spec, brand_kit).prompt

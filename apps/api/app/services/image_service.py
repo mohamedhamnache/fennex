@@ -3,6 +3,8 @@ import httpx
 import logging
 from typing import Literal, Optional, TYPE_CHECKING
 
+from app.services.prompting import ImageSpec, PromptBuilder
+
 if TYPE_CHECKING:
     from app.models.brand_kit import BrandKit
 
@@ -18,36 +20,53 @@ def build_image_prompt(
     usage: str,
     brand_kit: Optional["BrandKit"] = None,
 ) -> str:
+    """Thin wrapper: builds an ImageSpec and delegates to PromptBuilder.
+
+    `PromptBuilder.build_image` covers title/usage (via `role`+`objective`),
+    keyword-as-topic (via `materials`) and style (via `rendering_style`).
+    Two things it can't carry without loss go through `ImageSpec.user_prompt`
+    instead, verbatim, so nothing the old prompt said is dropped:
+
+    - The per-usage format directive ("Wide format, no text overlays...",
+      "Square format, bold and eye-catching.", "Clean, professional.") --
+      there's no module for this; it's specific to this function.
+    - Brand-kit `tone`. `modules.brand_style` only reads `colors` and
+      `style_rules` (see its `BrandKitLike` protocol) -- it has no field for
+      tone at all, so passing `brand_kit` straight into `PromptBuilder.
+      build_image` would silently drop the tone instruction. Instead the
+      full brand-kit block (palette, style rules, tone) is rendered here in
+      its original wording and passed via `user_prompt`; `brand_kit` is not
+      also passed to the builder, so the two renderings don't both fire.
+    """
     if usage == "article_cover":
-        kw_part = f" Topic: {keyword}." if keyword else ""
-        base = (
-            f"Professional blog cover image for an article titled '{title}'."
-            f"{kw_part} Style: {style}. Wide format, no text overlays, "
-            f"suitable for a tech/marketing blog."
-        )
+        format_hint = "Wide format, no text overlays, suitable for a tech/marketing blog."
     elif usage == "social_post":
-        subject = keyword or title
-        base = (
-            f"Social media visual for content about '{subject}'."
-            f" Style: {style}. Square format, bold and eye-catching."
-        )
+        format_hint = "Square format, bold and eye-catching."
     elif usage == "brand_asset":
-        base = f"Brand visual asset. Style: {style}. Clean, professional."
+        format_hint = "Clean, professional."
     else:
-        base = f"'{title}'. Style: {style}."
+        format_hint = ""
 
+    extra_parts = [format_hint] if format_hint else []
     if brand_kit:
-        parts = []
+        bk_parts = []
         if brand_kit.colors:
-            parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
+            bk_parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
         if brand_kit.style_rules:
-            parts.append(f"Style: {brand_kit.style_rules}")
+            bk_parts.append(f"Style: {brand_kit.style_rules}")
         if brand_kit.tone:
-            parts.append(f"Tone: {brand_kit.tone}")
-        if parts:
-            base = f"{base} {'. '.join(parts)}."
+            bk_parts.append(f"Tone: {brand_kit.tone}")
+        if bk_parts:
+            extra_parts.append(". ".join(bk_parts) + ".")
 
-    return base
+    spec = ImageSpec(
+        title=title,
+        usage=usage,
+        style=style,
+        keyword=keyword,
+        user_prompt=" ".join(extra_parts),
+    )
+    return PromptBuilder.build_image(spec, None).prompt
 
 
 SOCIAL_PRESETS: dict[str, dict] = {
@@ -68,24 +87,42 @@ def build_social_prompt(
     subject: str,
     brand_kit=None,
 ) -> str:
+    """Thin wrapper: builds an ImageSpec and delegates to PromptBuilder.
+
+    `title=subject` and `usage="social_post"` route the subject and the
+    "produce a social post" framing through `role`/`objective`, and `style`
+    carries the old "Bold, eye-catching..." composition directive through
+    `rendering_style`. The platform label/aspect-ratio descriptor and the
+    "No text overlays. High quality, vibrant." line have no matching module,
+    and (as in `build_image_prompt`) `modules.brand_style` can't carry
+    `tone` -- both go through `ImageSpec.user_prompt` verbatim instead, with
+    `brand_kit` not also passed to the builder, so nothing is dropped or
+    duplicated. See `build_image_prompt` for the fuller rationale.
+    """
     meta = SOCIAL_PRESETS.get(platform, {})
     label = meta.get("label", platform.replace("_", " ").title())
     aspect = meta.get("aspect", "")
-    base = (
-        f"Professional {label} image ({aspect} aspect ratio). "
-        f"Subject: {subject}. "
-        f"Bold, eye-catching composition optimised for social media engagement. "
-        f"No text overlays. High quality, vibrant."
-    )
+
+    extra_parts = [
+        f"Professional {label} image ({aspect} aspect ratio).",
+        "No text overlays. High quality, vibrant.",
+    ]
     if brand_kit:
-        parts = []
+        bk_parts = []
         if brand_kit.colors:
-            parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
+            bk_parts.append(f"Brand palette: {', '.join(brand_kit.colors)}")
         if brand_kit.tone:
-            parts.append(f"Tone: {brand_kit.tone}")
-        if parts:
-            base = f"{base} {'. '.join(parts)}."
-    return base
+            bk_parts.append(f"Tone: {brand_kit.tone}")
+        if bk_parts:
+            extra_parts.append(". ".join(bk_parts) + ".")
+
+    spec = ImageSpec(
+        title=subject,
+        usage="social_post",
+        style="Bold, eye-catching composition optimised for social media engagement",
+        user_prompt=" ".join(extra_parts),
+    )
+    return PromptBuilder.build_image(spec, None).prompt
 
 
 async def generate_image_dalle(
