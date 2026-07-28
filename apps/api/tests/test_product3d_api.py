@@ -8,6 +8,7 @@ user for the happy-path / tenant-isolation / credit tests, and the real
 (un-overridden) dependency for the no-token 401 case.
 """
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -103,6 +104,15 @@ async def unauth_client():
     app.dependency_overrides.clear()
 
 
+# ── Mock ARQ pool (POST enqueues run_product_3d; no real Redis in tests) ──────
+
+def make_mock_pool():
+    pool = AsyncMock()
+    pool.enqueue_job = AsyncMock(return_value=MagicMock())
+    pool.aclose = AsyncMock()
+    return pool
+
+
 def _payload(**overrides):
     body = {
         "project_id": str(FAKE_PROJECT_ID),
@@ -115,13 +125,15 @@ def _payload(**overrides):
     return body
 
 
-# ── POST /product/to-3d ──────────────────────────────────────────────────────
+# ── POST /images/product-3d ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_enqueue_returns_202_with_job_id_and_creates_pending_row(client):
     await _seed()
     try:
-        resp = await client.post("/api/v1/product/to-3d", json=_payload())
+        mock_pool = make_mock_pool()
+        with patch("app.api.v1.routers.product3d.arq.create_pool", return_value=mock_pool):
+            resp = await client.post("/api/v1/images/product-3d", json=_payload())
         assert resp.status_code == 202
         data = resp.json()
         assert "job_id" in data
@@ -136,6 +148,8 @@ async def test_enqueue_returns_202_with_job_id_and_creates_pending_row(client):
             assert job.requested_formats == ["glb", "obj"]
             assert job.quality == "high"
             assert job.texture_resolution == "2K"
+
+        mock_pool.enqueue_job.assert_awaited_once_with("run_product_3d", str(job_id))
     finally:
         await _teardown()
 
@@ -144,7 +158,7 @@ async def test_enqueue_returns_202_with_job_id_and_creates_pending_row(client):
 async def test_enqueue_unsupported_format_is_422(client):
     await _seed()
     try:
-        resp = await client.post("/api/v1/product/to-3d", json=_payload(formats=["fbx"]))
+        resp = await client.post("/api/v1/images/product-3d", json=_payload(formats=["fbx"]))
         assert resp.status_code == 422
     finally:
         await _teardown()
@@ -154,7 +168,7 @@ async def test_enqueue_unsupported_format_is_422(client):
 async def test_enqueue_unknown_project_is_404(client):
     await _seed()
     try:
-        resp = await client.post("/api/v1/product/to-3d", json=_payload(project_id=str(uuid.uuid4())))
+        resp = await client.post("/api/v1/images/product-3d", json=_payload(project_id=str(uuid.uuid4())))
         assert resp.status_code == 404
     finally:
         await _teardown()
@@ -164,7 +178,7 @@ async def test_enqueue_unknown_project_is_404(client):
 async def test_enqueue_without_token_is_401(unauth_client):
     await _seed()
     try:
-        resp = await unauth_client.post("/api/v1/product/to-3d", json=_payload())
+        resp = await unauth_client.post("/api/v1/images/product-3d", json=_payload())
         assert resp.status_code == 401
     finally:
         await _teardown()
@@ -175,7 +189,7 @@ async def test_enqueue_maxed_out_org_is_429(client):
     """require_credits("ai") actually guards the enqueue endpoint."""
     await _seed(ai_credits_used=PLAN_CREDITS["starter"])
     try:
-        resp = await client.post("/api/v1/product/to-3d", json=_payload())
+        resp = await client.post("/api/v1/images/product-3d", json=_payload())
         assert resp.status_code == 429
         detail = resp.json()["detail"]
         assert detail["code"] == "LIMIT_REACHED"
@@ -184,16 +198,17 @@ async def test_enqueue_maxed_out_org_is_429(client):
         await _teardown()
 
 
-# ── GET /product/to-3d/{job_id} ──────────────────────────────────────────────
+# ── GET /images/product-3d/{job_id} ──────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_status_returns_the_row(client):
     await _seed()
     try:
-        enqueue_resp = await client.post("/api/v1/product/to-3d", json=_payload())
+        with patch("app.api.v1.routers.product3d.arq.create_pool", return_value=make_mock_pool()):
+            enqueue_resp = await client.post("/api/v1/images/product-3d", json=_payload())
         job_id = enqueue_resp.json()["job_id"]
 
-        resp = await client.get(f"/api/v1/product/to-3d/{job_id}")
+        resp = await client.get(f"/api/v1/images/product-3d/{job_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["job_id"] == job_id
@@ -211,7 +226,7 @@ async def test_status_returns_the_row(client):
 async def test_status_unknown_job_is_404(client):
     await _seed()
     try:
-        resp = await client.get(f"/api/v1/product/to-3d/{uuid.uuid4()}")
+        resp = await client.get(f"/api/v1/images/product-3d/{uuid.uuid4()}")
         assert resp.status_code == 404
     finally:
         await _teardown()
@@ -234,7 +249,7 @@ async def test_status_other_org_job_is_404(client):
             await session.commit()
             other_job_id = other_job.id
 
-        resp = await client.get(f"/api/v1/product/to-3d/{other_job_id}")
+        resp = await client.get(f"/api/v1/images/product-3d/{other_job_id}")
         assert resp.status_code == 404
     finally:
         await _teardown()
@@ -244,7 +259,7 @@ async def test_status_other_org_job_is_404(client):
 async def test_status_without_token_is_401(unauth_client):
     await _seed()
     try:
-        resp = await unauth_client.get(f"/api/v1/product/to-3d/{uuid.uuid4()}")
+        resp = await unauth_client.get(f"/api/v1/images/product-3d/{uuid.uuid4()}")
         assert resp.status_code == 401
     finally:
         await _teardown()

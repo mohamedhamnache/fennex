@@ -2,22 +2,28 @@
 
 Kept in its own router rather than folded into product.py (product scenes)
 per the design spec's separation between the "Product Showcase" and "Product
-to 3D" tools -- registered under the same /product prefix so the paths still
-read /product/to-3d.
+to 3D" tools -- registered under the /images prefix, same as every other
+Image Studio router (images, editing, seo, product, banners, ...), so the
+paths read /images/product-3d, symmetric with the existing
+/images/product-scene.
 
-The endpoint here only validates the request and persists a `pending` row.
-Execution (Trellis generation + GLB/OBJ conversion via
-app/services/product3d/convert.py, run on an arq worker) is out of scope for
-this task and lands separately.
+POST persists a `pending` row, commits, then enqueues `run_product_3d`
+(app/workers/tasks/product3d_tasks.py) on arq -- same create-pool /
+enqueue-after-commit / close shape as
+app/api/v1/routers/keywords.py::trigger_keyword_research's enqueue of
+run_keyword_research. GLB generation (Trellis) and status transitions happen
+entirely on the worker.
 """
 import uuid
 from typing import Annotated
 
+import arq
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import select
 
 from app.core.billing import require_credits
+from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
 from app.models.product3d import Product3DJob, Product3DStatus, ModelFormat
 from app.models.project import Project
@@ -76,7 +82,7 @@ class Product3DStatusOut(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.post("/to-3d", response_model=Product3DEnqueueOut, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/product-3d", response_model=Product3DEnqueueOut, status_code=status.HTTP_202_ACCEPTED)
 async def enqueue_product_to_3d(
     body: Product3DRequest,
     current_user: CurrentUser,
@@ -106,10 +112,16 @@ async def enqueue_product_to_3d(
     job_status = job.status
     await db.commit()
 
+    redis_pool = await arq.create_pool(settings.REDIS_SETTINGS)
+    try:
+        await redis_pool.enqueue_job("run_product_3d", str(job_id))
+    finally:
+        await redis_pool.aclose()
+
     return Product3DEnqueueOut(job_id=job_id, status=job_status)
 
 
-@router.get("/to-3d/{job_id}", response_model=Product3DStatusOut)
+@router.get("/product-3d/{job_id}", response_model=Product3DStatusOut)
 async def get_product_to_3d_status(
     job_id: uuid.UUID,
     current_user: CurrentUser,

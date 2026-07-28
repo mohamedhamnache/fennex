@@ -15,6 +15,7 @@ from app.workers.tasks.digest_tasks import send_weekly_digests
 from app.workers.tasks.discovery_tasks import run_discovery
 from app.workers.tasks.keyword_tasks import run_keyword_research
 from app.workers.tasks.monitoring_tasks import run_competitor_monitor, run_market_monitor
+from app.workers.tasks.product3d_tasks import run_product_3d
 from app.workers.tasks.seo_tasks import run_rank_tracker
 from app.services.admin.rollup import rollup_daily_job
 
@@ -52,6 +53,7 @@ class WorkerSettings:
         run_rank_tracker,
         run_discovery,
         rollup_daily_job,
+        run_product_3d,
     ]
     # None of the cron jobs below reach an LLM call (see monitoring_service,
     # autopilot_service, digest_service, and the SEO-provider-only backlink
