@@ -75,7 +75,8 @@ def replicate_operation_credits(cost_micros: int) -> int:
 # --------------------------------------------------------------------------
 
 SEO_CREDIT_WEIGHT: dict[str, int] = {
-    "serp": 1,
+    # A SERP lookup is the reference SEO operation and bills 2 credits.
+    "serp": 2,
     "keyword_ideas": 1,
     "keyword_analysis": 1,
     "rank_check": 1,

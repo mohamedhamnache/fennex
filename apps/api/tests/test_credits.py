@@ -39,7 +39,9 @@ def test_credit_allowance_falls_back_to_free():
 
 
 def test_seo_credits_weighted_by_unit():
-    assert seo_credits_for("serp", 3) == 3
+    # a SERP lookup is the reference SEO operation at 2 credits
+    assert seo_credits_for("serp", 1) == 2
+    assert seo_credits_for("serp", 3) == 6
     assert seo_credits_for("audit", 2) == 2 * SEO_CREDIT_WEIGHT["audit"]
     assert seo_credits_for("backlinks", 1) == SEO_CREDIT_WEIGHT["backlinks"]
     # unknown or missing unit falls back to 1x

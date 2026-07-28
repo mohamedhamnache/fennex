@@ -33,7 +33,7 @@ async def test_record_seo_counts_one_credit_per_task():
     async with Session() as db:
         await meter.record_seo(db, org_id=org, project_id=None, unit="serp", count=3)
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert ou.seo_credits_used == 3
+        assert ou.seo_credits_used == 6  # 3 serp tasks x weight 2
         assert ou.cost_micros == 1_800
 
 
