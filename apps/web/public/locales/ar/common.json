@@ -2056,8 +2056,12 @@
       "desc": "افتح استوديو المنتجات لمزامنة Shopify / WooCommerce وتصوير منتجات حقيقية."
     },
     "imageUrl": {
-      "label": "رابط صورة المنتج",
-      "placeholder": "https://your-store.com/product.jpg"
+      "label": "صورة المنتج",
+      "placeholder": "...أو الصق رابط صورة",
+      "dropHint": "أفلت صورة أو انقر للرفع",
+      "uploading": "جارٍ الرفع...",
+      "uploadFailed": "فشل الرفع",
+      "clear": "مسح الصورة"
     },
     "showcase": {
       "advanced": "إعدادات متقدمة",

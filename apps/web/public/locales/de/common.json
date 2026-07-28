@@ -2056,8 +2056,12 @@
       "desc": "Öffne das Produktstudio, um Shopify / WooCommerce zu synchronisieren und echte SKUs zu shooten."
     },
     "imageUrl": {
-      "label": "Produktbild-URL",
-      "placeholder": "https://dein-shop.com/produkt.jpg"
+      "label": "Produktbild",
+      "placeholder": "...oder Bild-URL einfuegen",
+      "dropHint": "Bild ablegen oder klicken zum Hochladen",
+      "uploading": "Wird hochgeladen...",
+      "uploadFailed": "Upload fehlgeschlagen",
+      "clear": "Bild entfernen"
     },
     "showcase": {
       "advanced": "Erweiterte Einstellungen",

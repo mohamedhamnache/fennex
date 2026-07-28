@@ -2056,8 +2056,12 @@
       "desc": "Ouvrez le Studio Produit pour synchroniser Shopify / WooCommerce et photographier vos vrais produits."
     },
     "imageUrl": {
-      "label": "URL de l'image du produit",
-      "placeholder": "https://votre-boutique.com/produit.jpg"
+      "label": "Image du produit",
+      "placeholder": "...ou collez une URL d'image",
+      "dropHint": "Deposez une image ou cliquez pour televerser",
+      "uploading": "Televersement...",
+      "uploadFailed": "Echec du televersement",
+      "clear": "Effacer l'image"
     },
     "showcase": {
       "advanced": "Contrôles avancés",

@@ -124,6 +124,7 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
       </div>
 
       <ImageUrlField
+          projectId={projectId}
         value={sourceUrl}
         onChange={setSourceUrl}
         label={t("productTab.imageUrl.label", { defaultValue: "Product Image URL" }) ?? undefined}

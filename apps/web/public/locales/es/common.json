@@ -2056,8 +2056,12 @@
       "desc": "Abre el Estudio de Producto para sincronizar Shopify / WooCommerce y fotografiar SKUs reales."
     },
     "imageUrl": {
-      "label": "URL de la imagen del producto",
-      "placeholder": "https://tu-tienda.com/producto.jpg"
+      "label": "Imagen del producto",
+      "placeholder": "...o pega una URL de imagen",
+      "dropHint": "Suelta una imagen o haz clic para subirla",
+      "uploading": "Subiendo...",
+      "uploadFailed": "Error al subir",
+      "clear": "Borrar imagen"
     },
     "showcase": {
       "advanced": "Controles avanzados",

@@ -76,7 +76,8 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
 
       {/* Product inputs */}
       <div className="flex flex-col gap-3">
-        <ImageUrlField value={productUrl} onChange={setProductUrl} />
+        <ImageUrlField
+          projectId={projectId} value={productUrl} onChange={setProductUrl} />
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
             Product Description
