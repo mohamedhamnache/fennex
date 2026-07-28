@@ -42,7 +42,7 @@ async def test_heavy_units_are_weighted():
     async with Session() as db:
         await meter.record_seo(db, org_id=org, project_id=None, unit="audit", count=2)
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
-        assert ou.seo_credits_used == 10  # 2 * weight 5
+        assert ou.seo_credits_used == 20  # 2 audits x weight 10
 
 
 async def test_seo_spend_does_not_consume_the_ai_bucket():

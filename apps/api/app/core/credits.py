@@ -74,14 +74,19 @@ def replicate_operation_credits(cost_micros: int) -> int:
 # SEO credits (counted per DataForSEO task)
 # --------------------------------------------------------------------------
 
+# Credits billed per DataForSEO task, by unit. A SERP lookup is the reference
+# operation at 2 credits; the rest are priced relative to it and to their real
+# supplier cost (keyword_ideas costs ~13x a SERP task, hence 15).
 SEO_CREDIT_WEIGHT: dict[str, int] = {
-    # A SERP lookup is the reference SEO operation and bills 2 credits.
     "serp": 2,
-    "keyword_ideas": 1,
+    # rank_check runs through the same fetch_serp chokepoint as `serp`, so it
+    # is the same underlying task and must bill the same.
+    "rank_check": 2,
+    "keyword_ideas": 15,
+    "backlinks": 5,
+    "audit": 10,
+    # No live call site yet; left at the historical weight until one exists.
     "keyword_analysis": 1,
-    "rank_check": 1,
-    "backlinks": 3,
-    "audit": 5,
 }
 
 SEO_PLAN_CREDITS: dict[str, int] = {

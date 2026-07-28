@@ -46,7 +46,7 @@ async def test_backfill_splits_ai_cost_and_counts_seo_credits():
 
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
         assert ou.ai_cost_micros == 72_000   # llm + image + edit only
-        assert ou.seo_credits_used == 13     # 4 serp x2 + 1 audit x5
+        assert ou.seo_credits_used == 18     # 4 serp x2 + 1 audit x10
         # ai_credits_used: llm 2_000 -> 2 (unfloored) + image 60_000 -> 58
         # (unfloored) + edit 10_000 -> 10 (Replicate floor, already at 10
         # unfloored so this case doesn't exercise it -- see the dedicated
