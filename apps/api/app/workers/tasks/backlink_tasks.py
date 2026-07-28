@@ -33,8 +33,15 @@ def _is_spam(domain: str, da: float | None) -> bool:
     return False
 
 
-async def sync_backlink_profile(ctx, project_id: str):
-    """Fetch and upsert backlink profile, backlinks, and opportunities for a project."""
+async def sync_backlink_profile(ctx, project_id: str, bill_credits: bool = True):
+    """Fetch and upsert backlink profile, backlinks, and opportunities for a project.
+
+    `bill_credits` threads through to the metering call below: the weekly
+    cron (weekly_backlink_discovery) enqueues this with bill_credits=False so
+    its fan-out across every tracked project can never exhaust an org's
+    enforced SEO credit bucket, while the user-initiated "Analyze" endpoint
+    (POST /backlinks/analyze) enqueues it with the default True and keeps
+    billing as before."""
     pid = uuid.UUID(project_id)
     provider = get_seo_provider()
     today = date.today().isoformat()
@@ -71,7 +78,7 @@ async def sync_backlink_profile(ctx, project_id: str):
                 async with async_session_factory() as _mdb:
                     await _meter.record_seo(_mdb, org_id=org_id, project_id=pid,
                                             unit="backlinks", count=1,
-                                            feature="backlink_sync")
+                                            feature="backlink_sync", bill_credits=bill_credits)
             except Exception:
                 logger.warning("backlink sync seo metering failed", exc_info=True)
 
@@ -223,6 +230,11 @@ async def weekly_backlink_discovery(ctx):
 
     sync_backlink_profile only calls the SEO data provider (no LLM), so this
     never enters batch_scope().
+
+    Enqueues with bill_credits=False: this is background/cron work, so it
+    must still be metered for cost visibility but must never consume the
+    enforced SEO credit bucket -- only the user-initiated "Analyze" endpoint
+    (POST /backlinks/analyze) enqueues sync_backlink_profile with billing on.
     """
     import arq
 
@@ -233,5 +245,5 @@ async def weekly_backlink_discovery(ctx):
     redis = ctx["redis"]
     for profile in profiles:
         await arq.ArqRedis(redis).enqueue_job(
-            "sync_backlink_profile", str(profile.project_id)
+            "sync_backlink_profile", str(profile.project_id), bill_credits=False
         )

@@ -21,6 +21,10 @@ async def run_rank_tracker(ctx) -> None:
     for project in projects:
         try:
             async with async_session_factory() as db:
-                await snapshot_project(project, db)
+                # Background/cron rank tracking must still be metered for
+                # cost visibility but must never consume the enforced SEO
+                # credit bucket -- only user-initiated work (e.g. the
+                # /refresh endpoint) does that. See rank_tracking_service.
+                await snapshot_project(project, db, bill_credits=False)
         except Exception:  # noqa: BLE001 - one project must not break the batch
             logger.exception("rank tracker failed for project %s", project.id)

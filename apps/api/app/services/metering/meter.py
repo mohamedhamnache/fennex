@@ -123,13 +123,22 @@ _SEO_COLUMN = {"serp": "seo_serp", "keyword_ideas": "seo_keyword_analyses"}
 
 
 async def record_seo(db, *, org_id: uuid.UUID, project_id, unit: str, count: int,
-                     provider: str = "dataforseo", feature: str | None = None) -> int:
+                     provider: str = "dataforseo", feature: str | None = None,
+                     bill_credits: bool = True) -> int:
+    """`bill_credits=False` still writes the UsageEvent and still bumps
+    cost_micros (and the per-unit _SEO_COLUMN counter) so COGS/margin
+    reporting stays complete -- it just skips the seo_credits_used increment,
+    so background/cron work can never trip the enforced credit bucket that
+    only user-initiated calls draw from. Default True keeps every existing
+    caller unchanged."""
     cost = round(count * await rate(db, provider, unit, ""))
     db.add(UsageEvent(
         org_id=org_id, project_id=project_id, kind="seo", provider=provider,
         feature=feature, seo_unit=unit, seo_count=count, cost_micros=cost,
     ))
-    increments = {"cost_micros": cost, "seo_credits_used": seo_credits_for(unit, count)}
+    increments = {"cost_micros": cost}
+    if bill_credits:
+        increments["seo_credits_used"] = seo_credits_for(unit, count)
     col = _SEO_COLUMN.get(unit)
     if col:
         increments[col] = count

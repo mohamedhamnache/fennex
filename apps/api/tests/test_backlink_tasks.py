@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.database import Base
 from app.models.billing import OrgUsage
+from app.models.cost_rate import CostRate
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.usage_event import UsageEvent
@@ -145,6 +146,67 @@ async def test_sync_backlink_profile_does_not_meter_on_provider_failure():
         assert ev_result.scalars().all() == []
         ou_result = await session.execute(select(OrgUsage).where(OrgUsage.org_id == org_id))
         assert ou_result.scalar_one_or_none() is None
+
+
+async def test_sync_backlink_profile_bill_credits_false_meters_without_crediting():
+    """Weekly backlink-discovery cron (bill_credits=False): the usage_event
+    and cost_micros still land for COGS/margin reporting, but seo_credits_used
+    must stay at 0 -- the weekly fan-out across every tracked project must
+    never be able to exhaust an org's enforced SEO bucket on its own."""
+    org_id, project_id = await _make_org_and_project()
+    async with TestSessionLocal() as session:
+        session.add(CostRate(provider="dataforseo", unit="backlinks", model="",
+                             micro_dollars_per_unit=4_000))
+        await session.commit()
+
+    with patch("app.workers.tasks.backlink_tasks.async_session_factory", TestSessionLocal), \
+         patch("app.workers.tasks.backlink_tasks.get_seo_provider", return_value=_RealSEOProvider()):
+        await sync_backlink_profile(ctx={}, project_id=str(project_id), bill_credits=False)
+
+    async with TestSessionLocal() as session:
+        ev_result = await session.execute(select(UsageEvent).where(UsageEvent.org_id == org_id))
+        events = ev_result.scalars().all()
+        assert len(events) == 1
+        assert events[0].cost_micros > 0
+
+        ou = (await session.execute(
+            select(OrgUsage).where(OrgUsage.org_id == org_id)
+        )).scalar_one()
+        assert ou.cost_micros > 0
+        assert ou.seo_credits_used == 0
+
+
+async def test_weekly_backlink_discovery_enqueues_without_billing():
+    """The weekly cron entrypoint must fan out sync_backlink_profile jobs with
+    bill_credits=False -- the analyze_backlinks router endpoint (user-clicked
+    "Analyze") enqueues the same job with no such override, so it keeps
+    billing on the default."""
+    from app.models.backlinks import BacklinkProfile
+    from app.workers.tasks.backlink_tasks import weekly_backlink_discovery
+
+    org_id, project_id = await _make_org_and_project()
+    async with TestSessionLocal() as session:
+        session.add(BacklinkProfile(project_id=project_id, org_id=org_id, domain="synced.com"))
+        await session.commit()
+
+    enqueued = []
+
+    class _FakeArqRedis:
+        def __init__(self, redis):
+            pass
+
+        async def enqueue_job(self, name, *args, **kwargs):
+            enqueued.append((name, args, kwargs))
+
+    with patch("app.workers.tasks.backlink_tasks.async_session_factory", TestSessionLocal), \
+         patch("arq.ArqRedis", _FakeArqRedis):
+        await weekly_backlink_discovery({"redis": None})
+
+    assert len(enqueued) == 1
+    name, args, kwargs = enqueued[0]
+    assert name == "sync_backlink_profile"
+    assert args == (str(project_id),)
+    assert kwargs.get("bill_credits") is False
 
 
 async def test_sync_backlink_profile_does_not_meter_on_mock_provider():
