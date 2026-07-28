@@ -42,8 +42,14 @@ def test_seo_credits_weighted_by_unit():
     # a SERP lookup is the reference SEO operation at 2 credits
     assert seo_credits_for("serp", 1) == 2
     assert seo_credits_for("serp", 3) == 6
-    assert seo_credits_for("audit", 2) == 2 * SEO_CREDIT_WEIGHT["audit"]
-    assert seo_credits_for("backlinks", 1) == SEO_CREDIT_WEIGHT["backlinks"]
+    # Pinned to literals, not SEO_CREDIT_WEIGHT[...]: a self-referential
+    # assertion passes at any weight and cannot detect a reprice that misses
+    # a call site.
+    assert seo_credits_for("audit", 2) == 20
+    assert seo_credits_for("audit", 1) == 10
+    assert seo_credits_for("backlinks", 1) == 5
+    assert seo_credits_for("keyword_ideas", 1) == 15
+    assert seo_credits_for("rank_check", 1) == 2
     # unknown or missing unit falls back to 1x
     assert seo_credits_for("something_new", 4) == 4
     assert seo_credits_for(None, 5) == 5

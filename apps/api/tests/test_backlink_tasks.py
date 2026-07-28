@@ -100,8 +100,8 @@ async def test_sync_backlink_profile_meters_seo_credits():
     """sync_backlink_profile bills one 'backlinks' SEO credit per run --
     get_backlink_profile is one DataForSEO task per domain, regardless of how
     many individual backlinks/opportunities are fetched afterward. 'backlinks'
-    carries weight 3 (app/core/credits.py SEO_CREDIT_WEIGHT), so one call
-    should bump seo_credits_used by 3.
+    carries weight 5 (app/core/credits.py SEO_CREDIT_WEIGHT), so one call
+    should bump seo_credits_used by 5.
 
     Uses a real (non-mock) provider stub: with no DataForSEO credentials in
     the test env, get_seo_provider() would otherwise resolve to MockSEOProvider,
@@ -123,7 +123,7 @@ async def test_sync_backlink_profile_meters_seo_credits():
         ou = (await session.execute(
             select(OrgUsage).where(OrgUsage.org_id == org_id)
         )).scalar_one()
-        assert ou.seo_credits_used == 3  # 1 task * weight 3
+        assert ou.seo_credits_used == 5  # 1 task * weight 5
 
 
 async def test_sync_backlink_profile_does_not_meter_on_provider_failure():

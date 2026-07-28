@@ -2,15 +2,25 @@
 
 Two user-facing buckets:
 
-* **AI credits** -- derived from real supplier cost. ``1 credit == $0.00105``
-  (:data:`CREDIT_MICROS`). Credits are never stored: they are computed from the
-  period's accumulated AI cost via :func:`credits_from_micros`, so adding a new
-  cost source (image generation, Replicate) automatically consumes credits with
-  no schema change. The AI bucket covers ``usage_events.kind`` in
+* **AI credits** -- priced from real supplier cost at ``1 credit == $0.00105``
+  (:data:`CREDIT_MICROS`), then **accumulated into the
+  ``OrgUsage.ai_credits_used`` counter**, one charge per operation. They are NOT
+  derived from accumulated cost at read time: Replicate operations carry a
+  pricing floor (:func:`replicate_operation_credits`), which cannot be expressed
+  as a function of a summed total. The AI bucket covers ``usage_events.kind`` in
   :data:`AI_KINDS`.
-* **SEO credits** -- one DataForSEO billable task is one credit, with heavier
-  endpoints weighted (:data:`SEO_CREDIT_WEIGHT`). Counted rather than derived,
-  because "tasks" is the unit both users and DataForSEO bill in.
+
+  **If you add a writer for an AI_KINDS event, it MUST bump
+  ``ai_credits_used`` as well as ``ai_cost_micros``** -- bumping only the cost
+  records the spend but bills the customer nothing.
+
+  ``cost_micros``/``ai_cost_micros`` always hold the TRUE unfloored supplier
+  cost, because COGS and margin reporting read them. The floor lives only in the
+  billed counter, so a markup never masquerades as cost.
+* **SEO credits** -- charged per DataForSEO task, weighted per unit
+  (:data:`SEO_CREDIT_WEIGHT`) against that unit's real supplier cost. Counted
+  rather than derived, because "tasks" is the unit both users and DataForSEO
+  bill in.
 """
 
 # --------------------------------------------------------------------------
