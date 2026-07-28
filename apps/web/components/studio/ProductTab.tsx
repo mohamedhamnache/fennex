@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 import { generateProductScene, type GeneratedImage } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, XCircle, Store, ArrowRight, RefreshCw, ShoppingBag } from "lucide-react";
+import { ShowcaseControls, type ShowcaseAdvancedValues } from "./product/ShowcaseControls";
+import { ImageUrlField } from "./product/ImageUrlField";
 
 const SCENES = [
   { id: "white_studio",      label: "White Studio",  category: "packshot"  },
@@ -20,10 +22,27 @@ const SCENES = [
   { id: "desk_setup",        label: "Desk Setup",    category: "tech"      },
   { id: "model_studio",      label: "Model Studio",  category: "fashion"   },
   { id: "athlete_action",    label: "Athlete",       category: "fashion"   },
+  // Premium environments (Task 7 / Product AI Studio). white_studio above
+  // already covers the "white_studio" id from the premium set, so it is not
+  // duplicated here -- see docs/superpowers/specs/2026-07-28-product-ai-studio-design.md sec. 2.
+  { id: "luxury_studio",     label: "Luxury Studio", category: "premium"   },
+  { id: "bathroom",          label: "Bathroom",      category: "premium"   },
+  { id: "spa",               label: "Spa",           category: "premium"   },
+  { id: "travertine",        label: "Travertine",    category: "premium"   },
+  { id: "marble",            label: "Marble",        category: "premium"   },
+  { id: "limestone",         label: "Limestone",     category: "premium"   },
+  { id: "botanical",         label: "Botanical",     category: "premium"   },
+  { id: "mediterranean",     label: "Mediterranean", category: "premium"   },
+  { id: "luxury_hotel",      label: "Luxury Hotel",  category: "premium"   },
+  { id: "editorial",         label: "Editorial",     category: "premium"   },
+  { id: "lifestyle",         label: "Lifestyle",     category: "premium"   },
+  { id: "minimal",           label: "Minimal",       category: "premium"   },
+  { id: "scandinavian",      label: "Scandinavian",  category: "premium"   },
+  { id: "dark_luxury",       label: "Dark Luxury",   category: "premium"   },
 ] as const;
 
 type SceneId = typeof SCENES[number]["id"];
-type Category = "all" | "packshot" | "lifestyle" | "food" | "tech" | "fashion";
+type Category = "all" | "packshot" | "lifestyle" | "food" | "tech" | "fashion" | "premium";
 
 const CATEGORIES: { id: Category; label: string }[] = [
   { id: "all",      label: "All" },
@@ -32,6 +51,7 @@ const CATEGORIES: { id: Category; label: string }[] = [
   { id: "food",     label: "Food" },
   { id: "tech",     label: "Tech" },
   { id: "fashion",  label: "Fashion" },
+  { id: "premium",  label: "Premium" },
 ];
 
 interface ProductTabProps {
@@ -46,6 +66,11 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
   const [productUrl, setProductUrl] = useState("");
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<GeneratedImage | null>(null);
+  // Photographic controls (Task 7). Every field starts unset, so a run that
+  // never opens "Advanced controls" sends exactly the payload the tab has
+  // always sent -- see the omit-if-unset spread below.
+  const [advanced, setAdvanced] = useState<ShowcaseAdvancedValues>({});
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -55,6 +80,15 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
         product_description: description.trim(),
         scene_id: selectedScene,
         use_brand_kit: useBrandKit,
+        ...(advanced.lighting !== undefined ? { lighting: advanced.lighting } : {}),
+        ...(advanced.camera !== undefined ? { camera: advanced.camera } : {}),
+        ...(advanced.aspect_ratio !== undefined ? { aspect_ratio: advanced.aspect_ratio } : {}),
+        ...(advanced.creativity !== undefined ? { creativity: advanced.creativity } : {}),
+        ...(advanced.product_preservation !== undefined ? { product_preservation: advanced.product_preservation } : {}),
+        ...(advanced.prompt?.trim() ? { prompt: advanced.prompt.trim() } : {}),
+        ...(advanced.negative_prompt?.trim() ? { negative_prompt: advanced.negative_prompt.trim() } : {}),
+        ...(advanced.seed !== undefined ? { seed: advanced.seed } : {}),
+        ...(advanced.quality !== undefined ? { quality: advanced.quality } : {}),
       }),
     onSuccess: (data) => setResult(data),
   });
@@ -86,18 +120,7 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
 
       {/* Product inputs */}
       <div className="flex flex-col gap-3">
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
-            Product Image URL
-          </label>
-          <input
-            type="url"
-            value={productUrl}
-            onChange={(e) => setProductUrl(e.target.value)}
-            placeholder="https://your-store.com/product.jpg"
-            className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
+        <ImageUrlField value={productUrl} onChange={setProductUrl} />
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
             Product Description
@@ -152,6 +175,16 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
           ))}
         </div>
       </div>
+
+      {/* Photographic controls (Task 7) */}
+      {!result && (
+        <ShowcaseControls
+          value={advanced}
+          onChange={setAdvanced}
+          isOpen={advancedOpen}
+          onToggle={() => setAdvancedOpen((v) => !v)}
+        />
+      )}
 
       {/* Generate button */}
       {!result && (
@@ -222,6 +255,12 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
                   Generate Again
                 </button>
               </div>
+              {typeof result.seed === "number" && (
+                <p className="text-[10px] text-muted-foreground">
+                  {t("productTab.showcase.seed", { defaultValue: "Seed" })}:{" "}
+                  <span className="font-mono tabular-nums text-foreground">{result.seed}</span>
+                </p>
+              )}
             </>
           ) : result.status === "failed" ? (
             <div className="text-xs text-destructive p-3 rounded-lg bg-destructive/10 border border-destructive/30">

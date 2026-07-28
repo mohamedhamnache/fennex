@@ -2050,6 +2050,76 @@
     "openStudio": {
       "title": "Photographiez vos produits",
       "desc": "Ouvrez le Studio Produit pour synchroniser Shopify / WooCommerce et photographier vos vrais produits."
+    },
+    "imageUrl": {
+      "label": "URL de l'image du produit",
+      "placeholder": "https://votre-boutique.com/produit.jpg"
+    },
+    "showcase": {
+      "advanced": "Contrôles avancés",
+      "lighting": "Éclairage",
+      "camera": "Caméra",
+      "aspectRatio": "Format d'image",
+      "creativity": "Créativité",
+      "preservation": "Préservation du produit",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Décrivez la prise de vue souhaitée…",
+      "negativePrompt": "Prompt négatif",
+      "negativePromptPlaceholder": "flou, basse qualité, filigrane, texte…",
+      "seed": "Graine",
+      "seedPlaceholder": "Aléatoire",
+      "randomizeSeed": "Générer une graine aléatoire",
+      "quality": "Qualité",
+      "qualityDraft": "Brouillon",
+      "qualityHigh": "Élevée",
+      "qualityUltra": "Ultra",
+      "auto": "Automatique",
+      "cost": "{{count}} crédits par génération",
+      "remaining": "{{count}} restants",
+      "insufficientCredits": "Crédits insuffisants pour cette génération"
+    }
+  },
+  "product3dTab": {
+    "title": "Transformez une photo produit en modèle 3D",
+    "subtitle": "Génère un modèle GLB/OBJ rotatif que vous pouvez prévisualiser ici et intégrer à une fiche produit ou une vue AR.",
+    "quality": "Qualité",
+    "qualityOption": {
+      "draft": "Brouillon",
+      "high": "Élevée",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Résolution des textures",
+    "formats": "Formats",
+    "formatsRequired": "Choisissez au moins un format",
+    "cost": "{{count}} crédits par génération",
+    "submitting": "Démarrage…",
+    "submit": "Convertir en 3D",
+    "genericFailure": "La conversion 3D a échoué.",
+    "status": {
+      "running": "Génération de votre modèle 3D…",
+      "pending": "En attente…"
+    },
+    "noPreview": "Aucun GLB n'a été généré, il n'y a donc rien à prévisualiser ici — le format ci-dessous a tout de même été téléchargé avec succès.",
+    "noOutput": "La tâche est terminée mais n'a produit aucun fichier utilisable.",
+    "newModel": "Convertir un autre produit",
+    "viewer": {
+      "loading": "Chargement du modèle…",
+      "loadError": "Impossible de charger le modèle 3D.",
+      "autoRotate": "Rotation automatique",
+      "zoomIn": "Zoomer",
+      "zoomOut": "Dézoomer",
+      "wireframe": "Filaire",
+      "materialPreview": "Aperçu du matériau",
+      "lighting": "Éclairage",
+      "lightingPreset": {
+        "studio": "Studio",
+        "warm": "Chaud",
+        "neutral": "Neutre",
+        "dark": "Sombre"
+      },
+      "download": "Télécharger {{format}}",
+      "fullscreen": "Plein écran",
+      "exitFullscreen": "Quitter le plein écran"
     }
   },
   "productCopy": {

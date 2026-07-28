@@ -2050,6 +2050,76 @@
     "openStudio": {
       "title": "صوّر منتجات متجرك",
       "desc": "افتح استوديو المنتجات لمزامنة Shopify / WooCommerce وتصوير منتجات حقيقية."
+    },
+    "imageUrl": {
+      "label": "رابط صورة المنتج",
+      "placeholder": "https://your-store.com/product.jpg"
+    },
+    "showcase": {
+      "advanced": "إعدادات متقدمة",
+      "lighting": "الإضاءة",
+      "camera": "الكاميرا",
+      "aspectRatio": "نسبة العرض إلى الارتفاع",
+      "creativity": "الإبداع",
+      "preservation": "الحفاظ على المنتج",
+      "prompt": "الوصف",
+      "promptPlaceholder": "صف اللقطة التي تريدها…",
+      "negativePrompt": "الوصف السلبي",
+      "negativePromptPlaceholder": "ضبابي، جودة منخفضة، علامة مائية، نص…",
+      "seed": "البذرة",
+      "seedPlaceholder": "عشوائية",
+      "randomizeSeed": "توليد بذرة عشوائية",
+      "quality": "الجودة",
+      "qualityDraft": "مسودة",
+      "qualityHigh": "عالية",
+      "qualityUltra": "فائقة",
+      "auto": "تلقائي",
+      "cost": "{{count}} رصيد لكل تشغيل",
+      "remaining": "{{count}} متبقٍ",
+      "insufficientCredits": "الرصيد غير كافٍ لهذا التشغيل"
+    }
+  },
+  "product3dTab": {
+    "title": "حوّل صورة منتج إلى نموذج ثلاثي الأبعاد",
+    "subtitle": "يولّد نموذج GLB/OBJ قابل للتدوير يمكنك معاينته هنا وإضافته إلى صفحة منتج أو عرض بالواقع المعزز.",
+    "quality": "الجودة",
+    "qualityOption": {
+      "draft": "مسودة",
+      "high": "عالية",
+      "ultra": "فائقة"
+    },
+    "textureResolution": "دقة النسيج",
+    "formats": "الصيغ",
+    "formatsRequired": "اختر صيغة واحدة على الأقل",
+    "cost": "{{count}} رصيد لكل تشغيل",
+    "submitting": "جارٍ البدء…",
+    "submit": "التحويل إلى ثلاثي الأبعاد",
+    "genericFailure": "فشل التحويل إلى ثلاثي الأبعاد.",
+    "status": {
+      "running": "جارٍ إنشاء نموذجك ثلاثي الأبعاد…",
+      "pending": "في قائمة الانتظار…"
+    },
+    "noPreview": "لم يتم إنتاج ملف GLB، لذا لا توجد معاينة هنا — تم تنزيل الصيغة أدناه بنجاح.",
+    "noOutput": "اكتملت المهمة لكنها لم تنتج ملفات قابلة للاستخدام.",
+    "newModel": "تحويل منتج آخر",
+    "viewer": {
+      "loading": "جارٍ تحميل النموذج…",
+      "loadError": "تعذّر تحميل النموذج ثلاثي الأبعاد.",
+      "autoRotate": "دوران تلقائي",
+      "zoomIn": "تكبير",
+      "zoomOut": "تصغير",
+      "wireframe": "إطار شبكي",
+      "materialPreview": "معاينة الخامة",
+      "lighting": "الإضاءة",
+      "lightingPreset": {
+        "studio": "استوديو",
+        "warm": "دافئة",
+        "neutral": "محايدة",
+        "dark": "داكنة"
+      },
+      "download": "تنزيل {{format}}",
+      "fullscreen": "ملء الشاشة",
+      "exitFullscreen": "الخروج من ملء الشاشة"
     }
   },
   "productCopy": {
