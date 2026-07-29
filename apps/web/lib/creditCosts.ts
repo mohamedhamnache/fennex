@@ -1,3 +1,5 @@
+import type { Product3DQuality, Product3DTextureResolution } from "@/lib/api";
+
 /**
  * Client-side credit-cost estimates for operations whose price the backend
  * does not (yet) expose through an API. `getUsageSummary()` (see `lib/api.ts`,
@@ -19,21 +21,120 @@
 export const PRODUCT_SHOWCASE_CREDIT_COST = 39;
 
 /**
- * Product-to-3D (Trellis on Replicate). Format conversions (GLB pass-through,
- * OBJ via trimesh) are NOT separate Replicate calls and carry no supplier
- * cost of their own -- only the Trellis run does -- so this figure is flat
- * regardless of which formats the user selects.
+ * Product-to-3D (Trellis on Replicate) -- ESTIMATED, per-config credits.
  *
- * Source: docs/superpowers/specs/2026-07-28-product-ai-studio-design.md,
- * section 4. Trellis is seeded by migration `h4trellisrate6` at 35,000
- * micro-$ ($0.035/run) -- Replicate's published figure for `firtoz/trellis`.
- * Converted to credits the same way the backend does -- ceil(cost_micros /
- * CREDIT_MICROS), CREDIT_MICROS = 1_050 (apps/api/app/core/credits.py) --
- * ceil(35_000 / 1_050) = 34.
+ * `PRODUCT_3D_CREDIT_COST` used to be a single flat number. It no longer can
+ * be: migration `z7persecond4` (2026-07-29) moved Replicate billing from a
+ * flat per-run rate to `predict_time (seconds) x per-GPU-second rate`
+ * (`app/services/metering/meter.py::record_replicate`), because a draft/2K
+ * run and an ultra/8K run take wildly different compute and were being
+ * charged the same. `predict_time` is only known once Replicate finishes the
+ * prediction -- it is not returned until the run completes, so the exact
+ * cost of a *specific* run can never be shown before submit. Any number
+ * shown ahead of time is necessarily an ESTIMATE derived from typical
+ * timings, not a quote; the authoritative number is whatever the backend
+ * actually metered (reflected afterwards in `getUsageSummary()`'s
+ * `credits_remaining`).
  *
- * This is still a supplier price we looked up rather than one reconciled
- * against a Replicate invoice, so it can move. Keep it here, in one place,
- * and delete both constants the moment the backend exposes a per-operation
- * cost endpoint -- a number duplicated between client and server drifts.
+ * ## How the estimate is built
+ *
+ * Trellis takes two inputs that drive compute time (`app/services/product3d
+ * /generate.py`):
+ *  - `quality` -> `ss_sampling_steps` / `slat_sampling_steps`: draft=6,
+ *    high=12, ultra=24 (`_SAMPLING_STEPS`, exact -- these are the literal
+ *    values sent to Replicate, not a guess).
+ *  - `texture_resolution` -> `texture_size`: 2K/4K/8K (`_TEXTURE_SIZE`).
+ *    Baking a bigger texture adds wall-clock time on top of sampling.
+ *
+ * We do not have Replicate's internal cost model, only observed run times
+ * for 4 of the 9 quality x texture combinations (design brief,
+ * docs/superpowers/specs/2026-07-28-product-ai-studio-design.md):
+ *
+ *   draft / 2K  ~9s     high / 2K  26.4s (measured, see migration
+ *   z7persecond4's docstring)     high / 4K  ~38s     ultra / 8K  ~75s
+ *
+ * From draft/2K and high/2K (the only two same-texture points, so isolating
+ * the steps effect) we fit a line seconds = SECONDS_PER_STEP * steps +
+ * STEPS_FIT_INTERCEPT_SECONDS. Solving the two equations exactly:
+ *   6  * m + b = 9
+ *   12 * m + b = 26.4
+ *   => m = 2.9, b = -8.4
+ * (The negative intercept is not a claim about fixed setup cost -- it just
+ * means seconds grow slightly faster than linear in steps over this range,
+ * which is what the two anchor points show. The fit is only meant to
+ * interpolate/extrapolate within the 6-24 step range Trellis is actually
+ * called with.)
+ *
+ * Texture overhead is modelled as additive seconds on top of the steps
+ * curve, at texture 2K = 0 baseline:
+ *   4K overhead = (high/4K observed 38s) - (high/2K observed 26.4s) = 11.6s
+ *   8K overhead = (ultra/8K observed 75s) - (ultra/2K FITTED 61.2s) = 13.8s
+ * (8K overhead leans on the fitted curve rather than an observed 2K/8K pair
+ * at the same quality, because we only have one 8K data point to calibrate
+ * against -- ultra/8K.)
+ *
+ * This reproduces all 4 observed anchors when rounded to whole credits below
+ * (12, 36, 51, 100) and stays monotonically increasing in both quality and
+ * texture resolution for the 5 combinations we have no direct measurement
+ * for.
+ *
+ * ## Seconds -> credits
+ *
+ * Same conversion the backend applies: cost_micros = seconds x
+ * GPU_SECOND_RATE_MICROS (1_400 micro-$/GPU-second, Nvidia A100 80GB --
+ * migration `z7persecond4`, https://replicate.com/pricing retrieved
+ * 2026-07-29), then credits = ceil(cost_micros / CREDIT_MICROS),
+ * CREDIT_MICROS = 1_050 (apps/api/app/core/credits.py). 1_400 / 1_050 = 4/3
+ * exactly, so credits = ceil(seconds * 4 / 3). The backend also applies a
+ * 10-credit floor per Replicate operation (`MIN_REPLICATE_CREDITS`,
+ * apps/api/app/core/credits.py) -- mirrored here even though every modelled
+ * combination already estimates above it, so this stays correct if the
+ * curve is ever recalibrated to something cheaper.
+ *
+ * Keep this the ONLY place a Product-to-3D credit number is computed
+ * client-side, and delete it the moment the backend exposes a real
+ * pricing/estimate endpoint -- a number duplicated between client and
+ * server drifts.
  */
-export const PRODUCT_3D_CREDIT_COST = 34;
+const PRODUCT_3D_SAMPLING_STEPS: Record<Product3DQuality, number> = {
+  draft: 6,
+  high: 12,
+  ultra: 24,
+};
+
+const PRODUCT_3D_SECONDS_PER_STEP = 2.9;
+const PRODUCT_3D_STEPS_FIT_INTERCEPT_SECONDS = -8.4;
+
+const PRODUCT_3D_TEXTURE_OVERHEAD_SECONDS: Record<Product3DTextureResolution, number> = {
+  "2K": 0,
+  "4K": 11.6,
+  "8K": 13.8,
+};
+
+const GPU_SECOND_RATE_MICROS = 1_400; // Replicate A100 80GB, migration z7persecond4
+const CREDIT_MICROS = 1_050; // apps/api/app/core/credits.py::CREDIT_MICROS
+const MIN_REPLICATE_CREDITS = 10; // apps/api/app/core/credits.py::MIN_REPLICATE_CREDITS
+
+/** Estimated Trellis compute time in seconds for a given config. Not exact -- see the file docstring. */
+function estimateProduct3DSeconds(
+  quality: Product3DQuality,
+  textureResolution: Product3DTextureResolution,
+): number {
+  const steps = PRODUCT_3D_SAMPLING_STEPS[quality];
+  const stepsSeconds = PRODUCT_3D_SECONDS_PER_STEP * steps + PRODUCT_3D_STEPS_FIT_INTERCEPT_SECONDS;
+  return stepsSeconds + PRODUCT_3D_TEXTURE_OVERHEAD_SECONDS[textureResolution];
+}
+
+/**
+ * Estimated credits for a Product-to-3D run at the given quality/texture.
+ * ESTIMATE ONLY -- label any UI use of this as "about N credits", never as
+ * a fixed price. See the file docstring for the full derivation.
+ */
+export function estimateProduct3DCredits(
+  quality: Product3DQuality,
+  textureResolution: Product3DTextureResolution,
+): number {
+  const seconds = estimateProduct3DSeconds(quality, textureResolution);
+  const credits = Math.ceil((seconds * GPU_SECOND_RATE_MICROS) / CREDIT_MICROS);
+  return Math.max(MIN_REPLICATE_CREDITS, credits);
+}

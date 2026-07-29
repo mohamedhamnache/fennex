@@ -2090,6 +2090,10 @@
   "product3dTab": {
     "title": "Aus einem Produktfoto ein 3D-Modell erstellen",
     "subtitle": "Erzeugt ein drehbares GLB/OBJ-Modell, das du hier direkt ansehen und in einen Shop-Eintrag oder eine AR-Ansicht einbinden kannst.",
+    "section": {
+      "qualityDetail": "Qualität & Detailgrad",
+      "qualityDetailHint": "Diese Einstellungen bestimmen die Generierungsdauer und die geschätzten Kosten unten."
+    },
     "quality": "Qualität",
     "qualityOption": {
       "draft": "Entwurf",
@@ -2099,7 +2103,11 @@
     "textureResolution": "Texturauflösung",
     "formats": "Formate",
     "formatsRequired": "Wähle mindestens ein Format",
-    "cost": "{{count}} Credits pro Durchlauf",
+    "cost": "Etwa {{count}} Credits",
+    "costEstimateNote": "Nur eine Schätzung — die genauen Kosten werden nach dem Durchlauf berechnet.",
+    "disabledReason": {
+      "noImage": "Füge ein Produktbild hinzu, um fortzufahren"
+    },
     "submitting": "Wird gestartet…",
     "submit": "In 3D umwandeln",
     "genericFailure": "Die 3D-Umwandlung ist fehlgeschlagen.",

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Box, Download, Loader2, RefreshCw, Sparkles, XCircle } from "lucide-react";
+import { Box, Download, Gauge, Loader2, RefreshCw, Sparkles, XCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   getProductTo3DStatus,
@@ -14,7 +14,7 @@ import {
   type Product3DQuality,
   type Product3DTextureResolution,
 } from "@/lib/api";
-import { PRODUCT_3D_CREDIT_COST } from "@/lib/creditCosts";
+import { estimateProduct3DCredits } from "@/lib/creditCosts";
 import { ImageUrlField } from "../product/ImageUrlField";
 
 // three.js + @react-three/fiber + @react-three/drei only ship to the browser
@@ -54,11 +54,14 @@ interface Product3DTabProps {
   projectId: string;
 }
 
+// 44x44 minimum touch target on every interactive pill, even at this
+// surface's 8/10 (dense/dashboard) density -- accessibility floor wins over
+// visual tightness. `aria-pressed` marks these as toggle buttons.
 const pillClass = (active: boolean) =>
   cn(
-    "px-2.5 py-1 rounded-full text-xs font-medium transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     active
-      ? "bg-primary text-primary-foreground border-primary"
+      ? "border-primary bg-primary text-primary-foreground"
       : "border-border text-muted-foreground hover:text-foreground",
   );
 
@@ -118,9 +121,22 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
     enqueue.reset();
   }
 
+  // Live -- recomputed on every render from the currently selected quality /
+  // texture, so it updates the instant either control changes and never
+  // implies a fixed price. See lib/creditCosts.ts for the estimate's basis
+  // and why the exact cost cannot be known before the run completes.
+  const estimatedCredits = estimateProduct3DCredits(quality, textureResolution);
   const remaining = usage?.credits_remaining;
-  const insufficient = typeof remaining === "number" && remaining < PRODUCT_3D_CREDIT_COST;
-  const canGenerate = sourceUrl.trim().length > 0 && formats.length > 0 && !enqueue.isPending;
+  const insufficient = typeof remaining === "number" && remaining < estimatedCredits;
+
+  const missingImage = sourceUrl.trim().length === 0;
+  const missingFormat = formats.length === 0;
+  const canGenerate = !missingImage && !missingFormat && !enqueue.isPending;
+  const disabledReason = missingImage
+    ? t("product3dTab.disabledReason.noImage", { defaultValue: "Add a product image to continue" })
+    : missingFormat
+      ? t("product3dTab.formatsRequired", { defaultValue: "Pick at least one format" })
+      : null;
 
   const isTerminal = job.data ? !PENDING_STATUSES.has(job.data.status) : false;
 
@@ -162,39 +178,62 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
 
       {!jobId && (
         <>
-          <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("product3dTab.quality", { defaultValue: "Quality" })}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {QUALITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setQuality(opt.value)}
-                  className={pillClass(quality === opt.value)}
-                >
-                  {t(`product3dTab.qualityOption.${opt.value}`, { defaultValue: opt.defaultLabel })}
-                </button>
-              ))}
+          {/* Quality + texture are the two cost drivers -- grouped together so
+              their effect on the estimate below reads as one choice, not two
+              unrelated settings. */}
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/10 p-3">
+            <div className="flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.9} />
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("product3dTab.section.qualityDetail", { defaultValue: "Quality & detail" })}
+              </p>
             </div>
-          </div>
-
-          <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("product3dTab.textureResolution", { defaultValue: "Texture resolution" })}
+            <p className="-mt-2 text-[10px] text-muted-foreground/70">
+              {t("product3dTab.section.qualityDetailHint", {
+                defaultValue: "These settings drive how long generation takes, and its estimated cost below.",
+              })}
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {TEXTURE_OPTIONS.map((res) => (
-                <button
-                  key={res}
-                  type="button"
-                  onClick={() => setTextureResolution(res)}
-                  className={pillClass(textureResolution === res)}
-                >
-                  <span className="font-mono tabular-nums">{res}</span>
-                </button>
-              ))}
+
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("product3dTab.quality", { defaultValue: "Quality" })}
+              </p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("product3dTab.quality", { defaultValue: "Quality" }) ?? undefined}>
+                {QUALITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setQuality(opt.value)}
+                    aria-pressed={quality === opt.value}
+                    className={pillClass(quality === opt.value)}
+                  >
+                    {t(`product3dTab.qualityOption.${opt.value}`, { defaultValue: opt.defaultLabel })}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("product3dTab.textureResolution", { defaultValue: "Texture resolution" })}
+              </p>
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={t("product3dTab.textureResolution", { defaultValue: "Texture resolution" }) ?? undefined}
+              >
+                {TEXTURE_OPTIONS.map((res) => (
+                  <button
+                    key={res}
+                    type="button"
+                    onClick={() => setTextureResolution(res)}
+                    aria-pressed={textureResolution === res}
+                    className={pillClass(textureResolution === res)}
+                  >
+                    <span className="font-mono tabular-nums">{res}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -202,7 +241,7 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("product3dTab.formats", { defaultValue: "Formats" })}
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("product3dTab.formats", { defaultValue: "Formats" }) ?? undefined}>
               {FORMAT_OPTIONS.map((format) => (
                 <button
                   key={format}
@@ -215,61 +254,77 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
                 </button>
               ))}
             </div>
-            {formats.length === 0 && (
+            {missingFormat && (
               <p className="mt-1 text-[10px] text-destructive">
                 {t("product3dTab.formatsRequired", { defaultValue: "Pick at least one format" })}
               </p>
             )}
           </div>
 
-          {/* Credit cost -- always visible, before the user commits to a run */}
-          <div
-            className={cn(
-              "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs",
-              insufficient ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-border bg-muted/30 text-muted-foreground",
+          {/* Estimate + submit -- one action block, so the cost consequence
+              of the choices above is visible right next to the button that
+              commits to them. Recomputed live from quality/textureResolution
+              on every render. */}
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3">
+            <div
+              className={cn(
+                "flex items-center justify-between gap-2 text-xs",
+                insufficient ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
+                <span className="font-mono tabular-nums">
+                  {t("product3dTab.cost", { count: estimatedCredits, defaultValue: "About {{count}} credits" })}
+                </span>
+              </span>
+              {typeof remaining === "number" && (
+                <span className="font-mono tabular-nums">
+                  {t("productTab.showcase.remaining", { count: remaining, defaultValue: "{{count}} remaining" })}
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground/70">
+              {t("product3dTab.costEstimateNote", {
+                defaultValue: "Estimate only -- the exact cost is metered after the run.",
+              })}
+            </p>
+            {insufficient && (
+              <p className="text-[11px] text-destructive">
+                {t("productTab.showcase.insufficientCredits", { defaultValue: "Not enough credits for this run" })}
+              </p>
             )}
-          >
-            <span className="flex items-center gap-1.5 font-medium">
-              <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
-              <span className="font-mono tabular-nums">
-                {t("product3dTab.cost", { count: PRODUCT_3D_CREDIT_COST, defaultValue: "{{count}} credits per run" })}
-              </span>
-            </span>
-            {typeof remaining === "number" && (
-              <span className="font-mono tabular-nums">
-                {t("productTab.showcase.remaining", { count: remaining, defaultValue: "{{count}} remaining" })}
-              </span>
+
+            <button
+              type="button"
+              disabled={!canGenerate}
+              onClick={() => enqueue.mutate()}
+              aria-describedby={disabledReason ? "product3d-disabled-reason" : undefined}
+              className={cn(
+                "flex min-h-11 w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                canGenerate
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              )}
+            >
+              {enqueue.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={1.9} />
+                  {t("product3dTab.submitting", { defaultValue: "Starting…" })}
+                </>
+              ) : (
+                <>
+                  <Box className="h-4 w-4" strokeWidth={1.9} />
+                  {t("product3dTab.submit", { defaultValue: "Convert to 3D" })}
+                </>
+              )}
+            </button>
+            {!canGenerate && !enqueue.isPending && disabledReason && (
+              <p id="product3d-disabled-reason" className="text-center text-[11px] text-muted-foreground">
+                {disabledReason}
+              </p>
             )}
           </div>
-          {insufficient && (
-            <p className="-mt-1.5 text-[11px] text-destructive">
-              {t("productTab.showcase.insufficientCredits", { defaultValue: "Not enough credits for this run" })}
-            </p>
-          )}
-
-          <button
-            type="button"
-            disabled={!canGenerate}
-            onClick={() => enqueue.mutate()}
-            className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              canGenerate
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "cursor-not-allowed bg-muted text-muted-foreground",
-            )}
-          >
-            {enqueue.isPending ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={1.9} />
-                {t("product3dTab.submitting", { defaultValue: "Starting…" })}
-              </>
-            ) : (
-              <>
-                <Box className="h-4 w-4" strokeWidth={1.9} />
-                {t("product3dTab.submit", { defaultValue: "Convert to 3D" })}
-              </>
-            )}
-          </button>
 
           {enqueue.isError && (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
@@ -289,9 +344,11 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
                 role="status"
                 aria-live="polite"
               >
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.9} />
-                  <span className="flex-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.9} />
+                  </span>
+                  <span className="flex-1 text-xs text-muted-foreground">
                     {job.data?.status === "running"
                       ? t("product3dTab.status.running", { defaultValue: "Building mesh and textures…" })
                       : t("product3dTab.status.pending", { defaultValue: "Queued…" })}
@@ -302,7 +359,7 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
                 </div>
                 <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
+                    className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out motion-reduce:transition-none"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -350,9 +407,9 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
                             download
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
-                            <Download className="h-3.5 w-3.5" strokeWidth={1.9} />
+                            <Download className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
                             {format.toUpperCase()}
                           </a>
                         ),
@@ -371,7 +428,7 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
           <button
             type="button"
             onClick={handleReset}
-            className="w-full rounded-lg border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-11 w-full rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {t("product3dTab.newModel", { defaultValue: "Convert another product" })}
           </button>
