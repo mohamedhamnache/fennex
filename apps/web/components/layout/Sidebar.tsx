@@ -75,7 +75,11 @@ function RailLink({
     danger
       ? "text-white/70 hover:bg-destructive/15 hover:text-destructive"
       : active
-        ? "rail-active text-primary"
+        // The highlight is a primary-tinted wash, so a primary label put the
+        // selected item at 2.15:1 -- the LEAST readable row in the menu.
+        // White keeps it at 9.07:1 worst-case across every palette; the accent
+        // still reads through rail-marker and the tinted background.
+        ? "rail-active text-white"
         : "text-white/75 hover:bg-white/[0.05] hover:text-white/90",
   );
   const inner = (
@@ -246,7 +250,7 @@ export function Sidebar() {
                         onClick={() => handleSelectProject(project.id)}
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-colors",
-                          project.id === currentProject?.id ? "bg-primary/15 text-primary" : "text-foreground/70 hover:bg-white/[0.05]",
+                          project.id === currentProject?.id ? "bg-primary/15 text-white" : "text-foreground/70 hover:bg-white/[0.05]",
                         )}
                       >
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[10px] font-bold">
@@ -283,7 +287,7 @@ export function Sidebar() {
           {/* For you */}
           <div>
             {expanded ? (
-              <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">{t("nav.forYou")}</p>
+              <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">{t("nav.forYou")}</p>
             ) : (
               <div className="rail-divider mx-2 mb-1.5" />
             )}
