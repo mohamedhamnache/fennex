@@ -23,6 +23,8 @@ async def setup_db():
             CostRate(provider="replicate", unit="run",
                      model="852-labs/background-remover", micro_dollars_per_unit=10_000),
             CostRate(provider="replicate", unit="run", model="", micro_dollars_per_unit=5_000),
+            # Nvidia A100 80GB, Replicate's published per-second price.
+            CostRate(provider="replicate", unit="second", model="", micro_dollars_per_unit=1_400),
         ])
         await db.commit()
     yield
@@ -83,3 +85,35 @@ async def test_record_replicate_floors_cheap_predictions_to_minimum_credits():
         ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
         assert ou.ai_cost_micros == 2_500  # true cost subtotal: still unfloored
         assert ou.ai_credits_used == 10    # credits_from_micros(2_500) == 3, floored to 10
+
+
+async def test_cost_tracks_actual_compute_time_not_a_flat_fee():
+    """A long run must cost more than a short one.
+
+    Replicate bills community models by GPU-second and reports the real
+    duration, so a draft/2K Trellis job and an ultra/8K one must not bill the
+    same -- which is exactly what a single per-run rate did.
+    """
+    short_org, long_org = uuid.uuid4(), uuid.uuid4()
+    async with Session() as db:
+        short = await meter.record_replicate(
+            db, org_id=short_org, project_id=None, model="firtoz/trellis",
+            predict_seconds=9.0,
+        )
+        long = await meter.record_replicate(
+            db, org_id=long_org, project_id=None, model="firtoz/trellis",
+            predict_seconds=75.0,
+        )
+        assert short == round(9.0 * 1_400)
+        assert long == round(75.0 * 1_400)
+        assert long > short * 5
+
+
+async def test_falls_back_to_the_per_run_rate_without_a_duration():
+    """Callers that cannot report a duration keep the previous behaviour."""
+    org = uuid.uuid4()
+    async with Session() as db:
+        cost = await meter.record_replicate(
+            db, org_id=org, project_id=None, model="some/unpriced-model",
+        )
+        assert cost == 5_000

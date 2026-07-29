@@ -295,7 +295,15 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
                         from app.services.metering import meter as _meter
                         async with async_session_factory() as _db:
                             await _meter.record_replicate(
-                                _db, org_id=_org, project_id=None, model=model, feature="image_edit",
+                                _db,
+                                org_id=_org,
+                                project_id=None,
+                                model=model,
+                                feature="image_edit",
+                                # Replicate bills by GPU-second and reports the
+                                # real duration, so cost tracks the actual run
+                                # rather than a flat per-run guess.
+                                predict_seconds=(status_data.get("metrics") or {}).get("predict_time"),
                             )
                 except Exception:  # noqa: BLE001
                     logger.warning("replicate usage metering failed", exc_info=True)
