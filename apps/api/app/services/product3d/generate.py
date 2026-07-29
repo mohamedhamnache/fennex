@@ -24,24 +24,37 @@ Trellis's documented input schema (per its Replicate readme) is: image, seed,
 texture_size, mesh_simplify, generate_color, generate_model, generate_normal,
 randomize_seed, ss_sampling_steps, slat_sampling_steps, ss_guidance_strength,
 slat_guidance_strength -- no `prompt`/`negative_prompt` field is documented,
-because Trellis is image-conditioned, not text-conditioned. The design spec
-nonetheless requires every AI Studio tool to route its instructions through
-PromptBuilder rather than inlining ad hoc text, so `PromptBuilder.build_product_3d`
-is still called here and its `system_prompt`/`prompt`/`negative_prompt` are
-still forwarded on the Replicate call (Cog's generated Input models are
-pydantic and ignore unrecognized fields by default, so this is expected to be
-a no-op against the real API rather than a validation error -- but this could
-not be confirmed against the model's live OpenAPI schema in this environment,
-see task-5-report.md). If a real run ever 422s on these keys, drop them here;
-`PromptResult` continues to be threaded through for provenance/logging either
-way.
+because Trellis is image-conditioned, not text-conditioned.
+
+Fix-round-1 (Fix 4): a prior version of this module forwarded
+`PromptBuilder.build_product_3d(...)`'s `system_prompt`/`negative_prompt` to
+Replicate anyway, on the theory that Cog's generated pydantic Input models
+silently ignore unrecognized fields. That was never verified against
+Trellis's live OpenAPI schema, and Replicate's `predictions` endpoint is not
+guaranteed to ignore unknown inputs across every model -- if it validates
+strictly, every prediction would 422. Since Trellis genuinely takes no text
+input at all, `PromptBuilder.build_product_3d` is no longer called here:
+there is no "provenance" value in computing a prompt/negative_prompt pair
+that is never sent, logged, or otherwise read by anything, and keeping the
+call around invited exactly this bug (undocumented keys silently forwarded).
+If Trellis ever grows a text-conditioning input, reintroduce the call at
+that point together with the specific field it maps to.
+
+Fix-round-1 (Fix 3): `firtoz/trellis` returns an OBJECT (keys include
+`model_file`, `color_video`, `gaussian_ply`), not a bare URL string. Passing
+that object through `_replicate_run`'s old str()-only fallback produced a
+Python dict-repr string that `_download` could never fetch, so every
+Product-to-3D job failed after Replicate had already billed a successful
+prediction. `_replicate_run` now returns the mapping as-is instead of
+stringifying it (see its docstring); `_extract_glb_url` below resolves the
+actual GLB url from either shape.
 """
 import logging
+from typing import Mapping
 
 import httpx
 
 from app.services.editing_service import _replicate_run
-from app.services.prompting import Product3DSpec, PromptBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +88,22 @@ async def _download(url: str) -> bytes:
         return resp.content
 
 
+def _extract_glb_url(output: str | Mapping) -> str:
+    """Resolve the GLB download url from a Trellis prediction's output.
+
+    `firtoz/trellis` returns an object (`model_file`, `color_video`,
+    `gaussian_ply`), not a bare url -- `output["model_file"]` is the GLB.
+    `_replicate_run` returns that mapping as-is (see its docstring) rather
+    than stringifying it. Falls back to treating `output` as the url
+    directly when it is already a string, which is every other model's
+    shape and Trellis's own shape prior to this fix, so existing callers
+    and tests that stub a plain string keep working unchanged.
+    """
+    if isinstance(output, Mapping):
+        return output["model_file"]
+    return output
+
+
 async def generate_glb(source_image_url: str, quality: str, texture_resolution: str) -> bytes:
     """Run Trellis on `source_image_url` and return the resulting GLB bytes.
 
@@ -83,27 +112,17 @@ async def generate_glb(source_image_url: str, quality: str, texture_resolution: 
     output, OBJ (and any future format) is a local conversion of these same
     bytes, done elsewhere.
     """
-    prompt_result = PromptBuilder.build_product_3d(
-        Product3DSpec(
-            quality=quality,
-            texture_resolution=texture_resolution,
-            product_description="",
-        )
-    )
-
     steps = _SAMPLING_STEPS.get(quality, 12)
-    output_url = await _replicate_run(
+    output = await _replicate_run(
         TRELLIS_MODEL,
         {
             "image": source_image_url,
             "texture_size": _TEXTURE_SIZE.get(texture_resolution, 1024),
             "ss_sampling_steps": steps,
             "slat_sampling_steps": steps,
-            # See module docstring: Trellis's documented schema has no text
-            # input, but PromptBuilder's output is forwarded per the design
-            # spec's "never inline prompt text" rule regardless.
-            "prompt": prompt_result.system_prompt,
-            "negative_prompt": prompt_result.negative_prompt,
+            # Fix 4 (fix-round-1): only Trellis's documented inputs are sent
+            # -- see the module docstring. No `prompt`/`negative_prompt`:
+            # Trellis is image-conditioned and does not accept text.
         },
     )
-    return await _download(output_url)
+    return await _download(_extract_glb_url(output))

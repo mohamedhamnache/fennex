@@ -278,6 +278,38 @@ async def test_product_scene_seed_is_echoed_back(client, org_and_project):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "aspect_ratio,expected_width,expected_height",
+    [
+        ("1:1", 1024, 1024),
+        ("4:5", 816, 1024),
+        ("3:2", 1024, 680),
+        ("16:9", 1024, 576),
+        ("9:16", 576, 1024),
+    ],
+)
+async def test_run_flux_kontext_derives_dimensions_from_aspect_ratio(
+    aspect_ratio, expected_width, expected_height
+):
+    """Fix 5 (fix-round-1): width/height used to be hardcoded to 1024x1024
+    regardless of the requested aspect_ratio, so a 16:9 or 9:16 image was
+    persisted with the wrong dimensions. This exercises `_run_flux_kontext`
+    directly (not through the router-level mock, which stubs the function
+    out entirely and would hide this bug) with only its two Replicate calls
+    stubbed, so the aspect-ratio -> dimensions derivation runs for real."""
+    from app.api.v1.routers.product import _run_flux_kontext
+
+    with patch("app.api.v1.routers.product._replicate_run", AsyncMock(return_value="https://cdn.example.com/out.png")), \
+         patch("app.api.v1.routers.product._download_and_upload_url", AsyncMock(return_value="https://cdn.example.com/stored.png")):
+        result = await _run_flux_kontext(
+            "https://cdn.example.com/product.png", "a prompt", aspect_ratio=aspect_ratio
+        )
+    assert result["ok"] is True
+    assert result["width"] == expected_width
+    assert result["height"] == expected_height
+
+
+@pytest.mark.asyncio
 async def test_premium_scene_id_generates_successfully(client, org_and_project):
     """A spot-check that a premium scene id (the frontend already ships
     against these) does not 400 and produces its curated environment text."""

@@ -5,7 +5,7 @@ import io
 import logging
 import time
 import uuid
-from typing import Optional
+from typing import Mapping, Optional
 import httpx
 from PIL import Image as PILImage, ImageEnhance, ImageFilter, ImageOps
 from app.core.config import settings
@@ -239,13 +239,23 @@ _POLL_INTERVAL = 3
 _POLL_TIMEOUT = 300
 
 
-async def _replicate_run(model: str, input_params: dict, version: Optional[str] = None) -> str:
+async def _replicate_run(model: str, input_params: dict, version: Optional[str] = None) -> str | dict:
     """Create a Replicate prediction and poll until succeeded. Returns output URL.
 
     Without `version`: uses /v1/models/{owner}/{name}/predictions (works for models with
     an active hot deployment, e.g. flux-fill-pro).
     With `version` (SHA256 hash): uses /v1/predictions with {"version": hash, "input": ...}
     which is required for older models that don't have a hot deployment endpoint.
+
+    Generic contract, unchanged for every existing caller: a list output
+    returns its first element (a URL string); anything else is coerced with
+    `str(output)`, which is a no-op for a plain URL string. The ONLY caller
+    whose model output is a mapping (`firtoz/trellis`, called from
+    `app.services.product3d.generate`) needs the mapping itself, not a
+    Python dict-repr string (`str({...})`) that no downloader can use --
+    every other model this function is called with (flux-fill-pro,
+    flux-kontext-pro, real-esrgan, codeformer, ...) returns a bare URL or a
+    list of URLs and is never affected by this branch.
     """
     headers = {"Authorization": f"Token {settings.REPLICATE_API_KEY}", "Content-Type": "application/json"}
 
@@ -292,6 +302,8 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
 
                 if isinstance(output, list):
                     return output[0]
+                if isinstance(output, Mapping):
+                    return output
                 return str(output)
             if status in ("failed", "canceled"):
                 raise RuntimeError(f"Replicate prediction {status}: {status_data.get('error')}")

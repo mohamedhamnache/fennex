@@ -2105,7 +2105,8 @@
     "genericFailure": "La conversión a 3D ha fallado.",
     "status": {
       "running": "Generando tu modelo 3D…",
-      "pending": "En cola…"
+      "pending": "En cola…",
+      "pollError": "Tenemos problemas para comprobar el estado de tu modelo. Reintentando…"
     },
     "noPreview": "No se generó ningún GLB, así que no hay nada que previsualizar aquí — el formato de abajo se descargó correctamente.",
     "noOutput": "El trabajo terminó pero no produjo archivos utilizables.",

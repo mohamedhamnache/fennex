@@ -2105,7 +2105,8 @@
     "genericFailure": "Die 3D-Umwandlung ist fehlgeschlagen.",
     "status": {
       "running": "Dein 3D-Modell wird erstellt…",
-      "pending": "In Warteschlange…"
+      "pending": "In Warteschlange…",
+      "pollError": "Der Status deines Modells kann gerade nicht abgerufen werden. Erneuter Versuch läuft…"
     },
     "noPreview": "Es wurde keine GLB-Datei erzeugt, daher gibt es hier nichts zum Anzeigen — das Format unten wurde trotzdem erfolgreich heruntergeladen.",
     "noOutput": "Der Auftrag wurde abgeschlossen, hat aber keine verwendbaren Dateien erzeugt.",

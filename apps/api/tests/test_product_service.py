@@ -12,39 +12,50 @@ documented in its report) because `modules.environment()` had nowhere to put
 curated text and `user_prompt` is appended last. That escape hatch is now
 closed -- `build_scene_prompt` resolves the curated text into
 `ShowcaseSpec.environment_description`, which `modules.environment()` uses
-directly instead of its generic "Scene: cafe table" stub. Net effect on the
-assembled text:
+directly instead of its generic "Scene: cafe table" stub.
 
-- The generic "Scene: <words>" stub is gone -- it's now superseded by the
-  full curated text at the same position in the module order (right after
-  `materials`, before `rendering_style`), not lost.
-- The curated text (environment description + "Integrate it
-  realistically...sharp focus on the product.") appears exactly once, where
-  it used to appear duplicated in substance (generic stub earlier, full text
-  smuggled in at the very end).
-- Because `environment_description` itself ends with a period and the
-  builder's joiner adds ". " between fragments, there is now a doubled
-  period ("..") between the environment fragment and `rendering_style" --
-  cosmetic only, no content is affected.
-- `user_prompt` is empty by default now (no more smuggled content), so
-  `modules.user_intent` contributes nothing and the assembled prompt ends
-  with `quality` instead of the old prompt's trailing user-intent sentence.
-
-Every instruction the old prompt carried is still present -- see
-`build_scene_prompt`'s docstring in product_service.py for the full
-rationale.
+RE-PINNED for fix-round-1 (see
+.superpowers/sdd/2026-07-28-product-ai-studio/fix-round-1-report.md), Fixes
+1 and 2: `build_scene_prompt` used to return only
+`PromptBuilder.build_product_showcase(...).prompt`, discarding
+`PromptResult.system_prompt` (the owner's verbatim never-modify list, sent
+to flux-kontext for the FIRST time by this fix) and `PromptResult.negative_prompt`
+(the 11 required exclusions, previously computed and thrown away -- the
+`negative_prompt` field and the UI's negative-prompt textarea controlled
+nothing). It also reinstates the pre-PromptBuilder "Do not redesign,
+distort, recolour, or replace the product; only change the environment
+around it." sentence, which the original PromptBuilder refactor (Task 2)
+silently dropped with no replacement anywhere in the assembled text. Every
+`assert prompt == (...)` block below was rewritten to match; every
+`assert "..." in prompt` substring check from before Task 3 still holds
+(nothing already-present was removed, only prepended/appended around).
 """
 import uuid
 
 import pytest
 
 from app.services.product_service import build_scene_prompt
+from app.services.prompting import vocab
 from app.models.brand_kit import BrandKit
 
 
 def test_build_scene_prompt_without_brand_kit():
     prompt = build_scene_prompt("cafe_table", "a ceramic mug with a matte black finish", None)
     assert prompt == (
+        "You are an award-winning luxury commercial product photographer and CGI artist.\n\n"
+        "Your primary objective is to transform the uploaded product into a world-class "
+        "commercial advertising image while preserving its exact identity.\n\n"
+        "The uploaded product is the source of truth.\n\n"
+        "Never modify\n\n"
+        "- geometry\n- proportions\n- dimensions\n- packaging\n- label\n- logo\n- typography\n"
+        "- materials\n- finish\n- colours\n- branding\n\n"
+        "Never redesign the product.\n\n"
+        "Generate\n\n"
+        "- physically accurate lighting\n- ray-traced reflections\n- realistic shadows\n"
+        "- premium composition\n- editorial photography\n- macro detail\n- HDR\n"
+        "- luxury styling\n- global illumination\n- realistic optics\n- 8K quality\n\n"
+        "The output should resemble a premium commercial campaign created for Apple, "
+        "Aesop, Dior or Le Labo.\n\n"
         "You are acting as a award-winning luxury commercial product photographer. "
         "Objective: place the exact product from the reference image into the described scene. "
         "Preserve the product exactly as shown in the reference image: identical geometry, "
@@ -62,8 +73,23 @@ def test_build_scene_prompt_without_brand_kit():
         "ultra-detailed, high-resolution professional commercial product photography, "
         "sharp focus on the product.. "
         "follow the brief closely, with modest creative latitude in styling and props. "
-        "ultra quality, maximum fidelity render suitable for large-format print"
+        "ultra quality, maximum fidelity render suitable for large-format print "
+        "Do not redesign, distort, recolour, or replace the product; only change the "
+        "environment around it.\n\n"
+        "Avoid: blur, noise, duplicate products, wrong labels, cropped products, deformed "
+        "packaging, incorrect reflections, bad shadows, low resolution, text artefacts, "
+        "watermarks."
     )
+    # Fix 1: the owner's verbatim system prompt now reaches the sent text.
+    assert vocab.SHOWCASE_SYSTEM_PROMPT in prompt
+    assert "Never modify" in prompt
+    assert "Never redesign the product." in prompt
+    # Fix 1: the pre-refactor do-not-redesign clause is restored.
+    assert "Do not redesign, distort, recolour, or replace the product" in prompt
+    # Fix 2: every required exclusion is folded into an explicit avoid-clause.
+    assert "Avoid:" in prompt
+    for term in vocab.NEGATIVE_TERMS:
+        assert term in prompt
     # The non-negotiable preservation constraint the old prompt led with is still present.
     assert "immutable ground truth" in prompt
     assert "identical geometry, proportions, materials, and surface textures" in prompt
@@ -84,6 +110,7 @@ def test_build_scene_prompt_with_brand_kit():
     )
     prompt = build_scene_prompt("white_studio", "", kit)
     assert prompt == (
+        f"{vocab.SHOWCASE_SYSTEM_PROMPT}\n\n"
         "You are acting as a award-winning luxury commercial product photographer. "
         "Objective: place the exact product from the reference image into the described scene. "
         "Preserve the product exactly as shown in the reference image: identical geometry, "
@@ -102,7 +129,12 @@ def test_build_scene_prompt_with_brand_kit():
         "follow the brief closely, with modest creative latitude in styling and props. "
         "echo the brand palette (#1A2B3C, #FF6B35) subtly in the styling and props; "
         "Minimal editorial styling.. "
-        "ultra quality, maximum fidelity render suitable for large-format print"
+        "ultra quality, maximum fidelity render suitable for large-format print "
+        "Do not redesign, distort, recolour, or replace the product; only change the "
+        "environment around it.\n\n"
+        "Avoid: blur, noise, duplicate products, wrong labels, cropped products, deformed "
+        "packaging, incorrect reflections, bad shadows, low resolution, text artefacts, "
+        "watermarks."
     )
     assert "#1A2B3C, #FF6B35" in prompt
     assert "Minimal editorial styling." in prompt
@@ -135,8 +167,9 @@ def test_build_scene_prompt_unknown_scene_raises():
 def test_build_scene_prompt_curated_environment_and_user_prompt_coexist():
     """Proves the fix: the curated per-scene environment text and a genuine
     user_prompt no longer collide in one slot. Both appear, and the user's
-    text comes last -- it refines the curated direction, it doesn't replace
-    it (and isn't replaced by it either)."""
+    text comes before the do-not-redesign/avoid-clause tail that fix-round-1
+    added -- it still refines the curated direction, it doesn't replace it
+    (and isn't replaced by it either)."""
     prompt = build_scene_prompt(
         "cafe_table",
         "a ceramic mug",
@@ -144,5 +177,25 @@ def test_build_scene_prompt_curated_environment_and_user_prompt_coexist():
         user_prompt="Make it feel expensive, with subtle rim lighting on the mug.",
     )
     assert "rustic wooden café table with soft morning light" in prompt
-    assert prompt.endswith("Make it feel expensive, with subtle rim lighting on the mug.")
+    assert "Make it feel expensive, with subtle rim lighting on the mug." in prompt
     assert prompt.index("rustic wooden café table") < prompt.index("Make it feel expensive")
+    # The user's text still lands before the do-not-redesign clause and the
+    # avoid-clause that now close out the prompt (fix-round-1).
+    assert prompt.index("Make it feel expensive") < prompt.index("Do not redesign")
+    assert prompt.index("Do not redesign") < prompt.index("Avoid:")
+
+
+def test_build_scene_prompt_user_supplied_negative_reaches_the_sent_prompt():
+    """Fix 2: negative_prompt was assembled by PromptBuilder and discarded --
+    a user's negative text never reached flux-kontext. It now lands inside
+    the explicit avoid-clause, appended after the 11 required exclusions."""
+    prompt = build_scene_prompt(
+        "cafe_table",
+        "a ceramic mug",
+        None,
+        negative_prompt="plastic-looking, oversaturated colours",
+    )
+    assert "Avoid:" in prompt
+    assert "plastic-looking, oversaturated colours" in prompt
+    # required exclusions still present, and still precede the user's addition
+    assert prompt.index("blur") < prompt.index("plastic-looking")

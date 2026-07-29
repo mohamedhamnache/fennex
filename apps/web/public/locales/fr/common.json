@@ -2105,7 +2105,8 @@
     "genericFailure": "La conversion 3D a échoué.",
     "status": {
       "running": "Génération de votre modèle 3D…",
-      "pending": "En attente…"
+      "pending": "En attente…",
+      "pollError": "Difficulté à vérifier l'état de votre modèle. Nouvelle tentative en cours…"
     },
     "noPreview": "Aucun GLB n'a été généré, il n'y a donc rien à prévisualiser ici — le format ci-dessous a tout de même été téléchargé avec succès.",
     "noOutput": "La tâche est terminée mais n'a produit aucun fichier utilisable.",

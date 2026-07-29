@@ -88,9 +88,20 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
     queryKey: ["product-3d-job", jobId],
     queryFn: () => getProductTo3DStatus(jobId as string),
     enabled: !!jobId,
-    // Stops on its own once the job leaves pending/running -- no infinite
-    // polling once the result is terminal (completed or failed).
-    refetchInterval: (query) => (PENDING_STATUSES.has(query.state.data?.status ?? "") ? 2500 : false),
+    // Stops once the job reaches a KNOWN terminal status (completed or
+    // failed). Previously this fell back to `?? ""` when `query.state.data`
+    // was undefined -- which happens not just before the first successful
+    // poll but also after ANY transient poll error, since an error leaves
+    // `data` unset rather than populated. `PENDING_STATUSES.has("")` is
+    // false, so a single transient error permanently stopped polling and
+    // the UI was stuck showing "Queued..." forever with no error surfaced.
+    // Gating on jobId (via `enabled` above) and only stopping once we have
+    // a definite non-pending status keeps polling through transient errors
+    // and only ever stops once the job is genuinely terminal.
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && !PENDING_STATUSES.has(status) ? false : 2500;
+    },
   });
 
   function toggleFormat(format: Product3DFormat) {
@@ -253,13 +264,25 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
       {jobId && (
         <div className="flex flex-col gap-3">
           {!isTerminal ? (
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.9} />
-              <span>
-                {job.data?.status === "running"
-                  ? t("product3dTab.status.running", { defaultValue: "Generating your 3D model…" })
-                  : t("product3dTab.status.pending", { defaultValue: "Queued…" })}
-              </span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.9} />
+                <span>
+                  {job.data?.status === "running"
+                    ? t("product3dTab.status.running", { defaultValue: "Generating your 3D model…" })
+                    : t("product3dTab.status.pending", { defaultValue: "Queued…" })}
+                </span>
+              </div>
+              {job.isError && (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.9} />
+                  <span>
+                    {t("product3dTab.status.pollError", {
+                      defaultValue: "Having trouble checking on your model. Still retrying…",
+                    })}
+                  </span>
+                </div>
+              )}
             </div>
           ) : job.data?.status === "failed" ? (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">

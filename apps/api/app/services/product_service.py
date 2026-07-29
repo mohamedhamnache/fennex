@@ -165,7 +165,43 @@ def build_scene_prompt(
     seed: int | None = None,
     quality: vocab.QualityToken = "ultra",
 ) -> str:
-    """Thin wrapper: builds a ShowcaseSpec and delegates to PromptBuilder.
+    """Thin wrapper: builds a ShowcaseSpec, delegates to PromptBuilder, and
+    assembles the FINAL text sent to flux-kontext.
+
+    flux-kontext-pro takes a single prompt string -- there is no separate
+    system-prompt field on the model -- so the returned string is not just
+    `PromptResult.prompt`. It is three parts, in this order:
+
+    1. `PromptResult.system_prompt` (`vocab.SHOWCASE_SYSTEM_PROMPT`, the
+       owner's verbatim never-modify list). Fix-round-1 CRITICAL: this used
+       to be computed by `PromptBuilder.build_product_showcase` and then
+       discarded -- only `.prompt` was returned -- so the owner's system
+       prompt never reached the model at all. It is now prepended so it
+       actually ships.
+    2. The assembled instruction (`PromptResult.prompt`: role, objective,
+       preservation, composition, lighting, camera, materials, environment,
+       rendering style, brand style, quality, user intent) followed by an
+       explicit do-not-redesign clause. Fix-round-1 CRITICAL: the
+       pre-PromptBuilder version of this function led with "Keep the
+       product itself completely unchanged ... Do not redesign, distort,
+       recolour, or replace the product; only change the environment around
+       it." That sentence has no home in `vocab.SHOWCASE_SYSTEM_PROMPT`
+       (whose "Never modify" list is a noun list, not this "only change the
+       environment" instruction) and nothing in the PromptBuilder pipeline
+       ever restated it, so the refactor silently dropped it -- the live
+       endpoint was sending LESS preservation direction than before the
+       refactor. It is reinstated here, verbatim, rather than folded into
+       `modules.product_preservation` because it is showcase-specific
+       (it talks about swapping the *environment*, which has no meaning for
+       the Product-to-3D pipeline that also calls `product_preservation`).
+    3. `PromptResult.negative_prompt` (the 11 required exclusions plus any
+       user-supplied `negative_prompt`), folded into an explicit "Avoid:"
+       clause. Fix-round-1 CRITICAL: flux-kontext-pro has no negative-prompt
+       input, and `PromptResult.negative_prompt` used to be computed by
+       PromptBuilder and then discarded -- the `negative_prompt` API field
+       and the UI's negative-prompt textarea controlled nothing. Folding it
+       into the instruction text as an explicit avoid-clause is the only way
+       to make it do anything against this model.
 
     Preservation, quality and photography direction come from the shared
     `prompting` modules (role, product_preservation, composition, lighting,
@@ -196,7 +232,10 @@ def build_scene_prompt(
     The keyword-only controls (lighting, camera, aspect_ratio, creativity,
     product_preservation, negative_prompt, seed, quality) default to the
     same fixed values this function always used, so callers that don't pass
-    them keep getting byte-identical prompts to before. `aspect_ratio="1:1"`
+    them keep exercising the same module inputs as before -- the OUTPUT
+    string is no longer byte-identical to pre-fix-round-1 (it now carries
+    the system prompt and the avoid-clause too; see the fix-round-1 notes
+    above), but every module contribution is unchanged. `aspect_ratio="1:1"`
     matches `routers/product.py::_run_flux_kontext`, which hard-codes
     `aspect_ratio="1:1"` on the Replicate call unless overridden.
     """
@@ -225,4 +264,17 @@ def build_scene_prompt(
         product_description=product_description,
         environment_description=environment_description,
     )
-    return PromptBuilder.build_product_showcase(spec, brand_kit).prompt
+    result = PromptBuilder.build_product_showcase(spec, brand_kit)
+
+    # See the docstring's fix-round-1 notes: the pre-PromptBuilder version of
+    # this function led with this exact sentence and it was silently dropped
+    # by the refactor. Reinstated verbatim, immediately after the assembled
+    # instruction, so it reads as part of the same directive.
+    preservation_clause = (
+        "Do not redesign, distort, recolour, or replace the product; only "
+        "change the environment around it."
+    )
+
+    avoid_clause = f"Avoid: {result.negative_prompt}."
+
+    return f"{result.system_prompt}\n\n{result.prompt} {preservation_clause}\n\n{avoid_clause}"

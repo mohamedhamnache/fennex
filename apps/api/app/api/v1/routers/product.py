@@ -39,6 +39,21 @@ _DEFAULT_CREATIVITY = 30
 _DEFAULT_PRODUCT_PRESERVATION = 100
 _DEFAULT_QUALITY: prompt_vocab.QualityToken = "ultra"
 
+# Fix 5 (fix-round-1): pixel dimensions persisted on GeneratedImage per
+# aspect ratio. Before this fix, width/height were hardcoded to 1024x1024
+# regardless of the requested aspect_ratio, so a 16:9 or 9:16 image was
+# stored with the wrong dimensions. flux-kontext-pro does not echo back the
+# actual output size, so these are the dimensions WE requested via the
+# `aspect_ratio` input, computed to keep the same ~1024px long edge and a
+# multiple-of-8 short edge (a common requirement for diffusion-model output).
+_ASPECT_RATIO_DIMENSIONS: dict[prompt_vocab.AspectRatioToken, tuple[int, int]] = {
+    "1:1": (1024, 1024),
+    "4:5": (816, 1024),
+    "3:2": (1024, 680),
+    "16:9": (1024, 576),
+    "9:16": (576, 1024),
+}
+
 
 def _prep_product_image(image_url: str) -> str:
     """Return an RGB data-URI of the product for flux-kontext.
@@ -158,7 +173,8 @@ async def _run_flux_kontext(
             replicate_input["seed"] = seed
         output = await _replicate_run(_FLUX_KONTEXT_MODEL, replicate_input)
         url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url, "width": 1024, "height": 1024, "revised_prompt": None, "cost_usd": None}
+        width, height = _ASPECT_RATIO_DIMENSIONS.get(aspect_ratio, (1024, 1024))
+        return {"ok": True, "image_url": url, "width": width, "height": height, "revised_prompt": None, "cost_usd": None}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
