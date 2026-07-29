@@ -2090,6 +2090,10 @@
   "product3dTab": {
     "title": "Transforme uma foto de produto em um modelo 3D",
     "subtitle": "Gera um modelo GLB/OBJ giratório que você pode pré-visualizar aqui e usar em uma ficha de produto ou visualização em AR.",
+    "section": {
+      "qualityDetail": "Qualidade e detalhe",
+      "qualityDetailHint": "Essas configurações determinam quanto tempo a geração leva e o custo estimado abaixo."
+    },
     "quality": "Qualidade",
     "qualityOption": {
       "draft": "Rascunho",
@@ -2099,7 +2103,11 @@
     "textureResolution": "Resolução da textura",
     "formats": "Formatos",
     "formatsRequired": "Escolha pelo menos um formato",
-    "cost": "{{count}} créditos por execução",
+    "cost": "Cerca de {{count}} créditos",
+    "costEstimateNote": "Apenas uma estimativa — o custo exato é apurado após a execução.",
+    "disabledReason": {
+      "noImage": "Adicione uma imagem do produto para continuar"
+    },
     "submitting": "Iniciando…",
     "submit": "Converter para 3D",
     "genericFailure": "A conversão para 3D falhou.",

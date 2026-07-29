@@ -2090,6 +2090,10 @@
   "product3dTab": {
     "title": "Transformez une photo produit en modèle 3D",
     "subtitle": "Génère un modèle GLB/OBJ rotatif que vous pouvez prévisualiser ici et intégrer à une fiche produit ou une vue AR.",
+    "section": {
+      "qualityDetail": "Qualité et détail",
+      "qualityDetailHint": "Ces réglages déterminent la durée de génération et son coût estimé ci-dessous."
+    },
     "quality": "Qualité",
     "qualityOption": {
       "draft": "Brouillon",
@@ -2099,7 +2103,11 @@
     "textureResolution": "Résolution des textures",
     "formats": "Formats",
     "formatsRequired": "Choisissez au moins un format",
-    "cost": "{{count}} crédits par génération",
+    "cost": "Environ {{count}} crédits",
+    "costEstimateNote": "Simple estimation — le coût exact est mesuré une fois la génération terminée.",
+    "disabledReason": {
+      "noImage": "Ajoutez une image du produit pour continuer"
+    },
     "submitting": "Démarrage…",
     "submit": "Convertir en 3D",
     "genericFailure": "La conversion 3D a échoué.",

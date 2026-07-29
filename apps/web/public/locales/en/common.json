@@ -2178,6 +2178,10 @@
   "product3dTab": {
     "title": "Turn a product photo into a 3D model",
     "subtitle": "Generates a rotatable GLB/OBJ model you can preview here and drop into a store listing or AR view.",
+    "section": {
+      "qualityDetail": "Quality & detail",
+      "qualityDetailHint": "These settings drive how long generation takes, and its estimated cost below."
+    },
     "quality": "Quality",
     "qualityOption": {
       "draft": "Draft",
@@ -2187,7 +2191,11 @@
     "textureResolution": "Texture resolution",
     "formats": "Formats",
     "formatsRequired": "Pick at least one format",
-    "cost": "{{count}} credits per run",
+    "cost": "About {{count}} credits",
+    "costEstimateNote": "Estimate only — the exact cost is metered after the run.",
+    "disabledReason": {
+      "noImage": "Add a product image to continue"
+    },
     "submitting": "Starting…",
     "submit": "Convert to 3D",
     "genericFailure": "The 3D conversion failed.",
