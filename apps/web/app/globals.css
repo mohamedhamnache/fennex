@@ -264,6 +264,21 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12) !important;
 }
 
+/* ── Native <select> dropdown list ──
+   An <option> does not reliably inherit its <select>'s colours: browsers render
+   the open dropdown with their own defaults, so on a dark theme the text ends
+   up the same colour as the background and the list reads as blank. The
+   selects themselves are Tailwind-styled and look fine while closed, which is
+   why this only shows up once the list is opened.
+
+   Setting both properties explicitly on option/optgroup fixes every native
+   select in the app at once (45 of them) rather than per component. */
+select option,
+select optgroup {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
 /* ── Gradient CTA button (follows the project accent palette + glow) ── */
 .btn-primary {
   background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-accent)) 100%);
