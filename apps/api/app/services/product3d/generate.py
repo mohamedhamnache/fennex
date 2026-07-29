@@ -60,6 +60,14 @@ logger = logging.getLogger(__name__)
 
 TRELLIS_MODEL = "firtoz/trellis"
 
+# firtoz/trellis is a COMMUNITY model, so it has no hot-deployment endpoint:
+# POST /v1/models/{owner}/{name}/predictions 404s for it. Predictions must be
+# created against a pinned version hash via POST /v1/predictions instead --
+# the same reason stability-ai/stable-diffusion-inpainting pins one in
+# editing_service. Verified against the Replicate API on 2026-07-29; update
+# this when intentionally moving to a newer Trellis version.
+TRELLIS_VERSION = "e8f6c45206993f297372f5436b90350817bd9b4a0d52d2a76df50c1c8afa2b3c"
+
 # Texture resolution token (app.services.prompting.vocab.TextureResolutionToken)
 # -> Trellis's texture_size pixel dimension.
 _TEXTURE_SIZE = {"2K": 1024, "4K": 2048, "8K": 4096}
@@ -116,13 +124,24 @@ async def generate_glb(source_image_url: str, quality: str, texture_resolution: 
     output = await _replicate_run(
         TRELLIS_MODEL,
         {
-            "image": source_image_url,
+            # `images` (plural, a list) is the ONLY required input in Trellis's
+            # schema -- a singular "image" is silently ignored, leaving the
+            # required field unset.
+            "images": [source_image_url],
             "texture_size": _TEXTURE_SIZE.get(texture_resolution, 1024),
             "ss_sampling_steps": steps,
             "slat_sampling_steps": steps,
+            # generate_model defaults to FALSE in Trellis's schema, so without
+            # this the run produces only preview renders and `model_file` comes
+            # back null -- the whole point of the job is the mesh.
+            "generate_model": True,
+            # Textured GLB: generate_color is already the default, pinned here
+            # so a future default change cannot silently strip the texture.
+            "generate_color": True,
             # Fix 4 (fix-round-1): only Trellis's documented inputs are sent
             # -- see the module docstring. No `prompt`/`negative_prompt`:
             # Trellis is image-conditioned and does not accept text.
         },
+        version=TRELLIS_VERSION,
     )
     return await _download(_extract_glb_url(output))
