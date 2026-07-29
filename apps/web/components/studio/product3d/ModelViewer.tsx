@@ -184,6 +184,9 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
           type="button"
           onClick={() => setFullscreen((v) => !v)}
           aria-pressed={fullscreen}
+          aria-label={t(fullscreen ? "product3dTab.viewer.exitFullscreen" : "product3dTab.viewer.fullscreen", {
+            defaultValue: fullscreen ? "Exit fullscreen" : "Fullscreen",
+          }) ?? undefined}
           title={t(fullscreen ? "product3dTab.viewer.exitFullscreen" : "product3dTab.viewer.fullscreen", {
             defaultValue: fullscreen ? "Exit fullscreen" : "Fullscreen",
           }) ?? undefined}
@@ -199,6 +202,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
           type="button"
           onClick={() => setAutoRotate((v) => !v)}
           aria-pressed={autoRotate}
+          aria-label={t("product3dTab.viewer.autoRotate", { defaultValue: "Auto-rotate" }) ?? undefined}
           title={t("product3dTab.viewer.autoRotate", { defaultValue: "Auto-rotate" }) ?? undefined}
           className={iconButtonClass(autoRotate)}
         >
@@ -208,6 +212,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
         <button
           type="button"
           onClick={() => zoomBy(0.85)}
+          aria-label={t("product3dTab.viewer.zoomIn", { defaultValue: "Zoom in" }) ?? undefined}
           title={t("product3dTab.viewer.zoomIn", { defaultValue: "Zoom in" }) ?? undefined}
           className={iconButtonClass(false)}
         >
@@ -216,6 +221,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
         <button
           type="button"
           onClick={() => zoomBy(1.18)}
+          aria-label={t("product3dTab.viewer.zoomOut", { defaultValue: "Zoom out" }) ?? undefined}
           title={t("product3dTab.viewer.zoomOut", { defaultValue: "Zoom out" }) ?? undefined}
           className={iconButtonClass(false)}
         >
@@ -226,6 +232,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
           type="button"
           onClick={() => setWireframe((v) => !v)}
           aria-pressed={wireframe}
+          aria-label={t("product3dTab.viewer.wireframe", { defaultValue: "Wireframe" }) ?? undefined}
           title={t("product3dTab.viewer.wireframe", { defaultValue: "Wireframe" }) ?? undefined}
           className={iconButtonClass(wireframe)}
         >
@@ -235,6 +242,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
           type="button"
           onClick={() => setMaterialPreview((v) => !v)}
           aria-pressed={materialPreview}
+          aria-label={t("product3dTab.viewer.materialPreview", { defaultValue: "Material preview" }) ?? undefined}
           title={t("product3dTab.viewer.materialPreview", { defaultValue: "Material preview" }) ?? undefined}
           className={iconButtonClass(materialPreview)}
         >
@@ -248,6 +256,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
           id="product3d-lighting-preset"
           value={preset}
           onChange={(e) => setPreset(e.target.value as LightingPresetId)}
+          aria-label={t("product3dTab.viewer.lighting", { defaultValue: "Lighting" }) ?? undefined}
           title={t("product3dTab.viewer.lighting", { defaultValue: "Lighting" }) ?? undefined}
           className="h-8 rounded-lg border border-border bg-input px-2 text-xs text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -268,6 +277,7 @@ export default function ModelViewer({ modelUrl, downloadUrls, className }: Model
               download
               target="_blank"
               rel="noreferrer"
+              aria-label={t("product3dTab.viewer.download", { defaultValue: "Download {{format}}", format: format.toUpperCase() }) ?? undefined}
               title={t("product3dTab.viewer.download", { defaultValue: "Download {{format}}", format: format.toUpperCase() }) ?? undefined}
               className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >

@@ -2192,9 +2192,10 @@
     "submit": "Convert to 3D",
     "genericFailure": "The 3D conversion failed.",
     "status": {
-      "running": "Generating your 3D model…",
+      "running": "Building mesh and textures…",
       "pending": "Queued…",
-      "pollError": "Having trouble checking on your model. Still retrying…"
+      "pollError": "Having trouble checking on your model. Still retrying…",
+      "typical": "Usually about {{seconds}} seconds. You can leave this page and come back."
     },
     "noPreview": "No GLB was produced, so there is nothing to preview here — the format below still downloaded successfully.",
     "noOutput": "The job finished but produced no usable files.",

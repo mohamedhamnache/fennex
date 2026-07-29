@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -44,6 +44,11 @@ const TEXTURE_OPTIONS: Product3DTextureResolution[] = ["2K", "4K", "8K"];
 const FORMAT_OPTIONS: Product3DFormat[] = ["glb", "obj"];
 
 const PENDING_STATUSES = new Set(["pending", "running"]);
+
+// Measured end-to-end time for a `high` / 2K run against firtoz/trellis. Used
+// only to shape the progress bar's expectation -- the bar eases toward 90% and
+// waits for the real terminal status rather than ever claiming to be finished.
+const TYPICAL_RUN_SECONDS = 26;
 
 interface Product3DTabProps {
   projectId: string;
@@ -118,6 +123,20 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
   const canGenerate = sourceUrl.trim().length > 0 && formats.length > 0 && !enqueue.isPending;
 
   const isTerminal = job.data ? !PENDING_STATUSES.has(job.data.status) : false;
+
+  // A generation takes ~26s. Without a clock the panel looks frozen, so show
+  // elapsed time and an easing bar; both stop the moment the job is terminal.
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!jobId || isTerminal) return;
+    setElapsed(0);
+    const started = Date.now();
+    const id = window.setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [jobId, isTerminal]);
+
+  // Asymptotic: approaches 90% and never implies completion we cannot confirm.
+  const progressPct = Math.min(90, Math.round((1 - Math.exp(-elapsed / TYPICAL_RUN_SECONDS)) * 100));
   const outputUrls = job.data?.output_urls ?? {};
   const hasOutput = Object.keys(outputUrls).length > 0;
 
@@ -265,13 +284,34 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
         <div className="flex flex-col gap-3">
           {!isTerminal ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.9} />
-                <span>
-                  {job.data?.status === "running"
-                    ? t("product3dTab.status.running", { defaultValue: "Generating your 3D model…" })
-                    : t("product3dTab.status.pending", { defaultValue: "Queued…" })}
-                </span>
+              <div
+                className="rounded-lg border border-border bg-muted/20 p-3"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.9} />
+                  <span className="flex-1">
+                    {job.data?.status === "running"
+                      ? t("product3dTab.status.running", { defaultValue: "Building mesh and textures…" })
+                      : t("product3dTab.status.pending", { defaultValue: "Queued…" })}
+                  </span>
+                  <span className="font-mono tabular-nums text-[11px] text-muted-foreground/70">
+                    {elapsed}s
+                  </span>
+                </div>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                  {t("product3dTab.status.typical", {
+                    defaultValue: "Usually about {{seconds}} seconds. You can leave this page and come back.",
+                    seconds: TYPICAL_RUN_SECONDS,
+                  })}
+                </p>
               </div>
               {job.isError && (
                 <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">

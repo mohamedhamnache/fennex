@@ -2104,9 +2104,10 @@
     "submit": "Convertir en 3D",
     "genericFailure": "La conversion 3D a échoué.",
     "status": {
-      "running": "Génération de votre modèle 3D…",
+      "running": "Creation du maillage et des textures…",
       "pending": "En attente…",
-      "pollError": "Difficulté à vérifier l'état de votre modèle. Nouvelle tentative en cours…"
+      "pollError": "Difficulté à vérifier l'état de votre modèle. Nouvelle tentative en cours…",
+      "typical": "Environ {{seconds}} secondes en general. Vous pouvez quitter cette page et revenir."
     },
     "noPreview": "Aucun GLB n'a été généré, il n'y a donc rien à prévisualiser ici — le format ci-dessous a tout de même été téléchargé avec succès.",
     "noOutput": "La tâche est terminée mais n'a produit aucun fichier utilisable.",

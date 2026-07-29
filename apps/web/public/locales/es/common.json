@@ -2104,9 +2104,10 @@
     "submit": "Convertir a 3D",
     "genericFailure": "La conversión a 3D ha fallado.",
     "status": {
-      "running": "Generando tu modelo 3D…",
+      "running": "Creando malla y texturas…",
       "pending": "En cola…",
-      "pollError": "Tenemos problemas para comprobar el estado de tu modelo. Reintentando…"
+      "pollError": "Tenemos problemas para comprobar el estado de tu modelo. Reintentando…",
+      "typical": "Normalmente unos {{seconds}} segundos. Puedes salir de esta pagina y volver."
     },
     "noPreview": "No se generó ningún GLB, así que no hay nada que previsualizar aquí — el formato de abajo se descargó correctamente.",
     "noOutput": "El trabajo terminó pero no produjo archivos utilizables.",
