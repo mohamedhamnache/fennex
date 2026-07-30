@@ -56,6 +56,11 @@ class ImageOut(BaseModel):
     collection_id: Optional[uuid.UUID] = None
     tags: list = []
     is_deleted: bool = False
+    # Not a GeneratedImage column -- seed is a generation parameter, not
+    # persisted state. Only Product Showcase populates it (echoing the
+    # request's seed back for reproducibility); every other endpoint leaves
+    # it at its default None via model_validate's missing-attribute fallback.
+    seed: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)
 
 

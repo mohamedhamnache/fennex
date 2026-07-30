@@ -5,6 +5,7 @@
  *  can show routing, joins, handoffs and streamed text as they happen.
  */
 import { API_BASE, getToken } from "./api";
+import { queryClient } from "./queryClient";
 
 export interface ChatEmployee {
   id: string;
@@ -262,10 +263,17 @@ function streamTurn(
         }
       }
     }
+    // Every streamTurn endpoint is credit-gated (/chat/stream,
+    // /chat/workflow/run|step, /chat/actions/run, /chat/approvals/*/run) and
+    // a multi-employee workflow can spend credits on earlier steps even if a
+    // later one errors mid-stream, so refresh once the stream closes rather
+    // than only on a clean finish.
+    queryClient.invalidateQueries({ queryKey: ["usage-summary"] });
   })().catch((err) => {
     // An abort is a user action, not a failure.
     if ((err as Error)?.name !== "AbortError") {
       onEvent({ type: "error", message: (err as Error)?.message ?? "Chat failed" });
+      queryClient.invalidateQueries({ queryKey: ["usage-summary"] });
     }
     onEvent({ type: "done" });
   });

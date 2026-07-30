@@ -1326,6 +1326,10 @@
         "freeform": {
           "label": "Libre",
           "desc": "Décrivez n'importe quoi et générez — contrôle total du style et de la qualité."
+        },
+        "product3d": {
+          "label": "Produit en 3D",
+          "desc": "Transformez une photo de produit en modele 3D pret a l'emploi, a faire pivoter, telecharger et utiliser en RA."
         }
       }
     }
@@ -1359,6 +1363,22 @@
       "relight": "Rééclairer",
       "restore_face": "Restaurer le visage",
       "upscale": "Agrandir"
+    },
+    "maskConfirm": {
+      "body": "Nous avons mis en évidence la zone que nous pensons que vous visez. Appliquez-la si elle est correcte, ou annulez et précisez votre description.",
+      "cancel": "Annuler",
+      "apply": "Appliquer",
+      "applying": "Application...",
+      "needsTargetHint": "Indiquez-nous quelle zone vous voulez dire, puis réessayez.",
+      "previewError": "Impossible d'afficher la zone mise en évidence, elle ne peut donc pas être confirmée. Annulez et réessayez."
+    },
+    "target": {
+      "label": "Objet ou zone ciblée",
+      "optional": "(facultatif)",
+      "required": "(requis sauf si vous peignez un masque)",
+      "placeholder": "ex. l'arrière-plan, la bouteille",
+      "hintOptional": "Laissez vide pour utiliser la zone automatique gratuite. Nommer un objet le cible précisément et vous demande de confirmer la zone mise en évidence au préalable.",
+      "hintRequired": "Nous ne savons pas où intervenir sans un nom ici ou un masque peint."
     },
     "score": {
       "title": "Score",
@@ -1424,7 +1444,14 @@
         "Agrandir 2x",
         "Rééclairer depuis le haut"
       ]
-    }
+    },
+    "maskConfirmHint": "Vérifiez la zone mise en évidence sur le canevas.",
+    "maskPreviewError": "Impossible d'afficher la zone mise en évidence, elle ne peut donc pas être confirmée. Annulez et réessayez.",
+    "maskCancel": "Annuler",
+    "maskApply": "Appliquer",
+    "applying": "Application...",
+    "maskConfirmDefault": "Confirmez la zone mise en évidence avant de l'appliquer.",
+    "maskTargetDefault": "Quelle zone voulez-vous dire ?"
   },
   "articleStudio": {
     "dock": {
@@ -2050,6 +2077,90 @@
     "openStudio": {
       "title": "Photographiez vos produits",
       "desc": "Ouvrez le Studio Produit pour synchroniser Shopify / WooCommerce et photographier vos vrais produits."
+    },
+    "imageUrl": {
+      "label": "Image du produit",
+      "placeholder": "...ou collez une URL d'image",
+      "dropHint": "Deposez une image ou cliquez pour televerser",
+      "uploading": "Televersement...",
+      "uploadFailed": "Echec du televersement",
+      "clear": "Effacer l'image"
+    },
+    "showcase": {
+      "advanced": "Contrôles avancés",
+      "lighting": "Éclairage",
+      "camera": "Caméra",
+      "aspectRatio": "Format d'image",
+      "creativity": "Créativité",
+      "preservation": "Préservation du produit",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Décrivez la prise de vue souhaitée…",
+      "negativePrompt": "Prompt négatif",
+      "negativePromptPlaceholder": "flou, basse qualité, filigrane, texte…",
+      "seed": "Graine",
+      "seedPlaceholder": "Aléatoire",
+      "randomizeSeed": "Générer une graine aléatoire",
+      "quality": "Qualité",
+      "qualityDraft": "Brouillon",
+      "qualityHigh": "Élevée",
+      "qualityUltra": "Ultra",
+      "auto": "Automatique",
+      "cost": "{{count}} crédits par génération",
+      "remaining": "{{count}} restants",
+      "insufficientCredits": "Crédits insuffisants pour cette génération"
+    }
+  },
+  "product3dTab": {
+    "title": "Transformez une photo produit en modèle 3D",
+    "subtitle": "Génère un modèle GLB/OBJ rotatif que vous pouvez prévisualiser ici et intégrer à une fiche produit ou une vue AR.",
+    "section": {
+      "qualityDetail": "Qualité et détail",
+      "qualityDetailHint": "Ces réglages déterminent la durée de génération et son coût estimé ci-dessous."
+    },
+    "quality": "Qualité",
+    "qualityOption": {
+      "draft": "Brouillon",
+      "high": "Élevée",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Résolution des textures",
+    "formats": "Formats",
+    "formatsRequired": "Choisissez au moins un format",
+    "cost": "Environ {{count}} crédits",
+    "costEstimateNote": "Simple estimation — le coût exact est mesuré une fois la génération terminée.",
+    "disabledReason": {
+      "noImage": "Ajoutez une image du produit pour continuer"
+    },
+    "submitting": "Démarrage…",
+    "submit": "Convertir en 3D",
+    "genericFailure": "La conversion 3D a échoué.",
+    "status": {
+      "running": "Creation du maillage et des textures…",
+      "pending": "En attente…",
+      "pollError": "Difficulté à vérifier l'état de votre modèle. Nouvelle tentative en cours…",
+      "typical": "Environ {{seconds}} secondes en general. Vous pouvez quitter cette page et revenir."
+    },
+    "noPreview": "Aucun GLB n'a été généré, il n'y a donc rien à prévisualiser ici — le format ci-dessous a tout de même été téléchargé avec succès.",
+    "noOutput": "La tâche est terminée mais n'a produit aucun fichier utilisable.",
+    "newModel": "Convertir un autre produit",
+    "viewer": {
+      "loading": "Chargement du modèle…",
+      "loadError": "Impossible de charger le modèle 3D.",
+      "autoRotate": "Rotation automatique",
+      "zoomIn": "Zoomer",
+      "zoomOut": "Dézoomer",
+      "wireframe": "Filaire",
+      "materialPreview": "Aperçu du matériau",
+      "lighting": "Éclairage",
+      "lightingPreset": {
+        "studio": "Studio",
+        "warm": "Chaud",
+        "neutral": "Neutre",
+        "dark": "Sombre"
+      },
+      "download": "Télécharger {{format}}",
+      "fullscreen": "Plein écran",
+      "exitFullscreen": "Quitter le plein écran"
     }
   },
   "productCopy": {

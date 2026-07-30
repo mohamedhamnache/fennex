@@ -1326,6 +1326,10 @@
         "freeform": {
           "label": "Freiform",
           "desc": "Beschreibe alles und generiere — volle Kontrolle über Stil und Qualität."
+        },
+        "product3d": {
+          "label": "Produkt zu 3D",
+          "desc": "Verwandeln Sie ein Produktfoto in ein produktionsreifes 3D-Modell zum Drehen, Herunterladen und fuer AR."
         }
       }
     }
@@ -1359,6 +1363,22 @@
       "relight": "Neu beleuchten",
       "restore_face": "Gesicht wiederherstellen",
       "upscale": "Hochskalieren"
+    },
+    "maskConfirm": {
+      "body": "Wir haben den Bereich hervorgehoben, den wir für gemeint halten. Übernimm ihn, wenn er stimmt, oder brich ab und präzisiere deine Beschreibung.",
+      "cancel": "Abbrechen",
+      "apply": "Anwenden",
+      "applying": "Wird angewendet...",
+      "needsTargetHint": "Sag uns, welchen Bereich du meinst, und versuch es erneut.",
+      "previewError": "Der markierte Bereich konnte nicht angezeigt werden und kann daher nicht bestätigt werden. Abbrechen und erneut versuchen."
+    },
+    "target": {
+      "label": "Zielobjekt oder -bereich",
+      "optional": "(optional)",
+      "required": "(erforderlich, sofern keine Maske gemalt wird)",
+      "placeholder": "z. B. der Hintergrund, die Flasche",
+      "hintOptional": "Leer lassen, um den kostenlosen automatischen Bereich zu verwenden. Die Benennung eines Objekts zielt präzise darauf ab und bittet dich, den markierten Bereich zuerst zu bestätigen.",
+      "hintRequired": "Ohne einen Namen hier oder eine gemalte Maske wissen wir nicht, wo wir arbeiten sollen."
     },
     "score": {
       "title": "Score",
@@ -1424,7 +1444,14 @@
         "2x hochskalieren",
         "Von oben neu beleuchten"
       ]
-    }
+    },
+    "maskConfirmHint": "Prüfe den hervorgehobenen Bereich auf der Leinwand.",
+    "maskPreviewError": "Der markierte Bereich konnte nicht angezeigt werden und kann daher nicht bestätigt werden. Abbrechen und erneut versuchen.",
+    "maskCancel": "Abbrechen",
+    "maskApply": "Anwenden",
+    "applying": "Wird angewendet...",
+    "maskConfirmDefault": "Bestätige den hervorgehobenen Bereich, bevor er angewendet wird.",
+    "maskTargetDefault": "Welchen Bereich meinst du?"
   },
   "articleStudio": {
     "dock": {
@@ -2050,6 +2077,90 @@
     "openStudio": {
       "title": "Deine Store-Produkte shooten",
       "desc": "Öffne das Produktstudio, um Shopify / WooCommerce zu synchronisieren und echte SKUs zu shooten."
+    },
+    "imageUrl": {
+      "label": "Produktbild",
+      "placeholder": "...oder Bild-URL einfuegen",
+      "dropHint": "Bild ablegen oder klicken zum Hochladen",
+      "uploading": "Wird hochgeladen...",
+      "uploadFailed": "Upload fehlgeschlagen",
+      "clear": "Bild entfernen"
+    },
+    "showcase": {
+      "advanced": "Erweiterte Einstellungen",
+      "lighting": "Beleuchtung",
+      "camera": "Kamera",
+      "aspectRatio": "Seitenverhältnis",
+      "creativity": "Kreativität",
+      "preservation": "Produkterhaltung",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Beschreibe die gewünschte Aufnahme…",
+      "negativePrompt": "Negativ-Prompt",
+      "negativePromptPlaceholder": "unscharf, geringe Qualität, Wasserzeichen, Text…",
+      "seed": "Seed",
+      "seedPlaceholder": "Zufällig",
+      "randomizeSeed": "Seed zufällig wählen",
+      "quality": "Qualität",
+      "qualityDraft": "Entwurf",
+      "qualityHigh": "Hoch",
+      "qualityUltra": "Ultra",
+      "auto": "Automatisch",
+      "cost": "{{count}} Credits pro Durchlauf",
+      "remaining": "{{count}} übrig",
+      "insufficientCredits": "Nicht genügend Credits für diesen Durchlauf"
+    }
+  },
+  "product3dTab": {
+    "title": "Aus einem Produktfoto ein 3D-Modell erstellen",
+    "subtitle": "Erzeugt ein drehbares GLB/OBJ-Modell, das du hier direkt ansehen und in einen Shop-Eintrag oder eine AR-Ansicht einbinden kannst.",
+    "section": {
+      "qualityDetail": "Qualität & Detailgrad",
+      "qualityDetailHint": "Diese Einstellungen bestimmen die Generierungsdauer und die geschätzten Kosten unten."
+    },
+    "quality": "Qualität",
+    "qualityOption": {
+      "draft": "Entwurf",
+      "high": "Hoch",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Texturauflösung",
+    "formats": "Formate",
+    "formatsRequired": "Wähle mindestens ein Format",
+    "cost": "Etwa {{count}} Credits",
+    "costEstimateNote": "Nur eine Schätzung — die genauen Kosten werden nach dem Durchlauf berechnet.",
+    "disabledReason": {
+      "noImage": "Füge ein Produktbild hinzu, um fortzufahren"
+    },
+    "submitting": "Wird gestartet…",
+    "submit": "In 3D umwandeln",
+    "genericFailure": "Die 3D-Umwandlung ist fehlgeschlagen.",
+    "status": {
+      "running": "Mesh und Texturen werden erstellt…",
+      "pending": "In Warteschlange…",
+      "pollError": "Der Status deines Modells kann gerade nicht abgerufen werden. Erneuter Versuch läuft…",
+      "typical": "Dauert meist etwa {{seconds}} Sekunden. Sie koennen die Seite verlassen und zurueckkommen."
+    },
+    "noPreview": "Es wurde keine GLB-Datei erzeugt, daher gibt es hier nichts zum Anzeigen — das Format unten wurde trotzdem erfolgreich heruntergeladen.",
+    "noOutput": "Der Auftrag wurde abgeschlossen, hat aber keine verwendbaren Dateien erzeugt.",
+    "newModel": "Weiteres Produkt umwandeln",
+    "viewer": {
+      "loading": "Modell wird geladen…",
+      "loadError": "Das 3D-Modell konnte nicht geladen werden.",
+      "autoRotate": "Automatische Drehung",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "wireframe": "Drahtgitter",
+      "materialPreview": "Materialvorschau",
+      "lighting": "Beleuchtung",
+      "lightingPreset": {
+        "studio": "Studio",
+        "warm": "Warm",
+        "neutral": "Neutral",
+        "dark": "Dunkel"
+      },
+      "download": "{{format}} herunterladen",
+      "fullscreen": "Vollbild",
+      "exitFullscreen": "Vollbild beenden"
     }
   },
   "productCopy": {

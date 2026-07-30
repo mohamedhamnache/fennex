@@ -7,32 +7,16 @@ import { cn } from "@/lib/cn";
 import { generateProductScene, type GeneratedImage } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, XCircle, Store, ArrowRight, RefreshCw, ShoppingBag } from "lucide-react";
+import { ShowcaseControls, showcaseOverrides, type ShowcaseAdvancedValues } from "./product/ShowcaseControls";
+import { ImageUrlField } from "./product/ImageUrlField";
+import {
+  PRODUCT_SCENES as SCENES,
+  SCENE_CATEGORIES as CATEGORIES,
+  type CategoryFilter as Category,
+} from "@/lib/productScenes";
 
-const SCENES = [
-  { id: "white_studio",      label: "White Studio",  category: "packshot"  },
-  { id: "gradient_studio",   label: "Gradient BG",   category: "packshot"  },
-  { id: "floating_shadow",   label: "Floating",      category: "packshot"  },
-  { id: "marble_countertop", label: "Marble",        category: "lifestyle" },
-  { id: "cafe_table",        label: "Cafe Table",    category: "lifestyle" },
-  { id: "home_living_room",  label: "Living Room",   category: "lifestyle" },
-  { id: "outdoor_nature",    label: "Nature",        category: "lifestyle" },
-  { id: "food_table_scene",  label: "Food Scene",    category: "food"      },
-  { id: "desk_setup",        label: "Desk Setup",    category: "tech"      },
-  { id: "model_studio",      label: "Model Studio",  category: "fashion"   },
-  { id: "athlete_action",    label: "Athlete",       category: "fashion"   },
-] as const;
 
-type SceneId = typeof SCENES[number]["id"];
-type Category = "all" | "packshot" | "lifestyle" | "food" | "tech" | "fashion";
 
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: "all",      label: "All" },
-  { id: "packshot", label: "Packshot" },
-  { id: "lifestyle",label: "Lifestyle" },
-  { id: "food",     label: "Food" },
-  { id: "tech",     label: "Tech" },
-  { id: "fashion",  label: "Fashion" },
-];
 
 interface ProductTabProps {
   projectId: string;
@@ -42,10 +26,15 @@ interface ProductTabProps {
 export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
   const { t } = useTranslation();
   const [category, setCategory] = useState<Category>("all");
-  const [selectedScene, setSelectedScene] = useState<SceneId>("white_studio");
+  const [selectedScene, setSelectedScene] = useState<string>("white_studio");
   const [productUrl, setProductUrl] = useState("");
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<GeneratedImage | null>(null);
+  // Photographic controls (Task 7). Every field starts unset, so a run that
+  // never opens "Advanced controls" sends exactly the payload the tab has
+  // always sent -- see the omit-if-unset spread below.
+  const [advanced, setAdvanced] = useState<ShowcaseAdvancedValues>({});
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -55,6 +44,7 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
         product_description: description.trim(),
         scene_id: selectedScene,
         use_brand_kit: useBrandKit,
+        ...showcaseOverrides(advanced),
       }),
     onSuccess: (data) => setResult(data),
   });
@@ -86,18 +76,8 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
 
       {/* Product inputs */}
       <div className="flex flex-col gap-3">
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
-            Product Image URL
-          </label>
-          <input
-            type="url"
-            value={productUrl}
-            onChange={(e) => setProductUrl(e.target.value)}
-            placeholder="https://your-store.com/product.jpg"
-            className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
+        <ImageUrlField
+          projectId={projectId} value={productUrl} onChange={setProductUrl} />
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">
             Product Description
@@ -152,6 +132,16 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
           ))}
         </div>
       </div>
+
+      {/* Photographic controls (Task 7) */}
+      {!result && (
+        <ShowcaseControls
+          value={advanced}
+          onChange={setAdvanced}
+          isOpen={advancedOpen}
+          onToggle={() => setAdvancedOpen((v) => !v)}
+        />
+      )}
 
       {/* Generate button */}
       {!result && (
@@ -222,6 +212,12 @@ export function ProductTab({ projectId, useBrandKit }: ProductTabProps) {
                   Generate Again
                 </button>
               </div>
+              {typeof result.seed === "number" && (
+                <p className="text-[10px] text-muted-foreground">
+                  {t("productTab.showcase.seed", { defaultValue: "Seed" })}:{" "}
+                  <span className="font-mono tabular-nums text-foreground">{result.seed}</span>
+                </p>
+              )}
             </>
           ) : result.status === "failed" ? (
             <div className="text-xs text-destructive p-3 rounded-lg bg-destructive/10 border border-destructive/30">

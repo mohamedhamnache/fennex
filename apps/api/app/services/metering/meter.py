@@ -99,14 +99,56 @@ async def record_image(db, *, org_id: uuid.UUID, project_id, model: str,
     return cost
 
 
+async def record_removebg(db, *, org_id: uuid.UUID, project_id,
+                          feature: str | None = None) -> int:
+    """Price one Remove.bg call.
+
+    Remove.bg bills a flat rate per processed image, so there is no duration to
+    price from -- unlike Replicate (record_replicate). Recorded as kind="edit"
+    because it is an image-editing supplier cost, same bucket as the Replicate
+    edits, so the cost dashboard does not need a new category.
+
+    Gets the same credit floor as Replicate: a priced supplier call that cost
+    real money never bills zero credits. A run with no seeded rate costs 0 and
+    bills 0 -- replicate_operation_credits returns 0 for a zero cost, so an
+    unpriced call is never silently floored up to 10.
+    """
+    cost = round(await rate(db, "removebg", "run", ""))
+    db.add(UsageEvent(
+        org_id=org_id, project_id=project_id, kind="edit", provider="removebg",
+        model="removebg", feature=feature, cost_micros=cost,
+    ))
+    await _bump_org_usage(db, org_id, cost_micros=cost, ai_cost_micros=cost,
+                          ai_credits_used=replicate_operation_credits(cost))
+    await db.commit()
+    return cost
+
+
 async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
-                           feature: str | None = None) -> int:
-    """Price one Replicate prediction, falling back to the default
-    (provider='replicate', unit='run', model='') rate."""
-    per_run = await rate(db, "replicate", "run", model)
-    if not per_run:
-        per_run = await rate(db, "replicate", "run", "")
-    cost = round(per_run)
+                           feature: str | None = None,
+                           predict_seconds: float | None = None) -> int:
+    """Price one Replicate prediction.
+
+    Replicate bills community models by GPU-second, and its prediction
+    response reports the real `metrics.predict_time`. When we have that, cost
+    is `seconds x per-second rate` -- so a draft/2K run genuinely costs less
+    than an ultra/8K one instead of every configuration billing the same flat
+    fee. Falls back to the per-run rate (then the generic default) when the
+    duration is unavailable, which keeps every existing caller unchanged.
+    """
+    cost: int | None = None
+    if predict_seconds and predict_seconds > 0:
+        per_second = await rate(db, "replicate", "second", model)
+        if not per_second:
+            per_second = await rate(db, "replicate", "second", "")
+        if per_second:
+            cost = round(predict_seconds * per_second)
+
+    if cost is None:
+        per_run = await rate(db, "replicate", "run", model)
+        if not per_run:
+            per_run = await rate(db, "replicate", "run", "")
+        cost = round(per_run)
     db.add(UsageEvent(
         org_id=org_id, project_id=project_id, kind="edit", provider="replicate",
         model=model, feature=feature, cost_micros=cost,

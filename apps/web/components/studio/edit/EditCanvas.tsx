@@ -20,6 +20,9 @@ const MASK_TOOLS = new Set([
 
 const BRUSH_RADIUS = 20;
 const MASK_COLOR = "rgba(255, 80, 80, 0.45)";
+// Numeric twin of MASK_COLOR, used to tint a server-derived mask for preview.
+const MASK_RGB: [number, number, number] = [255, 80, 80];
+const MASK_ALPHA = Math.round(0.45 * 255);
 const MIN_CROP = 0.02;
 
 export interface TextLayer {
@@ -71,6 +74,10 @@ export type TextItem = TextLayer;
 export interface EditCanvasRef {
   getMaskBase64: () => string | null;
   clearMask: () => void;
+  /** Render a server-derived mask (white = affected region) as a tinted
+   *  highlight on the same overlay used for hand-painted masks, so the user
+   *  can review it before confirming. Resolves once the image has loaded. */
+  showMaskPreview: (url: string) => Promise<void>;
   getCropRect: () => { x: number; y: number; w: number; h: number } | null;
   getImageSize: () => { width: number; height: number } | null;
   getDisplayedSize: () => { width: number; height: number } | null;
@@ -338,6 +345,41 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
       ctx.fill();
     }
 
+    // Load a server-derived mask PNG (white = affected region) onto the mask
+    // canvas and tint it to match the hand-painted brush colour, so approving
+    // an auto-derived mask looks like the same overlay the user already knows.
+    function loadPreviewMask(url: string): Promise<void> {
+      return new Promise((resolve, reject) => {
+        const canvas = maskRef.current;
+        if (!canvas || canvas.width === 0 || canvas.height === 0) {
+          reject(new Error("Canvas not ready"));
+          return;
+        }
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { reject(new Error("No 2d context")); return; }
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const [r, g, b] = MASK_RGB;
+          for (let i = 0; i < frame.data.length; i += 4) {
+            const luminance = (frame.data[i] + frame.data[i + 1] + frame.data[i + 2]) / 3;
+            const inMask = luminance > 127;
+            frame.data[i] = r;
+            frame.data[i + 1] = g;
+            frame.data[i + 2] = b;
+            frame.data[i + 3] = inMask ? MASK_ALPHA : 0;
+          }
+          ctx.putImageData(frame, 0, 0);
+          resolve();
+        };
+        img.onerror = () => reject(new Error(`Failed to load mask: ${url}`));
+        img.src = url;
+      });
+    }
+
     const onMaskMouseDown = useCallback(
       (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!needsMask) return;
@@ -456,11 +498,22 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
         const ctx = canvas.getContext("2d")!;
         const src = ctx.getImageData(0, 0, width, height);
         const out = ctx.createImageData(width, height);
+        // Track whether ANY pixel is actually painted in the same pass that
+        // already walks every pixel -- an unpainted canvas must return null,
+        // not an all-black opaque PNG. Callers do `if (m) params.mask_base64 = m`
+        // expecting a falsy result for "nothing painted"; an all-black mask
+        // is truthy AND, since white = the region to replace, means "replace
+        // nothing" -- worse, it outranks auto-derivation server-side, so it
+        // silently defeats the whole auto-masking feature for every
+        // unpainted submission from this panel.
+        let hasPaintedPixel = false;
         for (let i = 0; i < src.data.length; i += 4) {
           const a = src.data[i + 3];
           const v = a > 10 ? 255 : 0;
+          if (v) hasPaintedPixel = true;
           out.data[i] = v; out.data[i + 1] = v; out.data[i + 2] = v; out.data[i + 3] = 255;
         }
+        if (!hasPaintedPixel) return null;
         const tmp = document.createElement("canvas");
         tmp.width = width; tmp.height = height;
         tmp.getContext("2d")!.putImageData(out, 0, 0);
@@ -470,6 +523,10 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
         const canvas = maskRef.current;
         if (!canvas) return;
         canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+      },
+      async showMaskPreview(url: string) {
+        syncCanvas();
+        await loadPreviewMask(url);
       },
       getCropRect() {
         const img = imageRef.current;

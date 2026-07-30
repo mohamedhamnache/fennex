@@ -5,7 +5,7 @@ import io
 import logging
 import time
 import uuid
-from typing import Optional
+from typing import Mapping, Optional
 import httpx
 from PIL import Image as PILImage, ImageEnhance, ImageFilter, ImageOps
 from app.core.config import settings
@@ -39,6 +39,36 @@ async def _retry(coro_factory, attempts: int = 3, base_delay: float = 0.6):
             if i < attempts - 1:
                 await asyncio.sleep(base_delay * (2 ** i))
     raise last  # type: ignore[misc]
+
+
+def _replicate_retry_after(resp: httpx.Response, default: float = 5.0) -> float:
+    """Seconds to wait before retrying a Replicate 429, per its own guidance.
+
+    Replicate reports this as a `retry_after` field in the JSON body (its
+    `Retry-After` header, when present, is redundant with the same value)."""
+    try:
+        return float(resp.json().get("retry_after", default))
+    except Exception:  # noqa: BLE001
+        return default
+
+
+async def _create_prediction(client: httpx.AsyncClient, url: str, payload: dict, headers: dict,
+                               attempts: int = 4) -> httpx.Response:
+    """POST a Replicate prediction, retrying on 429.
+
+    Below $5 of Replicate account credit, prediction creation is throttled to
+    6/min with a burst of just 1 -- routine, low, concurrency (e.g. a "batch"
+    generation feature firing a few scenes at once) reliably exceeds that
+    burst and gets 429'd. Replicate tells us exactly how long to wait
+    (`retry_after`), so honor it instead of failing the whole generation.
+    """
+    resp = await _retry(lambda: client.post(url, json=payload, headers=headers))
+    for i in range(attempts - 1):
+        if resp.status_code != 429:
+            return resp
+        await asyncio.sleep(_replicate_retry_after(resp))
+        resp = await _retry(lambda: client.post(url, json=payload, headers=headers))
+    return resp
 
 
 async def _download(url: str) -> bytes:
@@ -212,20 +242,31 @@ async def sharpen_image(image_url: str, strength: float = 0.5) -> dict:
 # ── Remove.bg ─────────────────────────────────────────────────────────────────
 
 
+async def _removebg_cutout(image_url: str) -> PILImage.Image:
+    """Fetch the Remove.bg cutout as an RGBA image.
+
+    The alpha channel IS a foreground segmentation, which is what
+    app.services.mask_service derives the product-tier mask from. Kept separate
+    from remove_background() so that caller does not have to re-download its own
+    uploaded result to recover the alpha. Raises rather than returning an error
+    dict -- callers that want the dict contract wrap it.
+    """
+    data = await _download(image_url)
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(
+            "https://api.remove.bg/v1.0/removebg",
+            data={"size": "auto"},
+            files={"image_file": ("image.png", data, "image/png")},
+            headers={"X-Api-Key": settings.REMOVE_BG_API_KEY},
+        )
+        resp.raise_for_status()
+    return PILImage.open(io.BytesIO(resp.content)).convert("RGBA")
+
+
 async def remove_background(image_url: str) -> dict:
     """Background removal via Remove.bg API."""
     try:
-        data = await _download(image_url)
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.remove.bg/v1.0/removebg",
-                data={"size": "auto"},
-                files={"image_file": ("image.png", data, "image/png")},
-                headers={"X-Api-Key": settings.REMOVE_BG_API_KEY},
-            )
-            resp.raise_for_status()
-            result_bytes = resp.content
-        img = PILImage.open(io.BytesIO(result_bytes)).convert("RGBA")
+        img = await _removebg_cutout(image_url)
         url = await _upload_result(img)
         return {"ok": True, "image_url": url}
     except Exception as e:
@@ -239,13 +280,23 @@ _POLL_INTERVAL = 3
 _POLL_TIMEOUT = 300
 
 
-async def _replicate_run(model: str, input_params: dict, version: Optional[str] = None) -> str:
+async def _replicate_run(model: str, input_params: dict, version: Optional[str] = None) -> str | dict:
     """Create a Replicate prediction and poll until succeeded. Returns output URL.
 
     Without `version`: uses /v1/models/{owner}/{name}/predictions (works for models with
     an active hot deployment, e.g. flux-fill-pro).
     With `version` (SHA256 hash): uses /v1/predictions with {"version": hash, "input": ...}
     which is required for older models that don't have a hot deployment endpoint.
+
+    Generic contract, unchanged for every existing caller: a list output
+    returns its first element (a URL string); anything else is coerced with
+    `str(output)`, which is a no-op for a plain URL string. The ONLY caller
+    whose model output is a mapping (`firtoz/trellis`, called from
+    `app.services.product3d.generate`) needs the mapping itself, not a
+    Python dict-repr string (`str({...})`) that no downloader can use --
+    every other model this function is called with (flux-fill-pro,
+    flux-kontext-pro, real-esrgan, codeformer, ...) returns a bare URL or a
+    list of URLs and is never affected by this branch.
     """
     headers = {"Authorization": f"Token {settings.REPLICATE_API_KEY}", "Content-Type": "application/json"}
 
@@ -258,7 +309,7 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
         payload = {"input": input_params}
 
     async with httpx.AsyncClient(timeout=60) as client:
-        create_resp = await _retry(lambda: client.post(create_url, json=payload, headers=headers))
+        create_resp = await _create_prediction(client, create_url, payload, headers)
         if not create_resp.is_success:
             raise RuntimeError(f"Replicate create failed {create_resp.status_code}: {create_resp.text}")
         prediction = create_resp.json()
@@ -285,13 +336,23 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
                         from app.services.metering import meter as _meter
                         async with async_session_factory() as _db:
                             await _meter.record_replicate(
-                                _db, org_id=_org, project_id=None, model=model, feature="image_edit",
+                                _db,
+                                org_id=_org,
+                                project_id=None,
+                                model=model,
+                                feature="image_edit",
+                                # Replicate bills by GPU-second and reports the
+                                # real duration, so cost tracks the actual run
+                                # rather than a flat per-run guess.
+                                predict_seconds=(status_data.get("metrics") or {}).get("predict_time"),
                             )
                 except Exception:  # noqa: BLE001
                     logger.warning("replicate usage metering failed", exc_info=True)
 
                 if isinstance(output, list):
                     return output[0]
+                if isinstance(output, Mapping):
+                    return output
                 return str(output)
             if status in ("failed", "canceled"):
                 raise RuntimeError(f"Replicate prediction {status}: {status_data.get('error')}")
@@ -319,9 +380,23 @@ _MODEL_FLUX_FILL = "black-forest-labs/flux-fill-pro"
 # This model requires a pinned version hash (no hot deployment on the model-specific endpoint)
 _MODEL_SD_INPAINT = "stability-ai/stable-diffusion-inpainting"
 _SD_INPAINT_VERSION = "95b7223104132402a9ae91cc677285bc5eb997834bd2349fa486f53910fd68b3"
+# BROKEN: this model does not exist on Replicate (GET /v1/models/fal-ai/shadow-generation
+# returns 404), so generate_shadow can never succeed. There is no version to pin.
+# Needs a real replacement model chosen and its schema verified before the
+# generate_shadow operation is offered again.
 _MODEL_SHADOW = "fal-ai/shadow-generation"
+
+# Like _MODEL_SD_INPAINT above, these two have NO hot deployment: calling
+# /v1/models/{owner}/{name}/predictions returns a bare
+# {"detail":"The requested resource could not be found.","status":404}. They
+# must go through /v1/predictions with a pinned version instead. Verified
+# against Replicate's live API on 2026-07-30 -- do not drop the version.
+# (nightmareai/real-esrgan DOES have a deployment and is deliberately left
+# unpinned; its hot endpoint answers 422 on an empty input, not 404.)
 _MODEL_IC_LIGHT = "zsxkib/ic-light"
+_IC_LIGHT_VERSION = "d41bcb10d8c159868f4cfbd7c6a2ca01484f7d39e4613419d5952c61562f1ba7"
 _MODEL_CODEFORMER = "sczhou/codeformer"
+_CODEFORMER_VERSION = "cc4956dd26fa5a7185d5660cc9100fab1b8070a1d1654a8bb5eb6d443b020bb2"
 _MODEL_REAL_ESRGAN = "nightmareai/real-esrgan"
 
 _RELIGHT_PROMPTS = {
@@ -329,6 +404,17 @@ _RELIGHT_PROMPTS = {
     "bottom": "warm ambient light glowing from below",
     "left":   "soft diffused light from the left side",
     "right":  "soft diffused light from the right side",
+}
+
+# ic-light's `light_source` is an enum -- a free-form direction string is
+# silently ignored by the model, so anything we cannot map becomes "None"
+# (the model's own no-directional-preference value) rather than a value it
+# will discard.
+_IC_LIGHT_SOURCES = {
+    "top":    "Top Light",
+    "bottom": "Bottom Light",
+    "left":   "Left Light",
+    "right":  "Right Light",
 }
 
 
@@ -485,12 +571,24 @@ async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
 
 
 async def relight_image(image_url: str, direction: str = "top", intensity: float = 1.0) -> dict:
-    # ic-light expects a text prompt describing the lighting and a multiplier for intensity
+    """Relight via ic-light.
+
+    `intensity` is accepted for call-compatibility but NOT sent: ic-light's
+    schema has no multiplier/intensity field. The old payload sent one anyway,
+    along with `image` instead of the required `subject_image` -- so even once
+    the missing version was supplied the call would have 422'd. Field names
+    verified against the model's live schema.
+    """
     try:
         light_prompt = _RELIGHT_PROMPTS.get(direction, f"light from {direction}")
         output = await _replicate_run(
             _MODEL_IC_LIGHT,
-            {"image": image_url, "prompt": light_prompt, "multiplier": intensity},
+            {
+                "subject_image": image_url,
+                "prompt": light_prompt,
+                "light_source": _IC_LIGHT_SOURCES.get(direction, "None"),
+            },
+            version=_IC_LIGHT_VERSION,
         )
         url = await _download_and_upload_url(output)
         return {"ok": True, "image_url": url}
@@ -500,7 +598,11 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
 
 async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
     try:
-        output = await _replicate_run(_MODEL_CODEFORMER, {"image": image_url, "codeformer_fidelity": fidelity})
+        output = await _replicate_run(
+            _MODEL_CODEFORMER,
+            {"image": image_url, "codeformer_fidelity": fidelity},
+            version=_CODEFORMER_VERSION,
+        )
         url = await _download_and_upload_url(output)
         return {"ok": True, "image_url": url}
     except Exception as e:

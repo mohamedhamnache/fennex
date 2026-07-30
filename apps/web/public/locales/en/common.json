@@ -1423,6 +1423,10 @@
         "freeform": {
           "label": "Free-form",
           "desc": "Describe anything and generate — full control over style and quality."
+        },
+        "product3d": {
+          "label": "Product to 3D",
+          "desc": "Turn a product photo into a production-ready 3D model you can spin, download and drop into AR."
         }
       }
     }
@@ -1456,6 +1460,22 @@
       "relight": "Relight",
       "restore_face": "Restore Face",
       "upscale": "Upscale"
+    },
+    "maskConfirm": {
+      "body": "We highlighted the area we think you mean. Apply it if it looks right, or cancel and refine your prompt.",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "applying": "Applying...",
+      "needsTargetHint": "Tell us which area you mean, then try again.",
+      "previewError": "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again."
+    },
+    "target": {
+      "label": "Target object or area",
+      "optional": "(optional)",
+      "required": "(required unless you paint a mask)",
+      "placeholder": "e.g. the background, the bottle",
+      "hintOptional": "Leave blank to use the free automatic region. Naming an object targets it precisely, and asks you to confirm the highlighted area first.",
+      "hintRequired": "We don't know where to work without a name here or a painted mask."
     },
     "score": {
       "title": "Score",
@@ -1521,7 +1541,14 @@
         "Upscale 2x",
         "Relight from the top"
       ]
-    }
+    },
+    "maskConfirmHint": "Check the highlighted area on the canvas.",
+    "maskPreviewError": "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.",
+    "maskCancel": "Cancel",
+    "maskApply": "Apply",
+    "applying": "Applying...",
+    "maskConfirmDefault": "Confirm the highlighted area before applying.",
+    "maskTargetDefault": "Which area did you mean?"
   },
   "articleStudio": {
     "write": "Write",
@@ -2138,6 +2165,90 @@
     "openStudio": {
       "title": "Shoot your store products",
       "desc": "Open the Product Studio to sync Shopify / WooCommerce and shoot real SKUs."
+    },
+    "imageUrl": {
+      "label": "Product Image",
+      "placeholder": "...or paste an image URL",
+      "dropHint": "Drop an image or click to upload",
+      "uploading": "Uploading...",
+      "uploadFailed": "Upload failed",
+      "clear": "Clear image"
+    },
+    "showcase": {
+      "advanced": "Advanced controls",
+      "lighting": "Lighting",
+      "camera": "Camera",
+      "aspectRatio": "Aspect ratio",
+      "creativity": "Creativity",
+      "preservation": "Product preservation",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Describe the shot you want…",
+      "negativePrompt": "Negative prompt",
+      "negativePromptPlaceholder": "blurry, low quality, watermark, text…",
+      "seed": "Seed",
+      "seedPlaceholder": "Random",
+      "randomizeSeed": "Randomize seed",
+      "quality": "Quality",
+      "qualityDraft": "Draft",
+      "qualityHigh": "High",
+      "qualityUltra": "Ultra",
+      "auto": "Auto",
+      "cost": "{{count}} credits per run",
+      "remaining": "{{count}} remaining",
+      "insufficientCredits": "Not enough credits for this run"
+    }
+  },
+  "product3dTab": {
+    "title": "Turn a product photo into a 3D model",
+    "subtitle": "Generates a rotatable GLB/OBJ model you can preview here and drop into a store listing or AR view.",
+    "section": {
+      "qualityDetail": "Quality & detail",
+      "qualityDetailHint": "These settings drive how long generation takes, and its estimated cost below."
+    },
+    "quality": "Quality",
+    "qualityOption": {
+      "draft": "Draft",
+      "high": "High",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Texture resolution",
+    "formats": "Formats",
+    "formatsRequired": "Pick at least one format",
+    "cost": "About {{count}} credits",
+    "costEstimateNote": "Estimate only — the exact cost is metered after the run.",
+    "disabledReason": {
+      "noImage": "Add a product image to continue"
+    },
+    "submitting": "Starting…",
+    "submit": "Convert to 3D",
+    "genericFailure": "The 3D conversion failed.",
+    "status": {
+      "running": "Building mesh and textures…",
+      "pending": "Queued…",
+      "pollError": "Having trouble checking on your model. Still retrying…",
+      "typical": "Usually about {{seconds}} seconds. You can leave this page and come back."
+    },
+    "noPreview": "No GLB was produced, so there is nothing to preview here — the format below still downloaded successfully.",
+    "noOutput": "The job finished but produced no usable files.",
+    "newModel": "Convert another product",
+    "viewer": {
+      "loading": "Loading model…",
+      "loadError": "Could not load the 3D model.",
+      "autoRotate": "Auto-rotate",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "wireframe": "Wireframe",
+      "materialPreview": "Material preview",
+      "lighting": "Lighting",
+      "lightingPreset": {
+        "studio": "Studio",
+        "warm": "Warm",
+        "neutral": "Neutral",
+        "dark": "Dark"
+      },
+      "download": "Download {{format}}",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen"
     }
   },
   "productCopy": {

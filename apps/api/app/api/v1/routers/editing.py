@@ -14,14 +14,18 @@ from app.core.storage import upload_bytes
 from app.models.api_key import APIKey
 from app.models.image import GeneratedImage, ImageStatus
 from app.services import editing_service
+from app.services.mask_service import MASK_OPERATIONS, MaskResolution, is_own_storage_url, resolve_mask
 
 router = APIRouter()
 
-# Operations that accept a painted canvas mask (mask_base64 → uploaded mask_url)
-_MASK_OPS = {"replace_background", "remove_object", "insert_object", "generative_fill", "smart_erase"}
+# Operations that accept a mask. Sourced from mask_service so the router and the
+# resolver cannot drift apart.
+_MASK_OPS = MASK_OPERATIONS
 
 # Maps operation name → (service function, required param keys, optional param keys)
-# mask_url for Replicate ops is injected at runtime from mask_base64; not listed here.
+# mask_url for Replicate ops is resolved at runtime by _mask_for -- from
+# mask_base64, from a validated params["mask_url"], or by auto-resolution
+# via mask_service.resolve_mask; not listed here.
 _DISPATCH: dict[str, tuple[Any, list[str], list[str]]] = {
     # Basic (Pillow)
     "crop":               (editing_service.crop_image,        ["x", "y", "w", "h"],    []),
@@ -34,7 +38,7 @@ _DISPATCH: dict[str, tuple[Any, list[str], list[str]]] = {
     "sharpen":            (editing_service.sharpen_image,     [],                       ["strength"]),
     # Remove.bg — no mask required, auto-detects background
     "remove_background":  (editing_service.remove_background, [],                       []),
-    # Replicate AI — mask_url injected from mask_base64 by the router
+    # Replicate AI — mask_url resolved by _mask_for (see above)
     "replace_background": (editing_service.replace_background, ["prompt"],              []),
     "remove_object":      (editing_service.remove_object,     [],                       []),
     "insert_object":      (editing_service.insert_object,     ["prompt"],               []),
@@ -48,15 +52,67 @@ _DISPATCH: dict[str, tuple[Any, list[str], list[str]]] = {
 
 
 async def _resolve_mask_url(params: dict) -> Optional[str]:
-    """Convert mask_base64 (canvas data URL) to a storage URL for Replicate."""
+    """Resolve a user-supplied mask, in precedence order:
+
+      - mask_base64: a freshly painted canvas mask, uploaded to storage. Wins
+        over mask_url since it represents the most recent paint.
+      - mask_url: a mask the client is re-submitting on the confirmation
+        round trip (see _mask_for). This is fetched server-side by whichever
+        Replicate operation runs next, so an unvalidated client-supplied URL
+        would be a request-forgery primitive -- it must pass
+        is_own_storage_url before use.
+
+    Raises ValueError if mask_url is present but fails validation, so the
+    caller surfaces an error instead of silently falling through to
+    auto-masking (which would apply a mask the user never approved).
+
+    Checks `"mask_url" in params` rather than truthiness: a present-but-empty
+    value (`""` or `None`, e.g. a client re-submitting a stale or cleared
+    field) must be rejected as invalid too, not treated as "no mask
+    supplied" -- that would fall through to auto-resolution and silently
+    trigger a second paid segmenter call plus another needs_confirmation
+    round trip.
+    """
     b64 = params.get("mask_base64")
-    if not b64:
-        return None
-    if "," in b64:
-        b64 = b64.split(",", 1)[1]
-    data = base64.b64decode(b64)
-    key = f"masks/{uuid.uuid4().hex}.png"
-    return await upload_bytes(data, key, "image/png")
+    if b64:
+        if "," in b64:
+            b64 = b64.split(",", 1)[1]
+        data = base64.b64decode(b64)
+        key = f"masks/{uuid.uuid4().hex}.png"
+        return await upload_bytes(data, key, "image/png")
+
+    if "mask_url" in params:
+        url = params["mask_url"]
+        if not is_own_storage_url(url):
+            raise ValueError("mask_url is not a valid storage URL.")
+        return url
+
+    return None
+
+
+async def _mask_for(operation: str, params: dict, image_url: str, org_id, db) -> MaskResolution:
+    """Resolve the mask for a mask-requiring operation.
+
+    Always returns a MaskResolution. A painted or previously-confirmed mask
+    always wins; auto-resolution via mask_service.resolve_mask runs only when
+    neither was supplied -- replacing the previous behaviour of refusing the
+    edit outright with "paint the area first", which made every mask
+    operation unreachable from a plain natural-language request.
+
+    A resolution from resolve_mask is passed through untouched, including its
+    needs_confirmation state: the prompted tier hands back a good mask that
+    still needs the user's sign-off (ok=False, needs_confirmation=True), which
+    is neither a painted selection nor an error and must not be collapsed
+    into one.
+    """
+    try:
+        supplied = await _resolve_mask_url(params)
+    except ValueError as e:
+        return MaskResolution(ok=False, error=str(e))
+    if supplied:
+        return MaskResolution(ok=True, mask_url=supplied, tier="painted")
+
+    return await resolve_mask(image_url, operation, params.get("target"), org_id, db)
 
 
 class EditRequest(BaseModel):
@@ -69,6 +125,14 @@ class EditOut(BaseModel):
     image_url: Optional[str] = None
     image_id: Optional[uuid.UUID] = None
     error: Optional[str] = None
+    # True when the edit stopped because Mirage needs to know which region to
+    # act on -- the client should re-ask rather than treat this as a failure.
+    needs_target: bool = False
+    # True when a mask WAS derived but needs the user's approval before it is
+    # applied. The client shows mask_url as a highlight overlay and, on
+    # approval, re-submits the same edit with params["mask_url"] set to it.
+    needs_confirmation: bool = False
+    mask_url: Optional[str] = None
 
 
 @router.post("/{image_id}/edit", response_model=EditOut)
@@ -115,13 +179,16 @@ async def edit_image(
         if k in params:
             kwargs[k] = params[k]
 
-    # For Replicate masked operations: upload the canvas mask and inject mask_url
+    # For Replicate masked operations: use the painted mask, else derive one.
     if body.operation in _MASK_OPS:
-        mask_url = await _resolve_mask_url(params)
-        if mask_url:
-            kwargs["mask_url"] = mask_url
-        elif body.operation in {"replace_background", "remove_object", "insert_object", "generative_fill", "smart_erase"}:
-            return EditOut(ok=False, error="Please paint the area on the image first, then apply.")
+        res = await _mask_for(body.operation, params, image.image_url, current_user.org_id, db)
+        if res.needs_confirmation:
+            return EditOut(ok=False, needs_confirmation=True, mask_url=res.mask_url,
+                           error="Confirm the highlighted area before applying.")
+        if not res.ok:
+            return EditOut(ok=False, error=res.question or res.error,
+                           needs_target=bool(res.question))
+        kwargs["mask_url"] = res.mask_url
 
     # For removal ops: inject OpenAI key so the service can do vision-based background analysis
     if body.operation in {"smart_erase", "remove_object"}:

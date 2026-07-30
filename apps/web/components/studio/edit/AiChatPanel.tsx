@@ -1,17 +1,38 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { sendAiCommand, type GeneratedImage, type AiCommandMessage } from "@/lib/api";
+import { sendAiCommand, ApiError, type GeneratedImage, type AiCommandMessage } from "@/lib/api";
+import type { EditCanvasRef } from "./EditCanvas";
 
 const SUGGESTION_GROUPS = ["oneGo", "enhance", "retouch", "style", "transform"] as const;
 
 interface AiChatPanelProps {
   imageId: string;
   onVersionAdded: (img: GeneratedImage) => void;
+  /** Shared with the center canvas so a mask pending confirmation can be
+   *  previewed there, the same overlay the manual editor uses. */
+  canvasRef?: RefObject<EditCanvasRef>;
+}
+
+/** Awaiting the user's approval of an auto-derived mask for one step of a
+ *  (possibly multi-step) ai-command chain. `accumulated` holds mask URLs
+ *  already confirmed earlier in this same chain, indexed by step. */
+interface PendingMaskConfirm {
+  command: string;
+  message: string;
+  maskUrl: string;
+  stepIndex: number;
+  accumulated: string[];
+  /** The 422's resume_token, so the retry resumes the server's cached plan
+   *  instead of re-planning and re-billing already-applied steps. A chain
+   *  can stop for confirmation more than once; each stop mints a FRESH
+   *  token reflecting progress so far, so this always holds the most
+   *  recent one, never an earlier round's. */
+  resumeToken: string | undefined;
 }
 
 function TypingIndicator() {
@@ -33,19 +54,51 @@ function TypingIndicator() {
   );
 }
 
-export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
+export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<AiCommandMessage[]>([]);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingMaskConfirm | null>(null);
+  // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
+  // area never rendered, so Apply must be disabled: approving a mask the
+  // user never actually saw would defeat the confirmation gate entirely.
+  const [maskPreviewError, setMaskPreviewError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
+  }, [history, pendingConfirm]);
+
+  // Mirror of EditControlsPanel's leak guard: the tinted mask preview lives
+  // on the shared EditCanvas, not in this component. Switching the
+  // right-hand tab back to "Edit" unmounts this whole panel (see page.tsx's
+  // rightTab ternary), dropping pendingConfirm without ever running Cancel's
+  // handler, which would otherwise leave abandoned mask pixels for
+  // EditControlsPanel's next Save to silently pick up via getMaskBase64().
+  const pendingConfirmRef = useRef(pendingConfirm);
+  useEffect(() => { pendingConfirmRef.current = pendingConfirm; }, [pendingConfirm]);
+  useEffect(() => {
+    return () => {
+      if (pendingConfirmRef.current) canvasRef?.current?.clearMask();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Switching the displayed image/version doesn't unmount this panel, so a
+  // confirmation left pending from the PREVIOUS image would otherwise still
+  // be Apply-able against the new one. Chat history is intentionally left
+  // alone here (it's not image-scoped).
+  useEffect(() => {
+    setPendingConfirm(null);
+    setMaskPreviewError(false);
+    canvasRef?.current?.clearMask();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageId]);
 
   const mutation = useMutation({
-    mutationFn: ({ command }: { command: string }) => sendAiCommand(imageId, command, history),
+    mutationFn: ({ command, maskUrls, resumeToken }: { command: string; maskUrls?: string[]; resumeToken?: string }) =>
+      sendAiCommand(imageId, command, history, undefined, maskUrls, resumeToken),
     onSuccess: (img, { command }) => {
       const opLabel = img.edit_operation?.replace(/_/g, " ") ?? "edit";
       setHistory((prev) => [
@@ -54,9 +107,40 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
         { role: "assistant", content: t("mirage.applied", { op: opLabel }) },
       ]);
       onVersionAdded(img);
+      setPendingConfirm(null);
+      setMaskPreviewError(false);
+      canvasRef?.current?.clearMask();
       setInput("");
     },
-    onError: (err, { command }) => {
+    onError: (err, { command, maskUrls }) => {
+      if (err instanceof ApiError && err.detail?.code === "mask_confirm_required") {
+        const maskUrl = String(err.detail.mask_url ?? "");
+        const stepIndex = Number(err.detail.step_index ?? 0);
+        const message = typeof err.detail.message === "string"
+          ? err.detail.message
+          : t("mirage.maskConfirmDefault", "Confirm the highlighted area before applying.");
+        if (maskUrl) {
+          const resumeToken = typeof err.detail.resume_token === "string" ? err.detail.resume_token : undefined;
+          setPendingConfirm({ command, message, maskUrl, stepIndex, accumulated: maskUrls ?? [], resumeToken });
+          setMaskPreviewError(false);
+          // See maskPreviewError declaration: an unseen mask must never be
+          // silently approvable.
+          canvasRef?.current?.showMaskPreview(maskUrl).catch(() => setMaskPreviewError(true));
+          return;
+        }
+      }
+      if (err instanceof ApiError && err.detail?.code === "mask_target_required") {
+        const message = typeof err.detail.message === "string"
+          ? err.detail.message
+          : t("mirage.maskTargetDefault", "Which area did you mean?");
+        setHistory((prev) => [
+          ...prev,
+          { role: "user", content: command },
+          { role: "assistant", content: message },
+        ]);
+        setInput("");
+        return;
+      }
       setHistory((prev) => [
         ...prev,
         { role: "user", content: command },
@@ -71,8 +155,26 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
 
   function submit(command: string) {
     const trimmed = command.trim();
-    if (!trimmed || mutation.isPending) return;
+    if (!trimmed || mutation.isPending || pendingConfirm) return;
     mutation.mutate({ command: trimmed });
+  }
+
+  function handleApplyMaskConfirm() {
+    if (!pendingConfirm || maskPreviewError) return;
+    const maskUrls = [...pendingConfirm.accumulated];
+    maskUrls[pendingConfirm.stepIndex] = pendingConfirm.maskUrl;
+    const command = pendingConfirm.command;
+    const resumeToken = pendingConfirm.resumeToken;
+    setPendingConfirm(null);
+    setMaskPreviewError(false);
+    canvasRef?.current?.clearMask();
+    mutation.mutate({ command, maskUrls, resumeToken });
+  }
+
+  function handleCancelMaskConfirm() {
+    setPendingConfirm(null);
+    setMaskPreviewError(false);
+    canvasRef?.current?.clearMask();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -101,7 +203,7 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
       <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
 
         {/* Suggestion chips — shown only before any messages */}
-        {history.length === 0 && !mutation.isPending && (
+        {history.length === 0 && !mutation.isPending && !pendingConfirm && (
           <div className="flex flex-col gap-3 animate-fade-in">
             <p className="text-xs text-muted-foreground leading-relaxed px-1">
               {t("mirage.tryPrompt")}
@@ -166,8 +268,47 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
           </div>
         ))}
 
+        {/* Mask confirmation — an auto-derived mask is waiting for approval */}
+        {pendingConfirm && (
+          <div className="flex gap-2 items-start animate-msg-in">
+            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center shrink-0 shadow-sm">
+              <Bot className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div className="max-w-[78%] rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 text-xs leading-relaxed text-foreground flex flex-col gap-2">
+              <p>{pendingConfirm.message}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {t("mirage.maskConfirmHint", "Check the highlighted area on the canvas.")}
+              </p>
+              {maskPreviewError && (
+                <p className="text-[10px] text-destructive">
+                  {t("mirage.maskPreviewError", "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.")}
+                </p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCancelMaskConfirm}
+                  disabled={mutation.isPending}
+                  className="flex-1 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  {t("mirage.maskCancel", "Cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyMaskConfirm}
+                  disabled={mutation.isPending || maskPreviewError}
+                  title={maskPreviewError ? t("mirage.maskPreviewError", "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.") : undefined}
+                  className="flex-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {mutation.isPending ? t("mirage.applying", "Applying...") : t("mirage.maskApply", "Apply")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Typing indicator */}
-        {mutation.isPending && <TypingIndicator />}
+        {mutation.isPending && !pendingConfirm && <TypingIndicator />}
 
         <div ref={bottomRef} />
       </div>
@@ -182,11 +323,12 @@ export function AiChatPanel({ imageId, onVersionAdded }: AiChatPanelProps) {
             onKeyDown={handleKeyDown}
             placeholder={t("mirage.placeholder")}
             rows={2}
-            className="flex-1 resize-none px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground bg-transparent focus:outline-none"
+            disabled={!!pendingConfirm}
+            className="flex-1 resize-none px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground bg-transparent focus:outline-none disabled:opacity-50"
           />
           <button
             type="button"
-            disabled={!input.trim() || mutation.isPending}
+            disabled={!input.trim() || mutation.isPending || !!pendingConfirm}
             onClick={() => submit(input)}
             className="m-1.5 h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 shrink-0"
           >

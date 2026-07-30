@@ -73,10 +73,14 @@ function RailLink({
     "group relative flex w-full items-center rounded-xl text-[13px] font-medium transition-all duration-150 active:scale-[0.98]",
     expanded ? "gap-3 px-2.5 py-2" : "justify-center p-2.5",
     danger
-      ? "text-white/45 hover:bg-destructive/15 hover:text-destructive"
+      ? "text-white/70 hover:bg-destructive/15 hover:text-destructive"
       : active
-        ? "rail-active text-primary"
-        : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+        // The highlight is a primary-tinted wash, so a primary label put the
+        // selected item at 2.15:1 -- the LEAST readable row in the menu.
+        // White keeps it at 9.07:1 worst-case across every palette; the accent
+        // still reads through rail-marker and the tinted background.
+        ? "rail-active text-white"
+        : "text-white/75 hover:bg-white/[0.05] hover:text-white/90",
   );
   const inner = (
     <>
@@ -182,7 +186,7 @@ export function Sidebar() {
               {mounted && (
                 <button
                   onClick={togglePin}
-                  className="ml-auto rounded-md p-1 text-white/30 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+                  className="ml-auto rounded-md p-1 text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white/70"
                   title={pinned ? "Collapse rail" : "Pin rail open"}
                 >
                   {pinned ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
@@ -199,7 +203,7 @@ export function Sidebar() {
             <button
               onClick={() => router.push("/onboarding")}
               className={cn(
-                "flex w-full items-center gap-2 rounded-xl border border-dashed border-white/15 text-white/45 transition-all hover:border-primary/40 hover:text-white/80",
+                "flex w-full items-center gap-2 rounded-xl border border-dashed border-white/15 text-white/70 transition-all hover:border-primary/40 hover:text-white/80",
                 expanded ? "px-3 py-2.5" : "justify-center p-2.5",
               )}
             >
@@ -227,12 +231,12 @@ export function Sidebar() {
                         {currentProject?.name ?? t("nav.selectProject")}
                       </span>
                       {currentProject && (
-                        <span className="truncate text-[10px] font-medium uppercase tracking-wider text-white/35">
+                        <span className="truncate text-[10px] font-medium uppercase tracking-wider text-white/60">
                           {persona}
                         </span>
                       )}
                     </span>
-                    <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-white/30 transition-transform", dropdownOpen && "rotate-180")} />
+                    <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-white/75 transition-transform", dropdownOpen && "rotate-180")} />
                   </>
                 )}
               </button>
@@ -246,7 +250,7 @@ export function Sidebar() {
                         onClick={() => handleSelectProject(project.id)}
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-colors",
-                          project.id === currentProject?.id ? "bg-primary/15 text-primary" : "text-foreground/70 hover:bg-white/[0.05]",
+                          project.id === currentProject?.id ? "bg-primary/15 text-white" : "text-foreground/70 hover:bg-white/[0.05]",
                         )}
                       >
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[10px] font-bold">
@@ -283,7 +287,7 @@ export function Sidebar() {
           {/* For you */}
           <div>
             {expanded ? (
-              <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">{t("nav.forYou")}</p>
+              <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">{t("nav.forYou")}</p>
             ) : (
               <div className="rail-divider mx-2 mb-1.5" />
             )}
@@ -304,7 +308,7 @@ export function Sidebar() {
             {expanded && (
               <button
                 onClick={toggleMore}
-                className="mb-1.5 flex w-full items-center gap-1 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30 transition-colors hover:text-white/55"
+                className="mb-1.5 flex w-full items-center gap-1 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 transition-colors hover:text-white/75"
               >
                 {t("nav.moreTools")} <ChevronDown className={cn("h-3 w-3 transition-transform", moreOpen && "rotate-180")} />
               </button>

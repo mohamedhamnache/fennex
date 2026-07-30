@@ -37,6 +37,10 @@ dependencies = [
     "strands-agents[anthropic,openai]>=1.48.0",
     "rembg>=2.0.57",
     "onnxruntime>=1.18.0",
+    # Product-to-3D OBJ export (design spec section 3, "Format conversion").
+    # GLB (Trellis's native output) never touches this -- see
+    # app/services/product3d/convert.py.
+    "trimesh>=4.0.0",
 ]
 
 [project.optional-dependencies]

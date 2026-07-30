@@ -1326,6 +1326,10 @@
         "freeform": {
           "label": "Livre",
           "desc": "Descreva qualquer coisa e gere — controle total de estilo e qualidade."
+        },
+        "product3d": {
+          "label": "Produto para 3D",
+          "desc": "Transforme a foto de um produto num modelo 3D pronto a usar: rodar, transferir e usar em RA."
         }
       }
     }
@@ -1359,6 +1363,22 @@
       "relight": "Reiluminar",
       "restore_face": "Restaurar rosto",
       "upscale": "Ampliar"
+    },
+    "maskConfirm": {
+      "body": "Destacamos a área que achamos que você quer dizer. Aplique se estiver correta, ou cancele e refine sua descrição.",
+      "cancel": "Cancelar",
+      "apply": "Aplicar",
+      "applying": "Aplicando...",
+      "needsTargetHint": "Diga-nos qual área você quer dizer e tente novamente.",
+      "previewError": "Não foi possível mostrar a área destacada, por isso não pode ser confirmada. Cancele e tente novamente."
+    },
+    "target": {
+      "label": "Objeto ou área alvo",
+      "optional": "(opcional)",
+      "required": "(obrigatório, a menos que pinte uma máscara)",
+      "placeholder": "ex.: o fundo, a garrafa",
+      "hintOptional": "Deixe em branco para usar a área automática gratuita. Nomear um objeto o direciona com precisão e pede que você confirme a área destacada primeiro.",
+      "hintRequired": "Não sabemos onde atuar sem um nome aqui ou uma máscara pintada."
     },
     "score": {
       "title": "Pontuação",
@@ -1424,7 +1444,14 @@
         "Ampliar 2x",
         "Reiluminar de cima"
       ]
-    }
+    },
+    "maskConfirmHint": "Verifique a área destacada na tela.",
+    "maskPreviewError": "Não foi possível mostrar a área destacada, por isso não pode ser confirmada. Cancele e tente novamente.",
+    "maskCancel": "Cancelar",
+    "maskApply": "Aplicar",
+    "applying": "Aplicando...",
+    "maskConfirmDefault": "Confirme a área destacada antes de aplicar.",
+    "maskTargetDefault": "Qual área você quis dizer?"
   },
   "articleStudio": {
     "dock": {
@@ -2050,6 +2077,90 @@
     "openStudio": {
       "title": "Fotografe seus produtos",
       "desc": "Abra o Estúdio de Produto para sincronizar Shopify / WooCommerce e fotografar SKUs reais."
+    },
+    "imageUrl": {
+      "label": "Imagem do produto",
+      "placeholder": "...ou cole um URL de imagem",
+      "dropHint": "Largue uma imagem ou clique para carregar",
+      "uploading": "A carregar...",
+      "uploadFailed": "Falha no carregamento",
+      "clear": "Limpar imagem"
+    },
+    "showcase": {
+      "advanced": "Controles avançados",
+      "lighting": "Iluminação",
+      "camera": "Câmera",
+      "aspectRatio": "Proporção",
+      "creativity": "Criatividade",
+      "preservation": "Preservação do produto",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Descreva a cena que você quer…",
+      "negativePrompt": "Prompt negativo",
+      "negativePromptPlaceholder": "desfocado, baixa qualidade, marca d'água, texto…",
+      "seed": "Seed",
+      "seedPlaceholder": "Aleatória",
+      "randomizeSeed": "Gerar seed aleatória",
+      "quality": "Qualidade",
+      "qualityDraft": "Rascunho",
+      "qualityHigh": "Alta",
+      "qualityUltra": "Ultra",
+      "auto": "Automático",
+      "cost": "{{count}} créditos por geração",
+      "remaining": "{{count}} restantes",
+      "insufficientCredits": "Créditos insuficientes para esta geração"
+    }
+  },
+  "product3dTab": {
+    "title": "Transforme uma foto de produto em um modelo 3D",
+    "subtitle": "Gera um modelo GLB/OBJ giratório que você pode pré-visualizar aqui e usar em uma ficha de produto ou visualização em AR.",
+    "section": {
+      "qualityDetail": "Qualidade e detalhe",
+      "qualityDetailHint": "Essas configurações determinam quanto tempo a geração leva e o custo estimado abaixo."
+    },
+    "quality": "Qualidade",
+    "qualityOption": {
+      "draft": "Rascunho",
+      "high": "Alta",
+      "ultra": "Ultra"
+    },
+    "textureResolution": "Resolução da textura",
+    "formats": "Formatos",
+    "formatsRequired": "Escolha pelo menos um formato",
+    "cost": "Cerca de {{count}} créditos",
+    "costEstimateNote": "Apenas uma estimativa — o custo exato é apurado após a execução.",
+    "disabledReason": {
+      "noImage": "Adicione uma imagem do produto para continuar"
+    },
+    "submitting": "Iniciando…",
+    "submit": "Converter para 3D",
+    "genericFailure": "A conversão para 3D falhou.",
+    "status": {
+      "running": "A criar malha e texturas…",
+      "pending": "Na fila…",
+      "pollError": "Tendo dificuldade para verificar o status do seu modelo. Tentando novamente…",
+      "typical": "Normalmente cerca de {{seconds}} segundos. Pode sair desta pagina e voltar."
+    },
+    "noPreview": "Nenhum GLB foi gerado, então não há nada para pré-visualizar aqui — o formato abaixo foi baixado com sucesso.",
+    "noOutput": "O trabalho terminou, mas não produziu arquivos utilizáveis.",
+    "newModel": "Converter outro produto",
+    "viewer": {
+      "loading": "Carregando modelo…",
+      "loadError": "Não foi possível carregar o modelo 3D.",
+      "autoRotate": "Rotação automática",
+      "zoomIn": "Aproximar",
+      "zoomOut": "Afastar",
+      "wireframe": "Estrutura de arame",
+      "materialPreview": "Pré-visualização de material",
+      "lighting": "Iluminação",
+      "lightingPreset": {
+        "studio": "Estúdio",
+        "warm": "Quente",
+        "neutral": "Neutra",
+        "dark": "Escura"
+      },
+      "download": "Baixar {{format}}",
+      "fullscreen": "Tela cheia",
+      "exitFullscreen": "Sair da tela cheia"
     }
   },
   "productCopy": {
