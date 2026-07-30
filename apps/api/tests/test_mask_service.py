@@ -72,9 +72,7 @@ def test_alpha_to_mask_thresholds_semi_transparent_pixels():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation,expect_subject_white", [
-    ("replace_background", False),  # white = background
-    ("remove_object", True),        # white = subject
-    ("smart_erase", True),          # white = subject
+    ("replace_background", False),  # white = background; the only product-tier op
 ])
 async def test_product_tier_polarity(operation, expect_subject_white):
     upload = AsyncMock(return_value="https://cdn/mask.png")
@@ -136,7 +134,8 @@ async def test_product_tier_does_not_need_confirmation():
          patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
          patch("app.services.mask_service.record_removebg", AsyncMock(return_value=0)):
-        res = await resolve_mask("https://cdn/x.png", "remove_object", None, uuid.uuid4(), None)
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None,
+                                 uuid.uuid4(), None)
 
     assert res.ok is True
     assert res.needs_confirmation is False
@@ -421,7 +420,14 @@ def test_mask_operations_table():
         "replace_background", "remove_object", "insert_object",
         "generative_fill", "smart_erase",
     })
-    assert mask_service.AMBIGUOUS_WITHOUT_TARGET == frozenset({"insert_object", "generative_fill"})
+    # Removal joined the ambiguous set: "remove the mint" with no target made the
+    # product tier mask the main subject (the bottle) and erase it.
+    assert mask_service.AMBIGUOUS_WITHOUT_TARGET == frozenset({
+        "insert_object", "generative_fill", "remove_object", "smart_erase",
+    })
+    # replace_background is the ONLY operation with a derivable default region.
+    assert mask_service.MASK_OPERATIONS - mask_service.AMBIGUOUS_WITHOUT_TARGET == \
+        frozenset({"replace_background"})
     assert mask_service.AMBIGUOUS_WITHOUT_TARGET <= mask_service.MASK_OPERATIONS
 
 
@@ -473,3 +479,35 @@ async def test_product_tier_fits_a_downscaled_cutout_back_to_the_source():
     assert res.ok is True
     (mask,), _ = upload.call_args
     assert mask.size == (64, 48), "mask must match the SOURCE, not the cutout"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["remove_object", "smart_erase"])
+async def test_untargeted_removal_asks_instead_of_erasing_the_main_subject(operation):
+    """The reported disaster: "remove the mint" with no target made the product
+    tier mask the BOTTLE (Remove.bg's alpha is the main subject) and erase it,
+    leaving the mint untouched. Removal with no target must ask, not guess."""
+    cutout, segment = AsyncMock(), AsyncMock()
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service._segment_by_prompt", segment):
+        res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
+
+    assert res.ok is False
+    assert res.question == mask_service.AMBIGUITY_QUESTION
+    cutout.assert_not_awaited()   # and it spends nothing while asking
+    segment.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["remove_object", "smart_erase"])
+async def test_targeted_removal_goes_to_the_segmenter_and_asks_for_confirmation(operation):
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._segment_by_prompt",
+               AsyncMock(return_value="https://cdn/seg.png")):
+        res = await resolve_mask("https://cdn/x.png", operation, "la menthe",
+                                 uuid.uuid4(), None)
+
+    assert res.tier == "prompted"
+    assert res.needs_confirmation is True
+    assert res.mask_url == "https://cdn/seg.png"

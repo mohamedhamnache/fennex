@@ -59,7 +59,15 @@ MASK_OPERATIONS = frozenset({
 
 # Operations with no derivable default region: "put a bottle in the frame" does
 # not say where. These ask instead of guessing.
-AMBIGUOUS_WITHOUT_TARGET = frozenset({"insert_object", "generative_fill"})
+# Operations with no derivable default region. "Put a vase here" does not say
+# where -- and neither does "remove the mint", because REMOVAL ALWAYS NAMES A
+# THING. Treating an un-targeted removal as "remove the main subject" was a real
+# defect: asked to delete the mint from a photo of a bottle, the product tier
+# masked the bottle (Remove.bg's alpha IS the main subject) and erased it, while
+# the mint sat untouched. There is no sensible default for "remove"; ask.
+AMBIGUOUS_WITHOUT_TARGET = frozenset({
+    "insert_object", "generative_fill", "remove_object", "smart_erase",
+})
 
 AMBIGUITY_QUESTION = (
     "Tell me which part to change -- for example 'the background' or 'the bottle'."
