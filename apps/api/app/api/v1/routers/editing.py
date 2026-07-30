@@ -23,7 +23,9 @@ router = APIRouter()
 _MASK_OPS = MASK_OPERATIONS
 
 # Maps operation name → (service function, required param keys, optional param keys)
-# mask_url for Replicate ops is injected at runtime from mask_base64; not listed here.
+# mask_url for Replicate ops is resolved at runtime by _mask_for -- from
+# mask_base64, from a validated params["mask_url"], or by auto-resolution
+# via mask_service.resolve_mask; not listed here.
 _DISPATCH: dict[str, tuple[Any, list[str], list[str]]] = {
     # Basic (Pillow)
     "crop":               (editing_service.crop_image,        ["x", "y", "w", "h"],    []),
@@ -36,7 +38,7 @@ _DISPATCH: dict[str, tuple[Any, list[str], list[str]]] = {
     "sharpen":            (editing_service.sharpen_image,     [],                       ["strength"]),
     # Remove.bg — no mask required, auto-detects background
     "remove_background":  (editing_service.remove_background, [],                       []),
-    # Replicate AI — mask_url injected from mask_base64 by the router
+    # Replicate AI — mask_url resolved by _mask_for (see above)
     "replace_background": (editing_service.replace_background, ["prompt"],              []),
     "remove_object":      (editing_service.remove_object,     [],                       []),
     "insert_object":      (editing_service.insert_object,     ["prompt"],               []),
@@ -63,6 +65,13 @@ async def _resolve_mask_url(params: dict) -> Optional[str]:
     Raises ValueError if mask_url is present but fails validation, so the
     caller surfaces an error instead of silently falling through to
     auto-masking (which would apply a mask the user never approved).
+
+    Checks `"mask_url" in params` rather than truthiness: a present-but-empty
+    value (`""` or `None`, e.g. a client re-submitting a stale or cleared
+    field) must be rejected as invalid too, not treated as "no mask
+    supplied" -- that would fall through to auto-resolution and silently
+    trigger a second paid segmenter call plus another needs_confirmation
+    round trip.
     """
     b64 = params.get("mask_base64")
     if b64:
@@ -72,8 +81,8 @@ async def _resolve_mask_url(params: dict) -> Optional[str]:
         key = f"masks/{uuid.uuid4().hex}.png"
         return await upload_bytes(data, key, "image/png")
 
-    url = params.get("mask_url")
-    if url:
+    if "mask_url" in params:
+        url = params["mask_url"]
         if not is_own_storage_url(url):
             raise ValueError("mask_url is not a valid storage URL.")
         return url
