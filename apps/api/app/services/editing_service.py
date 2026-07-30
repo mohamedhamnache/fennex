@@ -348,17 +348,24 @@ async def _download_and_upload_url(url: str, resize_to: tuple[int, int] | None =
     return await _upload_result(img)
 
 
-def _sd_inpaint_size(orig_w: int, orig_h: int) -> tuple[int, int]:
-    """Scale to fit within SD 1.5's safe range (max 768), multiples of 8."""
-    scale = min(768 / orig_w, 768 / orig_h, 1.0)
-    return (int(orig_w * scale // 8 * 8), int(orig_h * scale // 8 * 8))
-
-
 _MODEL_FLUX_FILL = "black-forest-labs/flux-fill-pro"
-# SD inpainting heals from surrounding pixels (no generative hallucination) — used for object removal
-# This model requires a pinned version hash (no hot deployment on the model-specific endpoint)
-_MODEL_SD_INPAINT = "stability-ai/stable-diffusion-inpainting"
-_SD_INPAINT_VERSION = "95b7223104132402a9ae91cc677285bc5eb997834bd2349fa486f53910fd68b3"
+
+# Removal is RECONSTRUCTIVE, never generative. LaMa takes an image and a mask and
+# nothing else -- there is no prompt channel, so inventing a replacement object is
+# structurally impossible rather than something to tune against.
+#
+# What this replaced: remove_object described the background with GPT-4o-mini and
+# fed that description to flux-fill as a text prompt, at flux-fill's default
+# guidance of 60 (strong adherence to the prompt over the image). Asking a
+# strongly-guided generative model to paint "a wooden table surface" into a hole
+# is exactly how a removal request produced a brand new object. The fallback path
+# was no better: it downscaled to 768px, inpainted, then upscaled back, which is
+# irreversible blur.
+#
+# LaMa is resolution-robust, so no downscale round-trip is needed. It has no hot
+# deployment, so version= is required. Verified against the live API 2026-07-30.
+_MODEL_LAMA = "allenhooo/lama"
+_LAMA_VERSION = "cdac78a1bec5b23c07fd29692fb70baa513ea403a39e643c48ec5edadb15fe72"
 # BROKEN: this model does not exist on Replicate (GET /v1/models/fal-ai/shadow-generation
 # returns 404), so generate_shadow can never succeed. There is no version to pin.
 # Needs a real replacement model chosen and its schema verified before the
@@ -406,65 +413,35 @@ async def replace_background(image_url: str, prompt: str, mask_url: Optional[str
         return {"ok": False, "error": str(e)}
 
 
-async def _analyze_background(image_url: str, openai_key: str) -> str:
-    """Ask GPT-4o-mini to describe the background so flux-fill can reproduce it correctly."""
-    payload = {
-        "model": "gpt-4o-mini",
-        "max_tokens": 80,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": image_url, "detail": "low"}},
-                {
-                    "type": "text",
-                    "text": (
-                        "Describe ONLY the background of this image in one short sentence: "
-                        "wall color and texture, floor material, room environment. "
-                        "Ignore all foreground objects. Be specific about colors and surfaces."
-                    ),
-                },
-            ],
-        }],
-    }
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-                json=payload,
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception:
-        return ""
+async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
+    """Reconstruct whatever the mask covers from surrounding context.
 
-
-async def remove_object(image_url: str, mask_url: Optional[str] = None, openai_key: Optional[str] = None) -> dict:
+    No prompt is sent because LaMa has no prompt input -- that is precisely why
+    it is used here. See _MODEL_LAMA for what this replaced and why.
+    """
+    if not mask_url:
+        return {"ok": False, "error": "No mask provided."}
     try:
-        if openai_key:
-            # High-quality path: vision → background description → flux-fill (same size, no artifacts)
-            bg_desc = await _analyze_background(image_url, openai_key)
-            fill_prompt = bg_desc or "empty background, seamless continuation of surrounding surfaces"
-            output = await _replicate_run(
-                _MODEL_FLUX_FILL,
-                {"image": image_url, "mask": mask_url, "prompt": fill_prompt},
-            )
-            url = await _download_and_upload_url(output)
-        else:
-            # Fallback: SD inpainting heals from context without hallucinating replacement objects
-            orig_data = await _download(image_url)
-            orig_w, orig_h = PILImage.open(io.BytesIO(orig_data)).size
-            target_w, target_h = _sd_inpaint_size(orig_w, orig_h)
-            output = await _replicate_run(
-                _MODEL_SD_INPAINT,
-                {"image": image_url, "mask": mask_url, "prompt": "", "num_inference_steps": 50,
-                 "width": target_w, "height": target_h},
-                version=_SD_INPAINT_VERSION,
-            )
-            url = await _download_and_upload_url(output, resize_to=(orig_w, orig_h))
-        return {"ok": True, "image_url": url}
-    except Exception as e:
+        src_size = dimensions(await _download(image_url))
+        output = await _replicate_run(
+            _MODEL_LAMA,
+            {"image": image_url, "mask": mask_url},
+            version=_LAMA_VERSION,
+        )
+        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+    except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
+
+
+async def remove_object(image_url: str, mask_url: Optional[str] = None) -> dict:
+    return await _lama_erase(image_url, mask_url)
+
+
+# smart_erase and remove_object are the same intent -- reconstruct what is under
+# the mask -- so they share one implementation. Both names are kept because the
+# planner vocabulary and the UI reference them.
+async def smart_erase(image_url: str, mask_url: Optional[str] = None) -> dict:
+    return await _lama_erase(image_url, mask_url)
 
 
 async def insert_object(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
@@ -480,58 +457,6 @@ async def generative_fill(image_url: str, prompt: str, mask_url: Optional[str] =
     try:
         output = await _replicate_run(_MODEL_FLUX_FILL, {"image": image_url, "mask": mask_url, "prompt": prompt})
         url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-def _pillow_content_fill(image: PILImage.Image, mask: PILImage.Image) -> PILImage.Image:
-    """Fill the white-masked area by propagating surrounding background colors inward.
-
-    Initialises the fill area with the scene's dominant colour (extreme blur of whole
-    image, so the object's own dark/bright pixels are averaged away).  Then iterative
-    Gaussian passes with shrinking radius propagate the actual boundary colours inward.
-    """
-    from PIL import ImageOps
-    rgb = image.convert("RGB")
-    inv_mask = ImageOps.invert(mask.convert("L"))  # white = keep, black = fill
-
-    # Dominant scene colour — radius 200 averages ALL pixels; erased object's contribution
-    # is tiny compared to walls/floor, so fill area starts at the room's neutral colour
-    dominant = rgb.filter(ImageFilter.GaussianBlur(radius=200))
-    fill = PILImage.composite(rgb, dominant, inv_mask)  # original outside, dominant inside
-
-    # Phase 1: push actual boundary colours into the centre
-    for radius in [40, 20, 10]:
-        blurred = fill.filter(ImageFilter.GaussianBlur(radius=radius))
-        fill = PILImage.composite(rgb, blurred, inv_mask)
-
-    # Phase 2: refine to match local texture and edge sharpness
-    for _ in range(15):
-        blurred = fill.filter(ImageFilter.GaussianBlur(radius=3))
-        fill = PILImage.composite(rgb, blurred, inv_mask)
-
-    return fill.convert("RGBA")
-
-
-async def smart_erase(image_url: str, mask_url: Optional[str] = None, openai_key: Optional[str] = None) -> dict:
-    # Content-aware fill using Pillow — samples background colors from outside the mask
-    # and propagates them inward. No AI model = no hallucination, correct size, instant.
-    try:
-        orig_data = await _download(image_url)
-        orig_img = PILImage.open(io.BytesIO(orig_data))
-        orig_w, orig_h = orig_img.size
-
-        if not mask_url:
-            return {"ok": False, "error": "No mask provided."}
-
-        mask_data = await _download(mask_url)
-        mask_img = PILImage.open(io.BytesIO(mask_data)).convert("L")
-        if mask_img.size != (orig_w, orig_h):
-            mask_img = mask_img.resize((orig_w, orig_h), PILImage.NEAREST)
-
-        result = _pillow_content_fill(orig_img, mask_img)
-        url = await _upload_result(result)
         return {"ok": True, "image_url": url}
     except Exception as e:
         return {"ok": False, "error": str(e)}

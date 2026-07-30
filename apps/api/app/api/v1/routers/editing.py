@@ -9,9 +9,7 @@ from sqlalchemy import select
 
 from app.core.billing import require_credits
 from app.core.dependencies import CurrentUser, DB
-from app.core.security import decrypt_api_key
 from app.core.storage import upload_bytes
-from app.models.api_key import APIKey
 from app.models.image import GeneratedImage, ImageStatus
 from app.services import editing_service
 from app.services.mask_service import MASK_OPERATIONS, MaskResolution, is_own_storage_url, resolve_mask
@@ -190,14 +188,11 @@ async def edit_image(
                            needs_target=bool(res.question))
         kwargs["mask_url"] = res.mask_url
 
-    # For removal ops: inject OpenAI key so the service can do vision-based background analysis
-    if body.operation in {"smart_erase", "remove_object"}:
-        key_row = await db.execute(
-            select(APIKey).where(APIKey.org_id == current_user.org_id, APIKey.provider == "openai")
-        )
-        api_key_row = key_row.scalar_one_or_none()
-        if api_key_row:
-            kwargs["openai_key"] = decrypt_api_key(api_key_row.encrypted_value)
+    # Removal no longer needs an OpenAI key. It used to decrypt one here so
+    # remove_object could describe the background with GPT-4o-mini and feed that
+    # to a generative model -- the cause of removals producing a new object.
+    # LaMa takes only an image and a mask. smart_erase never used the key at all,
+    # so this decrypt was pure waste on every call.
 
     # Call service
     edit_result = await fn(image.image_url, **kwargs)
