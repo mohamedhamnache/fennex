@@ -32,10 +32,10 @@ _DISPATCH = {
     "restore_face":       lambda url, p, _: editing_service.restore_face(url, p.get("fidelity", 0.7)),
     "generate_shadow":    lambda url, p, _: editing_service.generate_shadow(url, p.get("direction", "bottom")),
     "relight":            lambda url, p, _: editing_service.relight_image(url, p.get("direction", "top"), p.get("intensity", 1.0)),
-    "replace_background": lambda url, p, mask: editing_service.replace_background(url, mask or "", p.get("prompt", "")),
+    "replace_background": lambda url, p, mask: editing_service.replace_background(url, p.get("prompt", ""), mask or ""),
     "remove_object":      lambda url, p, mask: editing_service.remove_object(url, mask or ""),
-    "insert_object":      lambda url, p, mask: editing_service.insert_object(url, mask or "", p.get("prompt", "")),
-    "generative_fill":    lambda url, p, mask: editing_service.generative_fill(url, mask or "", p.get("prompt", "")),
+    "insert_object":      lambda url, p, mask: editing_service.insert_object(url, p.get("prompt", ""), mask or ""),
+    "generative_fill":    lambda url, p, mask: editing_service.generative_fill(url, p.get("prompt", ""), mask or ""),
     "smart_erase":        lambda url, p, mask: editing_service.smart_erase(url, mask or ""),
 }
 
