@@ -242,20 +242,31 @@ async def sharpen_image(image_url: str, strength: float = 0.5) -> dict:
 # ── Remove.bg ─────────────────────────────────────────────────────────────────
 
 
+async def _removebg_cutout(image_url: str) -> PILImage.Image:
+    """Fetch the Remove.bg cutout as an RGBA image.
+
+    The alpha channel IS a foreground segmentation, which is what
+    app.services.mask_service derives the product-tier mask from. Kept separate
+    from remove_background() so that caller does not have to re-download its own
+    uploaded result to recover the alpha. Raises rather than returning an error
+    dict -- callers that want the dict contract wrap it.
+    """
+    data = await _download(image_url)
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(
+            "https://api.remove.bg/v1.0/removebg",
+            data={"size": "auto"},
+            files={"image_file": ("image.png", data, "image/png")},
+            headers={"X-Api-Key": settings.REMOVE_BG_API_KEY},
+        )
+        resp.raise_for_status()
+    return PILImage.open(io.BytesIO(resp.content)).convert("RGBA")
+
+
 async def remove_background(image_url: str) -> dict:
     """Background removal via Remove.bg API."""
     try:
-        data = await _download(image_url)
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.remove.bg/v1.0/removebg",
-                data={"size": "auto"},
-                files={"image_file": ("image.png", data, "image/png")},
-                headers={"X-Api-Key": settings.REMOVE_BG_API_KEY},
-            )
-            resp.raise_for_status()
-            result_bytes = resp.content
-        img = PILImage.open(io.BytesIO(result_bytes)).convert("RGBA")
+        img = await _removebg_cutout(image_url)
         url = await _upload_result(img)
         return {"ok": True, "image_url": url}
     except Exception as e:
