@@ -352,6 +352,9 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
                                 # real duration, so cost tracks the actual run
                                 # rather than a flat per-run guess.
                                 predict_seconds=(status_data.get("metrics") or {}).get("predict_time"),
+                                # Official image models bill per output image and
+                                # report this; community models omit it.
+                                image_count=(status_data.get("metrics") or {}).get("image_output_count"),
                             )
                 except Exception:  # noqa: BLE001
                     logger.warning("replicate usage metering failed", exc_info=True)
