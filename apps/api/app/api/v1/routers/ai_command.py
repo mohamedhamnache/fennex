@@ -11,6 +11,7 @@ from app.core.billing import require_credits
 from app.core.dependencies import CurrentUser, DB
 from app.core.storage import upload_bytes
 from app.models.image import GeneratedImage, ImageStatus
+from app.services import chain_resume
 from app.services.ai_command_service import parse_ai_command_steps
 from app.services.llm_service import project_locale
 from app.services import editing_service
@@ -57,6 +58,15 @@ class AiCommandRequest(BaseModel):
     # fetched server-side, so it must be validated with is_own_storage_url
     # before use -- see _resolve_mask_queue.
     mask_urls: Optional[list[Optional[str]]] = None
+    # Set by the client on the round trip that follows a mask_confirm_required
+    # 422 (see chain_resume.py and the resume branch in ai_command below).
+    # When present, the router loads the cached plan from that stopped
+    # request instead of re-planning via parse_ai_command_steps and instead
+    # of re-executing steps that already ran -- both of which are what made
+    # a compound command like "replace the background... and remove the
+    # person on the left" double-charge and, on a reordered/shorter replan,
+    # apply the approved mask to the wrong operation.
+    resume_token: Optional[str] = None
 
 
 async def _resolve_mask_queue(body: "AiCommandRequest") -> list[Optional[str]]:
@@ -246,6 +256,32 @@ async def _next_step_mask(step: dict, image_url: str, mask_queue: list[Optional[
     return mask_url, mask_step_index + 1
 
 
+def _merge_resume_mask_queue(
+    snapshot_queue: list[Optional[str]], mask_step_index: int, fresh_queue: list[Optional[str]],
+) -> list[Optional[str]]:
+    """Combine the mask queue cached in a resume snapshot with the masks this
+    resume request is supplying.
+
+    A resume request's own mask_urls is relative to the STOPPED step, not the
+    whole original chain -- entry 0 is the mask the client is confirming for
+    the step that raised mask_confirm_required (mask_step_index in the
+    snapshot), entry 1 (if any) front-loads the step after that, and so on.
+    Positions before mask_step_index belong to already-applied steps and are
+    left as whatever the snapshot had (never read again by the resumed
+    loop); positions at or after mask_step_index are overwritten by
+    fresh_queue so the newly confirmed mask actually lands on the step that
+    asked for it.
+    """
+    merged = list(snapshot_queue)
+    for offset, value in enumerate(fresh_queue):
+        position = mask_step_index + offset
+        if position < len(merged):
+            merged[position] = value
+        else:
+            merged.append(value)
+    return merged
+
+
 @router.post("/{image_id}/ai-command", response_model=ImageOut)
 async def ai_command(
     image_id: uuid.UUID, body: AiCommandRequest, current_user: CurrentUser, db: DB,
@@ -261,37 +297,95 @@ async def ai_command(
     if not source:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
 
-    parsed = await parse_ai_command_steps(body.command, body.history, current_user.org_id, db, locale=await project_locale(source.project_id, db))
-
-    if "error" in parsed:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, parsed["error"])
-
-    steps = parsed.get("steps", [])
-    for step in steps:
-        if step.get("operation") not in _DISPATCH:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown operation: {step.get('operation')}")
-
     try:
-        mask_queue = await _resolve_mask_queue(body)
+        request_mask_queue = await _resolve_mask_queue(body)
     except ValueError as e:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             {"code": "mask_url_invalid", "message": str(e)},
         )
 
+    if body.resume_token:
+        # Resuming a chain that already stopped once for confirmation. The
+        # whole point: use the cached plan and cached progress VERBATIM --
+        # never re-plan (that is what misbinds the approved mask to the
+        # wrong step on a reordered/shorter replan) and never re-execute a
+        # step that already ran (that is what double-charges Remove.bg /
+        # flux-fill).
+        snapshot = await chain_resume.load_snapshot(body.resume_token)
+        if snapshot is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {
+                    "code": "resume_token_invalid",
+                    "message": "This confirmation has expired. Please retry the command.",
+                },
+            )
+        # SECURITY: an unguessable token is not itself proof of ownership --
+        # verify the snapshot belongs to this org and this image before using
+        # any of it, so one org can never resume (and thereby read the
+        # intermediate image URLs of) another org's chain.
+        if snapshot.org_id != str(current_user.org_id) or snapshot.image_id != str(image_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
+
+        # Single-use: this token is spent the moment it is loaded and
+        # verified. If the resumed chain stops again, a fresh token is
+        # minted below under store_snapshot -- this one is never reused.
+        await chain_resume.delete_snapshot(body.resume_token)
+
+        steps = snapshot.steps
+        current_url = snapshot.current_url
+        applied = list(snapshot.applied)
+        start_index = snapshot.step_index
+        mask_step_index = snapshot.mask_step_index
+        mask_queue = _merge_resume_mask_queue(snapshot.mask_queue, snapshot.mask_step_index, request_mask_queue)
+    else:
+        parsed = await parse_ai_command_steps(body.command, body.history, current_user.org_id, db, locale=await project_locale(source.project_id, db))
+
+        if "error" in parsed:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, parsed["error"])
+
+        steps = parsed.get("steps", [])
+        for step in steps:
+            if step.get("operation") not in _DISPATCH:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown operation: {step.get('operation')}")
+
+        current_url = source.image_url or ""
+        applied = []
+        start_index = 0
+        mask_step_index = 0
+        mask_queue = request_mask_queue
+
     # Chain the operations — each runs on the previous step's result. Each
     # mask-requiring step consumes its own position in mask_queue (see
     # _next_step_mask) rather than a single mask being reused across the
-    # whole chain.
-    current_url = source.image_url or ""
-    applied: list[str] = []
-    mask_step_index = 0
-    for step in steps:
+    # whole chain. start_index/current_url/applied/mask_step_index resume a
+    # previously-stopped chain unchanged when body.resume_token was used.
+    for index in range(start_index, len(steps)):
+        step = steps[index]
         operation = step["operation"]
         params = step.get("params", {}) or {}
-        step_mask, mask_step_index = await _next_step_mask(
-            step, current_url, mask_queue, mask_step_index, current_user.org_id, db,
-        )
+        try:
+            step_mask, mask_step_index = await _next_step_mask(
+                step, current_url, mask_queue, mask_step_index, current_user.org_id, db,
+            )
+        except HTTPException as exc:
+            if isinstance(exc.detail, dict) and exc.detail.get("code") == "mask_confirm_required":
+                # Snapshot progress BEFORE this step (it has not run yet) so
+                # the next request can resume exactly here without redoing
+                # any already-applied, already-paid-for step.
+                token = await chain_resume.store_snapshot(chain_resume.ChainSnapshot(
+                    steps=steps,
+                    current_url=current_url,
+                    applied=applied,
+                    step_index=index,
+                    mask_step_index=mask_step_index,
+                    mask_queue=mask_queue,
+                    org_id=str(current_user.org_id),
+                    image_id=str(image_id),
+                ))
+                exc.detail = {**exc.detail, "resume_token": token}
+            raise
         fn = _DISPATCH[operation]
         edit_result = await fn(current_url, params, step_mask)
         if not edit_result.get("ok"):

@@ -15,7 +15,7 @@ request-forgery primitive.
 import json
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -898,3 +898,267 @@ async def test_ai_command_route_rejects_invalid_queue_entry_before_any_step_runs
     assert exc.value.status_code == 422
     assert exc.value.detail["code"] == "mask_url_invalid"
     resolve.assert_not_awaited()
+
+
+# ---- ai_command resume_token flow (chain_resume) --------------------------
+#
+# Raising mask_confirm_required used to persist nothing: the client's next
+# request re-planned the whole command from scratch via
+# parse_ai_command_steps (re-paying for every step before the one that
+# stopped) and re-bound the approved mask to a position in a freshly
+# regenerated plan that could come back reordered or shorter than the one
+# that stopped. chain_resume.py caches the plan and progress against a
+# resume token instead. These tests exercise the router's resume_token
+# branch directly (ai_command.ai_command) and mock Redis via
+# chain_resume's module-level functions -- no live server, no live Redis.
+
+from app.services.chain_resume import ChainSnapshot
+
+
+def _resume_source(image_id, project_id=None):
+    return SimpleNamespace(
+        id=image_id, project_id=project_id or uuid.uuid4(), prompt="p", style="s", usage="u",
+        image_url="https://cdn/original.png",
+    )
+
+
+def _resume_db(source):
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: source))
+    # Sync on a real AsyncSession -- kept sync here too so calling it without
+    # `await` (as the route does) does not leave an unawaited coroutine.
+    db.add = Mock()
+    return db
+
+
+@pytest.mark.asyncio
+async def test_resume_does_not_call_parse_ai_command_steps():
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[{"operation": "upscale", "params": {"scale": 2}}],
+        current_url="https://cdn/step0-result.png",
+        applied=[], step_index=0, mask_step_index=0, mask_queue=[],
+        org_id=str(org_id), image_id=str(image_id),
+    )
+    body = ai_command.AiCommandRequest(command="upscale it", resume_token="tok-a")
+
+    parse_mock = AsyncMock()
+    upscale_mock = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/upscaled.png"})
+    with patch("app.api.v1.routers.ai_command.parse_ai_command_steps", parse_mock), \
+         patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", AsyncMock()), \
+         patch("app.services.editing_service.upscale_image", upscale_mock), \
+         patch("app.api.v1.routers.ai_command.ImageOut.model_validate", return_value="ignored"):
+        await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    parse_mock.assert_not_awaited()
+    upscale_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_resume_does_not_reexecute_the_already_completed_step():
+    """The exact scenario the bug report describes: "replace the background
+    ... and remove the person on the left" pays for step 0
+    (replace_background), stops at step 1 (remove_object) for confirmation.
+    Resuming must dispatch remove_object only -- replace_background must
+    never run a second time."""
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[
+            {"operation": "replace_background", "params": {"prompt": "marble"}},
+            {"operation": "remove_object", "params": {"target": "the person on the left"}},
+        ],
+        current_url="https://cdn/step0-result.png",
+        applied=["replace_background"], step_index=1, mask_step_index=1, mask_queue=[None],
+        org_id=str(org_id), image_id=str(image_id),
+    )
+    body = ai_command.AiCommandRequest(
+        command="replace the background with marble and remove the person on the left",
+        resume_token="tok-b",
+        mask_urls=["data:image/png;base64,AAAA"],
+    )
+
+    replace_bg_mock = AsyncMock(return_value={"ok": True, "image_url": "SHOULD-NOT-RUN"})
+    remove_obj_mock = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/final.png"})
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", AsyncMock()), \
+         patch("app.services.editing_service.replace_background", replace_bg_mock), \
+         patch("app.services.editing_service.remove_object", remove_obj_mock), \
+         patch("app.api.v1.routers.ai_command.ImageOut.model_validate", return_value="ignored"):
+        await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    replace_bg_mock.assert_not_awaited()
+    remove_obj_mock.assert_awaited_once_with(
+        "https://cdn/step0-result.png", "data:image/png;base64,AAAA",
+    )
+
+
+@pytest.mark.asyncio
+async def test_resume_rejects_org_id_mismatch_and_no_steps_execute():
+    """SECURITY: a snapshot's org_id must match the requesting user's org_id
+    -- otherwise one org could resume another org's chain and read its
+    intermediate image URLs."""
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    other_org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[{"operation": "upscale", "params": {"scale": 2}}],
+        current_url="https://cdn/x.png", applied=[], step_index=0, mask_step_index=0,
+        mask_queue=[], org_id=str(other_org_id), image_id=str(image_id),
+    )
+    body = ai_command.AiCommandRequest(command="upscale it", resume_token="tok-c")
+
+    upscale_mock = AsyncMock()
+    delete_mock = AsyncMock()
+    parse_mock = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", delete_mock), \
+         patch("app.services.editing_service.upscale_image", upscale_mock), \
+         patch("app.api.v1.routers.ai_command.parse_ai_command_steps", parse_mock):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    assert exc.value.status_code == 404
+    upscale_mock.assert_not_awaited()
+    parse_mock.assert_not_awaited()
+    delete_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resume_rejects_image_id_mismatch_and_no_steps_execute():
+    """SECURITY: a snapshot's image_id must match the image_id in the path
+    -- a token minted for one image must not be replayable against another
+    image in the same org."""
+    image_id = uuid.uuid4()
+    other_image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[{"operation": "upscale", "params": {"scale": 2}}],
+        current_url="https://cdn/x.png", applied=[], step_index=0, mask_step_index=0,
+        mask_queue=[], org_id=str(org_id), image_id=str(other_image_id),
+    )
+    body = ai_command.AiCommandRequest(command="upscale it", resume_token="tok-d")
+
+    upscale_mock = AsyncMock()
+    parse_mock = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", AsyncMock()) as delete_mock, \
+         patch("app.services.editing_service.upscale_image", upscale_mock), \
+         patch("app.api.v1.routers.ai_command.parse_ai_command_steps", parse_mock):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    assert exc.value.status_code == 404
+    upscale_mock.assert_not_awaited()
+    parse_mock.assert_not_awaited()
+    delete_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resume_unknown_token_fails_cleanly_without_replanning():
+    """An unknown/expired token must not silently fall back to
+    parse_ai_command_steps -- that would reintroduce the double-charge bug
+    chain_resume exists to fix."""
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+    body = ai_command.AiCommandRequest(command="upscale it", resume_token="tok-does-not-exist")
+
+    parse_mock = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=None)), \
+         patch("app.api.v1.routers.ai_command.parse_ai_command_steps", parse_mock):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "resume_token_invalid"
+    parse_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resume_deletes_token_after_fully_successful_chain():
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[{"operation": "upscale", "params": {"scale": 2}}],
+        current_url="https://cdn/step0.png", applied=[], step_index=0, mask_step_index=0,
+        mask_queue=[], org_id=str(org_id), image_id=str(image_id),
+    )
+    body = ai_command.AiCommandRequest(command="upscale it", resume_token="tok-f")
+
+    delete_mock = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", delete_mock), \
+         patch("app.services.editing_service.upscale_image",
+               AsyncMock(return_value={"ok": True, "image_url": "https://cdn/final.png"})), \
+         patch("app.api.v1.routers.ai_command.ImageOut.model_validate", return_value="ignored"):
+        await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    delete_mock.assert_awaited_once_with("tok-f")
+
+
+@pytest.mark.asyncio
+async def test_resume_that_stops_again_stores_a_fresh_snapshot_and_returns_its_token():
+    """Multi-confirmation chain: if the resumed chain hits ANOTHER
+    mask_confirm_required, a new snapshot must be stored under a fresh token
+    (never re-plan, never reuse the just-spent token) and that new token
+    must surface in the 422 detail so the client can resume again."""
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[
+            {"operation": "replace_background", "params": {"prompt": "marble"}},
+            {"operation": "remove_object", "params": {"target": "the person on the left"}},
+        ],
+        current_url="https://cdn/step0-result.png",
+        applied=["replace_background"], step_index=1, mask_step_index=1, mask_queue=[None],
+        org_id=str(org_id), image_id=str(image_id),
+    )
+    # No mask supplied this round -- step 1 still needs confirmation.
+    body = ai_command.AiCommandRequest(
+        command="replace the background with marble and remove the person on the left",
+        resume_token="tok-g",
+    )
+
+    derived = MaskResolution(ok=False, needs_confirmation=True,
+                              mask_url="https://cdn/derived-again.png", tier="prompted")
+    store_mock = AsyncMock(return_value="tok-h")
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", AsyncMock()), \
+         patch("app.api.v1.routers.ai_command.chain_resume.store_snapshot", store_mock), \
+         patch("app.api.v1.routers.ai_command.resolve_mask", AsyncMock(return_value=derived)):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_confirm_required"
+    assert exc.value.detail["resume_token"] == "tok-h"
+    store_mock.assert_awaited_once()
