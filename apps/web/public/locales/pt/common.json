@@ -1369,7 +1369,16 @@
       "cancel": "Cancelar",
       "apply": "Aplicar",
       "applying": "Aplicando...",
-      "needsTargetHint": "Diga-nos qual área você quer dizer e tente novamente."
+      "needsTargetHint": "Diga-nos qual área você quer dizer e tente novamente.",
+      "previewError": "Não foi possível mostrar a área destacada, por isso não pode ser confirmada. Cancele e tente novamente."
+    },
+    "target": {
+      "label": "Objeto ou área alvo",
+      "optional": "(opcional)",
+      "required": "(obrigatório, a menos que pinte uma máscara)",
+      "placeholder": "ex.: o fundo, a garrafa",
+      "hintOptional": "Deixe em branco para usar a área automática gratuita. Nomear um objeto o direciona com precisão e pede que você confirme a área destacada primeiro.",
+      "hintRequired": "Não sabemos onde atuar sem um nome aqui ou uma máscara pintada."
     },
     "score": {
       "title": "Pontuação",
@@ -1437,6 +1446,7 @@
       ]
     },
     "maskConfirmHint": "Verifique a área destacada na tela.",
+    "maskPreviewError": "Não foi possível mostrar a área destacada, por isso não pode ser confirmada. Cancele e tente novamente.",
     "maskCancel": "Cancelar",
     "maskApply": "Aplicar",
     "applying": "Aplicando...",

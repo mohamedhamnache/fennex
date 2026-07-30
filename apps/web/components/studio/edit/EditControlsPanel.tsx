@@ -143,6 +143,55 @@ function Slider({
   );
 }
 
+/**
+ * Names a specific object/region for the five mask-requiring ops, so the
+ * PROMPTED tier (segment-on-Replicate, then confirm) is reachable without
+ * painting a mask by hand. A painted mask always wins over this when both
+ * are present -- see mutation.mutationFn in EditControlsPanel.
+ *
+ * `required` reflects AMBIGUOUS_WITHOUT_TARGET on the backend
+ * (app/services/mask_service.py): insert_object and generative_fill have no
+ * derivable default region, so leaving both this field and the mask blank
+ * always returns the ambiguity question. The other three ops fall back to
+ * the free product-tier cutout when left blank.
+ */
+function TargetField({
+  target,
+  onChange,
+  required,
+  t,
+}: {
+  target: string;
+  onChange: (v: string) => void;
+  required: boolean;
+  t: (key: string, defaultValue: string) => string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-foreground">
+        {t("imageEdit.target.label", "Target object or area")}{" "}
+        <span className={cn("font-normal", required ? "text-destructive" : "text-muted-foreground")}>
+          {required
+            ? t("imageEdit.target.required", "(required unless you paint a mask)")
+            : t("imageEdit.target.optional", "(optional)")}
+        </span>
+      </label>
+      <input
+        type="text"
+        value={target}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t("imageEdit.target.placeholder", "e.g. the background, the bottle")}
+        className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        {required
+          ? t("imageEdit.target.hintRequired", "We don't know where to work without a name here or a painted mask.")
+          : t("imageEdit.target.hintOptional", "Leave blank to use the free automatic region. Naming an object targets it precisely, and asks you to confirm the highlighted area first.")}
+      </p>
+    </div>
+  );
+}
+
 function makeSolidColorDataUri(hex: string, w = 200, h = 200): string {
   const safe = hex.replace(/[^#0-9a-fA-F]/g, "");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${safe}"/></svg>`;
@@ -200,6 +249,10 @@ export function EditControlsPanel({
   const [pendingConfirm, setPendingConfirm] = useState<{ maskUrl: string; params: Record<string, unknown> } | null>(null);
   // needs_target — the derivation had no object to lock onto; surfaced as a question, not a mask.
   const [targetMessage, setTargetMessage] = useState<string | null>(null);
+  // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
+  // area never rendered, so Apply must be disabled: approving a mask the user
+  // never actually saw would defeat the whole point of the confirmation gate.
+  const [maskPreviewError, setMaskPreviewError] = useState(false);
 
   // The tinted mask pixels drawn by showMaskPreview() live on EditCanvas's
   // shared canvas, not in this component -- so abandoning a pending
@@ -231,6 +284,7 @@ export function EditControlsPanel({
   useEffect(() => {
     setPendingConfirm(null);
     setTargetMessage(null);
+    setMaskPreviewError(false);
     canvasRef.current?.clearMask();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
@@ -248,6 +302,11 @@ export function EditControlsPanel({
   const [aspectLocked, setAspectLocked] = useState(true);
   const [aspectRatio, setAspectRatio] = useState(1);
   const [prompt, setPrompt] = useState("");
+  // Names a specific object/region for the mask-requiring ops so the
+  // PROMPTED tier (segment-then-confirm) is reachable from this panel —
+  // without it every unpainted submission hits the ambiguity gate. See
+  // AMBIGUOUS_WITHOUT_TARGET in app/services/mask_service.py.
+  const [target, setTarget] = useState("");
   const [shadowDir, setShadowDir] = useState("bottom");
   const [relightDir, setRelightDir] = useState("top");
   const [relightIntensity, setRelightIntensity] = useState(1.0);
@@ -308,12 +367,19 @@ export function EditControlsPanel({
     setDecomposeError(null);
     setPendingConfirm(null);
     setTargetMessage(null);
+    setMaskPreviewError(false);
+    // Switching tools clears pendingConfirm above, but the tinted preview
+    // pixels it was gating live on the shared canvas, not in this component's
+    // state — leaving them behind means the NEXT tool's Save silently reads
+    // them back via getMaskBase64() as if hand-painted. Same leak already
+    // closed for the tab-switch (unmount) and image-switch effects.
+    canvasRef.current?.clearMask();
     onPreviewChange?.("");
     setBrightness(0); setContrast(0); setSaturation(0);
     setFilterName("grayscale");
     setDenoiseStrength(0.5); setSharpenStrength(0.5);
     setFillColor("#000000"); setFillTransparent(false);
-    setPrompt("");
+    setPrompt(""); setTarget("");
     setShadowDir("bottom"); setRelightDir("top"); setRelightIntensity(1.0);
     setFidelity(0.7); setScale("2");
     if (tool === "resize") {
@@ -486,6 +552,7 @@ export function EditControlsPanel({
         case "insert_object":
         case "generative_fill":
           params = { prompt };
+          if (target.trim()) params["target"] = target.trim();
           if (canvasRef.current) {
             const m = canvasRef.current.getMaskBase64();
             if (m) params["mask_base64"] = m;
@@ -495,6 +562,7 @@ export function EditControlsPanel({
           break;
         case "remove_object":
         case "smart_erase":
+          if (target.trim()) params["target"] = target.trim();
           if (canvasRef.current) {
             const m = canvasRef.current.getMaskBase64();
             if (m) params["mask_base64"] = m;
@@ -528,7 +596,12 @@ export function EditControlsPanel({
     onSuccess: (outcome) => {
       if (outcome.kind === "needs_confirmation") {
         setPendingConfirm({ maskUrl: outcome.maskUrl, params: outcome.params });
-        canvasRef.current?.showMaskPreview(outcome.maskUrl).catch(() => {});
+        setMaskPreviewError(false);
+        // If the highlight fails to render (404/CORS/etc.), the user would
+        // otherwise see empty Apply/Cancel controls and could approve a
+        // segmentation they never actually saw — surface it and lock Apply
+        // instead of silently swallowing the rejection.
+        canvasRef.current?.showMaskPreview(outcome.maskUrl).catch(() => setMaskPreviewError(true));
         return;
       }
       if (outcome.kind === "needs_target") {
@@ -551,6 +624,10 @@ export function EditControlsPanel({
   const confirmMutation = useMutation({
     mutationFn: async () => {
       if (!pendingConfirm) throw new Error("Nothing to confirm");
+      // Belt-and-suspenders: the Apply button is disabled while
+      // maskPreviewError is set, but guard the mutation itself too so an
+      // unseen mask can never be approved through this path.
+      if (maskPreviewError) throw new Error("Mask preview failed to load — cannot confirm.");
       const rest = { ...pendingConfirm.params };
       delete rest["mask_base64"];
       const result = await editImage(imageId, tool, { ...rest, mask_url: pendingConfirm.maskUrl });
@@ -562,6 +639,7 @@ export function EditControlsPanel({
       onVersionAdded(img);
       canvasRef.current?.clearMask();
       setPendingConfirm(null);
+      setMaskPreviewError(false);
       if (appliedTimerRef.current) clearTimeout(appliedTimerRef.current);
       setApplied(true);
       appliedTimerRef.current = setTimeout(() => setApplied(false), 2000);
@@ -571,6 +649,7 @@ export function EditControlsPanel({
 
   function handleCancelMaskConfirm() {
     setPendingConfirm(null);
+    setMaskPreviewError(false);
     setError(null);
     canvasRef.current?.clearMask();
   }
@@ -898,21 +977,35 @@ export function EditControlsPanel({
 
           {/* ── Remove BG / Remove Object / Smart Erase ───────────────────────── */}
           {(tool === "remove_background" || tool === "remove_object" || tool === "smart_erase") && (
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {tool === "remove_background"
-                ? "Automatically removes the background. No mask needed."
-                : tool === "smart_erase"
-                ? "Best for text, watermarks, and logos on simple backgrounds."
-                : "AI-powered removal for furniture, products, and complex objects. Paint over the object and click Apply."}
-            </p>
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {tool === "remove_background"
+                  ? "Automatically removes the background. No mask needed."
+                  : tool === "smart_erase"
+                  ? "Best for text, watermarks, and logos on simple backgrounds. Paint over the area, or name it below."
+                  : "AI-powered removal for furniture, products, and complex objects. Paint over the object, or name it below."}
+              </p>
+              {/* remove_background always runs on the whole image — no region to target. */}
+              {(tool === "remove_object" || tool === "smart_erase") && (
+                <TargetField target={target} onChange={setTarget} required={false} t={t} />
+              )}
+            </div>
           )}
 
           {/* ── Mask-based AI tools that need a prompt ─────────────────────────── */}
           {(tool === "replace_background" || tool === "insert_object" || tool === "generative_fill") && (
             <div className="flex flex-col gap-3">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Paint the area on the image, then describe what you want.
+                {tool === "replace_background"
+                  ? "Paint over the subject to keep, or name it below, then describe the new background."
+                  : "Paint the area to change, or name it below, then describe what you want there."}
               </p>
+              <TargetField
+                target={target}
+                onChange={setTarget}
+                required={tool === "insert_object" || tool === "generative_fill"}
+                t={t}
+              />
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-foreground">
                   {tool === "replace_background" ? "New background" : "Description"}
@@ -2343,6 +2436,11 @@ export function EditControlsPanel({
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t("imageEdit.maskConfirm.body", "We highlighted the area we think you mean. Apply it if it looks right, or cancel and refine your prompt.")}
               </p>
+              {maskPreviewError && (
+                <p className="text-xs text-destructive leading-relaxed">
+                  {t("imageEdit.maskConfirm.previewError", "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.")}
+                </p>
+              )}
               {error && (
                 <p className="text-xs text-destructive leading-relaxed">{error}</p>
               )}
@@ -2358,7 +2456,8 @@ export function EditControlsPanel({
                 <button
                   type="button"
                   onClick={() => confirmMutation.mutate()}
-                  disabled={confirmMutation.isPending}
+                  disabled={confirmMutation.isPending || maskPreviewError}
+                  title={maskPreviewError ? t("imageEdit.maskConfirm.previewError", "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.") : undefined}
                   className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {confirmMutation.isPending ? t("imageEdit.maskConfirm.applying", "Applying...") : t("imageEdit.maskConfirm.apply", "Apply")}

@@ -1369,7 +1369,16 @@
       "cancel": "Cancelar",
       "apply": "Aplicar",
       "applying": "Aplicando...",
-      "needsTargetHint": "Dinos qué área quieres decir e inténtalo de nuevo."
+      "needsTargetHint": "Dinos qué área quieres decir e inténtalo de nuevo.",
+      "previewError": "No se pudo mostrar el área resaltada, por lo que no se puede confirmar. Cancela e inténtalo de nuevo."
+    },
+    "target": {
+      "label": "Objeto o área objetivo",
+      "optional": "(opcional)",
+      "required": "(obligatorio a menos que pintes una máscara)",
+      "placeholder": "ej. el fondo, la botella",
+      "hintOptional": "Déjalo en blanco para usar el área automática gratuita. Nombrar un objeto lo selecciona con precisión y te pide confirmar el área resaltada primero.",
+      "hintRequired": "No sabemos dónde actuar sin un nombre aquí o una máscara pintada."
     },
     "score": {
       "title": "Puntuación",
@@ -1437,6 +1446,7 @@
       ]
     },
     "maskConfirmHint": "Revisa el área resaltada en el lienzo.",
+    "maskPreviewError": "No se pudo mostrar el área resaltada, por lo que no se puede confirmar. Cancela e inténtalo de nuevo.",
     "maskCancel": "Cancelar",
     "maskApply": "Aplicar",
     "applying": "Aplicando...",

@@ -1369,7 +1369,16 @@
       "cancel": "Abbrechen",
       "apply": "Anwenden",
       "applying": "Wird angewendet...",
-      "needsTargetHint": "Sag uns, welchen Bereich du meinst, und versuch es erneut."
+      "needsTargetHint": "Sag uns, welchen Bereich du meinst, und versuch es erneut.",
+      "previewError": "Der markierte Bereich konnte nicht angezeigt werden und kann daher nicht bestätigt werden. Abbrechen und erneut versuchen."
+    },
+    "target": {
+      "label": "Zielobjekt oder -bereich",
+      "optional": "(optional)",
+      "required": "(erforderlich, sofern keine Maske gemalt wird)",
+      "placeholder": "z. B. der Hintergrund, die Flasche",
+      "hintOptional": "Leer lassen, um den kostenlosen automatischen Bereich zu verwenden. Die Benennung eines Objekts zielt präzise darauf ab und bittet dich, den markierten Bereich zuerst zu bestätigen.",
+      "hintRequired": "Ohne einen Namen hier oder eine gemalte Maske wissen wir nicht, wo wir arbeiten sollen."
     },
     "score": {
       "title": "Score",
@@ -1437,6 +1446,7 @@
       ]
     },
     "maskConfirmHint": "Prüfe den hervorgehobenen Bereich auf der Leinwand.",
+    "maskPreviewError": "Der markierte Bereich konnte nicht angezeigt werden und kann daher nicht bestätigt werden. Abbrechen und erneut versuchen.",
     "maskCancel": "Abbrechen",
     "maskApply": "Anwenden",
     "applying": "Wird angewendet...",

@@ -53,6 +53,10 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<AiCommandMessage[]>([]);
   const [pendingConfirm, setPendingConfirm] = useState<PendingMaskConfirm | null>(null);
+  // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
+  // area never rendered, so Apply must be disabled: approving a mask the
+  // user never actually saw would defeat the confirmation gate entirely.
+  const [maskPreviewError, setMaskPreviewError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -81,6 +85,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
   // alone here (it's not image-scoped).
   useEffect(() => {
     setPendingConfirm(null);
+    setMaskPreviewError(false);
     canvasRef?.current?.clearMask();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId]);
@@ -97,6 +102,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
       ]);
       onVersionAdded(img);
       setPendingConfirm(null);
+      setMaskPreviewError(false);
       canvasRef?.current?.clearMask();
       setInput("");
     },
@@ -109,7 +115,10 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
           : t("mirage.maskConfirmDefault", "Confirm the highlighted area before applying.");
         if (maskUrl) {
           setPendingConfirm({ command, message, maskUrl, stepIndex, accumulated: maskUrls ?? [] });
-          canvasRef?.current?.showMaskPreview(maskUrl).catch(() => {});
+          setMaskPreviewError(false);
+          // See maskPreviewError declaration: an unseen mask must never be
+          // silently approvable.
+          canvasRef?.current?.showMaskPreview(maskUrl).catch(() => setMaskPreviewError(true));
           return;
         }
       }
@@ -144,17 +153,19 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
   }
 
   function handleApplyMaskConfirm() {
-    if (!pendingConfirm) return;
+    if (!pendingConfirm || maskPreviewError) return;
     const maskUrls = [...pendingConfirm.accumulated];
     maskUrls[pendingConfirm.stepIndex] = pendingConfirm.maskUrl;
     const command = pendingConfirm.command;
     setPendingConfirm(null);
+    setMaskPreviewError(false);
     canvasRef?.current?.clearMask();
     mutation.mutate({ command, maskUrls });
   }
 
   function handleCancelMaskConfirm() {
     setPendingConfirm(null);
+    setMaskPreviewError(false);
     canvasRef?.current?.clearMask();
   }
 
@@ -260,6 +271,11 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
               <p className="text-[10px] text-muted-foreground">
                 {t("mirage.maskConfirmHint", "Check the highlighted area on the canvas.")}
               </p>
+              {maskPreviewError && (
+                <p className="text-[10px] text-destructive">
+                  {t("mirage.maskPreviewError", "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.")}
+                </p>
+              )}
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
@@ -272,7 +288,8 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
                 <button
                   type="button"
                   onClick={handleApplyMaskConfirm}
-                  disabled={mutation.isPending}
+                  disabled={mutation.isPending || maskPreviewError}
+                  title={maskPreviewError ? t("mirage.maskPreviewError", "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.") : undefined}
                   className="flex-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {mutation.isPending ? t("mirage.applying", "Applying...") : t("mirage.maskApply", "Apply")}

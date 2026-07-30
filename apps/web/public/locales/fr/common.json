@@ -1369,7 +1369,16 @@
       "cancel": "Annuler",
       "apply": "Appliquer",
       "applying": "Application...",
-      "needsTargetHint": "Indiquez-nous quelle zone vous voulez dire, puis réessayez."
+      "needsTargetHint": "Indiquez-nous quelle zone vous voulez dire, puis réessayez.",
+      "previewError": "Impossible d'afficher la zone mise en évidence, elle ne peut donc pas être confirmée. Annulez et réessayez."
+    },
+    "target": {
+      "label": "Objet ou zone ciblée",
+      "optional": "(facultatif)",
+      "required": "(requis sauf si vous peignez un masque)",
+      "placeholder": "ex. l'arrière-plan, la bouteille",
+      "hintOptional": "Laissez vide pour utiliser la zone automatique gratuite. Nommer un objet le cible précisément et vous demande de confirmer la zone mise en évidence au préalable.",
+      "hintRequired": "Nous ne savons pas où intervenir sans un nom ici ou un masque peint."
     },
     "score": {
       "title": "Score",
@@ -1437,6 +1446,7 @@
       ]
     },
     "maskConfirmHint": "Vérifiez la zone mise en évidence sur le canevas.",
+    "maskPreviewError": "Impossible d'afficher la zone mise en évidence, elle ne peut donc pas être confirmée. Annulez et réessayez.",
     "maskCancel": "Annuler",
     "maskApply": "Appliquer",
     "applying": "Application...",

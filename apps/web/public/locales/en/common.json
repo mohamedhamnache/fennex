@@ -1466,7 +1466,16 @@
       "cancel": "Cancel",
       "apply": "Apply",
       "applying": "Applying...",
-      "needsTargetHint": "Tell us which area you mean, then try again."
+      "needsTargetHint": "Tell us which area you mean, then try again.",
+      "previewError": "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again."
+    },
+    "target": {
+      "label": "Target object or area",
+      "optional": "(optional)",
+      "required": "(required unless you paint a mask)",
+      "placeholder": "e.g. the background, the bottle",
+      "hintOptional": "Leave blank to use the free automatic region. Naming an object targets it precisely, and asks you to confirm the highlighted area first.",
+      "hintRequired": "We don't know where to work without a name here or a painted mask."
     },
     "score": {
       "title": "Score",
@@ -1534,6 +1543,7 @@
       ]
     },
     "maskConfirmHint": "Check the highlighted area on the canvas.",
+    "maskPreviewError": "We couldn't show the highlighted area, so it can't be confirmed. Cancel and try again.",
     "maskCancel": "Cancel",
     "maskApply": "Apply",
     "applying": "Applying...",
