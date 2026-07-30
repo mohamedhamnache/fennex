@@ -544,7 +544,11 @@ async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
             },
             version=_SHADOW_VERSION,
         )
-        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+        # VERIFIED with a real prediction: this model EXTENDS the canvas to make
+        # room for the shadow (512x384 in -> 592x494 out), so parity is wrong
+        # here by design. Asserting PRESERVE failed every call.
+        return {"ok": True, "image_url": await finalize(
+            output, source_size=src_size, policy=ResolutionPolicy.ALLOW_CHANGE)}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

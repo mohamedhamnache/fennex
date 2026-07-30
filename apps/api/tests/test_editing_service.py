@@ -401,7 +401,9 @@ async def test_generate_shadow_uses_a_model_that_actually_exists():
     assert params["shadow_type"] in {"regular", "float"}
     assert params["shadow_type"] != "natural_shadow"
     assert fin.call_args.kwargs["source_size"] == (800, 600)
-    assert fin.call_args.kwargs.get("policy", ResolutionPolicy.PRESERVE) is ResolutionPolicy.PRESERVE
+    # ALLOW_CHANGE, not PRESERVE: a real prediction showed this model extends the
+    # canvas to fit the shadow. See test_generate_shadow_allows_the_canvas_to_grow.
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.ALLOW_CHANGE
 
 
 async def test_generate_shadow_maps_direction_onto_offsets():
@@ -512,3 +514,21 @@ async def test_exotic_modes_keep_alpha_when_they_have_it(monkeypatch):
     monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
     await editing_service.crop_image("u", 0, 0, 8, 8)
     assert captured["mode"] == "RGBA"
+
+
+async def test_generate_shadow_allows_the_canvas_to_grow():
+    """Verified with a real prediction: bria/product-shadow extends the canvas to
+    fit the shadow (512x384 in -> 592x494 out). PRESERVE failed every call."""
+    from app.services import editing_service
+    from app.services.image_output import ResolutionPolicy
+
+    fin = AsyncMock(return_value="https://cdn/o.png")
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.png")), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((512, 384)))), \
+         patch("app.services.editing_service.finalize", fin):
+        result = await editing_service.generate_shadow("https://cdn/in.png", "bottom")
+
+    assert result["ok"] is True
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.ALLOW_CHANGE

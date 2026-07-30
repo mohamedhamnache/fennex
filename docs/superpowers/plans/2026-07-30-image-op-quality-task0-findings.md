@@ -130,27 +130,22 @@ have failed unconditionally. Fixed by sending `upscale: 1` explicitly: this
 operation restores a face, it does not resize; enlarging is what `upscale` is
 for.
 
-**STILL UNVERIFIED — these carry PRESERVE on an assumption:**
+**NOW VERIFIED with real predictions** (`apps/api/scripts/verify_image_models.py`,
+512x384 probe image):
 
-- `allenhooo/lama` — described as resolution-robust, but that is a claim from the
-  model's description, not something probed.
-- `bria/product-shadow` — the sharpest risk. A shadow drawn at `offset_y=15`
-  could plausibly extend the canvas beyond the input bounds.
-- `black-forest-labs/flux-fill-pro` — no width/height inputs, so it is expected
-  to match the input, but this was not probed either.
+- `allenhooo/lama` — 512x384 in, 512x384 out. PRESERVE is correct.
+- `black-forest-labs/flux-fill-pro` — 512x384 in, 512x384 out. PRESERVE is correct.
+- `bria/product-shadow` — **512x384 in, 592x494 out.** It EXTENDS the canvas to
+  make room for the shadow, exactly as the final review suspected. PRESERVE would
+  have failed every `generate_shadow` call; the operation now uses ALLOW_CHANGE.
 
-Under PRESERVE a mismatch is a *total operation failure*, not a silent
-degradation. That is the spec's deliberate choice -- fail loudly rather than
-return a quietly smaller image -- but it means any of the three being wrong
-breaks that operation outright. Each is a single real prediction away from being
-settled, and the manual pass is where that happens.
-
-**`allenhooo/lama`'s MASK POLARITY is unverified.** Its schema documents the mask
-input only as "Mask image", with no statement of which region is inpainted. The
-white-is-replaced invariant that `mask_service` enforces was verified against
-flux-fill's schema, not LaMa's. If LaMa's convention is inverted, removal will
-erase everything EXCEPT the selected object -- on the headline path this whole
-change exists to fix. **This is the first thing to check in the manual pass.**
+**`allenhooo/lama`'s MASK POLARITY — VERIFIED, and it matches.** Its schema
+documents the mask only as "Mask image", so this was settled empirically: a
+512x384 image with a red left half and blue right half, masked with a white box
+inside the red region. The box came back red (205,29,25) and the untouched blue
+half survived intact (30,30,200). LaMa uses white = the region to inpaint, the
+same convention `mask_service` produces. Removal erases the selected region, not
+its complement.
 
 **Mask/image dimension agreement.** The old `smart_erase` resized a mask that did
 not match the source (`if mask_img.size != (orig_w, orig_h)`). That safeguard was
