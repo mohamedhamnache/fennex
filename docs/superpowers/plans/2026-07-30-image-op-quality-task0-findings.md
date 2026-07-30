@@ -114,3 +114,47 @@ an upscale pass over a model swap. Both are reversible.
 correct only if it runs on A100 80GB — unverified. This belongs in the deferred
 full repricing pass, together with the dead `fal-ai/shadow-generation` rate row
 that still exists for a model that does not.
+
+## Addendum — output-resolution behaviour (added after the final review)
+
+The audit's fifth point, "output resolution matches input", was recorded only for
+`ic-light`. That omission caused a Critical defect and leaves three models with
+unverified assumptions. Recording the state honestly rather than closing the gap
+by assertion:
+
+**VERIFIED, and it was wrong.** `sczhou/codeformer` has an `upscale` input that
+**defaults to 2** (with `face_upsample` and `background_enhance` both defaulting
+true). Left unset, `restore_face` returned a 2x image, so the PRESERVE policy
+rejected **every** call -- an operation that previously returned an image would
+have failed unconditionally. Fixed by sending `upscale: 1` explicitly: this
+operation restores a face, it does not resize; enlarging is what `upscale` is
+for.
+
+**STILL UNVERIFIED — these carry PRESERVE on an assumption:**
+
+- `allenhooo/lama` — described as resolution-robust, but that is a claim from the
+  model's description, not something probed.
+- `bria/product-shadow` — the sharpest risk. A shadow drawn at `offset_y=15`
+  could plausibly extend the canvas beyond the input bounds.
+- `black-forest-labs/flux-fill-pro` — no width/height inputs, so it is expected
+  to match the input, but this was not probed either.
+
+Under PRESERVE a mismatch is a *total operation failure*, not a silent
+degradation. That is the spec's deliberate choice -- fail loudly rather than
+return a quietly smaller image -- but it means any of the three being wrong
+breaks that operation outright. Each is a single real prediction away from being
+settled, and the manual pass is where that happens.
+
+**`allenhooo/lama`'s MASK POLARITY is unverified.** Its schema documents the mask
+input only as "Mask image", with no statement of which region is inpainted. The
+white-is-replaced invariant that `mask_service` enforces was verified against
+flux-fill's schema, not LaMa's. If LaMa's convention is inverted, removal will
+erase everything EXCEPT the selected object -- on the headline path this whole
+change exists to fix. **This is the first thing to check in the manual pass.**
+
+**Mask/image dimension agreement.** The old `smart_erase` resized a mask that did
+not match the source (`if mask_img.size != (orig_w, orig_h)`). That safeguard was
+deleted with the Pillow fill it belonged to, and nothing replaced it. Derived
+masks are generated from the source image so they match by construction, but a
+client-supplied `mask_url` on the confirmation round-trip is validated only for
+storage origin, not for dimensions.

@@ -441,3 +441,74 @@ async def test_generate_shadow_falls_back_to_a_valid_offset_for_an_unknown_direc
     (_, params), _ = run.call_args
     assert isinstance(params["shadow_offset_x"], int)
     assert isinstance(params["shadow_offset_y"], int)
+
+
+def _img_bytes(mode, size=(32, 32), fmt="PNG") -> bytes:
+    buf = io.BytesIO()
+    PILImage.new(mode, size).save(buf, format=fmt)
+    return buf.getvalue()
+
+
+async def test_restore_face_pins_upscale_so_it_does_not_resize(monkeypatch):
+    """codeformer's `upscale` DEFAULTS TO 2. Left unset, the output is 2x the
+    input and the PRESERVE assertion rejects every call."""
+    from app.services import editing_service
+    run = AsyncMock(return_value="https://replicate/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+        await editing_service.restore_face("https://cdn/in.png", 0.7)
+    (_, params), _ = run.call_args
+    assert params["upscale"] == 1
+
+
+async def test_generate_shadow_supports_every_direction_the_ui_offers():
+    """The UI offers top/bottom/left/right. A direction missing from the map
+    silently falls back to bottom, so Top rendered a bottom shadow."""
+    from app.services import editing_service
+    for d in ("top", "bottom", "left", "right"):
+        assert d in editing_service._SHADOW_OFFSETS, f"UI offers {d} but the map lacks it"
+    assert editing_service._SHADOW_OFFSETS["top"][1] < 0
+    assert editing_service._SHADOW_OFFSETS["bottom"][1] > 0
+
+
+@pytest.mark.parametrize("mode,fmt", [
+    ("CMYK", "JPEG"),   # cannot be written as PNG at all
+    ("P", "PNG"),       # palette: filters raise "cannot filter palette images"
+    ("L", "PNG"),       # grayscale: adjust/rotate fill raise
+    ("LA", "PNG"),      # grayscale + alpha
+])
+async def test_pillow_ops_handle_exotic_source_modes(monkeypatch, mode, fmt):
+    """_open must normalise the modes downstream cannot take. Dropping that
+    entirely broke CMYK JPEGs, palette PNGs and grayscale sources."""
+    from app.services import editing_service
+    monkeypatch.setattr(editing_service, "_download",
+                        AsyncMock(return_value=_img_bytes(mode, fmt=fmt)))
+    monkeypatch.setattr(editing_service, "_upload_result",
+                        AsyncMock(return_value="https://cdn/out.png"))
+
+    for coro in (
+        editing_service.crop_image("u", 0, 0, 8, 8),
+        editing_service.sharpen_image("u", 0.5),
+        editing_service.denoise_image("u", 0.5),
+        editing_service.adjust_image("u", brightness=10),
+        editing_service.rotate_image("u", 45, fill_color="#ffffff"),
+        editing_service.rotate_image("u", 45),
+    ):
+        result = await coro
+        assert result["ok"] is True, f"{mode} failed: {result.get('error')}"
+
+
+async def test_exotic_modes_keep_alpha_when_they_have_it(monkeypatch):
+    from app.services import editing_service
+    captured = {}
+
+    async def _fake_upload(img, folder="edits"):
+        captured["mode"] = img.mode
+        return "https://cdn/out.png"
+
+    monkeypatch.setattr(editing_service, "_download",
+                        AsyncMock(return_value=_img_bytes("LA")))
+    monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
+    await editing_service.crop_image("u", 0, 0, 8, 8)
+    assert captured["mode"] == "RGBA"

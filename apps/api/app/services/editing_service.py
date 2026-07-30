@@ -74,14 +74,26 @@ async def _upload_result(img: PILImage.Image, folder: str = "edits") -> str:
     return await upload_bytes(buf.read(), f"{folder}/{uuid.uuid4().hex}.png", "image/png")
 
 
-def _open(data: bytes) -> PILImage.Image:
-    """Preserve the source colour mode.
+# Modes PNG cannot store, or that Pillow's filters and enhancers reject. A CMYK
+# JPEG cannot be written as PNG at all; palette (P) and grayscale (L/LA) images
+# raise in denoise/sharpen/adjust. Everything else keeps its source mode.
+_SAFE_MODES = frozenset({"RGB", "RGBA"})
 
-    Forcing RGBA here turned every RGB photo into a bloated RGBA PNG for no
-    quality gain. Operations that genuinely need an alpha channel convert
-    explicitly at their own call site.
+
+def _open(data: bytes) -> PILImage.Image:
+    """Open, normalising ONLY the modes downstream cannot handle.
+
+    Forcing RGBA on everything turned every RGB photo into a bloated RGBA PNG
+    for no quality gain. Dropping normalisation entirely, though, broke CMYK
+    JPEGs, palette PNGs and GIFs, and grayscale sources -- so exotic modes are
+    promoted to the nearest safe one, preserving alpha where it exists, and
+    RGB/RGBA pass through untouched.
     """
-    return PILImage.open(io.BytesIO(data))
+    img = PILImage.open(io.BytesIO(data))
+    if img.mode in _SAFE_MODES:
+        return img
+    has_alpha = img.mode in {"LA", "PA"} or "transparency" in img.info
+    return img.convert("RGBA" if has_alpha else "RGB")
 
 
 def _hex_to_rgb(h: str) -> tuple[int, int, int]:
@@ -392,6 +404,7 @@ _SHADOW_VERSION = "ffed8143e81736c5fb32ed63ba7362935d8228687fa3b5173eab2fbf86f54
 # maps onto the offset pair; magnitudes stay near the model's own defaults
 # (offset_y 15) rather than being invented.
 _SHADOW_OFFSETS = {
+    "top":          (0, -15),
     "bottom":       (0, 15),
     "bottom-right": (15, 15),
     "bottom-left":  (-15, 15),
@@ -573,7 +586,15 @@ async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
         src_size = dimensions(await _download(image_url))
         output = await _replicate_run(
             _MODEL_CODEFORMER,
-            {"image": image_url, "codeformer_fidelity": fidelity},
+            {
+                "image": image_url,
+                "codeformer_fidelity": fidelity,
+                # codeformer's `upscale` DEFAULTS TO 2, so leaving it unset
+                # returned a 2x image and the PRESERVE assertion rejected every
+                # call. This operation restores a face; it does not resize.
+                # Enlarging is what `upscale` is for.
+                "upscale": 1,
+            },
             version=_CODEFORMER_VERSION,
         )
         return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
