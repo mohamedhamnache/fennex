@@ -408,7 +408,7 @@ async def ai_command(
         # genuinely the better tool.
         instruction = build_instruction(operation, params)
         if instruction and not _painted_mask_supplied(mask_queue, mask_step_index):
-            edit_result = await instruction_edit(current_url, instruction)
+            edit_result = await instruction_edit(current_url, instruction, operation)
             if not edit_result.get("ok"):
                 detail = edit_result.get("error", "Edit failed")
                 raise HTTPException(

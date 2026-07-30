@@ -7,7 +7,7 @@ import time
 import uuid
 from typing import Mapping, Optional
 import httpx
-from PIL import Image as PILImage, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image as PILImage, ImageChops, ImageEnhance, ImageFilter, ImageOps
 from app.core.config import settings
 from app.core.storage import upload_bytes
 
@@ -561,12 +561,73 @@ def build_instruction(operation: str, params: dict) -> Optional[str]:
     return None
 
 
-async def instruction_edit(image_url: str, instruction: str) -> dict:
-    """Edit an image from a plain-language instruction. No mask involved."""
+# Operations whose intent is LOCAL: the user named one thing to change and
+# expects the rest of the frame untouched. replace_background is deliberately
+# absent -- it is supposed to change most of the picture.
+_LOCAL_INSTRUCTION_OPS = frozenset({
+    "remove_object", "smart_erase", "insert_object", "generative_fill",
+})
+
+# Per-channel difference below which a pixel counts as "unchanged". Instruction
+# models re-render the whole frame, so a local edit still shifts exposure and
+# colour grading a little everywhere. That drift lands well under this; a real
+# edit lands far above it.
+_EDIT_DIFF_THRESHOLD = 24
+
+# Grows the detected region past the model's soft edges, then feathers the seam
+# so the composite does not show a hard outline.
+_EDIT_MASK_GROW = 9
+_EDIT_MASK_FEATHER = 6
+
+
+def _composite_local_edit(original: bytes, edited: bytes) -> bytes:
+    """Keep the original pixels everywhere the edit did not actually change.
+
+    An instruction model regenerates the entire image, so asking it to remove one
+    object also nudges the lighting and colour of everything else -- reported as
+    "it just changed the image light a bit". The instruction cannot prevent this;
+    only the pixels can.
+
+    So: diff the two frames, threshold away the global drift, keep just the
+    region that genuinely changed, and paste ONLY that back over the original.
+    The user gets the model's semantic understanding with byte-identical pixels
+    everywhere it did not edit.
+    """
+    src = PILImage.open(io.BytesIO(original)).convert("RGB")
+    out = PILImage.open(io.BytesIO(edited)).convert("RGB")
+    if out.size != src.size:
+        out = out.resize(src.size, PILImage.LANCZOS)
+
+    # Where did the frame genuinely change?
+    diff = ImageChops.difference(src, out).convert("L")
+    changed = diff.point(lambda v: 255 if v >= _EDIT_DIFF_THRESHOLD else 0, mode="L")
+
+    # Nothing survived the threshold: the model only re-graded the image, so the
+    # original IS the correct answer and the "edit" was drift alone.
+    if not changed.getbbox():
+        return original
+
+    changed = changed.filter(ImageFilter.MaxFilter(_EDIT_MASK_GROW))
+    changed = changed.filter(ImageFilter.GaussianBlur(_EDIT_MASK_FEATHER))
+
+    merged = PILImage.composite(out, src, changed)
+    buf = io.BytesIO()
+    merged.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+async def instruction_edit(image_url: str, instruction: str,
+                           operation: Optional[str] = None) -> dict:
+    """Edit an image from a plain-language instruction. No mask involved.
+
+    For LOCAL operations the model's output is composited back over the original
+    so only the genuinely-changed region survives -- see _composite_local_edit.
+    """
     if not instruction or not instruction.strip():
         return {"ok": False, "error": "No instruction provided."}
     try:
-        src_size = dimensions(await _download(image_url))
+        source = await _download(image_url)
+        src_size = dimensions(source)
         output = await _replicate_run(
             _MODEL_NANO_BANANA,
             {
@@ -579,8 +640,14 @@ async def instruction_edit(image_url: str, instruction: str) -> dict:
             },
             version=_NANO_BANANA_VERSION,
         )
-        # The model matches the input ASPECT but not necessarily its exact pixel
-        # dimensions, so parity is restored on our side rather than asserted.
+        if operation in _LOCAL_INSTRUCTION_OPS:
+            merged = _composite_local_edit(source, await _download(output))
+            return {"ok": True, "image_url": await upload_bytes(
+                merged, f"edits/{uuid.uuid4().hex}.png", "image/png")}
+
+        # Global edits (replace_background) keep the model's whole frame. It
+        # matches the input ASPECT but not its exact pixels, so parity is
+        # restored on our side rather than asserted.
         return {"ok": True, "image_url": await finalize(
             output, source_size=src_size, policy=ResolutionPolicy.UPSCALE)}
     except Exception as e:  # noqa: BLE001

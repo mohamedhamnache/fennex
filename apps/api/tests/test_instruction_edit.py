@@ -137,3 +137,85 @@ async def test_a_model_failure_is_returned_not_raised():
         result = await editing_service.instruction_edit("https://cdn/in.png", "Remove the mint")
     assert result["ok"] is False
     assert "nano-banana exploded" in result["error"]
+
+
+# ── local-edit compositing ───────────────────────────────────────────────────
+
+def _scene(bg=(200, 180, 150), obj=(40, 150, 60), obj_box=(60, 40, 110, 90),
+           size=(200, 150), shift=0) -> bytes:
+    """A background with one object. `shift` brightens EVERY pixel, standing in
+    for the global lighting drift an instruction model introduces."""
+    img = PILImage.new("RGB", size, tuple(min(255, c + shift) for c in bg))
+    d = __import__("PIL.ImageDraw", fromlist=["ImageDraw"]).Draw(img)
+    if obj:
+        d.rectangle(list(obj_box), fill=tuple(min(255, c + shift) for c in obj))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_global_lighting_drift_alone_is_discarded_entirely():
+    """Reported: "it just changed the image light a bit". If the model only
+    re-graded the frame and changed nothing else, the original IS the answer."""
+    original = _scene()
+    drifted = _scene(shift=6)          # every pixel nudged, nothing edited
+    assert editing_service._composite_local_edit(original, drifted) is original
+
+
+def test_the_edited_region_is_taken_but_the_rest_is_preserved_exactly():
+    original = _scene()
+    # object removed AND the whole frame re-graded, as these models do
+    edited = _scene(obj=None, shift=6)
+
+    merged = editing_service._composite_local_edit(original, edited)
+    m = PILImage.open(io.BytesIO(merged)).convert("RGB")
+    src = PILImage.open(io.BytesIO(original)).convert("RGB")
+
+    # where the object was: it is gone (background-ish, not the object's green)
+    r, g, b = m.getpixel((85, 65))
+    assert not (g > r and g > b), f"object should be gone, got {(r, g, b)}"
+
+    # far from the edit: pixel-identical to the original, drift discarded
+    for probe in ((5, 5), (195, 145), (5, 145), (195, 5)):
+        assert m.getpixel(probe) == src.getpixel(probe), \
+            f"drift leaked at {probe}: {m.getpixel(probe)} != {src.getpixel(probe)}"
+
+
+def test_compositing_handles_a_differently_sized_model_output():
+    """nano-banana matches the input ASPECT, not its exact pixels."""
+    original = _scene(size=(200, 150))
+    edited = _scene(obj=None, size=(400, 300))
+    merged = editing_service._composite_local_edit(original, edited)
+    assert PILImage.open(io.BytesIO(merged)).size == (200, 150)
+
+
+@pytest.mark.asyncio
+async def test_local_operations_are_composited_but_background_replacement_is_not():
+    """replace_background is SUPPOSED to change most of the frame, so
+    compositing it would fight the user's intent."""
+    calls = {}
+
+    def _fake_composite(original, edited):
+        calls["composited"] = True
+        return original
+
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.png")), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png())), \
+         patch("app.services.editing_service._composite_local_edit", _fake_composite), \
+         patch("app.services.editing_service.upload_bytes",
+               AsyncMock(return_value="https://cdn/merged.png")), \
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value="https://cdn/whole.png")):
+
+        for op in ("remove_object", "smart_erase", "insert_object", "generative_fill"):
+            calls.clear()
+            r = await editing_service.instruction_edit("https://cdn/i.png", "do it", op)
+            assert r["image_url"] == "https://cdn/merged.png", op
+            assert calls.get("composited") is True, f"{op} must be composited"
+
+        calls.clear()
+        r = await editing_service.instruction_edit("https://cdn/i.png", "new bg",
+                                                   "replace_background")
+        assert r["image_url"] == "https://cdn/whole.png"
+        assert "composited" not in calls
