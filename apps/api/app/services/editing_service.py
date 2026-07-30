@@ -488,6 +488,7 @@ async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str]) -> di
     """
     try:
         src_size = dimensions(await _download(image_url))
+        mask_url = await _fit_mask_to_image(mask_url, src_size)
         output = await _replicate_run(_MODEL_FLUX_FILL, {
             "image": image_url, "mask": mask_url, "prompt": prompt,
             "output_format": "png",
@@ -501,6 +502,37 @@ async def replace_background(image_url: str, prompt: str, mask_url: Optional[str
     return await _flux_fill(image_url, prompt, mask_url)
 
 
+async def _fit_mask_to_image(mask_url: Optional[str], source_size: tuple[int, int]) -> Optional[str]:
+    """Make a mask match its image, re-uploading only if it did not already.
+
+    A mask whose dimensions differ from the image is a SILENT total failure:
+    LaMa reports `succeeded` and returns a NULL output, with no error of its own
+    (verified against the live model). flux-fill misplaces the edit for the same
+    reason.
+
+    Every mask path can produce a mismatch, which is why this sits here at the
+    point of use rather than at any one source:
+      - a PAINTED mask is sized from the canvas, i.e. the image's DISPLAYED size
+        in CSS pixels (EditCanvas sets canvas.width from getBoundingClientRect),
+        so a 1024px photo shown at 620px yields a 620px mask;
+      - a CONFIRMED mask is whatever the client sent back;
+      - a DERIVED mask comes from a supplier that may have resized it.
+
+    NEAREST, not LANCZOS: interpolation would introduce grey values, and these
+    models expect a binary mask.
+    """
+    if not mask_url:
+        return mask_url
+    data = await _download(mask_url)
+    if dimensions(data) == source_size:
+        return mask_url
+    mask = PILImage.open(io.BytesIO(data)).convert("L").resize(source_size, PILImage.NEAREST)
+    buf = io.BytesIO()
+    mask.save(buf, format="PNG")
+    buf.seek(0)
+    return await upload_bytes(buf.read(), f"masks/{uuid.uuid4().hex}.png", "image/png")
+
+
 async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
     """Reconstruct whatever the mask covers from surrounding context.
 
@@ -511,6 +543,7 @@ async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
         return {"ok": False, "error": "No mask provided."}
     try:
         src_size = dimensions(await _download(image_url))
+        mask_url = await _fit_mask_to_image(mask_url, src_size)
         output = await _replicate_run(
             _MODEL_LAMA,
             {"image": image_url, "mask": mask_url},

@@ -77,3 +77,63 @@ def _png_bytes(size=(64, 48)) -> bytes:
     buf = io.BytesIO()
     PILImage.new("RGB", size, (1, 2, 3)).save(buf, format="PNG")
     return buf.getvalue()
+
+
+def _mask_bytes(size) -> bytes:
+    import io
+    from PIL import Image as PILImage
+    buf = io.BytesIO()
+    m = PILImage.new("L", size, 0)
+    m.putpixel((size[0] // 2, size[1] // 2), 255)
+    m.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_a_painted_mask_is_resized_to_the_source_before_the_model_sees_it():
+    """The manual editor sizes its mask canvas from the image's DISPLAYED size in
+    CSS pixels, so a 1024px photo shown at 620px yields a 620px mask. LaMa takes
+    a mismatched mask, reports succeeded, and returns NULL output -- verified
+    against the live model."""
+    uploaded = {}
+
+    async def _fake_upload(data, key, content_type):
+        uploaded["size"] = __import__("PIL.Image", fromlist=["Image"]).open(
+            __import__("io").BytesIO(data)).size
+        return "https://cdn/fitted-mask.png"
+
+    async def _fake_download(url):
+        return _png_bytes((1024, 768)) if "source" in url else _mask_bytes((620, 465))
+
+    run = AsyncMock(return_value="https://replicate/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", _fake_download), \
+         patch("app.services.editing_service.upload_bytes", _fake_upload), \
+         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+        result = await editing_service.remove_object("https://cdn/source.png",
+                                                     "https://cdn/painted-mask.png")
+
+    assert result["ok"] is True
+    assert uploaded["size"] == (1024, 768), "mask must be resized to the source"
+    (_, params), _ = run.call_args
+    assert params["mask"] == "https://cdn/fitted-mask.png"
+
+
+@pytest.mark.asyncio
+async def test_a_matching_mask_is_not_re_uploaded():
+    """Avoid a pointless upload on the common path."""
+    upload = AsyncMock()
+
+    async def _fake_download(url):
+        return _png_bytes((800, 600)) if "source" in url else _mask_bytes((800, 600))
+
+    run = AsyncMock(return_value="https://replicate/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", _fake_download), \
+         patch("app.services.editing_service.upload_bytes", upload), \
+         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+        await editing_service.remove_object("https://cdn/source.png", "https://cdn/mask.png")
+
+    upload.assert_not_awaited()
+    (_, params), _ = run.call_args
+    assert params["mask"] == "https://cdn/mask.png"
