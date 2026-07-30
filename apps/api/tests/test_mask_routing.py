@@ -12,7 +12,9 @@ confirmation round trip. The latter is fetched server-side, so it must be
 validated with is_own_storage_url first -- an unvalidated client URL is a
 request-forgery primitive.
 """
+import json
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -421,12 +423,21 @@ async def test_route_resolver_error_surfaces_without_needs_target(mask_route_cli
 # step in a multi-step chain has no partial-success shape to return, so both
 # become a structured 422 that aborts the whole chain.
 #
-# _resolve_mask_url (ai_command's own copy, request-body-shaped rather than
+# _resolve_mask_queue (ai_command's own copy, request-body-shaped rather than
 # params-dict-shaped) is the request-level counterpart to editing.py's
-# function of the same name: mask_base64 wins over mask_url, and a
-# present-but-empty mask_url must be rejected rather than silently treated as
-# absent -- Task 4 hit exactly this bug (a falsy value fell through and
-# triggered a second paid segmenter call).
+# _resolve_mask_url: mask_base64 wins over the queue's first position, and a
+# present-but-empty mask_urls (as a whole, or any single entry within it)
+# must be rejected rather than silently treated as absent -- Task 4 hit
+# exactly this bug (a falsy value fell through and triggered a second paid
+# segmenter call).
+#
+# Review fix (finding 1): a single resolved mask used to be threaded into
+# EVERY step of the chain unconditionally, so a mask confirmed for step 1
+# was silently reused for step 2 instead of step 2 resolving its own region.
+# mask_urls is now an ORDERED QUEUE: _next_step_mask hands the Nth
+# mask-requiring step the Nth queue entry, counting only mask-requiring
+# steps (a non-mask step in between does not consume a position), and a step
+# beyond the queue's length auto-resolves normally via resolve_mask.
 
 from fastapi import HTTPException
 
@@ -519,74 +530,273 @@ async def test_ai_command_resolver_error_raises_422_with_mask_unavailable():
     assert "remove.bg 402" in exc.value.detail["message"]
 
 
-# ---- ai_command._resolve_mask_url (request-level precedence + validation) --
+@pytest.mark.asyncio
+async def test_ai_command_needs_confirmation_carries_the_step_index():
+    """Without step_index in the 422 detail, a client cannot tell which
+    position in mask_urls to fill on the next confirmation round trip --
+    this is what makes a two-confirmation chain usable at all."""
+    derived = MaskResolution(ok=False, needs_confirmation=True,
+                              mask_url="https://cdn/derived.png", tier="prompted")
+    with patch("app.api.v1.routers.ai_command.resolve_mask", AsyncMock(return_value=derived)):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command._mask_for_step(
+                {"operation": "remove_object", "params": {"target": "the red car"}},
+                "https://cdn/x.png", None, uuid.uuid4(), None, step_index=1,
+            )
+
+    assert exc.value.detail["step_index"] == 1
+
+
+# ---- ai_command._resolve_mask_queue (request-level precedence + validation) --
 
 
 @pytest.mark.asyncio
-async def test_ai_command_resolve_mask_url_uploads_a_painted_mask_base64():
+async def test_ai_command_resolve_mask_queue_uploads_a_painted_mask_base64():
     body = ai_command.AiCommandRequest(command="x", mask_base64="data:image/png;base64,AAAA")
     with patch("app.api.v1.routers.ai_command.upload_bytes",
                AsyncMock(return_value="https://cdn/masks/new.png")) as upload:
-        result = await ai_command._resolve_mask_url(body)
+        result = await ai_command._resolve_mask_queue(body)
 
-    assert result == "https://cdn/masks/new.png"
+    assert result == ["https://cdn/masks/new.png"]
     upload.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_ai_command_resolve_mask_url_accepts_a_valid_own_storage_mask_url():
+async def test_ai_command_resolve_mask_queue_accepts_a_valid_own_storage_mask_url():
     # data: URLs are unconditionally "ours" per is_own_storage_url -- this
     # exercises the accept path without needing S3 config fixtures.
     own_url = "data:image/png;base64,iVBORw0KGgo="
-    body = ai_command.AiCommandRequest(command="x", mask_url=own_url)
+    body = ai_command.AiCommandRequest(command="x", mask_urls=[own_url])
     with patch("app.api.v1.routers.ai_command.upload_bytes", AsyncMock()) as upload:
-        result = await ai_command._resolve_mask_url(body)
+        result = await ai_command._resolve_mask_queue(body)
 
-    assert result == own_url
+    assert result == [own_url]
     upload.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_ai_command_resolve_mask_url_rejects_an_external_host_mask_url():
-    body = ai_command.AiCommandRequest(command="x", mask_url="https://evil.example.com/masks/x.png")
-    with pytest.raises(ValueError):
-        await ai_command._resolve_mask_url(body)
+async def test_ai_command_resolve_mask_queue_preserves_multi_entry_order():
+    urls = ["data:image/png;base64,AAA", "data:image/png;base64,BBB"]
+    body = ai_command.AiCommandRequest(command="x", mask_urls=urls)
+    result = await ai_command._resolve_mask_queue(body)
+
+    assert result == urls
 
 
 @pytest.mark.asyncio
-async def test_ai_command_resolve_mask_url_mask_base64_wins_over_mask_url():
-    """mask_base64 (a freshly painted mask) takes precedence even when an
-    invalid mask_url is also present -- the fresh paint should not be blocked
-    by stale or bogus round-trip data."""
+async def test_ai_command_resolve_mask_queue_rejects_an_external_host_entry():
+    body = ai_command.AiCommandRequest(command="x", mask_urls=["https://evil.example.com/masks/x.png"])
+    with pytest.raises(ValueError):
+        await ai_command._resolve_mask_queue(body)
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_rejects_an_invalid_entry_anywhere_in_the_list():
+    """A bad entry NOT in the first position must still abort the whole
+    request -- every entry is validated eagerly before any step runs."""
+    body = ai_command.AiCommandRequest(command="x", mask_urls=[
+        "data:image/png;base64,AAA",
+        "https://evil.example.com/masks/x.png",
+    ])
+    with pytest.raises(ValueError):
+        await ai_command._resolve_mask_queue(body)
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_mask_base64_overwrites_queue_position_zero():
+    """mask_base64 (a freshly painted mask) takes precedence over the entry
+    that would otherwise occupy the first mask-requiring step's position --
+    the fresh paint should not be blocked by stale or bogus round-trip data,
+    and applies only to that first position, leaving later entries intact."""
     body = ai_command.AiCommandRequest(
         command="x",
         mask_base64="data:image/png;base64,AAAA",
-        mask_url="https://evil.example.com/masks/x.png",
+        mask_urls=["https://evil.example.com/masks/x.png", "data:image/png;base64,BBB"],
     )
     with patch("app.api.v1.routers.ai_command.upload_bytes",
                AsyncMock(return_value="https://cdn/masks/fresh.png")) as upload:
-        result = await ai_command._resolve_mask_url(body)
+        result = await ai_command._resolve_mask_queue(body)
 
-    assert result == "https://cdn/masks/fresh.png"
+    assert result == ["https://cdn/masks/fresh.png", "data:image/png;base64,BBB"]
     upload.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_ai_command_resolve_mask_url_rejects_a_present_but_empty_mask_url():
-    """command-only construction leaves mask_url at its None default and
-    unset -- explicitly passing "" must still be rejected, not treated as
-    absent, or a stale/cleared field would silently fall through to
-    auto-resolution and spend on a second paid segmenter call."""
-    body = ai_command.AiCommandRequest(command="x", mask_url="")
+async def test_ai_command_resolve_mask_queue_rejects_a_present_but_empty_list_entry():
+    """A single "" entry inside the list must be rejected, not skipped over
+    while the rest of the queue is used -- silently dropping it would shift
+    every later entry onto the wrong step."""
+    body = ai_command.AiCommandRequest(command="x", mask_urls=["data:image/png;base64,AAA", ""])
     with pytest.raises(ValueError):
-        await ai_command._resolve_mask_url(body)
+        await ai_command._resolve_mask_queue(body)
 
 
 @pytest.mark.asyncio
-async def test_ai_command_resolve_mask_url_returns_none_when_absent():
+async def test_ai_command_resolve_mask_queue_rejects_an_explicit_null_mask_urls():
+    """Regression test for finding 3: `{"mask_urls": null}` is PRESENT
+    (model_fields_set contains it) but empty -- it must be rejected like any
+    other present-but-empty value, not treated as "field omitted, all steps
+    auto-resolve". This exercises the exact JSON-null path FastAPI produces
+    for `body: AiCommandRequest` when a client sends a literal `null`."""
+    body = ai_command.AiCommandRequest.model_validate(
+        json.loads('{"command": "x", "mask_urls": null}')
+    )
+    assert "mask_urls" in body.model_fields_set
+    assert body.mask_urls is None
+
+    with pytest.raises(ValueError):
+        await ai_command._resolve_mask_queue(body)
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_omitted_field_is_absent_not_null():
+    """Companion to the explicit-null test above: omitting mask_urls
+    entirely must NOT land in model_fields_set, and must resolve to an empty
+    queue (every step auto-resolves) rather than raising."""
+    body = ai_command.AiCommandRequest.model_validate(json.loads('{"command": "x"}'))
+    assert "mask_urls" not in body.model_fields_set
+
+    result = await ai_command._resolve_mask_queue(body)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_returns_empty_list_when_absent():
     body = ai_command.AiCommandRequest(command="x")
     with patch("app.api.v1.routers.ai_command.upload_bytes", AsyncMock()) as upload:
-        result = await ai_command._resolve_mask_url(body)
+        result = await ai_command._resolve_mask_queue(body)
 
-    assert result is None
+    assert result == []
     upload.assert_not_awaited()
+
+
+# ---- ai_command._next_step_mask (per-chain-step queue consumption) --------
+#
+# Review fix (finding 1) coverage: a chain resolves one queue entry PER
+# MASK-REQUIRING STEP, in order, not one mask reused for the whole chain.
+
+
+@pytest.mark.asyncio
+async def test_next_step_mask_one_supplied_first_step_uses_it_second_auto_resolves():
+    """The exact scenario finding 1 flagged: with only one mask supplied for
+    a two-mask-step chain, step 1 must use it and step 2 must resolve its
+    OWN region rather than reusing step 1's mask."""
+    resolve = AsyncMock(return_value=MaskResolution(ok=True, mask_url="https://cdn/auto-step2.png",
+                                                     tier="product"))
+    queue = ["https://cdn/painted-step1.png"]
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        mask1, idx = await ai_command._next_step_mask(
+            {"operation": "replace_background", "params": {}},
+            "https://cdn/x.png", queue, 0, uuid.uuid4(), None,
+        )
+        resolve.assert_not_awaited()
+        assert mask1 == "https://cdn/painted-step1.png"
+        assert idx == 1
+
+        mask2, idx = await ai_command._next_step_mask(
+            {"operation": "remove_object", "params": {}},
+            "https://cdn/step1-result.png", queue, idx, uuid.uuid4(), None,
+        )
+        resolve.assert_awaited_once()
+        assert mask2 == "https://cdn/auto-step2.png"
+        assert idx == 2
+
+
+@pytest.mark.asyncio
+async def test_next_step_mask_two_supplied_each_step_gets_its_own_in_order():
+    resolve = AsyncMock()
+    queue = ["https://cdn/mask-a.png", "https://cdn/mask-b.png"]
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        mask1, idx = await ai_command._next_step_mask(
+            {"operation": "replace_background", "params": {}},
+            "https://cdn/x.png", queue, 0, uuid.uuid4(), None,
+        )
+        mask2, idx = await ai_command._next_step_mask(
+            {"operation": "remove_object", "params": {}},
+            "https://cdn/step1-result.png", queue, idx, uuid.uuid4(), None,
+        )
+
+    assert mask1 == "https://cdn/mask-a.png"
+    assert mask2 == "https://cdn/mask-b.png"
+    assert idx == 2
+    resolve.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_next_step_mask_indexing_counts_only_mask_requiring_steps():
+    """A non-mask step ahead of a mask step must NOT consume a queue
+    position -- indexing tracks mask-requiring steps only."""
+    resolve = AsyncMock()
+    queue = ["https://cdn/mask-a.png"]
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        non_mask, idx = await ai_command._next_step_mask(
+            {"operation": "upscale", "params": {"scale": 2}},
+            "https://cdn/x.png", queue, 0, uuid.uuid4(), None,
+        )
+        assert non_mask is None
+        assert idx == 0  # unchanged -- upscale never touches the queue
+
+        mask_result, idx = await ai_command._next_step_mask(
+            {"operation": "replace_background", "params": {}},
+            "https://cdn/upscaled.png", queue, idx, uuid.uuid4(), None,
+        )
+
+    assert mask_result == "https://cdn/mask-a.png"
+    assert idx == 1
+    resolve.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_next_step_mask_needs_confirmation_carries_the_correct_step_index():
+    derived = MaskResolution(ok=False, needs_confirmation=True,
+                              mask_url="https://cdn/derived.png", tier="prompted")
+    with patch("app.api.v1.routers.ai_command.resolve_mask", AsyncMock(return_value=derived)):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command._next_step_mask(
+                {"operation": "replace_background", "params": {}},
+                "https://cdn/x.png", [], 1, uuid.uuid4(), None,
+            )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_confirm_required"
+    assert exc.value.detail["step_index"] == 1
+
+
+# ---- route-level: an invalid entry anywhere in the queue aborts the whole
+# request before any step (and any resolve_mask auto-resolution) runs -------
+
+
+@pytest.mark.asyncio
+async def test_ai_command_route_rejects_invalid_queue_entry_before_any_step_runs():
+    """Exercises the real route function's try/except around
+    _resolve_mask_queue -- a bad entry must surface as 422 mask_url_invalid
+    and resolve_mask (auto-resolution) must never be reached for any step,
+    even one whose own supplied entry was valid."""
+    source = SimpleNamespace(
+        id=uuid.uuid4(), project_id=uuid.uuid4(), prompt="p", style="s", usage="u",
+        image_url="https://cdn/x.png",
+    )
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: source))
+    current_user = SimpleNamespace(org_id=uuid.uuid4())
+
+    body = ai_command.AiCommandRequest(
+        command="replace the background then remove the object",
+        mask_urls=["data:image/png;base64,AAA", "https://evil.example.com/masks/x.png"],
+    )
+
+    resolve = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.parse_ai_command_steps", AsyncMock(return_value={
+                   "steps": [
+                       {"operation": "replace_background", "params": {"prompt": "marble"}},
+                       {"operation": "remove_object", "params": {}},
+                   ],
+               })), \
+         patch("app.api.v1.routers.ai_command.project_locale", AsyncMock(return_value="en")), \
+         patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command.ai_command(uuid.uuid4(), body, current_user, db, None)
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_url_invalid"
+    resolve.assert_not_awaited()
