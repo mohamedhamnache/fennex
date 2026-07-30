@@ -27,6 +27,12 @@ interface PendingMaskConfirm {
   maskUrl: string;
   stepIndex: number;
   accumulated: string[];
+  /** The 422's resume_token, so the retry resumes the server's cached plan
+   *  instead of re-planning and re-billing already-applied steps. A chain
+   *  can stop for confirmation more than once; each stop mints a FRESH
+   *  token reflecting progress so far, so this always holds the most
+   *  recent one, never an earlier round's. */
+  resumeToken: string | undefined;
 }
 
 function TypingIndicator() {
@@ -91,8 +97,8 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
   }, [imageId]);
 
   const mutation = useMutation({
-    mutationFn: ({ command, maskUrls }: { command: string; maskUrls?: string[] }) =>
-      sendAiCommand(imageId, command, history, undefined, maskUrls),
+    mutationFn: ({ command, maskUrls, resumeToken }: { command: string; maskUrls?: string[]; resumeToken?: string }) =>
+      sendAiCommand(imageId, command, history, undefined, maskUrls, resumeToken),
     onSuccess: (img, { command }) => {
       const opLabel = img.edit_operation?.replace(/_/g, " ") ?? "edit";
       setHistory((prev) => [
@@ -114,7 +120,8 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
           ? err.detail.message
           : t("mirage.maskConfirmDefault", "Confirm the highlighted area before applying.");
         if (maskUrl) {
-          setPendingConfirm({ command, message, maskUrl, stepIndex, accumulated: maskUrls ?? [] });
+          const resumeToken = typeof err.detail.resume_token === "string" ? err.detail.resume_token : undefined;
+          setPendingConfirm({ command, message, maskUrl, stepIndex, accumulated: maskUrls ?? [], resumeToken });
           setMaskPreviewError(false);
           // See maskPreviewError declaration: an unseen mask must never be
           // silently approvable.
@@ -157,10 +164,11 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
     const maskUrls = [...pendingConfirm.accumulated];
     maskUrls[pendingConfirm.stepIndex] = pendingConfirm.maskUrl;
     const command = pendingConfirm.command;
+    const resumeToken = pendingConfirm.resumeToken;
     setPendingConfirm(null);
     setMaskPreviewError(false);
     canvasRef?.current?.clearMask();
-    mutation.mutate({ command, maskUrls });
+    mutation.mutate({ command, maskUrls, resumeToken });
   }
 
   function handleCancelMaskConfirm() {

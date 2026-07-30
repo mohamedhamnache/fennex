@@ -2096,12 +2096,21 @@ export async function sendAiCommand(
    *  value and rejects the whole request, distinct from the field being
    *  absent (which auto-resolves every step). Never pass `[]` here either. */
   maskUrls?: string[],
+  /** Set only on the retry that follows a mask_confirm_required 422 — the
+   *  most recent token from that 422's detail.resume_token. Tells the server
+   *  to resume its cached plan/progress instead of re-planning (which would
+   *  re-execute and re-bill already-applied steps). IMPORTANT: omit this
+   *  field entirely on a fresh command and whenever there is no token —
+   *  same reasoning as mask_urls above, an explicit null is treated as
+   *  present-but-empty and rejected rather than "no token". */
+  resumeToken?: string,
 ): Promise<GeneratedImage> {
   return withCreditRefresh(apiClient.post<GeneratedImage>(`/images/${imageId}/ai-command`, {
     command,
     history,
     mask_base64: maskBase64 ?? null,
     ...(maskUrls !== undefined ? { mask_urls: maskUrls } : {}),
+    ...(resumeToken !== undefined ? { resume_token: resumeToken } : {}),
   }));
 }
 
