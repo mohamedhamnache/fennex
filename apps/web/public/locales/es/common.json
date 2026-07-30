@@ -1364,6 +1364,13 @@
       "restore_face": "Restaurar rostro",
       "upscale": "Ampliar"
     },
+    "maskConfirm": {
+      "body": "Resaltamos el área que creemos que quieres decir. Aplícala si es correcta, o cancela y ajusta tu descripción.",
+      "cancel": "Cancelar",
+      "apply": "Aplicar",
+      "applying": "Aplicando...",
+      "needsTargetHint": "Dinos qué área quieres decir e inténtalo de nuevo."
+    },
     "score": {
       "title": "Puntuación",
       "rescore": "Recalcular",
@@ -1428,7 +1435,13 @@
         "Ampliar 2x",
         "Reiluminar desde arriba"
       ]
-    }
+    },
+    "maskConfirmHint": "Revisa el área resaltada en el lienzo.",
+    "maskCancel": "Cancelar",
+    "maskApply": "Aplicar",
+    "applying": "Aplicando...",
+    "maskConfirmDefault": "Confirma el área resaltada antes de aplicarla.",
+    "maskTargetDefault": "¿Qué área quieres decir?"
   },
   "articleStudio": {
     "dock": {

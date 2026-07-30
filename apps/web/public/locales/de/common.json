@@ -1364,6 +1364,13 @@
       "restore_face": "Gesicht wiederherstellen",
       "upscale": "Hochskalieren"
     },
+    "maskConfirm": {
+      "body": "Wir haben den Bereich hervorgehoben, den wir für gemeint halten. Übernimm ihn, wenn er stimmt, oder brich ab und präzisiere deine Beschreibung.",
+      "cancel": "Abbrechen",
+      "apply": "Anwenden",
+      "applying": "Wird angewendet...",
+      "needsTargetHint": "Sag uns, welchen Bereich du meinst, und versuch es erneut."
+    },
     "score": {
       "title": "Score",
       "rescore": "Neu bewerten",
@@ -1428,7 +1435,13 @@
         "2x hochskalieren",
         "Von oben neu beleuchten"
       ]
-    }
+    },
+    "maskConfirmHint": "Prüfe den hervorgehobenen Bereich auf der Leinwand.",
+    "maskCancel": "Abbrechen",
+    "maskApply": "Anwenden",
+    "applying": "Wird angewendet...",
+    "maskConfirmDefault": "Bestätige den hervorgehobenen Bereich, bevor er angewendet wird.",
+    "maskTargetDefault": "Welchen Bereich meinst du?"
   },
   "articleStudio": {
     "dock": {

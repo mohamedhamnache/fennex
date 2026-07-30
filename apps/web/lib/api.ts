@@ -1784,6 +1784,13 @@ export interface EditImageResult {
   image_url: string | null;
   image_id: string | null;
   error: string | null;
+  /** true = an auto-derived mask needs the user's approval before this edit applies.
+   *  Re-submit the same edit with `params.mask_url` set to `mask_url` below to confirm. */
+  needs_confirmation?: boolean;
+  /** true = the segmentation model couldn't tell which region the user means;
+   *  `error` carries the question to show them. */
+  needs_target?: boolean;
+  mask_url?: string | null;
 }
 
 export async function editImage(
@@ -2082,11 +2089,19 @@ export async function sendAiCommand(
   command: string,
   history: AiCommandMessage[],
   maskBase64?: string,
+  /** Ordered list of confirmed mask URLs — the Nth mask-requiring step in the
+   *  command chain consumes the Nth entry. See mask_confirm_required below.
+   *  IMPORTANT: omit this field entirely when there is nothing to confirm —
+   *  the backend treats an explicit `"mask_urls": null` as a present-but-empty
+   *  value and rejects the whole request, distinct from the field being
+   *  absent (which auto-resolves every step). Never pass `[]` here either. */
+  maskUrls?: string[],
 ): Promise<GeneratedImage> {
   return withCreditRefresh(apiClient.post<GeneratedImage>(`/images/${imageId}/ai-command`, {
     command,
     history,
     mask_base64: maskBase64 ?? null,
+    ...(maskUrls !== undefined ? { mask_urls: maskUrls } : {}),
   }));
 }
 

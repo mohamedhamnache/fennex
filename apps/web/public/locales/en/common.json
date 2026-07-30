@@ -1461,6 +1461,13 @@
       "restore_face": "Restore Face",
       "upscale": "Upscale"
     },
+    "maskConfirm": {
+      "body": "We highlighted the area we think you mean. Apply it if it looks right, or cancel and refine your prompt.",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "applying": "Applying...",
+      "needsTargetHint": "Tell us which area you mean, then try again."
+    },
     "score": {
       "title": "Score",
       "rescore": "Re-score",
@@ -1525,7 +1532,13 @@
         "Upscale 2x",
         "Relight from the top"
       ]
-    }
+    },
+    "maskConfirmHint": "Check the highlighted area on the canvas.",
+    "maskCancel": "Cancel",
+    "maskApply": "Apply",
+    "applying": "Applying...",
+    "maskConfirmDefault": "Confirm the highlighted area before applying.",
+    "maskTargetDefault": "Which area did you mean?"
   },
   "articleStudio": {
     "write": "Write",

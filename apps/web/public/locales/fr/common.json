@@ -1364,6 +1364,13 @@
       "restore_face": "Restaurer le visage",
       "upscale": "Agrandir"
     },
+    "maskConfirm": {
+      "body": "Nous avons mis en évidence la zone que nous pensons que vous visez. Appliquez-la si elle est correcte, ou annulez et précisez votre description.",
+      "cancel": "Annuler",
+      "apply": "Appliquer",
+      "applying": "Application...",
+      "needsTargetHint": "Indiquez-nous quelle zone vous voulez dire, puis réessayez."
+    },
     "score": {
       "title": "Score",
       "rescore": "Recalculer",
@@ -1428,7 +1435,13 @@
         "Agrandir 2x",
         "Rééclairer depuis le haut"
       ]
-    }
+    },
+    "maskConfirmHint": "Vérifiez la zone mise en évidence sur le canevas.",
+    "maskCancel": "Annuler",
+    "maskApply": "Appliquer",
+    "applying": "Application...",
+    "maskConfirmDefault": "Confirmez la zone mise en évidence avant de l'appliquer.",
+    "maskTargetDefault": "Quelle zone voulez-vous dire ?"
   },
   "articleStudio": {
     "dock": {
