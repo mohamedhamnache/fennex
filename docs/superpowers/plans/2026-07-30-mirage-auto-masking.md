@@ -8,6 +8,34 @@
 
 **Tech Stack:** Python 3.11+, FastAPI, SQLAlchemy 2 async, Pillow, httpx, pytest (pytest-asyncio in auto mode), Alembic.
 
+## Amendment (post-Task 0)
+
+Task 0 completed and settled both assumptions. Its verified constants, to use
+verbatim wherever the text below says "from Task 0 findings":
+
+```
+_SEGMENTER_MODEL        = "tmappdev/lang-segment-anything"
+_SEGMENTER_VERSION      = "891411c38a6ed2d44c004b7b9e44217df7a5b07848f29ddefd2e28bc7cbf93bc"
+_SEGMENTER_IMAGE_FIELD  = "image"
+_SEGMENTER_PROMPT_FIELD = "text_prompt"
+_SEGMENTER_INVERTS      = False
+FLUX_FILL_WHITE_IS_FILL = True   # polarity NOT inverted; the table below stands
+```
+
+Two behaviours the original tasks did not cover, now required:
+
+1. **Binarise the segmenter mask.** Its output is multi-level grey (one level per
+   matched instance, e.g. 0/211/255), and flux-fill treats grey as partial alpha,
+   producing half-blended ghosts. Threshold `>0 -> 255` after any inversion step.
+2. **Prompted-tier masks require confirmation.** The segmenter returns a
+   confident, plausible-sized mask for objects that are not in the image, with no
+   confidence signal available. The prompted tier therefore returns its mask for
+   the user to approve instead of applying it. **The product tier is unaffected
+   and still applies directly.** Re-submission reuses the painted-mask path via a
+   new `mask_url` param, which MUST be validated against this deployment's own
+   storage prefix under `masks/` (or be a `data:` URL) — an unvalidated
+   client-supplied URL is a request-forgery vector.
+
 ## Global Constraints
 
 - **Mask polarity: white = the region to be replaced.** Every mask this code produces or consumes follows this. Getting it backwards inverts every edit silently.
@@ -462,8 +490,14 @@ The core of the feature. Derives a mask from an image, choosing between the free
   - `MASK_OPERATIONS: frozenset[str]` — the five operations that need a mask.
   - `AMBIGUOUS_WITHOUT_TARGET: frozenset[str]` — `{"insert_object", "generative_fill"}`.
   - `AMBIGUITY_QUESTION: str` — the user-facing question.
-  - `@dataclass MaskResolution` with fields `ok: bool`, `mask_url: str | None = None`, `question: str | None = None`, `error: str | None = None`, `tier: str | None = None`.
+  - `@dataclass MaskResolution` with fields `ok: bool`, `mask_url: str | None = None`, `question: str | None = None`, `error: str | None = None`, `tier: str | None = None`, `needs_confirmation: bool = False`.
   - `async def resolve_mask(image_url: str, operation: str, target: str | None, org_id, db) -> MaskResolution`
+  - `def is_own_storage_url(url: str) -> bool` — True for a `data:` URL or a URL under this deployment's own storage prefix with a `masks/` key. Used by Tasks 4 and 5 to validate a client-supplied `mask_url`.
+
+**Amendment applies to this task:** use the verified constants from the
+Amendment section, binarise the segmenter output, and return
+`needs_confirmation=True` (with `ok=False` and the mask populated) from the
+prompted tier. The product tier still returns `ok=True` and applies directly.
 
 - [ ] **Step 1: Write the failing test**
 
