@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Box, Download, Gauge, Loader2, RefreshCw, Sparkles, XCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -36,7 +36,7 @@ const QUALITY_OPTIONS: { value: Product3DQuality; defaultLabel: string }[] = [
   { value: "ultra", defaultLabel: "Ultra" },
 ];
 
-const TEXTURE_OPTIONS: Product3DTextureResolution[] = ["2K", "4K", "8K"];
+const TEXTURE_OPTIONS: Product3DTextureResolution[] = ["1K", "2K"];
 
 // GLB and OBJ only -- see design spec section 3 "Format conversion". FBX and
 // USDZ are deliberately out of scope for this iteration; do not add them
@@ -111,6 +111,16 @@ export function Product3DTab({ projectId }: Product3DTabProps) {
       return status && !PENDING_STATUSES.has(status) ? false : 2500;
     },
   });
+
+  // Credits for this job are metered by the worker once it finishes, not at
+  // enqueue time -- refresh the balance the moment polling sees a terminal
+  // status rather than waiting on staleTime or a window refocus.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (job.data?.status === "completed" || job.data?.status === "failed") {
+      queryClient.invalidateQueries({ queryKey: ["usage-summary"] });
+    }
+  }, [job.data?.status, queryClient]);
 
   function toggleFormat(format: Product3DFormat) {
     setFormats((prev) => (prev.includes(format) ? prev.filter((f) => f !== format) : [...prev, format]));

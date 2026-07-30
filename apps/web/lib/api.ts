@@ -1,4 +1,18 @@
+import { queryClient } from "./queryClient";
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+// Wrap a call to a credit-gated endpoint so the header/sidebar credit meter
+// (CreditMeter, query key "usage-summary") reflects the new balance right
+// after the request succeeds, instead of waiting up to a minute (staleTime)
+// or a window refocus. Only invalidates on success -- a failed request never
+// reaches the backend's metering step, so the old balance is still correct.
+function withCreditRefresh<T>(promise: Promise<T>): Promise<T> {
+  return promise.then((result) => {
+    queryClient.invalidateQueries({ queryKey: ["usage-summary"] });
+    return result;
+  });
+}
 
 export class ApiError extends Error {
   constructor(
@@ -329,10 +343,10 @@ export async function triggerAudit(
   projectId: string,
   crawlJobId?: string,
 ): Promise<{ audit_id: string; status: string }> {
-  return apiClient.post<{ audit_id: string; status: string }>("/audit", {
+  return withCreditRefresh(apiClient.post<{ audit_id: string; status: string }>("/audit", {
     project_id: projectId,
     ...(crawlJobId ? { crawl_job_id: crawlJobId } : {}),
-  });
+  }));
 }
 
 export async function getAuditStatus(auditId: string): Promise<AuditResult> {
@@ -372,10 +386,10 @@ export async function triggerKeywordResearch(
   projectId: string,
   seedKeyword: string,
 ): Promise<{ job_id: string; status: string }> {
-  return apiClient.post<{ job_id: string; status: string }>("/keywords/research", {
+  return withCreditRefresh(apiClient.post<{ job_id: string; status: string }>("/keywords/research", {
     project_id: projectId,
     seed_keyword: seedKeyword,
-  });
+  }));
 }
 
 export async function getKeywordJobStatus(jobId: string): Promise<KeywordResearchJob> {
@@ -618,7 +632,7 @@ export async function generateArticle(
   id: string,
   options?: { provider?: string; model?: string },
 ): Promise<Article> {
-  return apiClient.post<Article>(`/articles/${id}/generate`, options ?? {});
+  return withCreditRefresh(apiClient.post<Article>(`/articles/${id}/generate`, options ?? {}));
 }
 
 export async function saveRevision(
@@ -911,7 +925,7 @@ export async function generateImage(data: {
   use_brand_kit?: boolean;
   social_platform?: string;
 }): Promise<GeneratedImage> {
-  return apiClient.post<GeneratedImage>("/images/generate", data);
+  return withCreditRefresh(apiClient.post<GeneratedImage>("/images/generate", data));
 }
 
 export async function deleteImage(id: string): Promise<void> {
@@ -1503,7 +1517,7 @@ export async function getBacklinkProfile(projectId: string): Promise<BacklinkPro
 }
 
 export async function analyzeBacklinks(projectId: string): Promise<{ job_id: string; status: string }> {
-  return apiClient.post<{ job_id: string; status: string }>(`/backlinks/analyze?project_id=${projectId}`, {});
+  return withCreditRefresh(apiClient.post<{ job_id: string; status: string }>(`/backlinks/analyze?project_id=${projectId}`, {}));
 }
 
 export async function listBacklinks(projectId: string, page: number, isSpam?: boolean): Promise<BacklinkItem[]> {
@@ -1777,7 +1791,7 @@ export async function editImage(
   operation: string,
   params?: Record<string, unknown>,
 ): Promise<EditImageResult> {
-  return apiClient.post<EditImageResult>(`/images/${imageId}/edit`, { operation, params });
+  return withCreditRefresh(apiClient.post<EditImageResult>(`/images/${imageId}/edit`, { operation, params }));
 }
 
 export interface SeoResult {
@@ -1912,7 +1926,7 @@ export interface ProductSceneRequest {
 }
 
 export async function generateProductScene(body: ProductSceneRequest): Promise<GeneratedImage> {
-  return apiClient.post<GeneratedImage>("/images/product-scene", body);
+  return withCreditRefresh(apiClient.post<GeneratedImage>("/images/product-scene", body));
 }
 
 export interface MarketingBannerRequest {
@@ -1926,7 +1940,7 @@ export interface MarketingBannerRequest {
 }
 
 export async function generateMarketingBanners(body: MarketingBannerRequest): Promise<GeneratedImage[]> {
-  return apiClient.post<GeneratedImage[]>("/images/marketing-banners", body);
+  return withCreditRefresh(apiClient.post<GeneratedImage[]>("/images/marketing-banners", body));
 }
 
 // ── Product to 3D ──────────────────────────────────────────────────────────────
@@ -1936,7 +1950,7 @@ export async function generateMarketingBanners(body: MarketingBannerRequest): Pr
 // user-selectable -- see design spec section 3.
 
 export type Product3DQuality = "draft" | "high" | "ultra";
-export type Product3DTextureResolution = "2K" | "4K" | "8K";
+export type Product3DTextureResolution = "1K" | "2K";
 // GLB and OBJ only -- FBX/USDZ are deliberately out of scope, see design spec
 // section 3 "Format conversion". Do not add them here, not even disabled.
 export type Product3DFormat = "glb" | "obj";
@@ -1971,6 +1985,11 @@ export interface Product3DJobStatus {
 export async function startProductTo3D(body: Product3DRequest): Promise<Product3DEnqueueResponse> {
   return apiClient.post<Product3DEnqueueResponse>("/images/product-3d", body);
 }
+
+// Product-3D meters credits asynchronously (the Trellis worker records usage
+// once the job finishes), so refreshing right after enqueue would still show
+// the pre-job balance -- callers should invalidate ["usage-summary"] once
+// getProductTo3DStatus reports a terminal status instead.
 
 export async function getProductTo3DStatus(jobId: string): Promise<Product3DJobStatus> {
   return apiClient.get<Product3DJobStatus>(`/images/product-3d/${jobId}`);
@@ -2064,11 +2083,11 @@ export async function sendAiCommand(
   history: AiCommandMessage[],
   maskBase64?: string,
 ): Promise<GeneratedImage> {
-  return apiClient.post<GeneratedImage>(`/images/${imageId}/ai-command`, {
+  return withCreditRefresh(apiClient.post<GeneratedImage>(`/images/${imageId}/ai-command`, {
     command,
     history,
     mask_base64: maskBase64 ?? null,
-  });
+  }));
 }
 
 // ── Templates ─────────────────────────────────────────────────────────────────
@@ -2093,12 +2112,12 @@ export async function generateFromTemplate(
   slots: Record<string, string>,
   useBrandKit = false,
 ): Promise<GeneratedImage> {
-  return apiClient.post<GeneratedImage>("/images/from-template", {
+  return withCreditRefresh(apiClient.post<GeneratedImage>("/images/from-template", {
     project_id: projectId,
     template_id: templateId,
     slots,
     use_brand_kit: useBrandKit,
-  });
+  }));
 }
 
 // ── Analytics / Scoring ───────────────────────────────────────────────────────
@@ -2135,12 +2154,12 @@ export async function createABTest(
   variantCount: number,
   useBrandKit = false,
 ): Promise<ABTestResult> {
-  return apiClient.post<ABTestResult>("/images/ab-test", {
+  return withCreditRefresh(apiClient.post<ABTestResult>("/images/ab-test", {
     project_id: projectId,
     concept,
     variant_count: variantCount,
     use_brand_kit: useBrandKit,
-  });
+  }));
 }
 
 export interface Trend {
@@ -2160,12 +2179,12 @@ export async function generateFromTrend(
   subject: string,
   useBrandKit = false,
 ): Promise<GeneratedImage> {
-  return apiClient.post<GeneratedImage>("/images/from-trend", {
+  return withCreditRefresh(apiClient.post<GeneratedImage>("/images/from-trend", {
     project_id: projectId,
     trend_id: trendId,
     subject,
     use_brand_kit: useBrandKit,
-  });
+  }));
 }
 
 export interface CompetitorResult {
@@ -2179,12 +2198,12 @@ export async function analyzeCompetitor(
   focus: string,
   useBrandKit = false,
 ): Promise<CompetitorResult> {
-  return apiClient.post<CompetitorResult>("/images/competitor-analysis", {
+  return withCreditRefresh(apiClient.post<CompetitorResult>("/images/competitor-analysis", {
     project_id: projectId,
     competitor_image_url: competitorUrl,
     improvement_focus: focus,
     use_brand_kit: useBrandKit,
-  });
+  }));
 }
 
 // ── Canvas decomposition ─────────────────────────────────────────────────────
@@ -2552,7 +2571,7 @@ export async function removeTrackedKeyword(id: string): Promise<{ ok: boolean }>
   return apiClient.delete<{ ok: boolean }>(`/seo/keywords/${id}`);
 }
 export async function refreshTrackedKeyword(id: string): Promise<{ ok: boolean }> {
-  return apiClient.post<{ ok: boolean }>(`/seo/keywords/${id}/refresh`, {});
+  return withCreditRefresh(apiClient.post<{ ok: boolean }>(`/seo/keywords/${id}/refresh`, {}));
 }
 export async function getKeywordHistory(id: string, days?: number): Promise<KeywordHistory> {
   const params = days != null ? `?days=${days}` : "";
@@ -2593,13 +2612,13 @@ export async function scoreContent(
   keyword: string,
   opts?: { articleId?: string; url?: string; text?: string },
 ): Promise<ContentScore> {
-  return apiClient.post<ContentScore>("/seo/score", {
+  return withCreditRefresh(apiClient.post<ContentScore>("/seo/score", {
     project_id: projectId,
     keyword,
     article_id: opts?.articleId,
     url: opts?.url,
     text: opts?.text,
-  });
+  }));
 }
 
 // ── Article Studio ─────────────────────────────────────────────────────────
@@ -2628,12 +2647,16 @@ export async function transformText(
   mode: TransformMode,
   text: string,
 ): Promise<{ text: string }> {
-  return apiClient.post<{ text: string }>(`/articles/${articleId}/transform`, { mode, text });
+  return withCreditRefresh(apiClient.post<{ text: string }>(`/articles/${articleId}/transform`, { mode, text }));
 }
 
 /**
  * POST to an SSE endpoint and stream text chunks via onChunk; resolves with
  * the final structured payload ({"done": true, "result": ...} frame).
+ *
+ * Both current callers (duneChatStream, generateArticleStream) hit
+ * credit-gated endpoints, so the refresh lives here rather than at each
+ * call site.
  */
 async function streamRequest<T>(
   path: string,
@@ -2680,6 +2703,7 @@ async function streamRequest<T>(
     }
   }
   if (final === null) throw new ApiError(500, "Stream ended unexpectedly");
+  queryClient.invalidateQueries({ queryKey: ["usage-summary"] });
   return final;
 }
 
@@ -2751,11 +2775,11 @@ export async function duneChat(
   history: { role: string; content: string }[],
   body?: string,
 ): Promise<DuneChatResult> {
-  return apiClient.post<DuneChatResult>(`/articles/${articleId}/chat`, {
+  return withCreditRefresh(apiClient.post<DuneChatResult>(`/articles/${articleId}/chat`, {
     question,
     history,
     ...(body !== undefined ? { body } : {}),
-  });
+  }));
 }
 
 export interface ArticleRevision {
