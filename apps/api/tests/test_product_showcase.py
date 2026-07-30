@@ -300,7 +300,7 @@ async def test_run_flux_kontext_derives_dimensions_from_aspect_ratio(
     from app.api.v1.routers.product import _run_flux_kontext
 
     with patch("app.api.v1.routers.product._replicate_run", AsyncMock(return_value="https://cdn.example.com/out.png")), \
-         patch("app.api.v1.routers.product._download_and_upload_url", AsyncMock(return_value="https://cdn.example.com/stored.png")):
+         patch("app.api.v1.routers.product.finalize", AsyncMock(return_value="https://cdn.example.com/stored.png")):
         result = await _run_flux_kontext(
             "https://cdn.example.com/product.png", "a prompt", aspect_ratio=aspect_ratio
         )

@@ -339,15 +339,6 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
         raise TimeoutError(f"Replicate prediction {pred_id} timed out after {_POLL_TIMEOUT}s")
 
 
-async def _download_and_upload_url(url: str, resize_to: tuple[int, int] | None = None) -> str:
-    """Download a result URL, optionally resize, and re-upload to our own storage."""
-    data = await _download(url)
-    img = PILImage.open(io.BytesIO(data)).convert("RGBA")
-    if resize_to and img.size != resize_to:
-        img = img.resize(resize_to, PILImage.LANCZOS)
-    return await _upload_result(img)
-
-
 _MODEL_FLUX_FILL = "black-forest-labs/flux-fill-pro"
 
 # Removal is RECONSTRUCTIVE, never generative. LaMa takes an image and a mask and
@@ -396,6 +387,25 @@ _RELIGHT_PROMPTS = {
 # silently ignored by the model, so anything we cannot map becomes "None"
 # (the model's own no-directional-preference value) rather than a value it
 # will discard.
+# ic-light's width/height are ENUMS: a value outside the list is silently
+# ignored and the model falls back to its 512x640 default -- which is how a
+# 4000px photo came back tiny. Verified against the live schema 2026-07-30.
+_IC_LIGHT_DIMS = (256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960, 1024)
+
+
+def _clamp_to_ic_light_dims(width: int, height: int) -> tuple[int, int]:
+    """Largest allowed dimension not exceeding each input side.
+
+    The model caps at 1024, so a larger input cannot reach parity here; the
+    caller compensates with an upscale pass. Returns the enum's smallest value
+    when the input is below its floor.
+    """
+    def _pick(v: int) -> int:
+        allowed = [d for d in _IC_LIGHT_DIMS if d <= v]
+        return allowed[-1] if allowed else _IC_LIGHT_DIMS[0]
+    return _pick(width), _pick(height)
+
+
 _IC_LIGHT_SOURCES = {
     "top":    "Top Light",
     "bottom": "Bottom Light",
@@ -404,13 +414,29 @@ _IC_LIGHT_SOURCES = {
 }
 
 
-async def replace_background(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
+async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str]) -> dict:
+    """Shared body for the three GENERATIVE mask operations.
+
+    These genuinely want new content, so flux-fill and its high default guidance
+    are correct here -- unlike removal, which must never be prompted. See
+    _MODEL_LAMA.
+
+    output_format is pinned to png: the model defaults to jpg, so every result
+    was arriving already lossy before we stored it.
+    """
     try:
-        output = await _replicate_run(_MODEL_FLUX_FILL, {"image": image_url, "mask": mask_url, "prompt": prompt})
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
+        src_size = dimensions(await _download(image_url))
+        output = await _replicate_run(_MODEL_FLUX_FILL, {
+            "image": image_url, "mask": mask_url, "prompt": prompt,
+            "output_format": "png",
+        })
+        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+    except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
+
+
+async def replace_background(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
+    return await _flux_fill(image_url, prompt, mask_url)
 
 
 async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
@@ -445,31 +471,21 @@ async def smart_erase(image_url: str, mask_url: Optional[str] = None) -> dict:
 
 
 async def insert_object(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
-    try:
-        output = await _replicate_run(_MODEL_FLUX_FILL, {"image": image_url, "mask": mask_url, "prompt": prompt})
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    return await _flux_fill(image_url, prompt, mask_url)
 
 
 async def generative_fill(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
-    try:
-        output = await _replicate_run(_MODEL_FLUX_FILL, {"image": image_url, "mask": mask_url, "prompt": prompt})
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    return await _flux_fill(image_url, prompt, mask_url)
 
 
 async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
     try:
+        src_size = dimensions(await _download(image_url))
         output = await _replicate_run(
             _MODEL_SHADOW,
             {"foreground_image": image_url, "shadow_type": "natural_shadow", "shadow_direction": direction},
         )
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
+        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -484,6 +500,8 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
     verified against the model's live schema.
     """
     try:
+        src_w, src_h = dimensions(await _download(image_url))
+        w, h = _clamp_to_ic_light_dims(src_w, src_h)
         light_prompt = _RELIGHT_PROMPTS.get(direction, f"light from {direction}")
         output = await _replicate_run(
             _MODEL_IC_LIGHT,
@@ -491,32 +509,38 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
                 "subject_image": image_url,
                 "prompt": light_prompt,
                 "light_source": _IC_LIGHT_SOURCES.get(direction, "None"),
+                "width": w,
+                "height": h,
             },
             version=_IC_LIGHT_VERSION,
         )
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
+        policy = (ResolutionPolicy.PRESERVE if (w, h) == (src_w, src_h)
+                  else ResolutionPolicy.UPSCALE)
+        return {"ok": True, "image_url": await finalize(
+            output, source_size=(src_w, src_h), policy=policy)}
+    except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
 
 async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
     try:
+        src_size = dimensions(await _download(image_url))
         output = await _replicate_run(
             _MODEL_CODEFORMER,
             {"image": image_url, "codeformer_fidelity": fidelity},
             version=_CODEFORMER_VERSION,
         )
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
+        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+    except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
 
 async def upscale_image(image_url: str, scale: int = 2) -> dict:
+    """Upscaling exists to CHANGE the size, so parity must not be asserted."""
     try:
+        src_size = dimensions(await _download(image_url))
         output = await _replicate_run(_MODEL_REAL_ESRGAN, {"image": image_url, "scale": scale})
-        url = await _download_and_upload_url(output)
-        return {"ok": True, "image_url": url}
-    except Exception as e:
+        return {"ok": True, "image_url": await finalize(
+            output, source_size=src_size, policy=ResolutionPolicy.ALLOW_CHANGE)}
+    except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}

@@ -78,7 +78,8 @@ async def test_relight_pins_a_version_and_sends_the_models_real_field_names():
 
     run = AsyncMock(return_value="https://replicate.delivery/out.webp")
     with patch("app.services.editing_service._replicate_run", run), \
-         patch("app.services.editing_service._download_and_upload_url",
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize",
                AsyncMock(return_value="https://cdn/out.png")):
         result = await editing_service.relight_image("https://cdn/in.png", "left", 1.0)
 
@@ -104,7 +105,8 @@ async def test_relight_maps_direction_onto_the_light_source_enum():
     ]:
         run = AsyncMock(return_value="https://replicate.delivery/out.webp")
         with patch("app.services.editing_service._replicate_run", run), \
-             patch("app.services.editing_service._download_and_upload_url",
+             patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+             patch("app.services.editing_service.finalize",
                    AsyncMock(return_value="https://cdn/out.png")):
             await editing_service.relight_image("https://cdn/in.png", direction)
         (_, params), _ = run.call_args
@@ -117,7 +119,8 @@ async def test_relight_falls_back_to_a_valid_enum_for_an_unknown_direction():
 
     run = AsyncMock(return_value="https://replicate.delivery/out.webp")
     with patch("app.services.editing_service._replicate_run", run), \
-         patch("app.services.editing_service._download_and_upload_url",
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize",
                AsyncMock(return_value="https://cdn/out.png")):
         await editing_service.relight_image("https://cdn/in.png", "top-right")
     (_, params), _ = run.call_args
@@ -130,7 +133,8 @@ async def test_restore_face_pins_a_version():
 
     run = AsyncMock(return_value="https://replicate.delivery/out.png")
     with patch("app.services.editing_service._replicate_run", run), \
-         patch("app.services.editing_service._download_and_upload_url",
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize",
                AsyncMock(return_value="https://cdn/out.png")):
         await editing_service.restore_face("https://cdn/in.png", 0.7)
 
@@ -184,3 +188,118 @@ async def test_create_prediction_gives_up_after_repeated_429s():
 
     assert resp.status_code == 429
     assert client.post.await_count == 3
+
+
+def _png_bytes(size=(64, 48)) -> bytes:
+    buf = io.BytesIO()
+    PILImage.new("RGB", size, (1, 2, 3)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+async def test_flux_fill_requests_lossless_output():
+    """output_format defaults to jpg -- a lossy round-trip on every mask op."""
+    from app.services import editing_service
+    run = AsyncMock(return_value="https://replicate/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+        await editing_service.replace_background("https://cdn/in.png", "green marble", "https://cdn/m.png")
+    (_, params), _ = run.call_args
+    assert params["output_format"] == "png"
+
+
+async def test_download_and_upload_url_is_gone():
+    """It forced RGBA and re-encoded every result."""
+    from app.services import editing_service
+    assert not hasattr(editing_service, "_download_and_upload_url")
+
+
+async def test_upscale_allows_a_size_change_but_replace_background_does_not():
+    from app.services import editing_service
+    from app.services.image_output import ResolutionPolicy
+    fin = AsyncMock(return_value="https://cdn/o.png")
+    run = AsyncMock(return_value="https://replicate/out.png")
+
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize", fin):
+        await editing_service.upscale_image("https://cdn/in.png", 2)
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.ALLOW_CHANGE
+
+    fin.reset_mock()
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize", fin):
+        await editing_service.replace_background("https://cdn/in.png", "marble", "https://cdn/m.png")
+    assert fin.call_args.kwargs.get("policy", ResolutionPolicy.PRESERVE) is ResolutionPolicy.PRESERVE
+
+
+async def test_every_replicate_op_passes_the_source_size_to_finalize():
+    """Without source_size the resolution assertion is inert."""
+    from app.services import editing_service
+    fin = AsyncMock(return_value="https://cdn/o.png")
+    run = AsyncMock(return_value="https://replicate/out.png")
+    cases = [
+        (editing_service.replace_background, ("https://cdn/in.png", "p", "https://cdn/m.png")),
+        (editing_service.insert_object, ("https://cdn/in.png", "p", "https://cdn/m.png")),
+        (editing_service.generative_fill, ("https://cdn/in.png", "p", "https://cdn/m.png")),
+        (editing_service.restore_face, ("https://cdn/in.png", 0.7)),
+        (editing_service.upscale_image, ("https://cdn/in.png", 2)),
+    ]
+    for fn, args in cases:
+        fin.reset_mock()
+        with patch("app.services.editing_service._replicate_run", run), \
+             patch("app.services.editing_service._download",
+                   AsyncMock(return_value=_png_bytes((800, 600)))), \
+             patch("app.services.editing_service.finalize", fin):
+            await fn(*args)
+        assert fin.call_args.kwargs["source_size"] == (800, 600), f"{fn.__name__} lost source_size"
+
+
+async def test_relight_clamps_dimensions_to_the_ic_light_enum():
+    """width/height are enums; an out-of-enum value is silently ignored and the
+    model falls back to 512x640 -- which is how a large photo came back tiny."""
+    from app.services import editing_service
+    from app.services.image_output import ResolutionPolicy
+
+    allowed = set(editing_service._IC_LIGHT_DIMS)
+    fin = AsyncMock(return_value="https://cdn/o.png")
+    run = AsyncMock(return_value="https://replicate/out.webp")
+
+    # Source below the 1024 cap: clamped down to the nearest allowed value, and
+    # since that is not the source size the result is upscaled back.
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((800, 600)))), \
+         patch("app.services.editing_service.finalize", fin):
+        await editing_service.relight_image("https://cdn/in.png", "left")
+    (_, params), _ = run.call_args
+    assert params["width"] in allowed and params["height"] in allowed
+    assert params["width"] == 768 and params["height"] == 576
+    assert fin.call_args.kwargs["source_size"] == (800, 600)
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.UPSCALE
+
+    # Source ABOVE the cap: clamped to 1024, still upscaled back to the source.
+    fin.reset_mock()
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((4000, 3000)))), \
+         patch("app.services.editing_service.finalize", fin):
+        await editing_service.relight_image("https://cdn/in.png", "top")
+    (_, params), _ = run.call_args
+    assert params["width"] == 1024 and params["height"] == 1024
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.UPSCALE
+
+
+async def test_relight_preserves_when_the_source_is_exactly_an_enum_size():
+    from app.services import editing_service
+    from app.services.image_output import ResolutionPolicy
+
+    fin = AsyncMock(return_value="https://cdn/o.png")
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.webp")), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((768, 512)))), \
+         patch("app.services.editing_service.finalize", fin):
+        await editing_service.relight_image("https://cdn/in.png", "right")
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.PRESERVE
