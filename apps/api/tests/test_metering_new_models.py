@@ -197,3 +197,45 @@ async def test_product_shadow_bills_per_second_at_the_a100_rate():
             feature="generate_shadow", predict_seconds=4.25,
         )
     assert cost == round(4.25 * 1_400)
+
+
+async def test_an_unpriced_per_image_model_warns_loudly(caplog):
+    """Replicate reports image_output_count only for models it bills PER IMAGE,
+    so reaching the duration fallback means an official image model is priced on
+    the wrong axis and is undercharging. That leaked silently once already:
+    nano-banana billed 11 credits by duration against 38 per image, because the
+    rate migration had not been applied to the running database.
+    """
+    import logging
+
+    org = uuid.uuid4()
+    async with Session() as db:
+        with caplog.at_level(logging.WARNING):
+            cost = await meter.record_replicate(
+                db, org_id=org, project_id=None, model="google/nano-banana",
+                predict_seconds=8.0, image_count=1,
+            )
+
+    # still bills something rather than failing the user's edit
+    assert cost == round(8.0 * 1_400)
+    warned = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("google/nano-banana" in m and "image" in m for m in warned), warned
+
+
+async def test_a_priced_per_image_model_does_not_warn(caplog):
+    import logging
+
+    org = uuid.uuid4()
+    async with Session() as db:
+        db.add(CostRate(provider="replicate", unit="image",
+                        model="google/nano-banana", micro_dollars_per_unit=39_000))
+        await db.commit()
+        with caplog.at_level(logging.WARNING):
+            cost = await meter.record_replicate(
+                db, org_id=org, project_id=None, model="google/nano-banana",
+                predict_seconds=8.0, image_count=1,
+            )
+
+    assert cost == 39_000
+    assert not [r for r in caplog.records
+                if r.levelno >= logging.WARNING and "cost rate" in r.getMessage()]

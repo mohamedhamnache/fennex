@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PencilLine, Undo2, Redo2, Sparkles, Eye, Download, BarChart3, Check, SlidersHorizontal, Keyboard, X } from "lucide-react";
@@ -46,6 +46,14 @@ export default function EditPage({
   const [burnError, setBurnError] = useState<string | null>(null);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [hideBaseImage, setHideBaseImage] = useState(false);
+
+  // Picking a tool must reveal the panel that configures it. Without this,
+  // choosing a tool while the Mirage tab is open changed the selection behind
+  // a hidden panel and looked like nothing happened.
+  const selectTool = useCallback((tool: string) => {
+    setSelectedTool(tool);
+    setRightTab("edit");
+  }, []);
 
   useEffect(() => {
     if (selectedTool !== "rotate") setRotationAngle(0);
@@ -557,7 +565,7 @@ export default function EditPage({
       <div className="flex flex-1 overflow-hidden">
         {/* Left — tool rail */}
         <div className="w-[210px] shrink-0 border-r border-border overflow-y-auto bg-card/30">
-          <EditToolsSidebar selected={selectedTool} onSelect={setSelectedTool} />
+          <EditToolsSidebar selected={selectedTool} onSelect={selectTool} />
         </div>
 
         {/* Center — stage */}
@@ -677,7 +685,7 @@ export default function EditPage({
                 onCropAspectChange={setCropAspect}
                 onDuplicateLayer={handleDuplicateLayer}
                 onAlignLayer={handleAlignLayer}
-                onRequestTool={setSelectedTool}
+                onRequestTool={selectTool}
               />
             )}
           </div>

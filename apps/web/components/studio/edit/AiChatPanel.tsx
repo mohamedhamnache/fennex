@@ -131,13 +131,20 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   }, [imageId]);
 
   const mutation = useMutation({
-    mutationFn: ({ command, maskUrls, resumeToken }: { command: string; maskUrls?: string[]; resumeToken?: string }) =>
-      sendAiCommand(imageId, command, history, undefined, maskUrls, resumeToken),
-    onSuccess: (img, { command }) => {
+    // priorHistory is passed explicitly rather than read from state: the user's
+    // message is appended optimistically before this runs, and the request must
+    // carry the conversation as it was BEFORE it, not including it twice.
+    mutationFn: ({ command, priorHistory, maskUrls, resumeToken }: {
+      command: string;
+      priorHistory: AiCommandMessage[];
+      maskUrls?: string[];
+      resumeToken?: string;
+    }) => sendAiCommand(imageId, command, priorHistory, undefined, maskUrls, resumeToken),
+    onSuccess: (img) => {
       const opLabel = img.edit_operation?.replace(/_/g, " ") ?? "edit";
+      // The user turn was posted on submit, so only the reply is added here.
       setHistory((prev) => [
         ...prev,
-        { role: "user", content: command },
         { role: "assistant", content: t("mirage.applied", { op: opLabel }) },
       ]);
       onVersionAdded(img);
@@ -167,17 +174,12 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
         const message = typeof err.detail.message === "string"
           ? err.detail.message
           : t("mirage.maskTargetDefault", "Which area did you mean?");
-        setHistory((prev) => [
-          ...prev,
-          { role: "user", content: command },
-          { role: "assistant", content: message },
-        ]);
+        setHistory((prev) => [...prev, { role: "assistant", content: message }]);
         setInput("");
         return;
       }
       setHistory((prev) => [
         ...prev,
-        { role: "user", content: command },
         {
           role: "assistant",
           content: t("mirage.failed", { error: err instanceof Error ? err.message : t("mirage.unknownError") }),
@@ -197,7 +199,12 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   function submit(command: string) {
     const trimmed = command.trim();
     if (!trimmed || mutation.isPending || pendingConfirm) return;
-    mutation.mutate({ command: trimmed });
+    // Post the user's turn BEFORE the request so the chat reflects what was
+    // asked while it runs, instead of staying empty until the edit finishes.
+    const priorHistory = history;
+    setHistory((prev) => [...prev, { role: "user", content: trimmed }]);
+    setInput("");
+    mutation.mutate({ command: trimmed, priorHistory });
   }
 
   function handleApplyMaskConfirm() {
@@ -209,7 +216,11 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
     setPendingConfirm(null);
     setMaskPreviewError(false);
     canvasRef?.current?.clearMask();
-    mutation.mutate({ command, maskUrls, resumeToken });
+    // Confirming re-sends the SAME command, whose user turn is already on
+    // screen from the original submit -- so it is not posted again, and the
+    // request carries the history as it stood before that turn.
+    const priorHistory = history.filter((m, i) => !(m.role === "user" && i === history.length - 1));
+    mutation.mutate({ command, priorHistory, maskUrls, resumeToken });
   }
 
   function handleCancelMaskConfirm() {

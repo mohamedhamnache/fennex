@@ -151,6 +151,19 @@ async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
         per_image = await rate(db, "replicate", "image", model)
         if per_image:
             cost = round(image_count * per_image)
+        else:
+            # Replicate only reports image_output_count for models it bills PER
+            # IMAGE, so reaching here means an official image model is priced on
+            # the wrong axis and is almost certainly undercharging: nano-banana
+            # billed 11 credits by duration against 38 per image. That is a
+            # margin leak with no symptom -- the edit succeeds and the number is
+            # merely too small -- so say so loudly rather than let it pass.
+            logger.warning(
+                "replicate model %s reports image_output_count=%s but has no "
+                "replicate/image cost rate; falling back to duration pricing, "
+                "which undercharges per-image models. Seed a rate for it.",
+                model, image_count,
+            )
 
     if cost is None and predict_seconds and predict_seconds > 0:
         per_second = await rate(db, "replicate", "second", model)
