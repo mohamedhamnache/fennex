@@ -38,7 +38,9 @@ class Product3DRequest(BaseModel):
     project_id: uuid.UUID
     source_image_url: str
     quality: QualityToken = "high"
-    texture_resolution: TextureResolutionToken = "2K"
+    # 1K == 1024px, which is what the old (mislabelled) "2K" default actually
+    # produced -- keeping the real default unchanged while the label is corrected.
+    texture_resolution: TextureResolutionToken = "1K"
     # A bare list[ModelFormat] already rejects any value outside {glb, obj}
     # with a 422 at the schema boundary -- ModelFormat has no other members.
     formats: list[ModelFormat]

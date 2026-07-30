@@ -34,7 +34,7 @@ AspectRatioToken = Literal["1:1", "4:5", "3:2", "16:9", "9:16"]
 
 QualityToken = Literal["draft", "high", "ultra"]
 
-TextureResolutionToken = Literal["2K", "4K", "8K"]
+TextureResolutionToken = Literal["1K", "2K"]
 
 
 LIGHTING: Final[Mapping[LightingToken, str]] = {
@@ -72,9 +72,8 @@ QUALITY: Final[Mapping[QualityToken, str]] = {
 }
 
 TEXTURE_RESOLUTION: Final[Mapping[TextureResolutionToken, str]] = {
-    "2K": "2K texture resolution",
-    "4K": "4K texture resolution",
-    "8K": "8K texture resolution",
+    "1K": "1K (1024px) texture resolution",
+    "2K": "2K (2048px) texture resolution",
 }
 
 # The 11 required exclusions. Order matters for tests only insofar as index 0

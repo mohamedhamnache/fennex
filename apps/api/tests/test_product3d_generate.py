@@ -70,14 +70,14 @@ async def test_generate_glb_sends_only_documented_trellis_inputs():
     Replicate schema documents (image + the quality/texture knobs)."""
     mock_replicate = AsyncMock(return_value="data:model/gltf-binary;base64,Z2xURi1mYWtlLWJpbmFyeS1wYXlsb2Fk")
     with patch("app.services.product3d.generate._replicate_run", mock_replicate):
-        await generate_glb("https://cdn.fennex.ai/products/sneaker.png", "ultra", "4K")
+        await generate_glb("https://cdn.fennex.ai/products/sneaker.png", "ultra", "2K")
 
     mock_replicate.assert_awaited_once()
     model, input_params = mock_replicate.call_args.args
     assert model == "firtoz/trellis"
     assert "prompt" not in input_params
     assert "negative_prompt" not in input_params
-    assert input_params["image"] == "https://cdn.fennex.ai/products/sneaker.png"
-    assert input_params["texture_size"] == 2048  # 4K
+    assert input_params["images"] == ["https://cdn.fennex.ai/products/sneaker.png"]
+    assert input_params["texture_size"] == 2048  # 2K
     assert input_params["ss_sampling_steps"] == 24  # ultra
     assert input_params["slat_sampling_steps"] == 24

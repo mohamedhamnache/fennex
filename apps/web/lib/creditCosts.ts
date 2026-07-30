@@ -106,9 +106,8 @@ const PRODUCT_3D_SECONDS_PER_STEP = 2.9;
 const PRODUCT_3D_STEPS_FIT_INTERCEPT_SECONDS = -8.4;
 
 const PRODUCT_3D_TEXTURE_OVERHEAD_SECONDS: Record<Product3DTextureResolution, number> = {
-  "2K": 0,
-  "4K": 11.6,
-  "8K": 13.8,
+  "1K": 0,
+  "2K": 11.6,
 };
 
 const GPU_SECOND_RATE_MICROS = 1_400; // Replicate A100 80GB, migration z7persecond4

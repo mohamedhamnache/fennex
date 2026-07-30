@@ -47,8 +47,8 @@ class Product3DJob(Base, TimestampMixin):
     )
     # "draft" | "high" | "ultra" -- app.services.prompting.vocab.QualityToken.
     quality: Mapped[str] = mapped_column(String(20), nullable=False, default="high")
-    # "2K" | "4K" | "8K" -- app.services.prompting.vocab.TextureResolutionToken.
-    texture_resolution: Mapped[str] = mapped_column(String(10), nullable=False, default="2K")
+    # "1K" | "2K" -- app.services.prompting.vocab.TextureResolutionToken.
+    texture_resolution: Mapped[str] = mapped_column(String(10), nullable=False, default="1K")
     # List of ModelFormat values requested at enqueue time, e.g. ["glb", "obj"].
     requested_formats: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     # Per-format output URL, populated as each conversion succeeds, e.g.

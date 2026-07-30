@@ -70,7 +70,11 @@ TRELLIS_VERSION = "e8f6c45206993f297372f5436b90350817bd9b4a0d52d2a76df50c1c8afa2
 
 # Texture resolution token (app.services.prompting.vocab.TextureResolutionToken)
 # -> Trellis's texture_size pixel dimension.
-_TEXTURE_SIZE = {"2K": 1024, "4K": 2048, "8K": 4096}
+# Trellis caps texture_size at 2048 (schema: minimum 512, maximum 2048), so
+# 4096 is not offerable. The tokens name the REAL pixel size: 1024px is a 1K
+# texture and 2048px a 2K one -- the previous "2K"/"4K"/"8K" labels were one
+# step off, so "4K" silently delivered 2048px and "8K" always 422'd.
+_TEXTURE_SIZE = {"1K": 1024, "2K": 2048}
 
 # Quality token (app.services.prompting.vocab.QualityToken) -> Trellis sampling
 # steps. 12/12 is Trellis's own published default (~"high"); draft halves it

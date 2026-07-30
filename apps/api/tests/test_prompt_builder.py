@@ -48,7 +48,7 @@ def test_modules_used_records_provenance():
 
 def test_product_3d_carries_its_own_system_prompt_and_no_photography_direction():
     r = PromptBuilder.build_product_3d(
-        Product3DSpec(quality="high", texture_resolution="4K", product_description=""))
+        Product3DSpec(quality="high", texture_resolution="2K", product_description=""))
     assert r.system_prompt == vocab.PRODUCT_3D_SYSTEM_PROMPT
     assert "senior 3D artist" in r.system_prompt
     assert "watertight" in r.system_prompt.lower()

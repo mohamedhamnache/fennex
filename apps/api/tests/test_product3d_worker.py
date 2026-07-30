@@ -231,3 +231,20 @@ async def test_run_product_3d_success_meters_replicate_floor_credits():
         )).scalar_one()
         assert ou.ai_credits_used >= 10  # MIN_REPLICATE_CREDITS floor
         assert ou.ai_cost_micros == 100_000
+
+
+def test_texture_tokens_stay_within_trellis_limits():
+    """Trellis's schema caps texture_size at 2048 (minimum 512).
+
+    The tokens previously claimed 2K/4K/8K while mapping to 1024/2048/4096, so
+    "8K" always failed with a 422 and "4K" quietly delivered a 2048px texture.
+    Every offered token must map to a size the model will actually accept.
+    """
+    from app.services.product3d.generate import _TEXTURE_SIZE
+
+    assert set(_TEXTURE_SIZE) == {"1K", "2K"}
+    for token, size in _TEXTURE_SIZE.items():
+        assert 512 <= size <= 2048, f"{token} -> {size} is outside Trellis's range"
+    # the label names the real pixel size
+    assert _TEXTURE_SIZE["1K"] == 1024
+    assert _TEXTURE_SIZE["2K"] == 2048
