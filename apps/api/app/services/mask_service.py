@@ -37,6 +37,7 @@ from PIL import Image as PILImage, ImageOps
 
 from app.core.storage import _public_url, _s3_configured, upload_bytes
 from app.services.editing_service import _download, _removebg_cutout, _replicate_run
+from app.services.image_output import dimensions
 from app.services.metering.meter import record_removebg
 
 # Pinned in Task 0 against Replicate's live API. Do not edit from memory.
@@ -110,7 +111,27 @@ async def _upload_mask(mask: PILImage.Image) -> str:
     return await upload_bytes(buf.read(), f"{_MASK_KEY_PREFIX}{uuid.uuid4().hex}.png", "image/png")
 
 
-async def _segment_by_prompt(image_url: str, target: str) -> str:
+def _fit_to_source(mask: PILImage.Image, source_size: tuple[int, int]) -> PILImage.Image:
+    """Resize a mask to match its image exactly.
+
+    A mask whose dimensions differ from the image is NOT a soft error: LaMa
+    accepts it, reports `succeeded`, and returns a NULL output, which surfaced
+    to users as "succeeded but returned no output" with no hint of the cause.
+    Verified against the live model (512x512 mask on an 800x600 image -> null).
+
+    Suppliers routinely hand back a different size than they were given --
+    Remove.bg's `size: "auto"` downscales on lower tiers, and the segmenter
+    outputs at its own resolution -- so this cannot be assumed away.
+
+    NEAREST, not LANCZOS: interpolation would introduce grey values and break
+    the binary invariant that _binarise exists to guarantee.
+    """
+    if mask.size == source_size:
+        return mask
+    return mask.resize(source_size, PILImage.NEAREST)
+
+
+async def _segment_by_prompt(image_url: str, target: str, source_size: tuple[int, int]) -> str:
     """Segment the named object on Replicate and return the uploaded mask URL."""
     output = await _replicate_run(
         _SEGMENTER_MODEL,
@@ -119,6 +140,7 @@ async def _segment_by_prompt(image_url: str, target: str) -> str:
         version=_SEGMENTER_VERSION,
     )
     mask = PILImage.open(io.BytesIO(await _download(output))).convert("L")
+    mask = _fit_to_source(mask, source_size)
     if _SEGMENTER_INVERTS:
         mask = ImageOps.invert(mask)
     # Binarise LAST: inverting a grey level yields another grey level, so
@@ -178,15 +200,19 @@ async def resolve_mask(image_url: str, operation: str, target: Optional[str],
         return MaskResolution(ok=False, question=AMBIGUITY_QUESTION)
 
     try:
+        # Measured from the ORIGINAL image, not from any supplier's output: the
+        # suppliers are exactly what cannot be trusted to preserve size here.
+        source_size = dimensions(await _download(image_url))
+
         if target:
             # ok=False on purpose: the segmenter cannot say "no match", so the
             # user confirms the region before a paid edit runs on it.
             return MaskResolution(ok=False, needs_confirmation=True, tier="prompted",
-                                  mask_url=await _segment_by_prompt(image_url, target))
+                                  mask_url=await _segment_by_prompt(image_url, target, source_size))
 
         cutout = await _removebg_cutout(image_url)
         await record_removebg(db, org_id=org_id, project_id=None, feature="auto_mask")
-        mask = _alpha_to_mask(cutout)
+        mask = _fit_to_source(_alpha_to_mask(cutout), source_size)
         if operation in _INVERT_FOR_PRODUCT_TIER:
             mask = ImageOps.invert(mask)
         return MaskResolution(ok=True, tier="product", mask_url=await _upload_mask(mask))
