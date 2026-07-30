@@ -638,7 +638,12 @@ export default function EditPage({
 
           <div className="flex-1 overflow-hidden">
             {rightTab === "assistant" ? (
-              <AiChatPanel imageId={editTargetId} onVersionAdded={handleVersionAdded} canvasRef={canvasRef} />
+              <AiChatPanel
+                imageId={editTargetId}
+                onVersionAdded={handleVersionAdded}
+                canvasRef={canvasRef}
+                onProcessingChange={setIsAiProcessing}
+              />
             ) : (
               <EditControlsPanel
                 tool={selectedTool}
