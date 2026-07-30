@@ -95,9 +95,9 @@ async def test_absent_target_uses_the_free_product_tier():
 @pytest.mark.asyncio
 async def test_present_target_uses_the_prompted_tier():
     cutout = AsyncMock(return_value=_cutout())
+    segment = AsyncMock(return_value="https://cdn/seg.png")
     with patch("app.services.mask_service._removebg_cutout", cutout), \
-         patch("app.services.mask_service._segment_by_prompt",
-               AsyncMock(return_value="https://cdn/seg.png")):
+         patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", "remove_object",
                                  "the person on the left", uuid.uuid4(), None)
 
@@ -108,6 +108,9 @@ async def test_present_target_uses_the_prompted_tier():
     assert res.tier == "prompted"
     assert res.mask_url == "https://cdn/seg.png"
     cutout.assert_not_awaited()  # never pays for the free tier it did not use
+    # Both arguments are URL-ish strings, so transposing them still runs and
+    # still returns a mask -- it just segments the wrong thing. Pin the order.
+    segment.assert_awaited_once_with("https://cdn/x.png", "the person on the left")
 
 
 @pytest.mark.asyncio
@@ -119,6 +122,68 @@ async def test_product_tier_does_not_need_confirmation():
 
     assert res.ok is True
     assert res.needs_confirmation is False
+
+
+# ---- metering -------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_product_tier_meters_the_removebg_call():
+    org_id, db = uuid.uuid4(), object()
+    record = AsyncMock(return_value=200_000)
+    with patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+         patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
+         patch("app.services.mask_service.record_removebg", record):
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None, org_id, db)
+
+    assert res.ok is True
+    record.assert_awaited_once()
+    args, kwargs = record.call_args
+    assert args[0] is db
+    assert kwargs["org_id"] == org_id
+    # Tags the spend so the cost dashboard can separate auto-masking from the
+    # user-initiated background removals that share the removebg provider.
+    assert kwargs["feature"] == "auto_mask"
+
+
+@pytest.mark.asyncio
+async def test_prompted_tier_does_not_meter_removebg():
+    record = AsyncMock()
+    with patch("app.services.mask_service._segment_by_prompt",
+               AsyncMock(return_value="https://cdn/seg.png")), \
+         patch("app.services.mask_service.record_removebg", record):
+        await resolve_mask("https://cdn/x.png", "remove_object", "the car",
+                           uuid.uuid4(), None)
+
+    record.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_failed_removebg_call_bills_nothing():
+    """A supplier that raised did not process an image, so it must not bill.
+
+    Holds only because record_removebg is awaited AFTER the cutout returns;
+    nothing but this test stops a refactor from reordering the two.
+    """
+    record = AsyncMock()
+    with patch("app.services.mask_service._removebg_cutout",
+               AsyncMock(side_effect=RuntimeError("remove.bg 402"))), \
+         patch("app.services.mask_service.record_removebg", record):
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None,
+                                 uuid.uuid4(), None)
+
+    assert res.ok is False
+    record.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_an_ambiguous_request_meters_nothing():
+    record = AsyncMock()
+    with patch("app.services.mask_service.record_removebg", record):
+        res = await resolve_mask("https://cdn/x.png", "insert_object", None,
+                                 uuid.uuid4(), None)
+
+    assert res.ok is False
+    record.assert_not_awaited()
 
 
 # ---- segmenter output binarisation ----------------------------------------
@@ -141,6 +206,38 @@ async def test_segmenter_output_is_binarised():
     levels = [mask.getpixel((x, 0)) for x in range(3)]
     assert set(levels) == {0, 255}
     assert levels == [0, 255, 255]
+
+
+@pytest.mark.asyncio
+async def test_segmenter_output_is_binarised_after_inverting(monkeypatch):
+    """Pin the ORDER of the invert and binarise steps, not just their presence.
+
+    At the live _SEGMENTER_INVERTS = False the invert branch never runs, so the
+    test above passes whichever side of the `if` _binarise sits on. Forcing the
+    invert on separates the two orderings by exact value:
+
+      invert -> binarise:  [0, 211, 255] -> [255, 44, 0]  -> [255, 255, 0]
+      binarise -> invert:  [0, 211, 255] -> [0, 255, 255] -> [255, 0, 0]
+
+    Both are two-level, so only the exact pixels distinguish them. The module
+    mandates invert-then-binarise; [255, 255, 0] is that.
+
+    Note this also shows why the mandated order is only sound for a segmenter
+    whose output is already binary when it inverts -- here the background has
+    gone white and one matched instance has gone black. See the constraint
+    comment in _segment_by_prompt before flipping _SEGMENTER_INVERTS.
+    """
+    monkeypatch.setattr(mask_service, "_SEGMENTER_INVERTS", True)
+    upload = AsyncMock(return_value="https://cdn/seg.png")
+    with patch("app.services.mask_service._replicate_run", AsyncMock(return_value="https://cdn/raw.png")), \
+         patch("app.services.mask_service._download", AsyncMock(return_value=_png_bytes([0, 211, 255]))), \
+         patch("app.services.mask_service._upload_mask", upload):
+        await mask_service._segment_by_prompt("https://cdn/x.png", "the car")
+
+    mask = _uploaded_mask(upload)
+    levels = [mask.getpixel((x, 0)) for x in range(3)]
+    assert set(levels) == {0, 255}
+    assert levels == [255, 255, 0]
 
 
 @pytest.mark.asyncio
@@ -247,6 +344,35 @@ def test_is_own_storage_url_rejects_same_prefix_outside_masks(s3_endpoint_storag
     assert is_own_storage_url(storage._public_url("uploads/secret.png")) is False
     # A key that merely mentions masks/ deeper down is not under masks/.
     assert is_own_storage_url(storage._public_url("uploads/masks/secret.png")) is False
+
+
+def test_is_own_storage_url_rejects_path_traversal_out_of_masks(s3_aws_storage):
+    """masks/../uploads/x.png starts with masks/ but does not stay there.
+
+    httpx normalises the path away before the fetch, so the key that actually
+    gets requested is uploads/x.png -- another tenant's object. Host
+    confinement still holds, but the masks/ constraint is the whole point of
+    the guard.
+    """
+    assert is_own_storage_url(
+        "https://fennex-media.s3.eu-west-3.amazonaws.com/masks/../uploads/other-org.png"
+    ) is False
+    assert is_own_storage_url(storage._public_url("masks/../uploads/other-org.png")) is False
+    # Percent-encoded traversal must not slip past a raw substring check.
+    assert is_own_storage_url(storage._public_url("masks/%2e%2e/uploads/other-org.png")) is False
+    assert is_own_storage_url(storage._public_url("masks/a/../../uploads/x.png")) is False
+
+
+def test_is_own_storage_url_rejects_userinfo_and_bucket_prefix_confusion(s3_aws_storage):
+    """Regressions the guard already resists -- keep them resisted."""
+    # userinfo trick: the real host is evil.com.
+    assert is_own_storage_url(
+        "https://fennex-media.s3.eu-west-3.amazonaws.com@evil.com/masks/x.png"
+    ) is False
+    # A different bucket that merely shares our bucket's name as a prefix.
+    assert is_own_storage_url(
+        "https://fennex.s3.eu-west-3.amazonaws.com/masks/x.png"
+    ) is False
 
 
 def test_is_own_storage_url_rejects_junk(s3_endpoint_storage):

@@ -31,6 +31,7 @@ import io
 import uuid
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import unquote
 
 from PIL import Image as PILImage, ImageOps
 
@@ -120,7 +121,16 @@ async def _segment_by_prompt(image_url: str, target: str) -> str:
     mask = PILImage.open(io.BytesIO(await _download(output))).convert("L")
     if _SEGMENTER_INVERTS:
         mask = ImageOps.invert(mask)
-    # Binarise LAST: inverting a grey level yields another grey level.
+    # Binarise LAST: inverting a grey level yields another grey level, so
+    # binarising first would leave a grey mask after the invert.
+    #
+    # CONSTRAINT for whoever flips _SEGMENTER_INVERTS to True: this ordering is
+    # only sound for a segmenter whose output is ALREADY binary when it
+    # inverts. Invert-then-binarise on the multi-level [0, 211, 255] gives
+    # [255, 255, 0] -- the background turns white and one matched instance
+    # turns black, which is the wrong region entirely. A multi-level inverting
+    # segmenter needs binarise -> invert instead, and the polarity tests here
+    # will not tell you which you have. Verify against the live model first.
     return await _upload_mask(_binarise(mask))
 
 
@@ -146,7 +156,14 @@ def is_own_storage_url(url: str) -> bool:
     prefix = _public_url("")
     if not url.startswith(prefix):
         return False
-    return url[len(prefix):].startswith(_MASK_KEY_PREFIX)
+    key = url[len(prefix):]
+    # "masks/../uploads/other-org.png" satisfies startswith("masks/") but httpx
+    # normalises the path away before fetching, which would walk the key out of
+    # masks/ and into another tenant's uploads. Percent-decode too, so %2e%2e
+    # cannot smuggle the same traversal past a raw substring check.
+    if ".." in key or ".." in unquote(key):
+        return False
+    return key.startswith(_MASK_KEY_PREFIX)
 
 
 async def resolve_mask(image_url: str, operation: str, target: Optional[str],
