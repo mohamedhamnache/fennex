@@ -982,10 +982,14 @@ async def test_resume_does_not_reexecute_the_already_completed_step():
         applied=["replace_background"], step_index=1, mask_step_index=1, mask_queue=[None],
         org_id=str(org_id), image_id=str(image_id),
     )
+    # ABSOLUTE mask_urls: position 0 belongs to the already-applied
+    # replace_background step and is irrelevant now; position 1 (the
+    # remove_object step's absolute mask_step_index) carries the newly
+    # approved mask.
     body = ai_command.AiCommandRequest(
         command="replace the background with marble and remove the person on the left",
         resume_token="tok-b",
-        mask_urls=["data:image/png;base64,AAAA"],
+        mask_urls=[None, "data:image/png;base64,AAAA"],
     )
 
     replace_bg_mock = AsyncMock(return_value={"ok": True, "image_url": "SHOULD-NOT-RUN"})
@@ -1096,7 +1100,12 @@ async def test_resume_unknown_token_fails_cleanly_without_replanning():
 
 
 @pytest.mark.asyncio
-async def test_resume_deletes_token_after_fully_successful_chain():
+async def test_resume_deletes_the_token_on_load_before_any_step_dispatches():
+    """Deletion happens as soon as the token is loaded and verified -- BEFORE
+    any step of the resumed chain runs, not "after the chain succeeds" (the
+    previous name of this test claimed the latter, which is not what it
+    exercises: the token would be deleted the same way even if a later step
+    in this test failed)."""
     image_id = uuid.uuid4()
     org_id = uuid.uuid4()
     source = _resume_source(image_id)
@@ -1162,3 +1171,106 @@ async def test_resume_that_stops_again_stores_a_fresh_snapshot_and_returns_its_t
     assert exc.value.detail["code"] == "mask_confirm_required"
     assert exc.value.detail["resume_token"] == "tok-h"
     store_mock.assert_awaited_once()
+
+    # Inspect the actual snapshot that was stored -- an off-by-one at the
+    # store call site (e.g. `step_index=index + 1`) would silently skip
+    # re-running the stopped step on the next resume, and asserting only
+    # that store_snapshot was called (as this test previously did) would not
+    # catch that: step_index must point at the step that STOPPED (1,
+    # remove_object) and not the one after it, current_url must be the image
+    # as of the completed steps only (unchanged from the incoming snapshot,
+    # since step 1 never ran), and applied must list exactly the operations
+    # already run.
+    (stored_snapshot,), _ = store_mock.call_args
+    assert stored_snapshot.step_index == 1
+    assert stored_snapshot.current_url == "https://cdn/step0-result.png"
+    assert stored_snapshot.applied == ["replace_background"]
+
+
+@pytest.mark.asyncio
+async def test_resume_second_mask_step_confirmation_uses_absolute_index_and_skips_the_segmenter():
+    """Finding (b) regression: mask_urls is ABSOLUTE across the whole chain,
+    matching the absolute step_index a mask_confirm_required 422 reports --
+    a resume request must NOT rebase it relative to the step that stopped.
+
+    Chain: [remove_object (mask-requiring step 0, already applied/confirmed),
+    replace_background (mask-requiring step 1 -- the SECOND mask-requiring
+    step, the one that stopped)]. The client supplies the newly approved
+    mask at absolute position 1, exactly the step_index the earlier 422
+    reported. A rebasing bug would look for it at position 0 relative to the
+    stop point, find nothing there, and call resolve_mask (the paid
+    segmenter) again -- reproducing the infinite, billed confirm loop this
+    fix exists to prevent."""
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    snapshot = ChainSnapshot(
+        steps=[
+            {"operation": "remove_object", "params": {"target": "the cup"}},
+            {"operation": "replace_background", "params": {"prompt": "marble"}},
+        ],
+        current_url="https://cdn/step0-result.png",
+        applied=["remove_object"], step_index=1, mask_step_index=1,
+        mask_queue=["https://cdn/masks/step0-used.png"],
+        org_id=str(org_id), image_id=str(image_id),
+    )
+    # Absolute mask_urls: position 0 belonged to the already-applied step 0
+    # and is irrelevant now; position 1 is the mask just approved for step 1
+    # -- exactly the step_index the mask_confirm_required 422 reported.
+    body = ai_command.AiCommandRequest(
+        command="remove the cup and replace the background with marble",
+        resume_token="tok-second-mask-step",
+        mask_urls=[None, "data:image/png;base64,CONFIRMED"],
+    )
+
+    resolve_mock = AsyncMock()
+    replace_bg_mock = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/final.png"})
+    with patch("app.api.v1.routers.ai_command.chain_resume.load_snapshot", AsyncMock(return_value=snapshot)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.delete_snapshot", AsyncMock()), \
+         patch("app.api.v1.routers.ai_command.resolve_mask", resolve_mock), \
+         patch("app.services.editing_service.replace_background", replace_bg_mock), \
+         patch("app.api.v1.routers.ai_command.ImageOut.model_validate", return_value="ignored"):
+        await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    resolve_mock.assert_not_awaited()
+    replace_bg_mock.assert_awaited_once_with(
+        "https://cdn/step0-result.png", "marble", "data:image/png;base64,CONFIRMED",
+    )
+
+
+@pytest.mark.asyncio
+async def test_store_snapshot_failure_degrades_to_the_original_422_without_a_resume_token():
+    """Finding (a): a Redis outage (store_snapshot raising, e.g. because
+    arq.create_pool cannot connect) must not replace the mask_confirm_required
+    422 with a raw 500 -- that would make mask confirmation unavailable
+    outright, a regression versus the pre-fix behaviour (which still let
+    users confirm, just without double-charge protection). The client must
+    still receive the ORIGINAL 422 with code mask_confirm_required, just
+    without a resume_token, so it falls back to re-planning exactly as it
+    did before this feature existed."""
+    image_id = uuid.uuid4()
+    org_id = uuid.uuid4()
+    source = _resume_source(image_id)
+    db = _resume_db(source)
+    current_user = SimpleNamespace(org_id=org_id)
+
+    body = ai_command.AiCommandRequest(command="remove the person on the left")
+
+    derived = MaskResolution(ok=False, needs_confirmation=True,
+                              mask_url="https://cdn/derived.png", tier="prompted")
+    with patch("app.api.v1.routers.ai_command.parse_ai_command_steps", AsyncMock(return_value={
+                   "steps": [{"operation": "remove_object", "params": {"target": "the person on the left"}}],
+               })), \
+         patch("app.api.v1.routers.ai_command.project_locale", AsyncMock(return_value="en")), \
+         patch("app.api.v1.routers.ai_command.resolve_mask", AsyncMock(return_value=derived)), \
+         patch("app.api.v1.routers.ai_command.chain_resume.store_snapshot",
+               AsyncMock(side_effect=ConnectionError("redis unavailable"))):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command.ai_command(image_id, body, current_user, db, None)
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_confirm_required"
+    assert "resume_token" not in exc.value.detail

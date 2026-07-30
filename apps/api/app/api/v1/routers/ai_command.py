@@ -49,7 +49,17 @@ class AiCommandRequest(BaseModel):
     # An ORDERED QUEUE of masks the client is re-submitting on successive
     # confirmation round trips (see _next_step_mask / _mask_for_step's
     # needs_confirmation branch, which reports step_index so the client
-    # knows which position to fill next). The Nth mask-requiring step in the
+    # knows which position to fill next). ABSOLUTE across the whole chain,
+    # on a fresh request AND on a resume_token request alike: entry N is
+    # always the Nth mask-requiring step's mask, exactly matching the
+    # (also absolute) step_index a mask_confirm_required 422 reports. A
+    # resume request does NOT rebase this list relative to wherever
+    # execution stopped -- doing that previously caused an infinite, billed
+    # confirm loop, since the client writes an approved mask at the
+    # absolute index the 422 gave it, and a rebased lookup on the server
+    # would find nothing there and call the paid segmenter again. See
+    # _merge_resume_mask_queue for how a resume request's queue is combined
+    # with the one cached in its snapshot. The Nth mask-requiring step in the
     # chain consumes queue[N]; a step beyond the queue's length auto-resolves
     # normally. A `null` ENTRY (as opposed to the whole field being null)
     # means "no client-supplied mask for this position" -- e.g. a
@@ -257,24 +267,30 @@ async def _next_step_mask(step: dict, image_url: str, mask_queue: list[Optional[
 
 
 def _merge_resume_mask_queue(
-    snapshot_queue: list[Optional[str]], mask_step_index: int, fresh_queue: list[Optional[str]],
+    snapshot_queue: list[Optional[str]], fresh_queue: list[Optional[str]],
 ) -> list[Optional[str]]:
     """Combine the mask queue cached in a resume snapshot with the masks this
     resume request is supplying.
 
-    A resume request's own mask_urls is relative to the STOPPED step, not the
-    whole original chain -- entry 0 is the mask the client is confirming for
-    the step that raised mask_confirm_required (mask_step_index in the
-    snapshot), entry 1 (if any) front-loads the step after that, and so on.
-    Positions before mask_step_index belong to already-applied steps and are
-    left as whatever the snapshot had (never read again by the resumed
-    loop); positions at or after mask_step_index are overwritten by
-    fresh_queue so the newly confirmed mask actually lands on the step that
-    asked for it.
+    mask_urls is ABSOLUTE across the whole chain on every request, fresh or
+    resumed -- entry N is always the Nth mask-requiring step's mask, exactly
+    matching the (also absolute) step_index a mask_confirm_required 422
+    reports (see _mask_for_step). A resume request must NOT rebase its
+    mask_urls relative to the step that stopped: the frontend accumulates
+    confirmed masks by the absolute step_index the 422 gave it, so a rebased
+    lookup here would find nothing at the position the client actually
+    filled in and call resolve_mask (the paid segmenter) again -- an
+    infinite, billed confirm loop, which is the exact failure the resume
+    token exists to prevent.
+
+    fresh_queue's entries simply overwrite snapshot_queue's at the SAME
+    absolute position (extending it if fresh_queue reaches further) -- this
+    lets a client resend only the newly confirmed entry (or entries) while
+    still benefiting from whatever the snapshot already had at earlier,
+    already-applied positions.
     """
     merged = list(snapshot_queue)
-    for offset, value in enumerate(fresh_queue):
-        position = mask_step_index + offset
+    for position, value in enumerate(fresh_queue):
         if position < len(merged):
             merged[position] = value
         else:
@@ -338,7 +354,7 @@ async def ai_command(
         applied = list(snapshot.applied)
         start_index = snapshot.step_index
         mask_step_index = snapshot.mask_step_index
-        mask_queue = _merge_resume_mask_queue(snapshot.mask_queue, snapshot.mask_step_index, request_mask_queue)
+        mask_queue = _merge_resume_mask_queue(snapshot.mask_queue, request_mask_queue)
     else:
         parsed = await parse_ai_command_steps(body.command, body.history, current_user.org_id, db, locale=await project_locale(source.project_id, db))
 
@@ -374,16 +390,27 @@ async def ai_command(
                 # Snapshot progress BEFORE this step (it has not run yet) so
                 # the next request can resume exactly here without redoing
                 # any already-applied, already-paid-for step.
-                token = await chain_resume.store_snapshot(chain_resume.ChainSnapshot(
-                    steps=steps,
-                    current_url=current_url,
-                    applied=applied,
-                    step_index=index,
-                    mask_step_index=mask_step_index,
-                    mask_queue=mask_queue,
-                    org_id=str(current_user.org_id),
-                    image_id=str(image_id),
-                ))
+                try:
+                    token = await chain_resume.store_snapshot(chain_resume.ChainSnapshot(
+                        steps=steps,
+                        current_url=current_url,
+                        applied=applied,
+                        step_index=index,
+                        mask_step_index=mask_step_index,
+                        mask_queue=mask_queue,
+                        org_id=str(current_user.org_id),
+                        image_id=str(image_id),
+                    ))
+                except Exception:
+                    # Redis unavailable: degrade to the pre-resume-token
+                    # behaviour rather than letting the store's exception
+                    # replace this 422 with a raw 500. Re-raise the ORIGINAL
+                    # exc, unchanged (no resume_token) -- the client still
+                    # gets mask_confirm_required and can still confirm the
+                    # mask, just by re-planning and re-executing earlier
+                    # steps again, which is strictly better than mask
+                    # confirmation being unavailable outright.
+                    raise exc
                 exc.detail = {**exc.detail, "resume_token": token}
             raise
         fn = _DISPATCH[operation]
