@@ -65,6 +65,82 @@ async def test_apply_filter_unknown(mock_download_and_upload):
     assert "Unknown filter" in result["error"]
 
 
+async def test_relight_pins_a_version_and_sends_the_models_real_field_names():
+    """zsxkib/ic-light has no hot deployment, so calling it without `version=`
+    hits /v1/models/{owner}/{name}/predictions and returns a bare 404 -- the
+    exact failure a user hit asking Mirage to add light to a photo.
+
+    Pinning the version alone is not enough: the model requires `subject_image`
+    (not `image`) and has no `multiplier` field at all, so the old payload would
+    have turned the 404 into a 422.
+    """
+    from app.services import editing_service
+
+    run = AsyncMock(return_value="https://replicate.delivery/out.webp")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download_and_upload_url",
+               AsyncMock(return_value="https://cdn/out.png")):
+        result = await editing_service.relight_image("https://cdn/in.png", "left", 1.0)
+
+    assert result["ok"] is True
+    (model, params), kwargs = run.call_args
+    assert model == "zsxkib/ic-light"
+    assert kwargs["version"] == editing_service._IC_LIGHT_VERSION
+    assert params["subject_image"] == "https://cdn/in.png"
+    assert "image" not in params        # not the model's field name
+    assert "multiplier" not in params   # field does not exist on this model
+    assert params["prompt"]
+
+
+async def test_relight_maps_direction_onto_the_light_source_enum():
+    """light_source is an enum: None | Left Light | Right Light | Top Light |
+    Bottom Light. A free-form direction string is silently ignored by the model."""
+    from app.services import editing_service
+
+    valid = {"None", "Left Light", "Right Light", "Top Light", "Bottom Light"}
+    for direction, expected in [
+        ("top", "Top Light"), ("bottom", "Bottom Light"),
+        ("left", "Left Light"), ("right", "Right Light"),
+    ]:
+        run = AsyncMock(return_value="https://replicate.delivery/out.webp")
+        with patch("app.services.editing_service._replicate_run", run), \
+             patch("app.services.editing_service._download_and_upload_url",
+                   AsyncMock(return_value="https://cdn/out.png")):
+            await editing_service.relight_image("https://cdn/in.png", direction)
+        (_, params), _ = run.call_args
+        assert params["light_source"] == expected
+        assert params["light_source"] in valid
+
+
+async def test_relight_falls_back_to_a_valid_enum_for_an_unknown_direction():
+    from app.services import editing_service
+
+    run = AsyncMock(return_value="https://replicate.delivery/out.webp")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download_and_upload_url",
+               AsyncMock(return_value="https://cdn/out.png")):
+        await editing_service.relight_image("https://cdn/in.png", "top-right")
+    (_, params), _ = run.call_args
+    assert params["light_source"] in {"None", "Left Light", "Right Light", "Top Light", "Bottom Light"}
+
+
+async def test_restore_face_pins_a_version():
+    """sczhou/codeformer also has no hot deployment -- same 404 as ic-light."""
+    from app.services import editing_service
+
+    run = AsyncMock(return_value="https://replicate.delivery/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download_and_upload_url",
+               AsyncMock(return_value="https://cdn/out.png")):
+        await editing_service.restore_face("https://cdn/in.png", 0.7)
+
+    (model, params), kwargs = run.call_args
+    assert model == "sczhou/codeformer"
+    assert kwargs["version"] == editing_service._CODEFORMER_VERSION
+    assert params["image"] == "https://cdn/in.png"
+    assert params["codeformer_fidelity"] == 0.7
+
+
 def _replicate_429(retry_after: float = 0.001) -> httpx.Response:
     return httpx.Response(
         429,

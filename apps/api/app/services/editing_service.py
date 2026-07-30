@@ -380,9 +380,23 @@ _MODEL_FLUX_FILL = "black-forest-labs/flux-fill-pro"
 # This model requires a pinned version hash (no hot deployment on the model-specific endpoint)
 _MODEL_SD_INPAINT = "stability-ai/stable-diffusion-inpainting"
 _SD_INPAINT_VERSION = "95b7223104132402a9ae91cc677285bc5eb997834bd2349fa486f53910fd68b3"
+# BROKEN: this model does not exist on Replicate (GET /v1/models/fal-ai/shadow-generation
+# returns 404), so generate_shadow can never succeed. There is no version to pin.
+# Needs a real replacement model chosen and its schema verified before the
+# generate_shadow operation is offered again.
 _MODEL_SHADOW = "fal-ai/shadow-generation"
+
+# Like _MODEL_SD_INPAINT above, these two have NO hot deployment: calling
+# /v1/models/{owner}/{name}/predictions returns a bare
+# {"detail":"The requested resource could not be found.","status":404}. They
+# must go through /v1/predictions with a pinned version instead. Verified
+# against Replicate's live API on 2026-07-30 -- do not drop the version.
+# (nightmareai/real-esrgan DOES have a deployment and is deliberately left
+# unpinned; its hot endpoint answers 422 on an empty input, not 404.)
 _MODEL_IC_LIGHT = "zsxkib/ic-light"
+_IC_LIGHT_VERSION = "d41bcb10d8c159868f4cfbd7c6a2ca01484f7d39e4613419d5952c61562f1ba7"
 _MODEL_CODEFORMER = "sczhou/codeformer"
+_CODEFORMER_VERSION = "cc4956dd26fa5a7185d5660cc9100fab1b8070a1d1654a8bb5eb6d443b020bb2"
 _MODEL_REAL_ESRGAN = "nightmareai/real-esrgan"
 
 _RELIGHT_PROMPTS = {
@@ -390,6 +404,17 @@ _RELIGHT_PROMPTS = {
     "bottom": "warm ambient light glowing from below",
     "left":   "soft diffused light from the left side",
     "right":  "soft diffused light from the right side",
+}
+
+# ic-light's `light_source` is an enum -- a free-form direction string is
+# silently ignored by the model, so anything we cannot map becomes "None"
+# (the model's own no-directional-preference value) rather than a value it
+# will discard.
+_IC_LIGHT_SOURCES = {
+    "top":    "Top Light",
+    "bottom": "Bottom Light",
+    "left":   "Left Light",
+    "right":  "Right Light",
 }
 
 
@@ -546,12 +571,24 @@ async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
 
 
 async def relight_image(image_url: str, direction: str = "top", intensity: float = 1.0) -> dict:
-    # ic-light expects a text prompt describing the lighting and a multiplier for intensity
+    """Relight via ic-light.
+
+    `intensity` is accepted for call-compatibility but NOT sent: ic-light's
+    schema has no multiplier/intensity field. The old payload sent one anyway,
+    along with `image` instead of the required `subject_image` -- so even once
+    the missing version was supplied the call would have 422'd. Field names
+    verified against the model's live schema.
+    """
     try:
         light_prompt = _RELIGHT_PROMPTS.get(direction, f"light from {direction}")
         output = await _replicate_run(
             _MODEL_IC_LIGHT,
-            {"image": image_url, "prompt": light_prompt, "multiplier": intensity},
+            {
+                "subject_image": image_url,
+                "prompt": light_prompt,
+                "light_source": _IC_LIGHT_SOURCES.get(direction, "None"),
+            },
+            version=_IC_LIGHT_VERSION,
         )
         url = await _download_and_upload_url(output)
         return {"ok": True, "image_url": url}
@@ -561,7 +598,11 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
 
 async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
     try:
-        output = await _replicate_run(_MODEL_CODEFORMER, {"image": image_url, "codeformer_fidelity": fidelity})
+        output = await _replicate_run(
+            _MODEL_CODEFORMER,
+            {"image": image_url, "codeformer_fidelity": fidelity},
+            version=_CODEFORMER_VERSION,
+        )
         url = await _download_and_upload_url(output)
         return {"ok": True, "image_url": url}
     except Exception as e:
