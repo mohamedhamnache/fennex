@@ -201,6 +201,40 @@ export function EditControlsPanel({
   // needs_target — the derivation had no object to lock onto; surfaced as a question, not a mask.
   const [targetMessage, setTargetMessage] = useState<string | null>(null);
 
+  // The tinted mask pixels drawn by showMaskPreview() live on EditCanvas's
+  // shared canvas, not in this component -- so abandoning a pending
+  // confirmation (rather than explicit Apply/Cancel) must still clear them,
+  // or a later, unrelated Save silently reads them back via getMaskBase64()
+  // as if the user had just painted them.
+  //
+  // Switching the right-hand tab to Mirage unmounts this whole panel (see
+  // page.tsx's rightTab ternary), which drops pendingConfirm without ever
+  // running Cancel's handler. A ref mirrors the latest pendingConfirm so the
+  // unmount cleanup below (registered once, on mount) reads its value at
+  // unmount time rather than whatever it was when the effect was created.
+  const pendingConfirmRef = useRef(pendingConfirm);
+  useEffect(() => { pendingConfirmRef.current = pendingConfirm; }, [pendingConfirm]);
+  useEffect(() => {
+    return () => {
+      if (pendingConfirmRef.current) canvasRef.current?.clearMask();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Switching the displayed image/version (undo, redo, VersionStrip) doesn't
+  // unmount this panel and doesn't change `tool`, so neither the effect above
+  // nor the tool-switch reset effect below would catch a pending confirmation
+  // left over from the PREVIOUS image. Left alone, Apply would resubmit an
+  // old image's mask_url against a new imageId. Reset synchronously on the
+  // prop change rather than depending on the new <img>'s onLoad -> syncCanvas
+  // to clear the pixels, which is a race, not a guarantee.
+  useEffect(() => {
+    setPendingConfirm(null);
+    setTargetMessage(null);
+    canvasRef.current?.clearMask();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageId]);
+
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
   const [saturation, setSaturation] = useState(0);

@@ -60,6 +60,31 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, pendingConfirm]);
 
+  // Mirror of EditControlsPanel's leak guard: the tinted mask preview lives
+  // on the shared EditCanvas, not in this component. Switching the
+  // right-hand tab back to "Edit" unmounts this whole panel (see page.tsx's
+  // rightTab ternary), dropping pendingConfirm without ever running Cancel's
+  // handler, which would otherwise leave abandoned mask pixels for
+  // EditControlsPanel's next Save to silently pick up via getMaskBase64().
+  const pendingConfirmRef = useRef(pendingConfirm);
+  useEffect(() => { pendingConfirmRef.current = pendingConfirm; }, [pendingConfirm]);
+  useEffect(() => {
+    return () => {
+      if (pendingConfirmRef.current) canvasRef?.current?.clearMask();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Switching the displayed image/version doesn't unmount this panel, so a
+  // confirmation left pending from the PREVIOUS image would otherwise still
+  // be Apply-able against the new one. Chat history is intentionally left
+  // alone here (it's not image-scoped).
+  useEffect(() => {
+    setPendingConfirm(null);
+    canvasRef?.current?.clearMask();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageId]);
+
   const mutation = useMutation({
     mutationFn: ({ command, maskUrls }: { command: string; maskUrls?: string[] }) =>
       sendAiCommand(imageId, command, history, undefined, maskUrls),
