@@ -502,6 +502,88 @@ async def replace_background(image_url: str, prompt: str, mask_url: Optional[str
     return await _flux_fill(image_url, prompt, mask_url)
 
 
+# ── Instruction-based editing ────────────────────────────────────────────────
+#
+# Natural-language edits do NOT go through the mask pipeline. Masks need three
+# things to go right -- understand the target, produce a pixel-accurate mask of
+# it, inpaint it -- and step two is the hard one. Asked to "supprime la menthe",
+# the mask path masked the main subject and erased the bottle instead.
+#
+# An instruction model does it in one step with no mask at all, which is how
+# ChatGPT-class editors work. Masks remain the right tool for the MANUAL editor,
+# where the user paints a region deliberately and wants surgical control.
+#
+# Deployment exists (probe returns 422), but the version is pinned anyway: the
+# input shape below is exact, and a silent model update renaming a field would
+# break every natural-language edit quietly.
+_MODEL_NANO_BANANA = "google/nano-banana"
+_NANO_BANANA_VERSION = "5bdc2c7cd642ae33611d8c33f79615f98ff02509ab8db9d8ec1cc6c36d378fba"
+
+# Appended to every instruction. These models will happily re-render the whole
+# frame unless told not to, which is the difference between "remove the mint"
+# and "here is a new picture that also has no mint".
+_PRESERVE_CLAUSE = (
+    " Keep everything else in the image exactly as it is: do not move, restyle, "
+    "recolour or regenerate any other object, and preserve the original framing, "
+    "lighting and background."
+)
+
+
+def build_instruction(operation: str, params: dict) -> Optional[str]:
+    """Phrase one planned step as a plain-language edit instruction.
+
+    Returns None for operations that are not instruction edits (crop, upscale
+    and friends stay on their deterministic paths -- an instruction model is a
+    worse, costlier way to rotate an image).
+    """
+    target = (params.get("target") or "").strip()
+    prompt = (params.get("prompt") or "").strip()
+
+    if operation in ("remove_object", "smart_erase"):
+        if not target:
+            return None
+        return f"Remove {target} from the image completely, filling the area so it looks natural."
+    if operation == "replace_background":
+        return f"Replace the background with {prompt}." if prompt else None
+    if operation == "insert_object":
+        if not prompt:
+            return None
+        where = f" at {target}" if target else ""
+        return f"Add {prompt}{where} so it looks naturally part of the scene."
+    if operation == "generative_fill":
+        if not prompt:
+            return None
+        what = target or "the selected area"
+        return f"Replace {what} with {prompt}."
+    return None
+
+
+async def instruction_edit(image_url: str, instruction: str) -> dict:
+    """Edit an image from a plain-language instruction. No mask involved."""
+    if not instruction or not instruction.strip():
+        return {"ok": False, "error": "No instruction provided."}
+    try:
+        src_size = dimensions(await _download(image_url))
+        output = await _replicate_run(
+            _MODEL_NANO_BANANA,
+            {
+                "prompt": instruction.strip() + _PRESERVE_CLAUSE,
+                # An ARRAY, not a string -- a bare string is silently ignored.
+                "image_input": [image_url],
+                "aspect_ratio": "match_input_image",
+                # Defaults to jpg, so the result would arrive already lossy.
+                "output_format": "png",
+            },
+            version=_NANO_BANANA_VERSION,
+        )
+        # The model matches the input ASPECT but not necessarily its exact pixel
+        # dimensions, so parity is restored on our side rather than asserted.
+        return {"ok": True, "image_url": await finalize(
+            output, source_size=src_size, policy=ResolutionPolicy.UPSCALE)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
+
+
 async def _fit_mask_to_image(mask_url: Optional[str], source_size: tuple[int, int]) -> Optional[str]:
     """Make a mask match its image, re-uploading only if it did not already.
 

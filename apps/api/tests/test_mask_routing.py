@@ -33,6 +33,23 @@ from app.models.user import User, UserRole
 from app.services.mask_service import AMBIGUITY_QUESTION, MaskResolution
 
 
+@pytest.fixture(autouse=True)
+def _force_mask_path():
+    """This module tests the MASK pipeline end to end.
+
+    The chat surface now routes natural-language edits to an instruction model,
+    so the mask, confirmation and resume machinery is reached there only when
+    the instruction model declines a step (or the client supplies a mask
+    explicitly). Declining every step keeps these tests exercising the path they
+    are about. Instruction routing has its own tests in
+    tests/test_instruction_edit.py.
+    """
+    with patch("app.api.v1.routers.ai_command.build_instruction",
+               lambda operation, params: None):
+        yield
+
+
+
 # ---- _mask_for --------------------------------------------------------
 
 
