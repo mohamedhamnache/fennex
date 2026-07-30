@@ -54,6 +54,14 @@ async def _retry(coro_factory, attempts: int = 3, base_delay: float = 0.6):
 
 
 async def _download(url: str) -> bytes:
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError(f"cannot download an empty or non-string URL: {url!r}")
+    if not url.startswith(("data:", "http://", "https://")):
+        # httpx's own error for this names no value and no caller, which sent
+        # users chasing a mask bug that was really an empty image_url.
+        raise ValueError(
+            f"not a fetchable URL (needs http://, https:// or data:): {url[:120]!r}"
+        )
     if url.startswith("data:"):
         # data URI -- decode inline (used when S3 is not configured, or for
         # gpt-image-1 b64 output)

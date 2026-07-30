@@ -91,3 +91,26 @@ async def test_no_source_size_skips_the_assertion_entirely():
          patch("app.services.image_output.upload_bytes", up):
         await finalize("https://replicate/out.png")
     assert up.call_args.args[0] == raw
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad", ["", "   ", "None", "masks/abc.png", None, 123])
+async def test_download_rejects_non_urls_with_a_message_naming_the_value(bad):
+    """httpx's own error ("Request URL is missing an 'http://' or 'https://'
+    protocol") names neither the value nor the caller, which sent a user
+    chasing a mask bug that was really a bad URL."""
+    with pytest.raises(ValueError) as exc:
+        await image_output._download(bad)
+    assert "URL" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_download_still_accepts_the_three_valid_shapes():
+    raw = _png((8, 8))
+    with patch("app.services.image_output.httpx.AsyncClient") as client:
+        client.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=type("R", (), {"content": raw, "raise_for_status": lambda self: None})())
+        assert await image_output._download("https://cdn/x.png") == raw
+    import base64 as _b64
+    assert await image_output._download(
+        "data:image/png;base64," + _b64.b64encode(raw).decode()) == raw

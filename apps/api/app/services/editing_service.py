@@ -356,10 +356,23 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
                 except Exception:  # noqa: BLE001
                     logger.warning("replicate usage metering failed", exc_info=True)
 
+                # A prediction can succeed with no usable output (a null, or an
+                # empty list). str(None) would hand the literal string "None"
+                # to the downloader, which fails deep in httpx with an opaque
+                # "Request URL is missing an 'http://' or 'https://' protocol"
+                # far from the real cause. Fail here, where the cause is known.
                 if isinstance(output, list):
+                    if not output:
+                        raise RuntimeError(
+                            f"Replicate model {model} succeeded but returned an empty output list"
+                        )
                     return output[0]
                 if isinstance(output, Mapping):
                     return output
+                if output is None or not str(output).strip():
+                    raise RuntimeError(
+                        f"Replicate model {model} succeeded but returned no output"
+                    )
                 return str(output)
             if status in ("failed", "canceled"):
                 raise RuntimeError(f"Replicate prediction {status}: {status_data.get('error')}")

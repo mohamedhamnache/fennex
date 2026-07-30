@@ -532,3 +532,48 @@ async def test_generate_shadow_allows_the_canvas_to_grow():
 
     assert result["ok"] is True
     assert fin.call_args.kwargs["policy"] is ResolutionPolicy.ALLOW_CHANGE
+
+
+async def test_replicate_run_fails_loudly_on_an_empty_output():
+    """A prediction can succeed with a null or empty output. str(None) handed the
+    literal "None" to the downloader, so the failure surfaced deep in httpx as
+    "Request URL is missing an 'http://' or 'https://' protocol" -- far from the
+    real cause. Drives the real _replicate_run, not a mock of it."""
+    from app.services import editing_service
+
+    class _Resp:
+        def __init__(self, payload, code=201):
+            self._p, self.status_code = payload, code
+            self.is_success = code < 400
+            self.text = str(payload)
+
+        def json(self):
+            return self._p
+
+        def raise_for_status(self):
+            return None
+
+    for output in (None, "", [], "   "):
+        created = _Resp({"id": "p1", "urls": {"get": "https://api.replicate.com/v1/predictions/p1"}})
+        polled = _Resp({"status": "succeeded", "output": output, "metrics": {}})
+
+        class _Client:
+            async def __aenter__(self_inner):
+                return self_inner
+
+            async def __aexit__(self_inner, *a):
+                return False
+
+            async def post(self_inner, *a, **k):
+                return created
+
+            async def get(self_inner, *a, **k):
+                return polled
+
+        with patch("app.services.editing_service.httpx.AsyncClient", lambda **k: _Client()), \
+             patch("app.services.editing_service._POLL_INTERVAL", 0):
+            with pytest.raises(RuntimeError) as exc:
+                await editing_service._replicate_run("owner/model", {"image": "x"})
+        msg = str(exc.value)
+        assert "owner/model" in msg, f"error should name the model, got: {msg}"
+        assert "output" in msg.lower(), f"error should mention output, got: {msg}"

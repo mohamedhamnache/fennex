@@ -366,7 +366,13 @@ async def ai_command(
             if step.get("operation") not in _DISPATCH:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown operation: {step.get('operation')}")
 
-        current_url = source.image_url or ""
+        if not source.image_url:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {"code": "image_has_no_url",
+                 "message": "This image has no stored file to edit."},
+            )
+        current_url = source.image_url
         applied = []
         start_index = 0
         mask_step_index = 0
