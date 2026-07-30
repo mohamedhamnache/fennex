@@ -16,29 +16,23 @@ logger = logging.getLogger(__name__)
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-# Transient network failures worth retrying (e.g. "All connection attempts failed"
-# under many parallel requests when generating a whole set at once).
-_TRANSIENT_ERRORS = (
-    httpx.ConnectError,
-    httpx.ConnectTimeout,
-    httpx.ReadError,
-    httpx.ReadTimeout,
-    httpx.RemoteProtocolError,
-    httpx.PoolTimeout,
+# _TRANSIENT_ERRORS, _retry and _download now live in image_output so the import
+# graph runs one way only (editing_service -> image_output). They are re-exported
+# here because several callers still import them from this module
+# (app/api/v1/routers/seo.py, app/services/mask_service.py). Behaviour is
+# unchanged; only their home moved.
+#
+# NOTE for test authors: image_output.finalize calls image_output's own
+# _download, so patching editing_service._download does NOT affect it. Patch
+# app.services.image_output._download instead.
+from app.services.image_output import (  # noqa: E402
+    ResolutionPolicy,
+    _TRANSIENT_ERRORS,
+    _download,
+    _retry,
+    dimensions,
+    finalize,
 )
-
-
-async def _retry(coro_factory, attempts: int = 3, base_delay: float = 0.6):
-    """Await coro_factory(), retrying on transient connection errors with backoff."""
-    last: Exception | None = None
-    for i in range(attempts):
-        try:
-            return await coro_factory()
-        except _TRANSIENT_ERRORS as e:
-            last = e
-            if i < attempts - 1:
-                await asyncio.sleep(base_delay * (2 ** i))
-    raise last  # type: ignore[misc]
 
 
 def _replicate_retry_after(resp: httpx.Response, default: float = 5.0) -> float:
@@ -69,21 +63,6 @@ async def _create_prediction(client: httpx.AsyncClient, url: str, payload: dict,
         await asyncio.sleep(_replicate_retry_after(resp))
         resp = await _retry(lambda: client.post(url, json=payload, headers=headers))
     return resp
-
-
-async def _download(url: str) -> bytes:
-    if url.startswith("data:"):
-        # data URI — decode inline (used when S3 is not configured, or gpt-image-1 b64 output)
-        _, encoded = url.split(",", 1)
-        return base64.b64decode(encoded)
-
-    async def _do() -> bytes:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            return resp.content
-
-    return await _retry(_do)
 
 
 async def _upload_result(img: PILImage.Image, folder: str = "edits") -> str:
