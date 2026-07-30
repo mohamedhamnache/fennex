@@ -498,11 +498,22 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
         const ctx = canvas.getContext("2d")!;
         const src = ctx.getImageData(0, 0, width, height);
         const out = ctx.createImageData(width, height);
+        // Track whether ANY pixel is actually painted in the same pass that
+        // already walks every pixel -- an unpainted canvas must return null,
+        // not an all-black opaque PNG. Callers do `if (m) params.mask_base64 = m`
+        // expecting a falsy result for "nothing painted"; an all-black mask
+        // is truthy AND, since white = the region to replace, means "replace
+        // nothing" -- worse, it outranks auto-derivation server-side, so it
+        // silently defeats the whole auto-masking feature for every
+        // unpainted submission from this panel.
+        let hasPaintedPixel = false;
         for (let i = 0; i < src.data.length; i += 4) {
           const a = src.data[i + 3];
           const v = a > 10 ? 255 : 0;
+          if (v) hasPaintedPixel = true;
           out.data[i] = v; out.data[i + 1] = v; out.data[i + 2] = v; out.data[i + 3] = 255;
         }
+        if (!hasPaintedPixel) return null;
         const tmp = document.createElement("canvas");
         tmp.width = width; tmp.height = height;
         tmp.getContext("2d")!.putImageData(out, 0, 0);
