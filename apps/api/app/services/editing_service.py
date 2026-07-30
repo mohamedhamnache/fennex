@@ -41,6 +41,36 @@ async def _retry(coro_factory, attempts: int = 3, base_delay: float = 0.6):
     raise last  # type: ignore[misc]
 
 
+def _replicate_retry_after(resp: httpx.Response, default: float = 5.0) -> float:
+    """Seconds to wait before retrying a Replicate 429, per its own guidance.
+
+    Replicate reports this as a `retry_after` field in the JSON body (its
+    `Retry-After` header, when present, is redundant with the same value)."""
+    try:
+        return float(resp.json().get("retry_after", default))
+    except Exception:  # noqa: BLE001
+        return default
+
+
+async def _create_prediction(client: httpx.AsyncClient, url: str, payload: dict, headers: dict,
+                               attempts: int = 4) -> httpx.Response:
+    """POST a Replicate prediction, retrying on 429.
+
+    Below $5 of Replicate account credit, prediction creation is throttled to
+    6/min with a burst of just 1 -- routine, low, concurrency (e.g. a "batch"
+    generation feature firing a few scenes at once) reliably exceeds that
+    burst and gets 429'd. Replicate tells us exactly how long to wait
+    (`retry_after`), so honor it instead of failing the whole generation.
+    """
+    resp = await _retry(lambda: client.post(url, json=payload, headers=headers))
+    for i in range(attempts - 1):
+        if resp.status_code != 429:
+            return resp
+        await asyncio.sleep(_replicate_retry_after(resp))
+        resp = await _retry(lambda: client.post(url, json=payload, headers=headers))
+    return resp
+
+
 async def _download(url: str) -> bytes:
     if url.startswith("data:"):
         # data URI — decode inline (used when S3 is not configured, or gpt-image-1 b64 output)
@@ -268,7 +298,7 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
         payload = {"input": input_params}
 
     async with httpx.AsyncClient(timeout=60) as client:
-        create_resp = await _retry(lambda: client.post(create_url, json=payload, headers=headers))
+        create_resp = await _create_prediction(client, create_url, payload, headers)
         if not create_resp.is_success:
             raise RuntimeError(f"Replicate create failed {create_resp.status_code}: {create_resp.text}")
         prediction = create_resp.json()
