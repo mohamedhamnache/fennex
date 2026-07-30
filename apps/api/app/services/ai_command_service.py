@@ -19,12 +19,14 @@ Available operations (use exactly these names):
 - generate_shadow: params: direction("bottom"|"bottom-right"|"bottom-left"|"right"|"left")
 - relight: params: direction("top"|"top-right"|"left"|"right"), intensity(float, 0.1 to 2)
 
-Operations requiring a mask (user must paint mask on canvas first):
-- replace_background: params: prompt(str describing new background)
-- remove_object: params: {}
-- insert_object: params: prompt(str describing object to insert)
-- generative_fill: params: prompt(str describing fill content)
-- smart_erase: params: {}
+Operations that act on a region of the image. Name the region in `target` ONLY
+when the user singled out a specific object; OMIT target to use the operation's
+default region, which is resolved automatically and costs less:
+- replace_background: params: prompt(str describing new background), target(str, optional — OMIT for the background)
+- remove_object: params: target(str, optional — OMIT for the main subject)
+- insert_object: params: prompt(str describing object to insert), target(str, REQUIRED — where to insert)
+- generative_fill: params: prompt(str describing fill content), target(str, REQUIRED — region to fill)
+- smart_erase: params: target(str, optional — OMIT for the main subject)
 """
 
 _SYSTEM = (
@@ -50,8 +52,8 @@ _STEPS_SYSTEM = _agent_persona("mirage") + (
     "A request may contain several edits — e.g. 'brighten it, remove the background and upscale' becomes "
     "three steps in that order. "
     'Respond ONLY with a JSON object: {"steps": [{"operation": "name", "params": {...}}, ...]}. '
-    "Prefer operations that do NOT require a mask. Only include a mask operation if the user clearly refers "
-    "to a painted selection. "
+    "Mask operations are fully available -- never refuse or avoid one because it needs a selection, "
+    "and never ask the user to paint anything. "
     'If nothing maps, respond with {"error": "explanation"}. No markdown, no text outside the JSON.\n\n'
     + _OPERATIONS_REFERENCE
 )

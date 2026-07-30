@@ -410,3 +410,183 @@ async def test_route_resolver_error_surfaces_without_needs_target(mask_route_cli
     assert data["needs_confirmation"] is False
     assert "remove.bg 402" in data["error"]
     mock_fn.assert_not_awaited()
+
+
+# ---- Task 5: app.api.v1.routers.ai_command -------------------------------
+#
+# _mask_for_step is the ai-command chain's analogue of editing._mask_for: it
+# resolves ONE step's mask against the EVOLVING image (step N masks against
+# step N-1's output), and unlike editing.py's EditOut it cannot hand the
+# needs_confirmation / needs_target states back as a 200 -- an intermediate
+# step in a multi-step chain has no partial-success shape to return, so both
+# become a structured 422 that aborts the whole chain.
+#
+# _resolve_mask_url (ai_command's own copy, request-body-shaped rather than
+# params-dict-shaped) is the request-level counterpart to editing.py's
+# function of the same name: mask_base64 wins over mask_url, and a
+# present-but-empty mask_url must be rejected rather than silently treated as
+# absent -- Task 4 hit exactly this bug (a falsy value fell through and
+# triggered a second paid segmenter call).
+
+from fastapi import HTTPException
+
+from app.api.v1.routers import ai_command
+
+
+@pytest.mark.asyncio
+async def test_ai_command_auto_resolves_when_no_mask_painted():
+    with patch("app.api.v1.routers.ai_command.resolve_mask",
+               AsyncMock(return_value=MaskResolution(ok=True, mask_url="https://cdn/auto.png",
+                                                     tier="product"))):
+        mask_url = await ai_command._mask_for_step(
+            {"operation": "replace_background", "params": {"prompt": "marble"}},
+            "https://cdn/x.png", None, uuid.uuid4(), None,
+        )
+    assert mask_url == "https://cdn/auto.png"
+
+
+@pytest.mark.asyncio
+async def test_ai_command_painted_mask_wins():
+    resolve = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        mask_url = await ai_command._mask_for_step(
+            {"operation": "replace_background", "params": {}},
+            "https://cdn/x.png", "https://cdn/painted.png", uuid.uuid4(), None,
+        )
+    assert mask_url == "https://cdn/painted.png"
+    resolve.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ai_command_ambiguity_raises_422_with_a_structured_detail():
+    with patch("app.api.v1.routers.ai_command.resolve_mask",
+               AsyncMock(return_value=MaskResolution(ok=False, question=AMBIGUITY_QUESTION))):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command._mask_for_step(
+                {"operation": "insert_object", "params": {"prompt": "a vase"}},
+                "https://cdn/x.png", None, uuid.uuid4(), None,
+            )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_target_required"
+    assert exc.value.detail["message"] == AMBIGUITY_QUESTION
+
+
+@pytest.mark.asyncio
+async def test_ai_command_skips_resolution_for_maskless_operations():
+    resolve = AsyncMock()
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        mask_url = await ai_command._mask_for_step(
+            {"operation": "upscale", "params": {"scale": 2}},
+            "https://cdn/x.png", None, uuid.uuid4(), None,
+        )
+    assert mask_url is None
+    resolve.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ai_command_needs_confirmation_raises_422_with_mask_url():
+    """The prompted tier hands back a good mask that still needs the user's
+    sign-off (ok=False, needs_confirmation=True) -- this is neither an
+    ambiguity question nor an error and must not be collapsed into either."""
+    derived = MaskResolution(ok=False, needs_confirmation=True,
+                              mask_url="https://cdn/derived.png", tier="prompted")
+    with patch("app.api.v1.routers.ai_command.resolve_mask", AsyncMock(return_value=derived)):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command._mask_for_step(
+                {"operation": "remove_object", "params": {"target": "the red car"}},
+                "https://cdn/x.png", None, uuid.uuid4(), None,
+            )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_confirm_required"
+    assert exc.value.detail["message"] == "Confirm the highlighted area before applying."
+    assert exc.value.detail["mask_url"] == "https://cdn/derived.png"
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolver_error_raises_422_with_mask_unavailable():
+    with patch("app.api.v1.routers.ai_command.resolve_mask",
+               AsyncMock(return_value=MaskResolution(ok=False, error="remove.bg 402"))):
+        with pytest.raises(HTTPException) as exc:
+            await ai_command._mask_for_step(
+                {"operation": "replace_background", "params": {}},
+                "https://cdn/x.png", None, uuid.uuid4(), None,
+            )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["code"] == "mask_unavailable"
+    assert "remove.bg 402" in exc.value.detail["message"]
+
+
+# ---- ai_command._resolve_mask_url (request-level precedence + validation) --
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_url_uploads_a_painted_mask_base64():
+    body = ai_command.AiCommandRequest(command="x", mask_base64="data:image/png;base64,AAAA")
+    with patch("app.api.v1.routers.ai_command.upload_bytes",
+               AsyncMock(return_value="https://cdn/masks/new.png")) as upload:
+        result = await ai_command._resolve_mask_url(body)
+
+    assert result == "https://cdn/masks/new.png"
+    upload.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_url_accepts_a_valid_own_storage_mask_url():
+    # data: URLs are unconditionally "ours" per is_own_storage_url -- this
+    # exercises the accept path without needing S3 config fixtures.
+    own_url = "data:image/png;base64,iVBORw0KGgo="
+    body = ai_command.AiCommandRequest(command="x", mask_url=own_url)
+    with patch("app.api.v1.routers.ai_command.upload_bytes", AsyncMock()) as upload:
+        result = await ai_command._resolve_mask_url(body)
+
+    assert result == own_url
+    upload.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_url_rejects_an_external_host_mask_url():
+    body = ai_command.AiCommandRequest(command="x", mask_url="https://evil.example.com/masks/x.png")
+    with pytest.raises(ValueError):
+        await ai_command._resolve_mask_url(body)
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_url_mask_base64_wins_over_mask_url():
+    """mask_base64 (a freshly painted mask) takes precedence even when an
+    invalid mask_url is also present -- the fresh paint should not be blocked
+    by stale or bogus round-trip data."""
+    body = ai_command.AiCommandRequest(
+        command="x",
+        mask_base64="data:image/png;base64,AAAA",
+        mask_url="https://evil.example.com/masks/x.png",
+    )
+    with patch("app.api.v1.routers.ai_command.upload_bytes",
+               AsyncMock(return_value="https://cdn/masks/fresh.png")) as upload:
+        result = await ai_command._resolve_mask_url(body)
+
+    assert result == "https://cdn/masks/fresh.png"
+    upload.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_url_rejects_a_present_but_empty_mask_url():
+    """command-only construction leaves mask_url at its None default and
+    unset -- explicitly passing "" must still be rejected, not treated as
+    absent, or a stale/cleared field would silently fall through to
+    auto-resolution and spend on a second paid segmenter call."""
+    body = ai_command.AiCommandRequest(command="x", mask_url="")
+    with pytest.raises(ValueError):
+        await ai_command._resolve_mask_url(body)
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_url_returns_none_when_absent():
+    body = ai_command.AiCommandRequest(command="x")
+    with patch("app.api.v1.routers.ai_command.upload_bytes", AsyncMock()) as upload:
+        result = await ai_command._resolve_mask_url(body)
+
+    assert result is None
+    upload.assert_not_awaited()

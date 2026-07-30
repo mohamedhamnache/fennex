@@ -14,6 +14,7 @@ from app.models.image import GeneratedImage, ImageStatus
 from app.services.ai_command_service import parse_ai_command_steps
 from app.services.llm_service import project_locale
 from app.services import editing_service
+from app.services.mask_service import MASK_OPERATIONS, is_own_storage_url, resolve_mask
 from app.api.v1.routers.images import ImageOut
 
 router = APIRouter()
@@ -44,15 +45,95 @@ class AiCommandRequest(BaseModel):
     command: str
     history: list[dict] = []
     mask_base64: Optional[str] = None
+    # A mask the client is re-submitting on the confirmation round trip (see
+    # _mask_for_step's needs_confirmation branch). Fetched server-side, so it
+    # must be validated with is_own_storage_url before use -- see
+    # _resolve_mask_url.
+    mask_url: Optional[str] = None
 
 
-async def _upload_mask(mask_base64: str, org_id: uuid.UUID) -> str:
-    b64 = mask_base64
-    if "," in b64:
-        b64 = b64.split(",", 1)[1]
-    data = base64.b64decode(b64)
-    key = f"masks/{uuid.uuid4().hex}.png"
-    return await upload_bytes(data, key, "image/png")
+async def _resolve_mask_url(body: "AiCommandRequest") -> Optional[str]:
+    """Resolve the request-level painted mask, in precedence order:
+
+      - mask_base64: a freshly painted canvas mask, uploaded to storage. Wins
+        over mask_url since it represents the most recent paint.
+      - mask_url: a mask the client is re-submitting on the confirmation
+        round trip (see _mask_for_step). This is fetched server-side by
+        whichever mask-requiring operation runs next, so an unvalidated
+        client-supplied URL would be a request-forgery primitive -- it must
+        pass is_own_storage_url before use.
+
+    Raises ValueError if mask_url is present but fails validation, so the
+    caller surfaces an error instead of silently falling through to
+    auto-masking (which would apply a mask -- and spend on a second paid
+    segmenter call -- that the user never approved).
+
+    Checks presence via model_fields_set rather than truthiness: a
+    present-but-empty mask_url ("" or None supplied explicitly) must be
+    rejected as invalid too, not treated as "no mask supplied" -- that would
+    fall through to auto-resolution and silently trigger a second paid
+    segmenter call plus another needs_confirmation round trip.
+    """
+    if body.mask_base64:
+        b64 = body.mask_base64
+        if "," in b64:
+            b64 = b64.split(",", 1)[1]
+        data = base64.b64decode(b64)
+        key = f"masks/{uuid.uuid4().hex}.png"
+        return await upload_bytes(data, key, "image/png")
+
+    if "mask_url" in body.model_fields_set:
+        url = body.mask_url
+        if not is_own_storage_url(url):
+            raise ValueError("mask_url is not a valid storage URL.")
+        return url
+
+    return None
+
+
+async def _mask_for_step(step: dict, image_url: str, painted_mask_url: Optional[str],
+                          org_id: uuid.UUID, db) -> Optional[str]:
+    """Resolve this step's mask, or None for operations that do not take one.
+
+    Resolution runs per step against the EVOLVING image, so step N masks
+    against step N-1's output rather than the original -- that is what makes
+    a chained request like "replace the background, then upscale" mask the
+    right frame.
+
+    Unlike editing.py's _mask_for (which hands a MaskResolution back to a
+    single-operation route that can turn needs_confirmation/question/error
+    into a 200 with an appropriate flag), a step here sits inside a chain --
+    there is no partial-success shape to return mid-chain, so every non-ok
+    outcome raises a structured 422 that aborts the whole request.
+    """
+    operation = step["operation"]
+    if operation not in MASK_OPERATIONS:
+        return None
+    if painted_mask_url:
+        return painted_mask_url
+
+    params = step.get("params", {}) or {}
+    resolution = await resolve_mask(image_url, operation, params.get("target"), org_id, db)
+    if resolution.needs_confirmation:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            {
+                "code": "mask_confirm_required",
+                "message": "Confirm the highlighted area before applying.",
+                "mask_url": resolution.mask_url,
+            },
+        )
+    if resolution.ok:
+        return resolution.mask_url
+    if resolution.question:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            {"code": "mask_target_required", "message": resolution.question},
+        )
+    raise HTTPException(
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        {"code": "mask_unavailable", "message": resolution.error or "Could not work out which area to change."},
+    )
 
 
 @router.post("/{image_id}/ai-command", response_model=ImageOut)
@@ -80,9 +161,13 @@ async def ai_command(
         if step.get("operation") not in _DISPATCH:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown operation: {step.get('operation')}")
 
-    mask_url = None
-    if body.mask_base64:
-        mask_url = await _upload_mask(body.mask_base64, current_user.org_id)
+    try:
+        mask_url = await _resolve_mask_url(body)
+    except ValueError as e:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            {"code": "mask_url_invalid", "message": str(e)},
+        )
 
     # Chain the operations — each runs on the previous step's result.
     current_url = source.image_url or ""
@@ -90,8 +175,9 @@ async def ai_command(
     for step in steps:
         operation = step["operation"]
         params = step.get("params", {}) or {}
+        step_mask = await _mask_for_step(step, current_url, mask_url, current_user.org_id, db)
         fn = _DISPATCH[operation]
-        edit_result = await fn(current_url, params, mask_url)
+        edit_result = await fn(current_url, params, step_mask)
         if not edit_result.get("ok"):
             detail = edit_result.get("error", "Edit failed")
             raise HTTPException(
