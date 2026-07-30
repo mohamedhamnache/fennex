@@ -373,11 +373,31 @@ _MODEL_FLUX_FILL = "black-forest-labs/flux-fill-pro"
 # deployment, so version= is required. Verified against the live API 2026-07-30.
 _MODEL_LAMA = "allenhooo/lama"
 _LAMA_VERSION = "cdac78a1bec5b23c07fd29692fb70baa513ea403a39e643c48ec5edadb15fe72"
-# BROKEN: this model does not exist on Replicate (GET /v1/models/fal-ai/shadow-generation
-# returns 404), so generate_shadow can never succeed. There is no version to pin.
-# Needs a real replacement model chosen and its schema verified before the
-# generate_shadow operation is offered again.
-_MODEL_SHADOW = "fal-ai/shadow-generation"
+# Was fal-ai/shadow-generation, which DOES NOT EXIST on Replicate (its metadata
+# endpoint 404s), so this operation could never succeed. Replaced with a real,
+# purpose-built model: "Add consistent, customizable shadows to product cutouts".
+#
+# Every field the old code sent was wrong independently of that: it passed
+# `foreground_image` (the field is `image`), `shadow_type: "natural_shadow"` (the
+# enum is regular|float), and `shadow_direction` (no such field -- direction is
+# expressed as an offset pair). Schema verified against the live API 2026-07-30.
+#
+# Version pinned despite an active deployment: the direction mapping depends on
+# this exact schema, and a silent model update renaming a field would break the
+# operation quietly.
+_MODEL_SHADOW = "bria/product-shadow"
+_SHADOW_VERSION = "ffed8143e81736c5fb32ed63ba7362935d8228687fa3b5173eab2fbf86f54ee6"
+
+# The model has no direction input. Direction is where the shadow FALLS, so it
+# maps onto the offset pair; magnitudes stay near the model's own defaults
+# (offset_y 15) rather than being invented.
+_SHADOW_OFFSETS = {
+    "bottom":       (0, 15),
+    "bottom-right": (15, 15),
+    "bottom-left":  (-15, 15),
+    "right":        (15, 0),
+    "left":         (-15, 0),
+}
 
 # Like _MODEL_SD_INPAINT above, these two have NO hot deployment: calling
 # /v1/models/{owner}/{name}/predictions returns a bare
@@ -497,9 +517,19 @@ async def generative_fill(image_url: str, prompt: str, mask_url: Optional[str] =
 async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
     try:
         src_size = dimensions(await _download(image_url))
+        offset_x, offset_y = _SHADOW_OFFSETS.get(direction, _SHADOW_OFFSETS["bottom"])
         output = await _replicate_run(
             _MODEL_SHADOW,
-            {"foreground_image": image_url, "shadow_type": "natural_shadow", "shadow_direction": direction},
+            {
+                "image": image_url,
+                "shadow_type": "regular",
+                "shadow_offset_x": offset_x,
+                "shadow_offset_y": offset_y,
+                # Keep transparency on a cutout instead of flattening it onto the
+                # model's default white background.
+                "preserve_alpha": True,
+            },
+            version=_SHADOW_VERSION,
         )
         return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
     except Exception as e:

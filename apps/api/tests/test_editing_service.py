@@ -373,3 +373,71 @@ async def test_rotate_keeps_rgb_for_a_solid_fill_but_promotes_for_transparency(m
     r = await editing_service.rotate_image("https://cdn/in.png", 45)
     assert r["ok"] is True
     assert captured["mode"] == "RGBA"
+
+
+async def test_generate_shadow_uses_a_model_that_actually_exists():
+    """fal-ai/shadow-generation does not exist on Replicate, so this operation
+    could never succeed. Every field the old code sent was wrong too."""
+    from app.services import editing_service
+    from app.services.image_output import ResolutionPolicy
+
+    run = AsyncMock(return_value="https://replicate/out.png")
+    fin = AsyncMock(return_value="https://cdn/o.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((800, 600)))), \
+         patch("app.services.editing_service.finalize", fin):
+        result = await editing_service.generate_shadow("https://cdn/in.png", "bottom")
+
+    assert result["ok"] is True
+    (model, params), kwargs = run.call_args
+    assert model == editing_service._MODEL_SHADOW
+    assert model != "fal-ai/shadow-generation"
+    assert kwargs["version"] == editing_service._SHADOW_VERSION
+    # the real field names, verified against the live schema
+    assert params["image"] == "https://cdn/in.png"
+    assert "foreground_image" not in params
+    assert "shadow_direction" not in params
+    assert params["shadow_type"] in {"regular", "float"}
+    assert params["shadow_type"] != "natural_shadow"
+    assert fin.call_args.kwargs["source_size"] == (800, 600)
+    assert fin.call_args.kwargs.get("policy", ResolutionPolicy.PRESERVE) is ResolutionPolicy.PRESERVE
+
+
+async def test_generate_shadow_maps_direction_onto_offsets():
+    """The model has no direction field; direction is an offset pair."""
+    from app.services import editing_service
+
+    seen = {}
+    for direction in ("bottom", "bottom-right", "bottom-left", "right", "left"):
+        run = AsyncMock(return_value="https://replicate/out.png")
+        with patch("app.services.editing_service._replicate_run", run), \
+             patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+             patch("app.services.editing_service.finalize",
+                   AsyncMock(return_value="https://cdn/o.png")):
+            await editing_service.generate_shadow("https://cdn/in.png", direction)
+        (_, params), _ = run.call_args
+        seen[direction] = (params["shadow_offset_x"], params["shadow_offset_y"])
+
+    assert seen["bottom"][0] == 0 and seen["bottom"][1] > 0
+    assert seen["bottom-right"][0] > 0 and seen["bottom-right"][1] > 0
+    assert seen["bottom-left"][0] < 0 and seen["bottom-left"][1] > 0
+    assert seen["right"][0] > 0 and seen["right"][1] == 0
+    assert seen["left"][0] < 0 and seen["left"][1] == 0
+    # every direction must produce a distinct placement
+    assert len(set(seen.values())) == len(seen)
+
+
+async def test_generate_shadow_falls_back_to_a_valid_offset_for_an_unknown_direction():
+    from app.services import editing_service
+
+    run = AsyncMock(return_value="https://replicate/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
+         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+        result = await editing_service.generate_shadow("https://cdn/in.png", "sideways")
+
+    assert result["ok"] is True
+    (_, params), _ = run.call_args
+    assert isinstance(params["shadow_offset_x"], int)
+    assert isinstance(params["shadow_offset_y"], int)
