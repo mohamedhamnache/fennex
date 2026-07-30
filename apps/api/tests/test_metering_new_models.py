@@ -164,3 +164,36 @@ async def test_a_model_without_an_image_rate_still_bills_per_second():
             predict_seconds=2.0, image_count=1,
         )
         assert cost == round(2.0 * 225), "should use lama's T4 per-second rate"
+
+
+async def test_nano_banana_bills_per_image_at_the_seeded_rate():
+    """The default path for every Mirage edit. Seeded per IMAGE because it is an
+    official Replicate model billed per output image, not per GPU-second."""
+    org = uuid.uuid4()
+    async with Session() as db:
+        db.add(CostRate(provider="replicate", unit="image",
+                        model="google/nano-banana", micro_dollars_per_unit=39_000))
+        await db.commit()
+        cost = await meter.record_replicate(
+            db, org_id=org, project_id=None, model="google/nano-banana",
+            feature="instruction_edit", predict_seconds=5.38, image_count=1,
+        )
+    assert cost == 39_000
+    # and it is billed, not merely recorded
+    async with Session() as db:
+        ou = (await db.execute(select(OrgUsage).where(OrgUsage.org_id == org))).scalar_one()
+        assert ou.ai_credits_used >= 10
+        assert ou.ai_cost_micros == 39_000
+
+
+async def test_product_shadow_bills_per_second_at_the_a100_rate():
+    org = uuid.uuid4()
+    async with Session() as db:
+        db.add(CostRate(provider="replicate", unit="second",
+                        model="bria/product-shadow", micro_dollars_per_unit=1_400))
+        await db.commit()
+        cost = await meter.record_replicate(
+            db, org_id=org, project_id=None, model="bria/product-shadow",
+            feature="generate_shadow", predict_seconds=4.25,
+        )
+    assert cost == round(4.25 * 1_400)
