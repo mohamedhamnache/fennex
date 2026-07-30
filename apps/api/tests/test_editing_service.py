@@ -303,3 +303,73 @@ async def test_relight_preserves_when_the_source_is_exactly_an_enum_size():
          patch("app.services.editing_service.finalize", fin):
         await editing_service.relight_image("https://cdn/in.png", "right")
     assert fin.call_args.kwargs["policy"] is ResolutionPolicy.PRESERVE
+
+
+async def test_pillow_ops_preserve_the_source_colour_mode(monkeypatch):
+    """_open forced RGBA, so an RGB photo came back as a bloated RGBA PNG."""
+    from app.services import editing_service
+    captured = {}
+
+    async def _fake_upload(img, folder="edits"):
+        captured["mode"] = img.mode
+        return "https://cdn/out.png"
+
+    monkeypatch.setattr(editing_service, "_download", AsyncMock(return_value=_png_bytes()))
+    monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
+
+    await editing_service.crop_image("https://cdn/in.png", 0, 0, 10, 10)
+    assert captured["mode"] == "RGB"
+
+
+async def test_upload_result_never_writes_lossy_jpeg(monkeypatch):
+    from app.services import editing_service
+    sent = {}
+
+    async def _fake_upload_bytes(data, key, content_type):
+        sent["key"], sent["ct"] = key, content_type
+        return "https://cdn/x"
+
+    monkeypatch.setattr(editing_service, "upload_bytes", _fake_upload_bytes)
+    await editing_service._upload_result(PILImage.new("RGB", (8, 8)))
+    assert sent["key"].endswith(".png")
+    assert sent["ct"] == "image/png"
+
+
+async def test_rgba_sources_keep_their_alpha(monkeypatch):
+    """Preserving the mode must not strip alpha from images that have it."""
+    from app.services import editing_service
+    captured = {}
+
+    async def _fake_upload(img, folder="edits"):
+        captured["mode"] = img.mode
+        return "https://cdn/out.png"
+
+    buf = io.BytesIO()
+    PILImage.new("RGBA", (32, 32), (1, 2, 3, 128)).save(buf, format="PNG")
+    monkeypatch.setattr(editing_service, "_download", AsyncMock(return_value=buf.getvalue()))
+    monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
+
+    await editing_service.crop_image("https://cdn/in.png", 0, 0, 10, 10)
+    assert captured["mode"] == "RGBA"
+
+
+async def test_rotate_keeps_rgb_for_a_solid_fill_but_promotes_for_transparency(monkeypatch):
+    """expand=True creates new corners. A solid fill works in RGB; a transparent
+    one is impossible without an alpha channel."""
+    from app.services import editing_service
+    captured = {}
+
+    async def _fake_upload(img, folder="edits"):
+        captured["mode"] = img.mode
+        return "https://cdn/out.png"
+
+    monkeypatch.setattr(editing_service, "_download", AsyncMock(return_value=_png_bytes()))
+    monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
+
+    r = await editing_service.rotate_image("https://cdn/in.png", 45, fill_color="#ffffff")
+    assert r["ok"] is True
+    assert captured["mode"] == "RGB"
+
+    r = await editing_service.rotate_image("https://cdn/in.png", 45)
+    assert r["ok"] is True
+    assert captured["mode"] == "RGBA"

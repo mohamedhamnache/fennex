@@ -66,18 +66,22 @@ async def _create_prediction(client: httpx.AsyncClient, url: str, payload: dict,
 
 
 async def _upload_result(img: PILImage.Image, folder: str = "edits") -> str:
+    """Always lossless. The old JPEG-at-quality-95 branch silently degraded every
+    non-RGBA result -- which, once _open stopped forcing RGBA, is most of them."""
     buf = io.BytesIO()
-    fmt = "PNG" if img.mode == "RGBA" else "JPEG"
-    img.save(buf, format=fmt, quality=95)
+    img.save(buf, format="PNG")
     buf.seek(0)
-    content_type = "image/png" if fmt == "PNG" else "image/jpeg"
-    ext = "png" if fmt == "PNG" else "jpg"
-    key = f"{folder}/{uuid.uuid4().hex}.{ext}"
-    return await upload_bytes(buf.read(), key, content_type)
+    return await upload_bytes(buf.read(), f"{folder}/{uuid.uuid4().hex}.png", "image/png")
 
 
 def _open(data: bytes) -> PILImage.Image:
-    return PILImage.open(io.BytesIO(data)).convert("RGBA")
+    """Preserve the source colour mode.
+
+    Forcing RGBA here turned every RGB photo into a bloated RGBA PNG for no
+    quality gain. Operations that genuinely need an alpha channel convert
+    explicitly at their own call site.
+    """
+    return PILImage.open(io.BytesIO(data))
 
 
 def _hex_to_rgb(h: str) -> tuple[int, int, int]:
@@ -116,8 +120,20 @@ async def rotate_image(image_url: str, angle: float, fill_color: str | None = No
     try:
         data = await _download(image_url)
         img = _open(data)
-        fill_rgba = _hex_to_rgb(fill_color) + (255,) if fill_color else (0, 0, 0, 0)
-        rotated = img.rotate(-angle, expand=True, fillcolor=fill_rgba)
+        if fill_color:
+            # A solid fill works in the source's own mode, so an RGB photo stays
+            # RGB rather than being promoted for no reason.
+            fill = _hex_to_rgb(fill_color)
+            if img.mode == "RGBA":
+                fill = fill + (255,)
+        else:
+            # A TRANSPARENT fill is impossible without an alpha channel: expand=True
+            # creates new corners that must be see-through, so this is one of the
+            # few places that genuinely needs the promotion _open no longer does.
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
+            fill = (0, 0, 0, 0)
+        rotated = img.rotate(-angle, expand=True, fillcolor=fill)
         url = await _upload_result(rotated)
         return {"ok": True, "image_url": url}
     except Exception as e:
