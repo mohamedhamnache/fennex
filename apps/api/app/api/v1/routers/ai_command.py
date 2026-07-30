@@ -50,12 +50,16 @@ class AiCommandRequest(BaseModel):
     # needs_confirmation branch, which reports step_index so the client
     # knows which position to fill next). The Nth mask-requiring step in the
     # chain consumes queue[N]; a step beyond the queue's length auto-resolves
-    # normally. Each entry is fetched server-side, so it must be validated
-    # with is_own_storage_url before use -- see _resolve_mask_queue.
-    mask_urls: Optional[list[str]] = None
+    # normally. A `null` ENTRY (as opposed to the whole field being null)
+    # means "no client-supplied mask for this position" -- e.g. a
+    # product-tier step that never needed confirmation but still occupies a
+    # position -- and that position auto-resolves too. A non-null entry is
+    # fetched server-side, so it must be validated with is_own_storage_url
+    # before use -- see _resolve_mask_queue.
+    mask_urls: Optional[list[Optional[str]]] = None
 
 
-async def _resolve_mask_queue(body: "AiCommandRequest") -> list[str]:
+async def _resolve_mask_queue(body: "AiCommandRequest") -> list[Optional[str]]:
     """Resolve the ordered queue of confirmed/painted masks supplied on this
     request. The Nth mask-requiring step in the chain (see _next_step_mask)
     consumes queue[N]; a step beyond the queue's length auto-resolves.
@@ -68,26 +72,50 @@ async def _resolve_mask_queue(body: "AiCommandRequest") -> list[str]:
         outranks whatever mask_urls[0] contained for that position. Later
         entries are left untouched.
       - mask_urls: masks the client is re-submitting on successive
-        confirmation round trips. Each entry is fetched server-side by
-        whichever mask-requiring operation consumes it, so every entry must
-        pass is_own_storage_url before use -- an unvalidated client-supplied
-        URL is a request-forgery primitive. Validated EAGERLY for the whole
-        resulting queue before any step runs: an invalid entry anywhere must
-        abort the request up front rather than letting an earlier step's own
-        (valid-looking) resolution run first on a queue that turns out to be
-        broken further along.
+        confirmation round trips. Each non-null entry is fetched server-side
+        by whichever mask-requiring operation consumes it, so every non-null
+        entry must pass is_own_storage_url before use -- an unvalidated
+        client-supplied URL is a request-forgery primitive. Validated
+        EAGERLY for the whole resulting queue before any step runs: an
+        invalid entry anywhere must abort the request up front rather than
+        letting an earlier step's own (valid-looking) resolution run first
+        on a queue that turns out to be broken further along.
+
+    A `null` ENTRY INSIDE the list (as opposed to the whole field being
+    null) is not an error -- it means "no client-supplied mask for this
+    position, auto-resolve it". This matters for a compound command like
+    "replace the background and remove the person on the left": the first
+    step is product-tier and auto-resolves without ever needing
+    confirmation, so it never contributes a mask, yet it still occupies a
+    queue position because indexing counts every mask-requiring step (see
+    _next_step_mask). A client accumulating masks only for steps that
+    actually asked for confirmation ends up with a JS sparse array whose
+    unconfirmed holes -- including position 0 here -- serialise to `null`
+    via JSON.stringify. Rejecting that `null` would make this exact compound
+    command, the one auto-masking exists to serve, permanently
+    unsatisfiable. This is NOT the falsy-fallthrough bug Task 4 hit: that
+    bug was a single SCALAR field where a falsy value meant "field absent"
+    and silently triggered a second paid segmenter call. Here `null` at
+    position N is an explicit, unambiguous statement about position N
+    specifically -- the position is still consumed, nothing shifts, and the
+    step still runs auto-resolution exactly as if no queue existed for it.
+    An empty string `""` is different: a correct client never produces one
+    (only a JS sparse-array hole legitimately serialises to `null`), so it
+    remains a hard rejection.
 
     Raises ValueError on the first invalid entry -- including a
     present-but-empty whole-field value ("mask_urls": [] or null, supplied
-    explicitly) or a present-but-empty single element ("" or null inside the
-    list) -- so the caller surfaces a 422 instead of silently falling
-    through to auto-masking. Auto-masking would apply a mask the user never
-    approved, and for the prompted tier, spend a second time on a call the
-    client thought it had already paid for.
+    explicitly) or a present-but-empty string element ("" inside the list)
+    -- so the caller surfaces a 422 instead of silently falling through to
+    auto-masking. Auto-masking would apply a mask the user never approved,
+    and for the prompted tier, spend a second time on a call the client
+    thought it had already paid for.
 
-    Checks presence via model_fields_set rather than truthiness: this is the
-    same class of bug Task 4 hit for the single-mask case, where a falsy
-    value fell through and triggered a second paid segmenter call.
+    Checks presence via model_fields_set rather than truthiness for the
+    WHOLE field: this is the same class of bug Task 4 hit for the
+    single-mask case, where a falsy value fell through and triggered a
+    second paid segmenter call. That check is unaffected by the null-entry
+    handling above, which operates one level down, per list element.
 
     A stale or garbage mask_urls[0] that mask_base64 is about to overwrite is
     skipped by validation -- it is never actually used, so it must not fail
@@ -104,13 +132,21 @@ async def _resolve_mask_queue(body: "AiCommandRequest") -> list[str]:
             # Covers both an explicit `null` and an explicit `[]` -- both
             # are the client asserting a value here, not omitting the field,
             # so both must be rejected rather than silently treated as "no
-            # masks supplied, auto-resolve everything".
+            # masks supplied, auto-resolve everything". (This is the WHOLE
+            # field being empty/null, not a null ENTRY inside a non-empty
+            # list -- that case is handled per-element below.)
             raise ValueError("mask_urls is present but empty.")
         queue = list(urls)
 
     overwrites_first_entry = bool(body.mask_base64)
     for index, url in enumerate(queue):
         if overwrites_first_entry and index == 0:
+            continue
+        if url is None:
+            # Explicit "no client-supplied mask for this step" -- left as
+            # None in the returned queue so _next_step_mask's lookup treats
+            # it as an unconfirmed position and auto-resolves via
+            # resolve_mask, exactly as if the queue were shorter here.
             continue
         if not url or not is_own_storage_url(url):
             raise ValueError("mask_urls contains an entry that is not a valid storage URL.")
@@ -182,7 +218,7 @@ async def _mask_for_step(step: dict, image_url: str, painted_mask_url: Optional[
     )
 
 
-async def _next_step_mask(step: dict, image_url: str, mask_queue: list[str], mask_step_index: int,
+async def _next_step_mask(step: dict, image_url: str, mask_queue: list[Optional[str]], mask_step_index: int,
                            org_id: uuid.UUID, db) -> tuple[Optional[str], int]:
     """Determine which entry (if any) of the confirmed-mask queue applies to
     this step, and resolve the step's mask.
@@ -195,8 +231,11 @@ async def _next_step_mask(step: dict, image_url: str, mask_queue: list[str], mas
     Returns the resolved mask alongside the NEXT index the caller should
     pass in for the following step: unchanged for a non-mask step,
     incremented by one for a mask-requiring step regardless of whether the
-    queue had an entry at that position -- a step beyond the supplied queue
-    simply auto-resolves via resolve_mask inside _mask_for_step.
+    queue had an entry at that position -- a step beyond the supplied queue,
+    OR a queue entry that is explicitly None (see _resolve_mask_queue for
+    why a null entry is valid and distinct from an invalid one), simply
+    auto-resolves via resolve_mask inside _mask_for_step exactly the same
+    way.
     """
     operation = step["operation"]
     if operation not in MASK_OPERATIONS:

@@ -632,6 +632,43 @@ async def test_ai_command_resolve_mask_queue_rejects_a_present_but_empty_list_en
 
 
 @pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_null_entry_means_auto_resolve_for_that_position():
+    """Follow-up fix: a `null` ENTRY inside a non-empty mask_urls list is not
+    an error -- it means "no client-supplied mask for this position", e.g. a
+    product-tier step that auto-resolved without ever needing confirmation
+    but still occupies a queue position. The entry is preserved as None in
+    the returned queue (not dropped, which would shift later entries), and
+    the valid entry alongside it is still validated normally."""
+    body = ai_command.AiCommandRequest(
+        command="x", mask_urls=[None, "data:image/png;base64,BBB"],
+    )
+    result = await ai_command._resolve_mask_queue(body)
+
+    assert result == [None, "data:image/png;base64,BBB"]
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_all_null_entries_no_error():
+    """[null, null] for a two-mask-step chain: neither step has a
+    client-supplied mask, both auto-resolve, and the request must not 422."""
+    body = ai_command.AiCommandRequest(command="x", mask_urls=[None, None])
+    result = await ai_command._resolve_mask_queue(body)
+
+    assert result == [None, None]
+
+
+@pytest.mark.asyncio
+async def test_ai_command_resolve_mask_queue_still_rejects_empty_string_entry_first_position():
+    """An empty string is NOT the same as null -- a correct client never
+    produces "" (only a JS sparse-array hole legitimately serialises to
+    null), so it must remain a hard rejection even when a later entry in the
+    same list is valid."""
+    body = ai_command.AiCommandRequest(command="x", mask_urls=["", "data:image/png;base64,BBB"])
+    with pytest.raises(ValueError):
+        await ai_command._resolve_mask_queue(body)
+
+
+@pytest.mark.asyncio
 async def test_ai_command_resolve_mask_queue_rejects_an_explicit_null_mask_urls():
     """Regression test for finding 3: `{"mask_urls": null}` is PRESENT
     (model_fields_set contains it) but empty -- it must be rejected like any
@@ -760,6 +797,67 @@ async def test_next_step_mask_needs_confirmation_carries_the_correct_step_index(
     assert exc.value.status_code == 422
     assert exc.value.detail["code"] == "mask_confirm_required"
     assert exc.value.detail["step_index"] == 1
+
+
+@pytest.mark.asyncio
+async def test_next_step_mask_null_entry_auto_resolves_and_does_not_shift_later_entries():
+    """Follow-up fix scenario: "replace the background and remove the
+    person on the left" -- step 0 (replace_background, no target) is
+    product-tier and auto-resolves without ever needing confirmation, so it
+    contributes no client-supplied mask, yet still occupies queue position
+    0. mask_urls = [null, "<valid own-storage url>"]: step 0 must
+    auto-resolve (resolve_mask awaited for it), and step 1 must use the
+    supplied mask at its own position 1 without calling resolve_mask again."""
+    step0_resolution = MaskResolution(ok=True, mask_url="https://cdn/auto-step0.png", tier="product")
+    resolve = AsyncMock(return_value=step0_resolution)
+    queue = [None, "https://cdn/masks/confirmed-step1.png"]
+
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        mask0, idx = await ai_command._next_step_mask(
+            {"operation": "replace_background", "params": {}},
+            "https://cdn/x.png", queue, 0, uuid.uuid4(), None,
+        )
+        assert mask0 == "https://cdn/auto-step0.png"
+        assert idx == 1
+        resolve.assert_awaited_once()
+
+        mask1, idx = await ai_command._next_step_mask(
+            {"operation": "remove_object", "params": {"target": "the person on the left"}},
+            "https://cdn/step0-result.png", queue, idx, uuid.uuid4(), None,
+        )
+        assert mask1 == "https://cdn/masks/confirmed-step1.png"
+        assert idx == 2
+        # Still just the one await from step 0 -- step 1's supplied mask
+        # must not trigger a second (paid) auto-resolution call.
+        resolve.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_next_step_mask_two_null_entries_both_auto_resolve_no_error():
+    """[null, null] for a two-mask-step chain: both steps auto-resolve, and
+    resolving the queue and each step must not raise."""
+    resolve = AsyncMock(side_effect=[
+        MaskResolution(ok=True, mask_url="https://cdn/auto-a.png", tier="product"),
+        MaskResolution(ok=True, mask_url="https://cdn/auto-b.png", tier="product"),
+    ])
+    queue = await ai_command._resolve_mask_queue(
+        ai_command.AiCommandRequest(command="x", mask_urls=[None, None])
+    )
+    assert queue == [None, None]
+
+    with patch("app.api.v1.routers.ai_command.resolve_mask", resolve):
+        mask_a, idx = await ai_command._next_step_mask(
+            {"operation": "replace_background", "params": {}},
+            "https://cdn/x.png", queue, 0, uuid.uuid4(), None,
+        )
+        mask_b, idx = await ai_command._next_step_mask(
+            {"operation": "remove_object", "params": {"target": "the person on the left"}},
+            "https://cdn/step0-result.png", queue, idx, uuid.uuid4(), None,
+        )
+
+    assert mask_a == "https://cdn/auto-a.png"
+    assert mask_b == "https://cdn/auto-b.png"
+    assert resolve.await_count == 2
 
 
 # ---- route-level: an invalid entry anywhere in the queue aborts the whole
