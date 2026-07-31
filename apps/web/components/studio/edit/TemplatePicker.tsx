@@ -123,11 +123,17 @@ export function TemplatePicker({
                           left: `${def.xPct}%`,
                           top: `${def.yPct}%`,
                           width: `${def.widthPct}%`,
+                          // Panels and bands carry an explicit height; badges
+                          // keep their own aspect ratio.
+                          height: def.heightPct != null ? `${def.heightPct}%` : undefined,
                           opacity: def.opacity ?? 1,
                           transform: def.rotation ? `rotate(${def.rotation}deg)` : undefined,
                         }}
                       />
                     ) : def.kind === "image" ? (
+                      // Every family places the photo, so with no subject yet
+                      // the slot stays empty rather than showing a broken image.
+                      !(def.source === "subject" ? subjectImageUrl : def.source.url) ? null : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         key={i}
@@ -141,10 +147,17 @@ export function TemplatePicker({
                           height: def.heightPct != null ? `${def.heightPct}%` : undefined,
                           objectFit: def.fit === "contain" ? "contain" : "cover",
                           opacity: def.opacity ?? 1,
-                          borderRadius: def.clip ? "8px" : undefined,
+                          borderRadius: !def.clip
+                            ? undefined
+                            : "shape" in def.clip && def.clip.shape === "circle"
+                              ? "50%"
+                              : "roundedPct" in def.clip
+                                ? `${def.clip.roundedPct}%`
+                                : "8px",
                           transform: def.rotation ? `rotate(${def.rotation}deg)` : undefined,
                         }}
                       />
+                      )
                     ) : (
                       <span
                         key={i}

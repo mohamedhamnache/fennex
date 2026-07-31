@@ -13,8 +13,8 @@ import {
 import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
-import { brandTemplate, type TextTemplate, type TemplateTextDef, type TemplateImageDef, type ResolvedTemplate } from "./text-templates";
-import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, backgroundDataUri, type ShapeId, type ShapeStyle } from "./shapes";
+import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
+import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId, type ShapeStyle } from "./shapes";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
 import { TemplatePicker } from "./TemplatePicker";
 import { LayersPanel } from "./LayersPanel";
@@ -459,76 +459,16 @@ export function EditControlsPanel({
   }
 
   function applyTemplate(t: TextTemplate) {
-    // Template sizes assume an ~800px canvas — scale to the real display size.
+    // Template sizes assume an ~800px canvas — templateToLayers scales them to
+    // the real display size.
     const disp = canvasRef.current?.getDisplayedSize();
-    const scale = disp?.width ? Math.max(0.5, Math.min(2.5, disp.width / 800)) : 1;
-    const canvasAspect = disp?.width && disp?.height ? disp.width / disp.height : 1;
-    const { background, layers: defs } = resolveTemplate(t);
-    const now = Date.now();
-    const newLayers: Layer[] = [];
-
-    // Full-bleed background layer (covers the whole canvas)
-    if (background) {
-      newLayers.push({
-        id: `tpl-${now}-bg`,
-        type: "image",
-        imageUrl: backgroundDataUri(background),
-        name: "Background",
-        xPct: 0, yPct: 0, widthPct: 100,
-        aspectRatio: canvasAspect,
-        opacity: 1,
-        visible: true,
-      });
-    }
-
-    defs.forEach((def, i) => {
-      if (def.kind === "image") {
-        const url = def.source === "subject"
-          ? (subjectImageUrl ?? "")
-          : def.source.url;
-        if (!url) return; // no subject to place; skip rather than render an empty box
-        newLayers.push({
-          id: `tpl-${now}-${i}`,
-          type: "image",
-          imageUrl: url,
-          name: def.source === "subject" ? "Photo" : "Image",
-          xPct: def.xPct,
-          yPct: def.yPct,
-          widthPct: def.widthPct,
-          heightPct: def.heightPct,
-          aspectRatio: canvasAspect,
-          fit: def.fit ?? "cover",
-          clip: def.clip,
-          blend: def.blend,
-          opacity: def.opacity ?? 1,
-          rotation: def.rotation,
-          visible: true,
-        });
-        return;
-      }
-      if (def.kind === "shape") {
-        newLayers.push({
-          id: `tpl-${now}-${i}`,
-          type: "image",
-          imageUrl: shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow }),
-          name: `shape:${def.shape}`,
-          xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
-          aspectRatio: shapeAspect(def.shape, !!def.shadow),
-          opacity: def.opacity ?? 1,
-          rotation: def.rotation,
-          visible: true,
-        });
-      } else {
-        const { kind, fontRole, lockColor, ...l } = def as TemplateTextDef; // strip template-only fields
-        void kind; void fontRole; void lockColor;
-        newLayers.push({
-          ...l,
-          fontSize: Math.round(l.fontSize * scale),
-          letterSpacing: l.letterSpacing !== undefined ? Math.round(l.letterSpacing * scale) : undefined,
-          id: `tpl-${now}-${i}`,
-        });
-      }
-    });
+    const resolved = resolveTemplate(t);
+    const newLayers = templateToLayers(
+      resolved,
+      subjectImageUrl ?? "",
+      disp?.width ?? 0,
+      disp?.height ?? 0,
+    );
 
     // A subject-only template can skip every def (no subjectImageUrl yet),
     // leaving nothing to append or select.
@@ -536,16 +476,13 @@ export function EditControlsPanel({
 
     onSetLayers([...layers, ...newLayers]);
     // Select the first foreground layer, not the background
-    onSelectLayer((newLayers[background ? 1 : 0] ?? newLayers[0]).id);
+    onSelectLayer((newLayers[resolved.background ? 1 : 0] ?? newLayers[0]).id);
     // Land the user in the Add Text tool so the layers are instantly editable
     onRequestTool?.("text");
 
     // A template that places the photo as a layer must not also show it as
     // the backdrop underneath — that would double-render the subject.
-    const placesSubject = defs.some(
-      (d) => d.kind === "image" && (d as TemplateImageDef).source === "subject",
-    );
-    if (placesSubject) onHideBaseImage?.(true);
+    if (placesSubject(resolved.layers)) onHideBaseImage?.(true);
   }
 
   type EditOutcome =

@@ -1,8 +1,14 @@
-import type { TextLayer } from "./EditCanvas";
+import type { Layer, TextLayer } from "./EditCanvas";
 import type { BrandKit } from "@/lib/api";
-import { type ShapeId, type TemplateBackground, shadeHex } from "./shapes";
-import { bestTextOn, type TemplateCategory } from "./palette";
+import {
+  type ShapeId, type TemplateBackground,
+  shadeHex, shapeAspect, shapeDataUri, backgroundDataUri,
+} from "./shapes";
+import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
+import {
+  scrimStack, framedInset, splitBlock, editorialBand, priceCorner, posterStack, bento,
+} from "./families";
 
 /** A reusable design composition: optional background, shape objects, and text.
  *  Positions are canvas percentages; font sizes assume an ~800px-wide canvas
@@ -24,6 +30,10 @@ export interface TemplateShapeDef {
   xPct: number;
   yPct: number;
   widthPct: number;
+  /** Explicit height as % of canvas height. Omit to derive it from the shape's
+   *  own aspect ratio — which is right for badges but wrong for the panels and
+   *  bands the composition families build out of `rect`. */
+  heightPct?: number;
   opacity?: number;
   rotation?: number;
   lockColor?: boolean;
@@ -75,7 +85,10 @@ const JAKARTA = "'Plus Jakarta Sans', sans-serif";
 const INTER = "Inter, sans-serif";
 const PLAYFAIR = "'Playfair Display', serif";
 
-export const TEXT_TEMPLATES: TextTemplate[] = [
+/** The pre-family set: decoration painted over a photo the template could not
+ *  place. Kept so the sweep can compare the old flat compositions against the
+ *  new ones; it is not offered in the picker. */
+export const LEGACY_TEXT_TEMPLATES: TextTemplate[] = [
   // ── Ecommerce ──────────────────────────────────────────────────────────────
   {
     id: "flash_sale",
@@ -544,6 +557,84 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
   },
 ];
 
+// ── The composition families ─────────────────────────────────────────────────
+
+/** One template per family — the checkpoint set. Every entry places the edited
+ *  photo through an image layer, so these are compositions rather than
+ *  decoration laid over whatever the user happened to upload. Colours come from
+ *  `resolvePalette` roles, never from literals. */
+export const TEXT_TEMPLATES: TextTemplate[] = [
+  {
+    id: "fam_scrim_stack",
+    name: "Scrim Stack",
+    category: "social",
+    layers: scrimStack(resolvePalette("social"), {
+      headline: "Golden Hour",
+      subhead: "The autumn edit",
+      support: "Shot on location  ·  Fennex Studio",
+    }),
+  },
+  {
+    id: "fam_framed_inset",
+    name: "Framed Inset",
+    category: "blog",
+    layers: framedInset(resolvePalette("blog"), {
+      headline: "Deep Work",
+      subhead: "Focus in a distracted world",
+      support: "8 min read  ·  by Fennex",
+    }),
+  },
+  {
+    id: "fam_split_block",
+    name: "Split Block",
+    category: "ecommerce",
+    layers: splitBlock(resolvePalette("ecommerce"), {
+      headline: "New In",
+      subhead: "Aurora Desk Lamp",
+      support: "Free returns  ·  2-year warranty",
+    }),
+  },
+  {
+    id: "fam_editorial_band",
+    name: "Editorial Band",
+    category: "blog",
+    layers: editorialBand(resolvePalette("blog"), {
+      headline: "How we rebuilt the studio",
+      support: "Field notes  ·  Issue 04",
+    }),
+  },
+  {
+    id: "fam_price_corner",
+    name: "Price Corner",
+    category: "ecommerce",
+    layers: priceCorner(resolvePalette("ecommerce"), {
+      headline: "-40%",
+      subhead: "Aurora Desk Lamp",
+      support: "Today only  ·  while stocks last",
+    }),
+  },
+  {
+    id: "fam_poster_stack",
+    name: "Poster Stack",
+    category: "promo",
+    layers: posterStack(resolvePalette("promo"), {
+      headline: "Big Drop",
+      subhead: "March 15",
+      support: "fennex.studio",
+    }),
+  },
+  {
+    id: "fam_bento",
+    name: "Bento",
+    category: "social",
+    layers: bento(resolvePalette("social"), {
+      headline: "Sale",
+      subhead: "Half price",
+      support: "Ends Sunday at midnight",
+    }),
+  },
+];
+
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
 
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -551,6 +642,102 @@ const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 export interface ResolvedTemplate {
   background: TemplateBackground | null;
   layers: TemplateLayerDef[];
+}
+
+/**
+ * Turn a resolved template into editable canvas layers.
+ *
+ * Lives here rather than in the panel so the editor and the sweep route build
+ * layers through exactly the same code — a template that renders in one and not
+ * the other is the failure mode this function exists to prevent.
+ *
+ * `width`/`height` are the pixel size the layers will be laid out at: font
+ * sizes are authored against an ~800px reference canvas and are scaled to it,
+ * and shapes without an explicit height take their height from the canvas
+ * aspect. A subject image layer resolves to `subjectUrl`; when that is empty
+ * the layer is skipped rather than rendered as an empty box, so the caller must
+ * handle an empty result.
+ */
+export function templateToLayers(
+  t: ResolvedTemplate,
+  subjectUrl: string,
+  width: number,
+  height: number,
+): Layer[] {
+  const scale = width ? Math.max(0.5, Math.min(2.5, width / 800)) : 1;
+  const canvasAspect = width && height ? width / height : 1;
+  const now = Date.now();
+  const out: Layer[] = [];
+
+  // Full-bleed background layer (covers the whole canvas)
+  if (t.background) {
+    out.push({
+      id: `tpl-${now}-bg`,
+      type: "image",
+      imageUrl: backgroundDataUri(t.background),
+      name: "Background",
+      xPct: 0, yPct: 0, widthPct: 100,
+      aspectRatio: canvasAspect,
+      opacity: 1,
+      visible: true,
+    });
+  }
+
+  t.layers.forEach((def, i) => {
+    if (def.kind === "image") {
+      const url = def.source === "subject" ? subjectUrl : def.source.url;
+      if (!url) return; // no subject to place; skip rather than render an empty box
+      out.push({
+        id: `tpl-${now}-${i}`,
+        type: "image",
+        imageUrl: url,
+        name: def.source === "subject" ? "Photo" : "Image",
+        xPct: def.xPct,
+        yPct: def.yPct,
+        widthPct: def.widthPct,
+        heightPct: def.heightPct,
+        aspectRatio: canvasAspect,
+        fit: def.fit ?? "cover",
+        clip: def.clip,
+        blend: def.blend,
+        opacity: def.opacity ?? 1,
+        rotation: def.rotation,
+        visible: true,
+      });
+      return;
+    }
+    if (def.kind === "shape") {
+      out.push({
+        id: `tpl-${now}-${i}`,
+        type: "image",
+        imageUrl: shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow }),
+        name: `shape:${def.shape}`,
+        xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
+        heightPct: def.heightPct,
+        aspectRatio: shapeAspect(def.shape, !!def.shadow),
+        opacity: def.opacity ?? 1,
+        rotation: def.rotation,
+        visible: true,
+      });
+      return;
+    }
+    const { kind, fontRole, lockColor, ...l } = def as TemplateTextDef; // strip template-only fields
+    void kind; void fontRole; void lockColor;
+    out.push({
+      ...l,
+      fontSize: Math.round(l.fontSize * scale),
+      letterSpacing: l.letterSpacing !== undefined ? Math.round(l.letterSpacing * scale) : undefined,
+      id: `tpl-${now}-${i}`,
+    });
+  });
+
+  return out;
+}
+
+/** True when a template places the edited photo as a layer — the caller must
+ *  then hide the backdrop copy of it, or the subject renders twice. */
+export function placesSubject(defs: TemplateLayerDef[]): boolean {
+  return defs.some((d) => d.kind === "image" && (d as TemplateImageDef).source === "subject");
 }
 
 /**
