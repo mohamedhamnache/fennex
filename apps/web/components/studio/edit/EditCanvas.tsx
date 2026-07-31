@@ -9,6 +9,8 @@ import {
   useCallback,
 } from "react";
 import { RotateCw, Sparkles, Plus, Minus, Maximize2 } from "lucide-react";
+import { SceneSvg } from "./scene/SceneSvg";
+import { measureTextLayer, layerText } from "./scene/measure";
 
 const MASK_TOOLS = new Set([
   "replace_background",
@@ -718,6 +720,29 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
           </div>
         )}
 
+        {/* Visual truth for all layers. The overlays below are transparent
+            hit-boxes; this is the only thing that paints them. */}
+        {canvasRect.width > 0 && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              top: canvasRect.top,
+              left: canvasRect.left,
+              width: canvasRect.width,
+              height: canvasRect.height,
+            }}
+          >
+            <SceneSvg
+              scene={{
+                width: canvasRect.width,
+                height: canvasRect.height,
+                baseImageUrl: null,
+                layers: visibleLayers,
+              }}
+            />
+          </div>
+        )}
+
         {/* Layer overlays — always visible, interactive only when tool === "text" */}
         {canvasRect.width > 0 && visibleLayers.map((layer) => {
           const x = canvasRect.left + (layer.xPct / 100) * canvasRect.width;
@@ -775,33 +800,24 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                   position: "absolute",
                   left: x,
                   top: y,
-                  fontSize: layer.fontSize,
-                  color: layer.color,
-                  fontFamily: layer.fontFamily,
-                  fontWeight: layer.bold ? "bold" : "normal",
-                  fontStyle: layer.italic ? "italic" : "normal",
-                  opacity: layer.opacity ?? 1,
-                  letterSpacing: `${layer.letterSpacing ?? 0}px`,
-                  WebkitTextStroke: (layer.outlineWidth ?? 0) > 0
-                    ? `${layer.outlineWidth}px ${layer.outlineColor ?? "#000000"}`
-                    : undefined,
-                  background: layer.bgColor || undefined,
-                  textTransform: layer.uppercase ? "uppercase" : undefined,
+                  width: measureTextLayer(layer, layer.fontSize),
+                  height: layer.fontSize * 1.2,
+                  // Transparent: SceneSvg paints this layer's colour, font,
+                  // outline, shadow, background pill etc. This box is only a
+                  // hit-box; the text stays in the DOM for double-click-to-edit
+                  // and accessibility tooling.
+                  color: "transparent",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
                   userSelect: "none",
                   cursor: interactive ? "move" : "default",
-                  // em padding scales with fontSize and matches the burn geometry
-                  padding: layer.bgColor ? "0.18em 0.3em" : "2px 6px",
                   border: isSelected
                     ? "2px solid hsl(var(--primary))"
                     : isLocked ? "none" : "1.5px dashed rgba(255,255,255,0.7)",
                   borderRadius: layer.bgColor ? "0.25em" : "3px",
-                  textShadow: (layer.shadow ?? true)
-                    ? "0 1px 4px rgba(0,0,0,0.6), 0 0 1px rgba(0,0,0,0.8)"
-                    : "none",
-                  whiteSpace: "nowrap",
-                  lineHeight: 1.2,
                   pointerEvents: interactive ? "auto" : "none",
-                  transform: "translate(-1px, -1px)",
+                  transform: layer.rotation ? `rotate(${layer.rotation}deg)` : undefined,
+                  transformOrigin: "top left",
                   zIndex: isSelected ? 10 : 5,
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -810,7 +826,7 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                 onPointerMove={(e) => { if (interactive) onLayerPointerMove(e, layer); }}
                 onPointerUp={() => { if (interactive) onLayerPointerUp(layer); }}
               >
-                {layer.text}
+                {layerText(layer)}
               </div>
             );
           }
@@ -831,7 +847,9 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                 top: y,
                 width: w,
                 height: h,
-                opacity: layer.opacity ?? 1,
+                // No paint here: SceneSvg draws the image, its opacity, blend
+                // mode and clip. This box is only a hit-box plus selection
+                // chrome (outline, rotate/resize handles below).
                 outline: isSelected
                   ? "2px solid hsl(var(--primary))"
                   : isLocked ? "none" : "1.5px dashed rgba(255,255,255,0.5)",
@@ -848,20 +866,6 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
               onPointerMove={(e) => { if (interactive) onLayerPointerMove(e, layer); }}
               onPointerUp={() => { if (interactive) onLayerPointerUp(layer); }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={layer.imageUrl}
-                alt={layer.name}
-                draggable={false}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "fill",
-                  display: "block",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                }}
-              />
               {/* Rotation handle at top-center */}
               {isSelected && interactive && (
                 <div
