@@ -297,3 +297,47 @@ async def test_gemini_falls_back_to_total_minus_prompt():
 
     assert usage.input_tokens == 900
     assert usage.output_tokens == 250
+
+
+async def test_the_router_uses_priced_current_gemini_models():
+    """gemini-1.5-flash/-pro were retired: Google no longer publishes their
+    prices, so they could not be metered honestly. Every Google model the router
+    can emit must have a rate, or the call bills nothing."""
+    from app.agents.llm_router import TASK_ROUTING, LLMProvider, LLMRouter, TaskType
+
+    priced = {"gemini-2.5-flash", "gemini-2.5-flash-lite"}
+
+    for task, (provider, model) in TASK_ROUTING.items():
+        if provider is LLMProvider.GOOGLE:
+            assert model in priced, f"{task} routes to unpriced {model}"
+
+    # every fallback slot too, not just the primary routing table
+    router = LLMRouter({LLMProvider.GOOGLE})
+    for task in TaskType:
+        provider, model = router.resolve(task)
+        assert provider is LLMProvider.GOOGLE
+        assert model in priced, f"fallback for {task} is unpriced: {model}"
+
+
+async def test_no_retired_gemini_model_is_referenced_anywhere():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "app"
+    # Quoted, so a comment explaining WHY they were retired does not trip this.
+    offenders = [
+        f"{p}:{i}" for p in root.rglob("*.py")
+        for i, line in enumerate(p.read_text().splitlines(), 1)
+        if '"gemini-1.5' in line or "'gemini-1.5" in line
+    ]
+    assert not offenders, f"retired gemini-1.5 models still used: {offenders}"
+
+
+async def test_the_cheap_slot_really_is_the_cheapest_gemini():
+    """flash-lite is $0.10/$0.40 per 1M against flash's $0.30/$2.50."""
+    from app.agents.llm_router import LLMProvider, LLMRouter, TaskType
+
+    router = LLMRouter({LLMProvider.GOOGLE})
+    _, cheap = router.resolve(TaskType.SOCIAL_SHORT_FORM)
+    _, heavy = router.resolve(TaskType.LONG_FORM_ARTICLE)
+    assert cheap == "gemini-2.5-flash-lite"
+    assert heavy == "gemini-2.5-flash"

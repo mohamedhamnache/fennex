@@ -19,6 +19,15 @@ class LLMProvider(str, Enum):
     GOOGLE = "google"
 
 
+# Google models: gemini-1.5-flash and -pro were RETIRED -- Google no longer
+# lists them, so they had no published price and nothing could be metered
+# against them. Replaced with the cheapest CURRENT models that still suit each
+# slot (prices per 1M tokens, from Google's pricing page):
+#   gemini-2.5-flash-lite  $0.10 in / $0.40 out  -- the cheapest Gemini there is
+#   gemini-2.5-flash       $0.30 in / $2.50 out  -- for the quality slot
+# The 1.5-pro this replaces in the quality slot was roughly $1.25/$5.00, so this
+# is a large saving there too, not a quality-for-cost trade.
+
 # Default routing: task → (provider, model)
 TASK_ROUTING: dict[TaskType, tuple[LLMProvider, str]] = {
     TaskType.LONG_FORM_ARTICLE: (LLMProvider.ANTHROPIC, "claude-sonnet-4-6"),
@@ -26,7 +35,7 @@ TASK_ROUTING: dict[TaskType, tuple[LLMProvider, str]] = {
     TaskType.SOCIAL_SHORT_FORM: (LLMProvider.OPENAI, "gpt-4o-mini"),
     TaskType.SEO_AUDIT_REASONING: (LLMProvider.ANTHROPIC, "claude-sonnet-4-6"),
     TaskType.BRAND_VOICE_CLONE: (LLMProvider.ANTHROPIC, "claude-sonnet-4-6"),
-    TaskType.COMPETITOR_ANALYSIS: (LLMProvider.GOOGLE, "gemini-1.5-pro"),
+    TaskType.COMPETITOR_ANALYSIS: (LLMProvider.GOOGLE, "gemini-2.5-flash"),
     TaskType.SERP_EXTRACTION: (LLMProvider.OPENAI, "gpt-4o"),
     TaskType.IMAGE_PROMPT_GEN: (LLMProvider.OPENAI, "gpt-4o-mini"),
 }
@@ -57,12 +66,12 @@ class LLMRouter:
         quality_fallback = {
             LLMProvider.ANTHROPIC: "claude-sonnet-4-6",
             LLMProvider.OPENAI: "gpt-4o",
-            LLMProvider.GOOGLE: "gemini-1.5-pro",
+            LLMProvider.GOOGLE: "gemini-2.5-flash",
         }
         cheap_fallback = {
             LLMProvider.ANTHROPIC: "claude-haiku-4-5-20251001",
             LLMProvider.OPENAI: "gpt-4o-mini",
-            LLMProvider.GOOGLE: "gemini-1.5-flash",
+            LLMProvider.GOOGLE: "gemini-2.5-flash-lite",
         }
         models = quality_fallback if task_type in heavy else cheap_fallback
         for provider in fallback_order:
