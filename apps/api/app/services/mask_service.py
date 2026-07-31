@@ -38,7 +38,6 @@ from PIL import Image as PILImage, ImageOps
 from app.core.storage import _public_url, _s3_configured, upload_bytes
 from app.services.editing_service import _download, _removebg_cutout, _replicate_run
 from app.services.image_output import dimensions
-from app.services.metering.meter import record_removebg
 
 # Pinned in Task 0 against Replicate's live API. Do not edit from memory.
 _SEGMENTER_MODEL = "tmappdev/lang-segment-anything"
@@ -218,8 +217,9 @@ async def resolve_mask(image_url: str, operation: str, target: Optional[str],
             return MaskResolution(ok=False, needs_confirmation=True, tier="prompted",
                                   mask_url=await _segment_by_prompt(image_url, target, source_size))
 
-        cutout = await _removebg_cutout(image_url)
-        await record_removebg(db, org_id=org_id, project_id=None, feature="auto_mask")
+        # Metering happens inside _removebg_cutout, at the supplier chokepoint,
+        # so it is NOT repeated here -- doing both would bill the call twice.
+        cutout = await _removebg_cutout(image_url, feature="auto_mask")
         mask = _fit_to_source(_alpha_to_mask(cutout), source_size)
         if operation in _INVERT_FOR_PRODUCT_TIER:
             mask = ImageOps.invert(mask)

@@ -54,3 +54,69 @@ async def test_remove_background_still_returns_an_uploaded_url():
         result = await editing_service.remove_background("https://cdn/x.png")
 
     assert result == {"ok": True, "image_url": "https://cdn/out.png"}
+
+
+@pytest.mark.asyncio
+async def test_the_remove_background_button_is_metered():
+    """It was not. record_removebg was called only from auto-masking, so every
+    click of the user-facing button made a PAID Remove.bg call billed to nobody.
+    Metering now sits at the supplier chokepoint so every caller is covered."""
+    import uuid as _uuid
+
+    org = _uuid.uuid4()
+    recorded = {}
+
+    async def _fake_record(db, *, org_id, project_id, feature=None):
+        recorded["org_id"], recorded["feature"] = org_id, feature
+        return 200_000
+
+    resp = httpx.Response(200, content=_rgba_png(),
+                          request=httpx.Request("POST", "https://api.remove.bg/v1.0/removebg"))
+    with patch("app.services.editing_service._download", AsyncMock(return_value=b"src")), \
+         patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)), \
+         patch("app.core.metering_context.get_metering_org", lambda: org), \
+         patch("app.services.metering.meter.record_removebg", _fake_record), \
+         patch("app.services.editing_service._upload_result",
+               AsyncMock(return_value="https://cdn/out.png")):
+        result = await editing_service.remove_background("https://cdn/x.png")
+
+    assert result["ok"] is True
+    assert recorded["org_id"] == org
+    assert recorded["feature"] == "background_removal"
+
+
+@pytest.mark.asyncio
+async def test_auto_masking_meters_once_not_twice():
+    """mask_service used to meter explicitly AND now goes through the chokepoint;
+    doing both would bill the same supplier call twice."""
+    import uuid as _uuid
+
+    calls = []
+
+    async def _fake_record(db, *, org_id, project_id, feature=None):
+        calls.append(feature)
+        return 200_000
+
+    resp = httpx.Response(200, content=_rgba_png(),
+                          request=httpx.Request("POST", "https://api.remove.bg/v1.0/removebg"))
+    with patch("app.services.editing_service._download", AsyncMock(return_value=b"src")), \
+         patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)), \
+         patch("app.core.metering_context.get_metering_org", lambda: _uuid.uuid4()), \
+         patch("app.services.metering.meter.record_removebg", _fake_record):
+        await editing_service._removebg_cutout("https://cdn/x.png", feature="auto_mask")
+
+    assert calls == ["auto_mask"], f"expected exactly one charge, got {calls}"
+
+
+@pytest.mark.asyncio
+async def test_a_metering_failure_never_breaks_the_edit():
+    resp = httpx.Response(200, content=_rgba_png(),
+                          request=httpx.Request("POST", "https://api.remove.bg/v1.0/removebg"))
+    with patch("app.services.editing_service._download", AsyncMock(return_value=b"src")), \
+         patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)), \
+         patch("app.core.metering_context.get_metering_org",
+               lambda: (_ for _ in ()).throw(RuntimeError("boom"))), \
+         patch("app.services.editing_service._upload_result",
+               AsyncMock(return_value="https://cdn/out.png")):
+        result = await editing_service.remove_background("https://cdn/x.png")
+    assert result["ok"] is True

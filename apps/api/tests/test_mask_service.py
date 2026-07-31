@@ -79,7 +79,7 @@ async def test_product_tier_polarity(operation, expect_subject_white):
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
          patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", upload), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=200_000)):
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=200_000)):
         res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
 
     assert res.ok is True
@@ -98,7 +98,7 @@ async def test_absent_target_uses_the_free_product_tier():
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
          patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=0)), \
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None, uuid.uuid4(), None)
 
@@ -133,7 +133,7 @@ async def test_product_tier_does_not_need_confirmation():
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
          patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=0)):
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 
@@ -144,23 +144,21 @@ async def test_product_tier_does_not_need_confirmation():
 # ---- metering -------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_product_tier_meters_the_removebg_call():
-    org_id, db = uuid.uuid4(), object()
-    record = AsyncMock(return_value=200_000)
+async def test_product_tier_tags_its_removebg_call_as_auto_mask():
+    """Metering itself now lives inside _removebg_cutout, at the supplier
+    chokepoint, so every caller is covered and none is billed twice (see
+    tests/test_removebg_cutout.py). What this layer still owns is the TAG, which
+    lets the cost dashboard separate auto-masking from the user-initiated
+    background removals that share the removebg provider."""
+    cutout = AsyncMock(return_value=_cutout())
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
-         patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.mask_service.record_removebg", record):
-        res = await resolve_mask("https://cdn/x.png", "replace_background", None, org_id, db)
+         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")):
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None,
+                                 uuid.uuid4(), object())
 
     assert res.ok is True
-    record.assert_awaited_once()
-    args, kwargs = record.call_args
-    assert args[0] is db
-    assert kwargs["org_id"] == org_id
-    # Tags the spend so the cost dashboard can separate auto-masking from the
-    # user-initiated background removals that share the removebg provider.
-    assert kwargs["feature"] == "auto_mask"
+    assert cutout.call_args.kwargs["feature"] == "auto_mask"
 
 
 @pytest.mark.asyncio
@@ -169,7 +167,7 @@ async def test_prompted_tier_does_not_meter_removebg():
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
          patch("app.services.mask_service._segment_by_prompt",
                AsyncMock(return_value="https://cdn/seg.png")), \
-         patch("app.services.mask_service.record_removebg", record):
+         patch("app.services.metering.meter.record_removebg", record):
         await resolve_mask("https://cdn/x.png", "remove_object", "the car",
                            uuid.uuid4(), None)
 
@@ -187,7 +185,7 @@ async def test_a_failed_removebg_call_bills_nothing():
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
          patch("app.services.mask_service._removebg_cutout",
                AsyncMock(side_effect=RuntimeError("remove.bg 402"))), \
-         patch("app.services.mask_service.record_removebg", record):
+         patch("app.services.metering.meter.record_removebg", record):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 
@@ -198,7 +196,7 @@ async def test_a_failed_removebg_call_bills_nothing():
 @pytest.mark.asyncio
 async def test_an_ambiguous_request_meters_nothing():
     record = AsyncMock()
-    with patch("app.services.mask_service.record_removebg", record):
+    with patch("app.services.metering.meter.record_removebg", record):
         res = await resolve_mask("https://cdn/x.png", "insert_object", None,
                                  uuid.uuid4(), None)
 
@@ -472,7 +470,7 @@ async def test_product_tier_fits_a_downscaled_cutout_back_to_the_source():
                AsyncMock(return_value=_source_bytes((64, 48)))), \
          patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=small)), \
          patch("app.services.mask_service._upload_mask", upload), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=0)):
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 

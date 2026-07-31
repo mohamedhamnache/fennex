@@ -234,8 +234,7 @@ async def call_llm_usage(
     provider: str, model: str, api_key: str, system_prompt: str, user_prompt: str,
     locale: str | None = "en", max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> tuple[str, "LLMUsage"]:
-    """Like call_llm but also returns an LLMUsage (token counts). google has no
-    reliable token usage in the current call shape -> zeros."""
+    """Like call_llm but also returns an LLMUsage (token counts)."""
     directive = language_directive(locale)
     if directive:
         user_prompt = directive.strip() + "\n\n" + user_prompt
@@ -251,8 +250,7 @@ async def call_llm_usage(
     if provider == "openai":
         return await _openai_usage(model, api_key, system_prompt, user_prompt, max_tokens)
     if provider == "google":
-        text = await _call_google(model, api_key, system_prompt, user_prompt)
-        return text, LLMUsage("google", model)
+        return await _google_usage(model, api_key, system_prompt, user_prompt)
     raise ValueError(f"Unknown provider: {provider}")
 
 
@@ -324,7 +322,15 @@ async def _call_openai(
     return response.choices[0].message.content
 
 
-async def _call_google(model: str, api_key: str, system_prompt: str, user_prompt: str) -> str:
+async def _google_usage(model: str, api_key: str, system_prompt: str,
+                        user_prompt: str) -> tuple[str, "LLMUsage"]:
+    """Call Gemini and report its real token usage.
+
+    The response carries `usageMetadata` with prompt and candidate token counts.
+    Not reading it meant every Google call metered as ZERO tokens and therefore
+    billed nothing -- a paid supplier call charged to no one, on whichever
+    features route to Gemini.
+    """
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(
@@ -337,4 +343,18 @@ async def _call_google(model: str, api_key: str, system_prompt: str, user_prompt
         )
         resp.raise_for_status()
         data = resp.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    text = data["candidates"][0]["content"]["parts"][0]["text"]
+    um = data.get("usageMetadata") or {}
+    # candidatesTokenCount is absent on some responses; totalTokenCount minus the
+    # prompt is the documented fallback.
+    prompt_tokens = int(um.get("promptTokenCount") or 0)
+    output_tokens = int(um.get("candidatesTokenCount") or 0)
+    if not output_tokens and um.get("totalTokenCount"):
+        output_tokens = max(0, int(um["totalTokenCount"]) - prompt_tokens)
+    return text, LLMUsage("google", model, prompt_tokens, output_tokens)
+
+
+async def _call_google(model: str, api_key: str, system_prompt: str, user_prompt: str) -> str:
+    text, _ = await _google_usage(model, api_key, system_prompt, user_prompt)
+    return text

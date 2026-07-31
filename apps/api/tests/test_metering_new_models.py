@@ -239,3 +239,61 @@ async def test_a_priced_per_image_model_does_not_warn(caplog):
     assert cost == 39_000
     assert not [r for r in caplog.records
                 if r.levelno >= logging.WARNING and "cost rate" in r.getMessage()]
+
+
+async def test_gemini_reports_its_real_token_usage():
+    """Every Google call metered as ZERO tokens and therefore billed nothing --
+    a paid supplier call charged to no one. The response carries usageMetadata;
+    the old call shape simply never read it."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.services import llm_service
+
+    payload = {
+        "candidates": [{"content": {"parts": [{"text": "hello"}]}}],
+        "usageMetadata": {"promptTokenCount": 1200, "candidatesTokenCount": 340},
+    }
+
+    class _Resp:
+        def raise_for_status(self): return None
+        def json(self): return payload
+
+    class _Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, *a, **k): return _Resp()
+
+    with patch("app.services.llm_service.httpx.AsyncClient", lambda **k: _Client()):
+        text, usage = await llm_service._google_usage("gemini-1.5-flash", "k", "sys", "usr")
+
+    assert text == "hello"
+    assert usage.provider == "google"
+    assert usage.input_tokens == 1200
+    assert usage.output_tokens == 340
+
+
+async def test_gemini_falls_back_to_total_minus_prompt():
+    """candidatesTokenCount is absent on some responses."""
+    from unittest.mock import patch
+
+    from app.services import llm_service
+
+    payload = {
+        "candidates": [{"content": {"parts": [{"text": "x"}]}}],
+        "usageMetadata": {"promptTokenCount": 900, "totalTokenCount": 1150},
+    }
+
+    class _Resp:
+        def raise_for_status(self): return None
+        def json(self): return payload
+
+    class _Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, *a, **k): return _Resp()
+
+    with patch("app.services.llm_service.httpx.AsyncClient", lambda **k: _Client()):
+        _, usage = await llm_service._google_usage("gemini-1.5-pro", "k", "s", "u")
+
+    assert usage.input_tokens == 900
+    assert usage.output_tokens == 250

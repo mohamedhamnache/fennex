@@ -249,7 +249,7 @@ async def sharpen_image(image_url: str, strength: float = 0.5) -> dict:
 # ── Remove.bg ─────────────────────────────────────────────────────────────────
 
 
-async def _removebg_cutout(image_url: str) -> PILImage.Image:
+async def _removebg_cutout(image_url: str, *, feature: str = "background_removal") -> PILImage.Image:
     """Fetch the Remove.bg cutout as an RGBA image.
 
     The alpha channel IS a foreground segmentation, which is what
@@ -267,6 +267,28 @@ async def _removebg_cutout(image_url: str) -> PILImage.Image:
             headers={"X-Api-Key": settings.REMOVE_BG_API_KEY},
         )
         resp.raise_for_status()
+
+    # Metered HERE, at the single point the supplier is actually called, for the
+    # same reason _replicate_run meters Replicate: every caller is covered and
+    # none can be counted twice. Metering at the call sites instead left the
+    # user-facing "remove background" button charging NOTHING while the
+    # identical call made by auto-masking was charged -- a paid supplier call
+    # billed to no one.
+    #
+    # Best-effort, attributed to the ambient org set at the auth boundary, and
+    # never allowed to break the edit itself.
+    try:
+        from app.core.metering_context import get_metering_org
+        _org = get_metering_org()
+        if _org is not None:
+            from app.core.database import async_session_factory
+            from app.services.metering import meter as _meter
+            async with async_session_factory() as _db:
+                await _meter.record_removebg(_db, org_id=_org, project_id=None,
+                                             feature=feature)
+    except Exception:  # noqa: BLE001
+        logger.warning("remove.bg usage metering failed", exc_info=True)
+
     return PILImage.open(io.BytesIO(resp.content)).convert("RGBA")
 
 
