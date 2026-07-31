@@ -27,3 +27,21 @@ export function measureTextLayer(layer: TextLayer, fontSize: number): number {
   const spacing = (layer.letterSpacing ?? 0) * scale * Math.max(0, text.length - 1);
   return c.measureText(text).width + spacing;
 }
+
+/** Padding around a text background pill, as a fraction of font size. */
+export const PILL_PAD_X = 0.35;
+export const PILL_PAD_Y = 0.18;
+
+export interface TextBox { x: number; y: number; width: number; height: number }
+
+/** The box a text layer actually paints at (x, y), including the background
+ *  pill when one is set. SceneSvg paints this rect and EditCanvas uses it as
+ *  the hit-box, so the two cannot drift apart. */
+export function textBox(layer: TextLayer, fontSize: number, x: number, y: number): TextBox {
+  const width = measureTextLayer(layer, fontSize);
+  const height = fontSize * 1.2;
+  if (!layer.bgColor) return { x, y, width, height };
+  const padX = fontSize * PILL_PAD_X;
+  const padY = fontSize * PILL_PAD_Y;
+  return { x: x - padX, y: y - padY, width: width + padX * 2, height: height + padY * 2 };
+}

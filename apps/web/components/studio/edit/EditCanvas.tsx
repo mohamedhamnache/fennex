@@ -10,7 +10,7 @@ import {
 } from "react";
 import { RotateCw, Sparkles, Plus, Minus, Maximize2 } from "lucide-react";
 import { SceneSvg } from "./scene/SceneSvg";
-import { measureTextLayer, layerText } from "./scene/measure";
+import { layerText, textBox } from "./scene/measure";
 
 const MASK_TOOLS = new Set([
   "replace_background",
@@ -793,19 +793,21 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                 />
               );
             }
+            const box = textBox(layer, layer.fontSize, x, y);
             return (
               <div
                 key={layer.id}
                 style={{
                   position: "absolute",
-                  left: x,
-                  top: y,
-                  width: measureTextLayer(layer, layer.fontSize),
-                  height: layer.fontSize * 1.2,
+                  left: box.x,
+                  top: box.y,
+                  width: box.width,
+                  height: box.height,
                   // Transparent: SceneSvg paints this layer's colour, font,
-                  // outline, shadow, background pill etc. This box is only a
-                  // hit-box; the text stays in the DOM for double-click-to-edit
-                  // and accessibility tooling.
+                  // outline, shadow, background pill etc. `textBox` gives the
+                  // same rect SceneSvg paints (glyph box, or the padded pill
+                  // box when bgColor is set) so the hit-box can't drift from
+                  // the paint.
                   color: "transparent",
                   whiteSpace: "nowrap",
                   overflow: "hidden",

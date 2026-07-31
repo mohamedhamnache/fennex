@@ -1,11 +1,6 @@
 import type { ImageLayer, TextLayer } from "../EditCanvas";
 import type { Scene } from "./types";
-import { layerText, measureTextLayer } from "./measure";
-
-/** Padding around a text background pill, as a fraction of font size. Matches
- *  the value the DOM overlay used so existing templates look unchanged. */
-const PILL_PAD_X = 0.35;
-const PILL_PAD_Y = 0.18;
+import { layerText, textBox } from "./measure";
 
 function clipPathId(layerId: string): string {
   return `clip-${layerId}`;
@@ -16,9 +11,7 @@ function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
   const fontSize = layer.fontSize;
   const x = (layer.xPct / 100) * scene.width;
   const y = (layer.yPct / 100) * scene.height;
-  const width = measureTextLayer(layer, fontSize);
-  const padX = fontSize * PILL_PAD_X;
-  const padY = fontSize * PILL_PAD_Y;
+  const box = textBox(layer, fontSize, x, y);
 
   return (
     <g
@@ -28,10 +21,10 @@ function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
     >
       {layer.bgColor ? (
         <rect
-          x={x - padX}
-          y={y - padY}
-          width={width + padX * 2}
-          height={fontSize * 1.2 + padY * 2}
+          x={box.x}
+          y={box.y}
+          width={box.width}
+          height={box.height}
           fill={layer.bgColor}
           rx={fontSize * 0.15}
         />
