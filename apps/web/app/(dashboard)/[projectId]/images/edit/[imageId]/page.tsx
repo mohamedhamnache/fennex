@@ -629,6 +629,7 @@ export default function EditPage({
                 tool={selectedTool}
                 imageId={editTargetId}
                 imageUrl={displayImage?.image_url ?? ""}
+                subjectImageUrl={displayImage?.image_url ?? undefined}
                 projectId={projectId}
                 canvasRef={canvasRef}
                 onVersionAdded={handleVersionAdded}

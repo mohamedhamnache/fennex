@@ -2,6 +2,7 @@ import type { TextLayer } from "./EditCanvas";
 import type { BrandKit } from "@/lib/api";
 import { type ShapeId, type TemplateBackground, shadeHex } from "./shapes";
 import { bestTextOn, type TemplateCategory } from "./palette";
+import type { BlendMode, ClipSpec } from "./scene/types";
 
 /** A reusable design composition: optional background, shape objects, and text.
  *  Positions are canvas percentages; font sizes assume an ~800px-wide canvas
@@ -32,7 +33,22 @@ export interface TemplateShapeDef {
   shadow?: boolean;
 }
 
-export type TemplateLayerDef = TemplateTextDef | TemplateShapeDef;
+export interface TemplateImageDef {
+  kind: "image";
+  /** "subject" places the image being edited. An explicit url places a fixed asset. */
+  source: "subject" | { url: string };
+  xPct: number;
+  yPct: number;
+  widthPct: number;
+  heightPct?: number;
+  fit?: "cover" | "contain";
+  clip?: ClipSpec;
+  blend?: BlendMode;
+  opacity?: number;
+  rotation?: number;
+}
+
+export type TemplateLayerDef = TemplateTextDef | TemplateShapeDef | TemplateImageDef;
 
 export interface TextTemplate {
   id: string;
@@ -568,6 +584,8 @@ export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): Resolve
       if (def.color === "#ffffff" && (def.opacity ?? 1) < 0.5) return def;
       return { ...def, color: colors[badge++ % colors.length] };
     }
+    // Photos aren't recoloured by the brand kit — pass through unchanged.
+    if (def.kind === "image") return def;
     const out: TemplateTextDef = { ...def };
     if (def.fontRole === "heading" && brand.primary_font) out.fontFamily = brand.primary_font;
     if (def.fontRole === "body" && brand.secondary_font) out.fontFamily = brand.secondary_font;

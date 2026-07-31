@@ -13,7 +13,7 @@ import {
 import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
-import { TEXT_TEMPLATES, TEMPLATE_CATEGORIES, brandTemplate, type TextTemplate, type TemplateCategory, type TemplateTextDef, type ResolvedTemplate } from "./text-templates";
+import { TEXT_TEMPLATES, TEMPLATE_CATEGORIES, brandTemplate, type TextTemplate, type TemplateCategory, type TemplateTextDef, type TemplateImageDef, type ResolvedTemplate } from "./text-templates";
 import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, backgroundDataUri, backgroundCss, type ShapeId, type ShapeStyle } from "./shapes";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
 
@@ -33,6 +33,8 @@ interface EditControlsPanelProps {
   tool: string;
   imageId: string;
   imageUrl: string;
+  /** URL of the image being edited — the "subject" a template's image layer can place. */
+  subjectImageUrl?: string;
   projectId?: string;
   canvasRef: RefObject<EditCanvasRef>;
   onVersionAdded: (img: GeneratedImage) => void;
@@ -203,6 +205,7 @@ export function EditControlsPanel({
   tool,
   imageId,
   imageUrl,
+  subjectImageUrl,
   projectId,
   canvasRef,
   onVersionAdded,
@@ -478,6 +481,30 @@ export function EditControlsPanel({
     }
 
     defs.forEach((def, i) => {
+      if (def.kind === "image") {
+        const url = def.source === "subject"
+          ? (subjectImageUrl ?? "")
+          : def.source.url;
+        if (!url) return; // no subject to place; skip rather than render an empty box
+        newLayers.push({
+          id: `tpl-${now}-${i}`,
+          type: "image",
+          imageUrl: url,
+          name: def.source === "subject" ? "Photo" : "Image",
+          xPct: def.xPct,
+          yPct: def.yPct,
+          widthPct: def.widthPct,
+          heightPct: def.heightPct,
+          aspectRatio: canvasAspect,
+          fit: def.fit ?? "cover",
+          clip: def.clip,
+          blend: def.blend,
+          opacity: def.opacity ?? 1,
+          rotation: def.rotation,
+          visible: true,
+        });
+        return;
+      }
       if (def.kind === "shape") {
         newLayers.push({
           id: `tpl-${now}-${i}`,
@@ -507,6 +534,13 @@ export function EditControlsPanel({
     onSelectLayer((newLayers[background ? 1 : 0] ?? newLayers[0]).id);
     // Land the user in the Add Text tool so the layers are instantly editable
     onRequestTool?.("text");
+
+    // A template that places the photo as a layer must not also show it as
+    // the backdrop underneath — that would double-render the subject.
+    const placesSubject = defs.some(
+      (d) => d.kind === "image" && (d as TemplateImageDef).source === "subject",
+    );
+    if (placesSubject) onHideBaseImage?.(true);
   }
 
   type EditOutcome =
@@ -1795,6 +1829,24 @@ export function EditControlsPanel({
                                   top: `${def.yPct}%`,
                                   width: `${def.widthPct}%`,
                                   opacity: def.opacity ?? 1,
+                                  transform: def.rotation ? `rotate(${def.rotation}deg)` : undefined,
+                                }}
+                              />
+                            ) : def.kind === "image" ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={i}
+                                src={def.source === "subject" ? (subjectImageUrl ?? "") : def.source.url}
+                                alt=""
+                                style={{
+                                  position: "absolute",
+                                  left: `${def.xPct}%`,
+                                  top: `${def.yPct}%`,
+                                  width: `${def.widthPct}%`,
+                                  height: def.heightPct != null ? `${def.heightPct}%` : undefined,
+                                  objectFit: def.fit === "contain" ? "contain" : "cover",
+                                  opacity: def.opacity ?? 1,
+                                  borderRadius: def.clip ? "8px" : undefined,
                                   transform: def.rotation ? `rotate(${def.rotation}deg)` : undefined,
                                 }}
                               />

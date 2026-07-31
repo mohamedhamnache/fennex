@@ -54,6 +54,54 @@ function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
   );
 }
 
+function ClipDefs({ scene }: { scene: Scene }) {
+  const clipped = scene.layers.filter(
+    (l): l is ImageLayer => l.type === "image" && !!(l as ImageLayer).clip,
+  );
+  if (clipped.length === 0) return null;
+
+  return (
+    <defs>
+      {clipped.map((layer) => {
+        const clip = layer.clip!;
+        const x = (layer.xPct / 100) * scene.width;
+        const y = (layer.yPct / 100) * scene.height;
+        const w = (layer.widthPct / 100) * scene.width;
+        const h = layer.heightPct != null
+          ? (layer.heightPct / 100) * scene.height
+          : (layer.aspectRatio > 0 ? w / layer.aspectRatio : w);
+
+        let node: JSX.Element;
+        if ("roundedPct" in clip) {
+          const r = (clip.roundedPct / 100) * Math.min(w, h);
+          node = <rect x={x} y={y} width={w} height={h} rx={r} ry={r} />;
+        } else if ("insetPct" in clip) {
+          const [t, rr, b, ll] = clip.insetPct;
+          node = (
+            <rect
+              x={x + (ll / 100) * w}
+              y={y + (t / 100) * h}
+              width={w - ((ll + rr) / 100) * w}
+              height={h - ((t + b) / 100) * h}
+            />
+          );
+        } else {
+          // Shape clip: the shape's own SVG is used as the mask via an <image>
+          // reference inside a clipPath, which requires clipPathUnits on a path.
+          // Circles and ellipses cover the common cases directly; everything
+          // else falls back to a rounded rect so a template never renders
+          // unclipped and silently wrong.
+          node = clip.shape === "circle"
+            ? <circle cx={x + w / 2} cy={y + h / 2} r={Math.min(w, h) / 2} />
+            : <rect x={x} y={y} width={w} height={h} rx={Math.min(w, h) * 0.08} />;
+        }
+
+        return <clipPath key={layer.id} id={clipPathId(layer.id)}>{node}</clipPath>;
+      })}
+    </defs>
+  );
+}
+
 function ImageNode({ layer, scene }: { layer: ImageLayer; scene: Scene }) {
   const x = (layer.xPct / 100) * scene.width;
   const y = (layer.yPct / 100) * scene.height;
@@ -93,6 +141,7 @@ export function SceneSvg({ scene }: { scene: Scene }) {
       viewBox={`0 0 ${scene.width} ${scene.height}`}
       xmlns="http://www.w3.org/2000/svg"
     >
+      <ClipDefs scene={scene} />
       {scene.baseImageUrl ? (
         <image
           href={scene.baseImageUrl}
