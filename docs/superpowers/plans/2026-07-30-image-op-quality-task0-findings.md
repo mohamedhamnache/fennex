@@ -109,11 +109,13 @@ directly observed and high confidence. The judgement calls are Decision A's
 choice of `bria/product-shadow` over withdrawal, and Decision B's preference for
 an upscale pass over a model swap. Both are reversible.
 
-`bria/product-shadow` has no cost_rates row yet. It will bill at the generic
-`replicate/second` fallback of 1400 micro-$/sec until one is seeded, which is
-correct only if it runs on A100 80GB — unverified. This belongs in the deferred
-full repricing pass, together with the dead `fal-ai/shadow-generation` rate row
-that still exists for a model that does not.
+`bria/product-shadow` is now seeded per second at the A100 80GB rate
+(n8nanobanana2), and the dead `fal-ai/shadow-generation` row is deleted.
+
+`google/nano-banana` is seeded per IMAGE at 39000 micro-$ ($0.039), **confirmed
+correct by the account owner on 2026-07-31**. Per-image is the right axis: it is
+an official Replicate model and reports `metrics.image_output_count`, and pricing
+it by duration undercharged by roughly 3.5x.
 
 ## Addendum — output-resolution behaviour (added after the final review)
 

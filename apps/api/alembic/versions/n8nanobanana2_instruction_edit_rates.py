@@ -29,20 +29,20 @@ credits, and an unrated model silently resolves to a fallback nobody chose.
    this row can never be consulted. Removing a rate for a nonexistent model is
    not history rewriting: nothing was ever charged against it.
 
-CONFIDENCE -- read before trusting figure 1 for margin reporting:
-  nano-banana's exact per-image price is NOT exposed by the Replicate API, its
-  /pricing page, or its billing docs -- it is rendered client-side on the model
-  page under "Run time and cost". 39000 micro-$ ($0.039/image) is the
-  widely-cited figure for Gemini 2.5 Flash Image on Replicate and sits just under
-  FLUX Pro's $0.04/image, which IS verified on Replicate's pricing page for a
-  comparable official image model. Seeded at the user's explicit direction as an
-  interim figure, flagged for correction.
+CONFIDENCE -- figure 1 is CONFIRMED. Do not "correct" it.
+  When written, nano-banana's per-image price was not exposed by the Replicate
+  API, its /pricing page, or its billing docs -- only client-side on the model
+  page under "Run time and cost" -- so 39000 micro-$ ($0.039/image) was seeded as
+  an interim figure pending confirmation.
 
-  UNVERIFIED. TO CORRECT: read the real price from replicate.com/google/nano-banana
-  or the Replicate invoice, then insert ANOTHER versioned row at a later
-  effective_from -- never UPDATE this one, which would destroy the audit trail of
-  what was charged when (same rule as w3repricing7, y5kontextrate9 and
-  h4trellisrate6).
+  CONFIRMED CORRECT by the account owner on 2026-07-31, against the real
+  Replicate account. The rate stands as seeded; no superseding row is needed.
+  It also sits just under FLUX Pro's $0.04/image, independently verified on
+  Replicate's pricing page for a comparable official image model.
+
+  IF IT EVER CHANGES: insert ANOTHER versioned row at a later effective_from --
+  never UPDATE this one, which would destroy the audit trail of what was charged
+  when (same rule as w3repricing7, y5kontextrate9 and h4trellisrate6).
 
   WHY NOT PAD IT: cost_micros drives BOTH margin reporting AND what the customer
   is billed, since AI credits derive from cost. Over-estimating an unknown rate
