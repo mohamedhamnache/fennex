@@ -526,18 +526,25 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { SceneSvg } from "./SceneSvg";
 import { inlineSceneImages } from "./inlineImages";
+import { fontString } from "./measure";
 import type { Scene } from "./types";
 import type { TextLayer } from "../EditCanvas";
 
 /** Wait for every font the scene actually uses. Rasterising before a display
  *  face has loaded silently renders the export in a fallback font: the preview
- *  is right and the download is wrong, with no error anywhere. */
+ *  is right and the download is wrong, with no error anywhere.
+ *
+ *  Build the shorthand with fontString from measure.ts — never by hand.
+ *  document.fonts.load matches on the FULL shorthand including font-style, so
+ *  a string that omits "italic" requests the normal face and leaves an italic
+ *  layer unwaited. Playfair Display ships its italic as a separate file and is
+ *  already used by shipped templates, so this is reachable, not theoretical. */
 async function waitForFonts(scene: Scene): Promise<void> {
   const families = new Set<string>();
   for (const layer of scene.layers) {
     if (layer.type === "text") {
       const t = layer as TextLayer;
-      families.add(`${t.bold ? "bold " : ""}${t.fontSize}px ${t.fontFamily}`);
+      families.add(fontString(t, t.fontSize));
     }
   }
   await Promise.all([...families].map((f) => document.fonts.load(f)));
