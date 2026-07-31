@@ -19,14 +19,21 @@ Available operations (use exactly these names):
 - generate_shadow: params: direction("bottom"|"bottom-right"|"bottom-left"|"right"|"left")
 - relight: params: direction("top"|"top-right"|"left"|"right"), intensity(float, 0.1 to 2)
 
-Operations that act on a region of the image. Name the region in `target` ONLY
-when the user singled out a specific object; OMIT target to use the operation's
-default region, which is resolved automatically and costs less:
+Operations that act on a region of the image.
+
+`target` names WHAT to act on, in the user's own words. Whenever the user names
+a thing -- "remove the mint", "supprime la menthe", "erase the logo" -- put that
+thing in `target`. Removal operations ALWAYS require it: there is no such thing
+as removing nothing in particular, and guessing produces a confidently wrong
+edit on the wrong object.
+
+Only `replace_background` may omit `target`, because "the background" genuinely
+is its default region and resolving it that way costs less.
 - replace_background: params: prompt(str describing new background), target(str, optional — OMIT for the background)
-- remove_object: params: target(str, optional — OMIT for the main subject)
+- remove_object: params: target(str, REQUIRED — name the thing to delete, e.g. "the mint leaves")
 - insert_object: params: prompt(str describing object to insert), target(str, REQUIRED — where to insert)
 - generative_fill: params: prompt(str describing fill content), target(str, REQUIRED — region to fill)
-- smart_erase: params: target(str, optional — OMIT for the main subject)
+- smart_erase: params: target(str, REQUIRED — name the thing to erase)
 """
 
 _SYSTEM = (

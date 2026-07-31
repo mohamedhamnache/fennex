@@ -17,7 +17,8 @@ from app.models.project import Project
 from app.models.api_key import APIKey
 from app.services.product_service import PRODUCT_SCENES, build_scene_prompt
 from app.services.image_service import generate_image_dalle
-from app.services.editing_service import _replicate_run, _download_and_upload_url
+from app.services.editing_service import _replicate_run
+from app.services.image_output import ResolutionPolicy, finalize
 from app.services.prompting import vocab as prompt_vocab
 from app.api.v1.routers.images import ImageOut
 from app.core.billing import check_project_not_locked, increment_usage, require_credits
@@ -172,8 +173,13 @@ async def _run_flux_kontext(
         if seed is not None:
             replicate_input["seed"] = seed
         output = await _replicate_run(_FLUX_KONTEXT_MODEL, replicate_input)
-        url = await _download_and_upload_url(output)
-        width, height = _ASPECT_RATIO_DIMENSIONS.get(aspect_ratio, (1024, 1024))
+        # Product-scene re-frames the product into a new scene at the requested
+        # aspect ratio, so the output size legitimately differs from the source.
+        stored = await finalize(output, policy=ResolutionPolicy.ALLOW_CHANGE)
+        url = stored.url
+        # The stored file is the truth; the aspect table is only a fallback for
+        # when finalize could not measure it.
+        width, height = stored.width, stored.height
         return {"ok": True, "image_url": url, "width": width, "height": height, "revised_prompt": None, "cost_usd": None}
     except Exception as e:
         return {"ok": False, "error": str(e)}

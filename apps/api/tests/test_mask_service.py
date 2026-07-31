@@ -11,6 +11,14 @@ from app.services import mask_service
 from app.services.mask_service import MaskResolution, is_own_storage_url, resolve_mask
 
 
+def _source_bytes(size=(8, 8)) -> bytes:
+    """Source bytes for the dimension probe resolve_mask now performs. Matches
+    _cutout()'s size so no resize is triggered in the existing assertions."""
+    buf = io.BytesIO()
+    PILImage.new("RGB", size, (9, 9, 9)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _cutout(size=(8, 8)) -> PILImage.Image:
     """RGBA cutout: left half opaque subject, right half transparent background."""
     img = PILImage.new("RGBA", size, (255, 0, 0, 255))
@@ -24,6 +32,12 @@ def _uploaded_mask(mock_upload) -> PILImage.Image:
     """Reconstruct the L-mode mask handed to the uploader."""
     (img,), _ = mock_upload.call_args
     return img
+
+
+# The greyscale probe masks below are one row of len(levels) pixels. Passing
+# their own size as source_size keeps _fit_to_source a no-op, so the level
+# assertions test binarisation rather than resampling.
+_MASK_PROBE_SIZE = (3, 1)
 
 
 def _png_bytes(levels) -> bytes:
@@ -58,15 +72,14 @@ def test_alpha_to_mask_thresholds_semi_transparent_pixels():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation,expect_subject_white", [
-    ("replace_background", False),  # white = background
-    ("remove_object", True),        # white = subject
-    ("smart_erase", True),          # white = subject
+    ("replace_background", False),  # white = background; the only product-tier op
 ])
 async def test_product_tier_polarity(operation, expect_subject_white):
     upload = AsyncMock(return_value="https://cdn/mask.png")
-    with patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", upload), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=200_000)):
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=200_000)):
         res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
 
     assert res.ok is True
@@ -82,9 +95,10 @@ async def test_product_tier_polarity(operation, expect_subject_white):
 @pytest.mark.asyncio
 async def test_absent_target_uses_the_free_product_tier():
     segment = AsyncMock(return_value="https://cdn/seg.png")
-    with patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=0)), \
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None, uuid.uuid4(), None)
 
@@ -96,7 +110,8 @@ async def test_absent_target_uses_the_free_product_tier():
 async def test_present_target_uses_the_prompted_tier():
     cutout = AsyncMock(return_value=_cutout())
     segment = AsyncMock(return_value="https://cdn/seg.png")
-    with patch("app.services.mask_service._removebg_cutout", cutout), \
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", cutout), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", "remove_object",
                                  "the person on the left", uuid.uuid4(), None)
@@ -110,15 +125,17 @@ async def test_present_target_uses_the_prompted_tier():
     cutout.assert_not_awaited()  # never pays for the free tier it did not use
     # Both arguments are URL-ish strings, so transposing them still runs and
     # still returns a mask -- it just segments the wrong thing. Pin the order.
-    segment.assert_awaited_once_with("https://cdn/x.png", "the person on the left")
+    segment.assert_awaited_once_with("https://cdn/x.png", "the person on the left", (8, 8))
 
 
 @pytest.mark.asyncio
 async def test_product_tier_does_not_need_confirmation():
-    with patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.mask_service.record_removebg", AsyncMock(return_value=0)):
-        res = await resolve_mask("https://cdn/x.png", "remove_object", None, uuid.uuid4(), None)
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)):
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None,
+                                 uuid.uuid4(), None)
 
     assert res.ok is True
     assert res.needs_confirmation is False
@@ -127,30 +144,30 @@ async def test_product_tier_does_not_need_confirmation():
 # ---- metering -------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_product_tier_meters_the_removebg_call():
-    org_id, db = uuid.uuid4(), object()
-    record = AsyncMock(return_value=200_000)
-    with patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
-         patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.mask_service.record_removebg", record):
-        res = await resolve_mask("https://cdn/x.png", "replace_background", None, org_id, db)
+async def test_product_tier_tags_its_removebg_call_as_auto_mask():
+    """Metering itself now lives inside _removebg_cutout, at the supplier
+    chokepoint, so every caller is covered and none is billed twice (see
+    tests/test_removebg_cutout.py). What this layer still owns is the TAG, which
+    lets the cost dashboard separate auto-masking from the user-initiated
+    background removals that share the removebg provider."""
+    cutout = AsyncMock(return_value=_cutout())
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")):
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None,
+                                 uuid.uuid4(), object())
 
     assert res.ok is True
-    record.assert_awaited_once()
-    args, kwargs = record.call_args
-    assert args[0] is db
-    assert kwargs["org_id"] == org_id
-    # Tags the spend so the cost dashboard can separate auto-masking from the
-    # user-initiated background removals that share the removebg provider.
-    assert kwargs["feature"] == "auto_mask"
+    assert cutout.call_args.kwargs["feature"] == "auto_mask"
 
 
 @pytest.mark.asyncio
 async def test_prompted_tier_does_not_meter_removebg():
     record = AsyncMock()
-    with patch("app.services.mask_service._segment_by_prompt",
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._segment_by_prompt",
                AsyncMock(return_value="https://cdn/seg.png")), \
-         patch("app.services.mask_service.record_removebg", record):
+         patch("app.services.metering.meter.record_removebg", record):
         await resolve_mask("https://cdn/x.png", "remove_object", "the car",
                            uuid.uuid4(), None)
 
@@ -165,9 +182,10 @@ async def test_a_failed_removebg_call_bills_nothing():
     nothing but this test stops a refactor from reordering the two.
     """
     record = AsyncMock()
-    with patch("app.services.mask_service._removebg_cutout",
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout",
                AsyncMock(side_effect=RuntimeError("remove.bg 402"))), \
-         patch("app.services.mask_service.record_removebg", record):
+         patch("app.services.metering.meter.record_removebg", record):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 
@@ -178,7 +196,7 @@ async def test_a_failed_removebg_call_bills_nothing():
 @pytest.mark.asyncio
 async def test_an_ambiguous_request_meters_nothing():
     record = AsyncMock()
-    with patch("app.services.mask_service.record_removebg", record):
+    with patch("app.services.metering.meter.record_removebg", record):
         res = await resolve_mask("https://cdn/x.png", "insert_object", None,
                                  uuid.uuid4(), None)
 
@@ -199,7 +217,7 @@ async def test_segmenter_output_is_binarised():
     with patch("app.services.mask_service._replicate_run", AsyncMock(return_value="https://cdn/raw.png")), \
          patch("app.services.mask_service._download", AsyncMock(return_value=_png_bytes([0, 211, 255]))), \
          patch("app.services.mask_service._upload_mask", upload):
-        url = await mask_service._segment_by_prompt("https://cdn/x.png", "the car")
+        url = await mask_service._segment_by_prompt("https://cdn/x.png", "the car", _MASK_PROBE_SIZE)
 
     assert url == "https://cdn/seg.png"
     mask = _uploaded_mask(upload)
@@ -232,7 +250,7 @@ async def test_segmenter_output_is_binarised_after_inverting(monkeypatch):
     with patch("app.services.mask_service._replicate_run", AsyncMock(return_value="https://cdn/raw.png")), \
          patch("app.services.mask_service._download", AsyncMock(return_value=_png_bytes([0, 211, 255]))), \
          patch("app.services.mask_service._upload_mask", upload):
-        await mask_service._segment_by_prompt("https://cdn/x.png", "the car")
+        await mask_service._segment_by_prompt("https://cdn/x.png", "the car", _MASK_PROBE_SIZE)
 
     mask = _uploaded_mask(upload)
     levels = [mask.getpixel((x, 0)) for x in range(3)]
@@ -246,7 +264,7 @@ async def test_segmenter_is_called_with_the_pinned_version():
     with patch("app.services.mask_service._replicate_run", run), \
          patch("app.services.mask_service._download", AsyncMock(return_value=_png_bytes([0, 255]))), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/seg.png")):
-        await mask_service._segment_by_prompt("https://cdn/x.png", "the car")
+        await mask_service._segment_by_prompt("https://cdn/x.png", "the car", _MASK_PROBE_SIZE)
 
     args, kwargs = run.call_args
     assert args[0] == mask_service._SEGMENTER_MODEL
@@ -265,7 +283,8 @@ async def test_segmenter_is_called_with_the_pinned_version():
 @pytest.mark.parametrize("operation", ["insert_object", "generative_fill"])
 async def test_ambiguous_operations_ask_and_spend_nothing(operation):
     cutout, segment = AsyncMock(), AsyncMock()
-    with patch("app.services.mask_service._removebg_cutout", cutout), \
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", cutout), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
 
@@ -277,7 +296,8 @@ async def test_ambiguous_operations_ask_and_spend_nothing(operation):
 
 @pytest.mark.asyncio
 async def test_ambiguous_operation_with_a_target_resolves_normally():
-    with patch("app.services.mask_service._segment_by_prompt",
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._segment_by_prompt",
                AsyncMock(return_value="https://cdn/seg.png")):
         res = await resolve_mask("https://cdn/x.png", "insert_object",
                                  "the empty shelf", uuid.uuid4(), None)
@@ -290,7 +310,8 @@ async def test_ambiguous_operation_with_a_target_resolves_normally():
 
 @pytest.mark.asyncio
 async def test_supplier_failure_returns_an_error_not_an_exception():
-    with patch("app.services.mask_service._removebg_cutout",
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout",
                AsyncMock(side_effect=RuntimeError("remove.bg 402"))):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
@@ -397,7 +418,14 @@ def test_mask_operations_table():
         "replace_background", "remove_object", "insert_object",
         "generative_fill", "smart_erase",
     })
-    assert mask_service.AMBIGUOUS_WITHOUT_TARGET == frozenset({"insert_object", "generative_fill"})
+    # Removal joined the ambiguous set: "remove the mint" with no target made the
+    # product tier mask the main subject (the bottle) and erase it.
+    assert mask_service.AMBIGUOUS_WITHOUT_TARGET == frozenset({
+        "insert_object", "generative_fill", "remove_object", "smart_erase",
+    })
+    # replace_background is the ONLY operation with a derivable default region.
+    assert mask_service.MASK_OPERATIONS - mask_service.AMBIGUOUS_WITHOUT_TARGET == \
+        frozenset({"replace_background"})
     assert mask_service.AMBIGUOUS_WITHOUT_TARGET <= mask_service.MASK_OPERATIONS
 
 
@@ -405,3 +433,79 @@ def test_mask_resolution_defaults():
     res = MaskResolution(ok=True)
     assert (res.mask_url, res.question, res.error, res.tier) == (None, None, None, None)
     assert res.needs_confirmation is False
+
+
+def test_fit_to_source_resizes_a_mismatched_mask():
+    """A mask whose size differs from the image is not a soft error: LaMa
+    accepts it, reports succeeded, and returns a NULL output. Verified against
+    the live model (512x512 mask on an 800x600 image -> null output), which is
+    exactly the "succeeded but returned no output" users hit."""
+    mask = PILImage.new("L", (512, 512), 255)
+    fitted = mask_service._fit_to_source(mask, (800, 600))
+    assert fitted.size == (800, 600)
+
+
+def test_fit_to_source_leaves_a_matching_mask_untouched():
+    mask = PILImage.new("L", (800, 600), 255)
+    assert mask_service._fit_to_source(mask, (800, 600)) is mask
+
+
+def test_fit_to_source_keeps_the_mask_binary():
+    """NEAREST, not LANCZOS: interpolation would introduce grey values and break
+    the binary invariant _binarise exists to guarantee."""
+    mask = PILImage.new("L", (4, 4), 0)
+    mask.putpixel((1, 1), 255)
+    mask.putpixel((2, 2), 255)
+    fitted = mask_service._fit_to_source(mask, (37, 29))
+    assert set(fitted.getdata()) <= {0, 255}
+
+
+@pytest.mark.asyncio
+async def test_product_tier_fits_a_downscaled_cutout_back_to_the_source():
+    """Remove.bg's size:"auto" downscales on lower tiers, so the cutout -- and
+    therefore the derived mask -- can be smaller than the image it came from."""
+    small = _cutout((16, 12))          # supplier returned a smaller cutout
+    upload = AsyncMock(return_value="https://cdn/mask.png")
+    with patch("app.services.mask_service._download",
+               AsyncMock(return_value=_source_bytes((64, 48)))), \
+         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=small)), \
+         patch("app.services.mask_service._upload_mask", upload), \
+         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)):
+        res = await resolve_mask("https://cdn/x.png", "replace_background", None,
+                                 uuid.uuid4(), None)
+
+    assert res.ok is True
+    (mask,), _ = upload.call_args
+    assert mask.size == (64, 48), "mask must match the SOURCE, not the cutout"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["remove_object", "smart_erase"])
+async def test_untargeted_removal_asks_instead_of_erasing_the_main_subject(operation):
+    """The reported disaster: "remove the mint" with no target made the product
+    tier mask the BOTTLE (Remove.bg's alpha is the main subject) and erase it,
+    leaving the mint untouched. Removal with no target must ask, not guess."""
+    cutout, segment = AsyncMock(), AsyncMock()
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service._segment_by_prompt", segment):
+        res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
+
+    assert res.ok is False
+    assert res.question == mask_service.AMBIGUITY_QUESTION
+    cutout.assert_not_awaited()   # and it spends nothing while asking
+    segment.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["remove_object", "smart_erase"])
+async def test_targeted_removal_goes_to_the_segmenter_and_asks_for_confirmation(operation):
+    with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
+         patch("app.services.mask_service._segment_by_prompt",
+               AsyncMock(return_value="https://cdn/seg.png")):
+        res = await resolve_mask("https://cdn/x.png", operation, "la menthe",
+                                 uuid.uuid4(), None)
+
+    assert res.tier == "prompted"
+    assert res.needs_confirmation is True
+    assert res.mask_url == "https://cdn/seg.png"

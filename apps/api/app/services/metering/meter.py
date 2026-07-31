@@ -126,7 +126,8 @@ async def record_removebg(db, *, org_id: uuid.UUID, project_id,
 
 async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
                            feature: str | None = None,
-                           predict_seconds: float | None = None) -> int:
+                           predict_seconds: float | None = None,
+                           image_count: int | None = None) -> int:
     """Price one Replicate prediction.
 
     Replicate bills community models by GPU-second, and its prediction
@@ -137,7 +138,34 @@ async def record_replicate(db, *, org_id: uuid.UUID, project_id, model: str,
     duration is unavailable, which keeps every existing caller unchanged.
     """
     cost: int | None = None
-    if predict_seconds and predict_seconds > 0:
+
+    # PER-IMAGE FIRST. Replicate bills its OFFICIAL image models per output
+    # image, not per GPU-second (its pricing page: FLUX Pro at $0.04/image), and
+    # reports `metrics.image_output_count` for them. Pricing those by duration
+    # is not merely imprecise, it is the wrong axis: google/nano-banana runs in
+    # ~5s, so the per-second path would bill ~$0.0075 for an edit costing
+    # several times that -- an invisible margin loss on every call. A model only
+    # takes this branch when an explicit replicate/image rate exists for it, so
+    # per-second models are untouched.
+    if image_count and image_count > 0:
+        per_image = await rate(db, "replicate", "image", model)
+        if per_image:
+            cost = round(image_count * per_image)
+        else:
+            # Replicate only reports image_output_count for models it bills PER
+            # IMAGE, so reaching here means an official image model is priced on
+            # the wrong axis and is almost certainly undercharging: nano-banana
+            # billed 11 credits by duration against 38 per image. That is a
+            # margin leak with no symptom -- the edit succeeds and the number is
+            # merely too small -- so say so loudly rather than let it pass.
+            logger.warning(
+                "replicate model %s reports image_output_count=%s but has no "
+                "replicate/image cost rate; falling back to duration pricing, "
+                "which undercharges per-image models. Seed a rate for it.",
+                model, image_count,
+            )
+
+    if cost is None and predict_seconds and predict_seconds > 0:
         per_second = await rate(db, "replicate", "second", model)
         if not per_second:
             per_second = await rate(db, "replicate", "second", "")

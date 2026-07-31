@@ -16,6 +16,8 @@ interface AiChatPanelProps {
   /** Shared with the center canvas so a mask pending confirmation can be
    *  previewed there, the same overlay the manual editor uses. */
   canvasRef?: RefObject<EditCanvasRef>;
+  /** Drives the scan overlay on the image, the same one the manual panel uses. */
+  onProcessingChange?: (processing: boolean) => void;
 }
 
 /** Awaiting the user's approval of an auto-derived mask for one step of a
@@ -54,10 +56,18 @@ function TypingIndicator() {
   );
 }
 
-export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelProps) {
+export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
+  onProcessingChange,
+}: AiChatPanelProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<AiCommandMessage[]>([]);
+
+  // Chat history is scoped to the image and survives unmount, so switching to
+  // the Edit tab and back -- or reloading -- does not lose the conversation
+  // about THIS picture. Kept in localStorage rather than the server: it is a
+  // per-browser working note about one image, not shared state.
+  const historyKey = `fennex.mirage.chat.${imageId}`;
   const [pendingConfirm, setPendingConfirm] = useState<PendingMaskConfirm | null>(null);
   // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
   // area never rendered, so Apply must be disabled: approving a mask the
@@ -87,8 +97,32 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
 
   // Switching the displayed image/version doesn't unmount this panel, so a
   // confirmation left pending from the PREVIOUS image would otherwise still
-  // be Apply-able against the new one. Chat history is intentionally left
-  // alone here (it's not image-scoped).
+  // be Apply-able against the new one. History is handled by the effect above,
+  // which swaps in the new image's own conversation.
+  // Load THIS image's conversation whenever the displayed image changes.
+  useEffect(() => () => onProcessingChange?.(false), [onProcessingChange]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = window.localStorage.getItem(historyKey);
+      setHistory(saved ? (JSON.parse(saved) as AiCommandMessage[]) : []);
+    } catch {
+      setHistory([]);
+    }
+  }, [historyKey]);
+
+  // Persist on every change so an unmount (tab switch) cannot lose it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (history.length) window.localStorage.setItem(historyKey, JSON.stringify(history));
+      else window.localStorage.removeItem(historyKey);
+    } catch {
+      // a full or disabled localStorage must never break the chat itself
+    }
+  }, [historyKey, history]);
+
   useEffect(() => {
     setPendingConfirm(null);
     setMaskPreviewError(false);
@@ -97,13 +131,20 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
   }, [imageId]);
 
   const mutation = useMutation({
-    mutationFn: ({ command, maskUrls, resumeToken }: { command: string; maskUrls?: string[]; resumeToken?: string }) =>
-      sendAiCommand(imageId, command, history, undefined, maskUrls, resumeToken),
-    onSuccess: (img, { command }) => {
+    // priorHistory is passed explicitly rather than read from state: the user's
+    // message is appended optimistically before this runs, and the request must
+    // carry the conversation as it was BEFORE it, not including it twice.
+    mutationFn: ({ command, priorHistory, maskUrls, resumeToken }: {
+      command: string;
+      priorHistory: AiCommandMessage[];
+      maskUrls?: string[];
+      resumeToken?: string;
+    }) => sendAiCommand(imageId, command, priorHistory, undefined, maskUrls, resumeToken),
+    onSuccess: (img) => {
       const opLabel = img.edit_operation?.replace(/_/g, " ") ?? "edit";
+      // The user turn was posted on submit, so only the reply is added here.
       setHistory((prev) => [
         ...prev,
-        { role: "user", content: command },
         { role: "assistant", content: t("mirage.applied", { op: opLabel }) },
       ]);
       onVersionAdded(img);
@@ -133,17 +174,12 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
         const message = typeof err.detail.message === "string"
           ? err.detail.message
           : t("mirage.maskTargetDefault", "Which area did you mean?");
-        setHistory((prev) => [
-          ...prev,
-          { role: "user", content: command },
-          { role: "assistant", content: message },
-        ]);
+        setHistory((prev) => [...prev, { role: "assistant", content: message }]);
         setInput("");
         return;
       }
       setHistory((prev) => [
         ...prev,
-        { role: "user", content: command },
         {
           role: "assistant",
           content: t("mirage.failed", { error: err instanceof Error ? err.message : t("mirage.unknownError") }),
@@ -153,10 +189,22 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
     },
   });
 
+  // Same scan overlay the manual panel drives, so a Mirage request looks like
+  // work happening ON the image rather than only in the chat column.
+  useEffect(() => {
+    onProcessingChange?.(mutation.isPending);
+  }, [mutation.isPending, onProcessingChange]);
+
+
   function submit(command: string) {
     const trimmed = command.trim();
     if (!trimmed || mutation.isPending || pendingConfirm) return;
-    mutation.mutate({ command: trimmed });
+    // Post the user's turn BEFORE the request so the chat reflects what was
+    // asked while it runs, instead of staying empty until the edit finishes.
+    const priorHistory = history;
+    setHistory((prev) => [...prev, { role: "user", content: trimmed }]);
+    setInput("");
+    mutation.mutate({ command: trimmed, priorHistory });
   }
 
   function handleApplyMaskConfirm() {
@@ -168,7 +216,11 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef }: AiChatPanelP
     setPendingConfirm(null);
     setMaskPreviewError(false);
     canvasRef?.current?.clearMask();
-    mutation.mutate({ command, maskUrls, resumeToken });
+    // Confirming re-sends the SAME command, whose user turn is already on
+    // screen from the original submit -- so it is not posted again, and the
+    // request carries the history as it stood before that turn.
+    const priorHistory = history.filter((m, i) => !(m.role === "user" && i === history.length - 1));
+    mutation.mutate({ command, priorHistory, maskUrls, resumeToken });
   }
 
   function handleCancelMaskConfirm() {

@@ -15,6 +15,7 @@ from app.services import chain_resume
 from app.services.ai_command_service import parse_ai_command_steps
 from app.services.llm_service import project_locale
 from app.services import editing_service
+from app.services.editing_service import build_instruction, instruction_edit
 from app.services.mask_service import MASK_OPERATIONS, is_own_storage_url, resolve_mask
 from app.api.v1.routers.images import ImageOut
 
@@ -238,6 +239,15 @@ async def _mask_for_step(step: dict, image_url: str, painted_mask_url: Optional[
     )
 
 
+def _painted_mask_supplied(mask_queue: list, index: int) -> bool:
+    """True when the client supplied a real mask for this step.
+
+    A deliberate selection always wins over an inferred edit, so a supplied mask
+    keeps the step on the mask pipeline even on the chat surface.
+    """
+    return bool(mask_queue and index < len(mask_queue) and mask_queue[index])
+
+
 async def _next_step_mask(step: dict, image_url: str, mask_queue: list[Optional[str]], mask_step_index: int,
                            org_id: uuid.UUID, db) -> tuple[Optional[str], int]:
     """Determine which entry (if any) of the confirmed-mask queue applies to
@@ -366,7 +376,13 @@ async def ai_command(
             if step.get("operation") not in _DISPATCH:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown operation: {step.get('operation')}")
 
-        current_url = source.image_url or ""
+        if not source.image_url:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {"code": "image_has_no_url",
+                 "message": "This image has no stored file to edit."},
+            )
+        current_url = source.image_url
         applied = []
         start_index = 0
         mask_step_index = 0
@@ -381,6 +397,30 @@ async def ai_command(
         step = steps[index]
         operation = step["operation"]
         params = step.get("params", {}) or {}
+        # NATURAL-LANGUAGE EDITS DO NOT USE MASKS. Producing a pixel-accurate
+        # mask of a described object is the hard, failure-prone part -- asked to
+        # "supprime la menthe" the mask path masked the main subject and erased
+        # the bottle. An instruction model does the whole edit in one call with
+        # no mask, no segmenter and no confirmation round trip.
+        #
+        # This is the chat surface only. The manual editor keeps the mask
+        # pipeline, where the user paints a region deliberately and masks are
+        # genuinely the better tool.
+        instruction = build_instruction(operation, params)
+        if instruction and not _painted_mask_supplied(mask_queue, mask_step_index):
+            edit_result = await instruction_edit(current_url, instruction, operation)
+            if not edit_result.get("ok"):
+                detail = edit_result.get("error", "Edit failed")
+                raise HTTPException(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    f"Step '{operation}' failed: {detail}" if applied else detail,
+                )
+            current_url = edit_result["image_url"]
+            applied.append(operation)
+            if operation in MASK_OPERATIONS:
+                mask_step_index += 1
+            continue
+
         try:
             step_mask, mask_step_index = await _next_step_mask(
                 step, current_url, mask_queue, mask_step_index, current_user.org_id, db,

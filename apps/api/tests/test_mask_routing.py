@@ -33,6 +33,23 @@ from app.models.user import User, UserRole
 from app.services.mask_service import AMBIGUITY_QUESTION, MaskResolution
 
 
+@pytest.fixture(autouse=True)
+def _force_mask_path():
+    """This module tests the MASK pipeline end to end.
+
+    The chat surface now routes natural-language edits to an instruction model,
+    so the mask, confirmation and resume machinery is reached there only when
+    the instruction model declines a step (or the client supplies a mask
+    explicitly). Declining every step keeps these tests exercising the path they
+    are about. Instruction routing has its own tests in
+    tests/test_instruction_edit.py.
+    """
+    with patch("app.api.v1.routers.ai_command.build_instruction",
+               lambda operation, params: None):
+        yield
+
+
+
 # ---- _mask_for --------------------------------------------------------
 
 
@@ -1274,3 +1291,112 @@ async def test_store_snapshot_failure_degrades_to_the_original_422_without_a_res
     assert exc.value.status_code == 422
     assert exc.value.detail["code"] == "mask_confirm_required"
     assert "resume_token" not in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_the_edit_record_stores_the_real_output_size_not_the_sources(mask_route_client):
+    """The route copied image.width/height from the SOURCE onto the new record,
+    so after an upscale the file was one size and the database claimed another --
+    undercutting the very 'preserve resolution' contract this work exists for.
+    Asserts the row that was actually persisted."""
+    from sqlalchemy import select
+
+    resolution = MaskResolution(ok=True, mask_url="https://cdn/masks/auto.png", tier="product")
+    # An upscale legitimately changes the size, so the record must follow it.
+    mock_fn = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/edited.png",
+                                      "width": 2048, "height": 1536})
+
+    with patch.dict(editing._DISPATCH, {"replace_background": (mock_fn, ["prompt"], [])}), \
+         patch("app.api.v1.routers.editing.resolve_mask", AsyncMock(return_value=resolution)):
+        resp = await _post_edit(mask_route_client, "replace_background", {"prompt": "marble"})
+
+    assert resp.status_code == 200
+    new_id = resp.json()["image_id"]
+
+    async with _RouteTestSessionLocal() as session:
+        row = (await session.execute(
+            select(GeneratedImage).where(GeneratedImage.id == uuid.UUID(new_id))
+        )).scalar_one()
+        assert (row.width, row.height) == (2048, 1536)
+
+
+@pytest.mark.asyncio
+async def test_the_edit_record_falls_back_to_the_source_size_when_none_reported(mask_route_client):
+    """Operations that never change the size need not report one."""
+    from sqlalchemy import select
+
+    resolution = MaskResolution(ok=True, mask_url="https://cdn/masks/auto.png", tier="product")
+    mock_fn = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/edited.png"})
+
+    with patch.dict(editing._DISPATCH, {"replace_background": (mock_fn, ["prompt"], [])}), \
+         patch("app.api.v1.routers.editing.resolve_mask", AsyncMock(return_value=resolution)):
+        resp = await _post_edit(mask_route_client, "replace_background", {"prompt": "marble"})
+
+    assert resp.status_code == 200
+    new_id = resp.json()["image_id"]
+
+    async with _RouteTestSessionLocal() as session:
+        src = (await session.execute(
+            select(GeneratedImage).where(GeneratedImage.id == _ROUTE_IMAGE_ID)
+        )).scalar_one()
+        row = (await session.execute(
+            select(GeneratedImage).where(GeneratedImage.id == uuid.UUID(new_id))
+        )).scalar_one()
+        assert (row.width, row.height) == (src.width, src.height)
+
+
+@pytest.mark.asyncio
+async def test_pillow_ops_are_not_handed_a_source_size_they_cannot_accept(mask_route_client):
+    """The route passes the known dimensions down to skip a refetch, but the
+    Pillow ops (crop, rotate, filter...) declare no such parameter -- passing it
+    blindly raised TypeError on every one of them.
+
+    This drives the REAL crop_image rather than a permissive mock: a mock that
+    swallows **kwargs hid the bug entirely.
+    """
+    from app.services import editing_service
+
+    with patch("app.services.editing_service._download",
+               AsyncMock(return_value=_route_png_bytes())), \
+         patch("app.services.editing_service._upload_result",
+               AsyncMock(return_value=editing_service.StoredImage("https://cdn/o.png", 10, 10))):
+        resp = await _post_edit(mask_route_client, "crop",
+                                {"x": 0, "y": 0, "w": 10, "h": 10})
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_replicate_ops_do_receive_the_known_source_size(mask_route_client):
+    """The other half of the same rule: ops that DO declare the parameter must
+    actually get it, or the refetch is still happening."""
+    resolution = MaskResolution(ok=True, mask_url="https://cdn/masks/auto.png", tier="product")
+    captured = {}
+
+    async def _fake_op(image_url, **kwargs):
+        captured.update(kwargs)
+        return {"ok": True, "image_url": "https://cdn/edited.png"}
+
+    _fake_op.__signature__ = __import__("inspect").Signature([
+        __import__("inspect").Parameter("image_url", __import__("inspect").Parameter.POSITIONAL_OR_KEYWORD),
+        __import__("inspect").Parameter("prompt", __import__("inspect").Parameter.KEYWORD_ONLY),
+        __import__("inspect").Parameter("mask_url", __import__("inspect").Parameter.KEYWORD_ONLY, default=None),
+        __import__("inspect").Parameter("source_size", __import__("inspect").Parameter.KEYWORD_ONLY, default=None),
+    ])
+
+    with patch.dict(editing._DISPATCH, {"replace_background": (_fake_op, ["prompt"], [])}), \
+         patch("app.api.v1.routers.editing.resolve_mask", AsyncMock(return_value=resolution)):
+        resp = await _post_edit(mask_route_client, "replace_background", {"prompt": "marble"})
+
+    assert resp.status_code == 200
+    assert captured.get("source_size") is not None
+
+
+def _route_png_bytes(size=(40, 30)) -> bytes:
+    import io as _io
+
+    from PIL import Image as _PIL
+    buf = _io.BytesIO()
+    _PIL.new("RGB", size, (3, 3, 3)).save(buf, format="PNG")
+    return buf.getvalue()

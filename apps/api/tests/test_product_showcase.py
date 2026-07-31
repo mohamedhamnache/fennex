@@ -25,6 +25,13 @@ from app.models.project import Project
 from app.models.user import User, UserRole
 from app.services.product_service import PRODUCT_SCENES
 
+
+def _stored(url, width=64, height=48):
+    """finalize/_upload_result now report the size they stored, not just a URL."""
+    from app.services.image_output import StoredImage
+    return StoredImage(url, width, height)
+
+
 # ── Catalog tests (no DB) ───────────────────────────────────────────────────
 
 _ORIGINAL_11 = [
@@ -279,7 +286,7 @@ async def test_product_scene_seed_is_echoed_back(client, org_and_project):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "aspect_ratio,expected_width,expected_height",
+    "aspect_ratio,stored_width,stored_height",
     [
         ("1:1", 1024, 1024),
         ("4:5", 816, 1024),
@@ -288,25 +295,46 @@ async def test_product_scene_seed_is_echoed_back(client, org_and_project):
         ("9:16", 576, 1024),
     ],
 )
-async def test_run_flux_kontext_derives_dimensions_from_aspect_ratio(
-    aspect_ratio, expected_width, expected_height
+async def test_run_flux_kontext_reports_the_size_it_actually_stored(
+    aspect_ratio, stored_width, stored_height
 ):
-    """Fix 5 (fix-round-1): width/height used to be hardcoded to 1024x1024
-    regardless of the requested aspect_ratio, so a 16:9 or 9:16 image was
-    persisted with the wrong dimensions. This exercises `_run_flux_kontext`
-    directly (not through the router-level mock, which stubs the function
-    out entirely and would hide this bug) with only its two Replicate calls
-    stubbed, so the aspect-ratio -> dimensions derivation runs for real."""
+    """Width/height were once hardcoded to 1024x1024 regardless of aspect_ratio,
+    so a 16:9 image was persisted with the wrong dimensions. That was first fixed
+    by deriving them from an aspect-ratio TABLE, which is still only a guess at
+    what the model returned.
+
+    They now come from the file actually stored, so the record cannot disagree
+    with the bytes whatever the model does with the requested ratio.
+    """
     from app.api.v1.routers.product import _run_flux_kontext
 
-    with patch("app.api.v1.routers.product._replicate_run", AsyncMock(return_value="https://cdn.example.com/out.png")), \
-         patch("app.api.v1.routers.product._download_and_upload_url", AsyncMock(return_value="https://cdn.example.com/stored.png")):
+    with patch("app.api.v1.routers.product._replicate_run",
+               AsyncMock(return_value="https://cdn.example.com/out.png")), \
+         patch("app.api.v1.routers.product.finalize",
+               AsyncMock(return_value=_stored("https://cdn.example.com/stored.png",
+                                              stored_width, stored_height))):
         result = await _run_flux_kontext(
             "https://cdn.example.com/product.png", "a prompt", aspect_ratio=aspect_ratio
         )
     assert result["ok"] is True
-    assert result["width"] == expected_width
-    assert result["height"] == expected_height
+    assert (result["width"], result["height"]) == (stored_width, stored_height)
+
+
+@pytest.mark.asyncio
+async def test_reported_dimensions_follow_the_file_not_the_aspect_table():
+    """If the model returns something the requested ratio did not predict, the
+    stored file wins -- the point of measuring instead of guessing."""
+    from app.api.v1.routers.product import _run_flux_kontext
+
+    with patch("app.api.v1.routers.product._replicate_run",
+               AsyncMock(return_value="https://cdn.example.com/out.png")), \
+         patch("app.api.v1.routers.product.finalize",
+               AsyncMock(return_value=_stored("https://cdn.example.com/stored.png", 1536, 864))):
+        result = await _run_flux_kontext(
+            "https://cdn.example.com/product.png", "a prompt", aspect_ratio="1:1"
+        )
+    # 1:1 would have predicted 1024x1024; the file says otherwise and wins.
+    assert (result["width"], result["height"]) == (1536, 864)
 
 
 @pytest.mark.asyncio
