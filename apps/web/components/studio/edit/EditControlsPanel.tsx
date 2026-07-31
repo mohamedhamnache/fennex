@@ -530,6 +530,10 @@ export function EditControlsPanel({
       }
     });
 
+    // A subject-only template can skip every def (no subjectImageUrl yet),
+    // leaving nothing to append or select.
+    if (newLayers.length === 0) return;
+
     onSetLayers([...layers, ...newLayers]);
     // Select the first foreground layer, not the background
     onSelectLayer((newLayers[background ? 1 : 0] ?? newLayers[0]).id);

@@ -6,6 +6,20 @@ function clipPathId(layerId: string): string {
   return `clip-${layerId}`;
 }
 
+/** Pixel rect an image layer occupies in the scene. Single source of truth for
+ *  both the clip geometry (ClipDefs) and the drawn image (ImageNode) — they
+ *  must never compute this independently, or a change to one silently
+ *  misaligns the other. */
+function layerRect(layer: ImageLayer, scene: Scene): { x: number; y: number; w: number; h: number } {
+  const x = (layer.xPct / 100) * scene.width;
+  const y = (layer.yPct / 100) * scene.height;
+  const w = (layer.widthPct / 100) * scene.width;
+  const h = layer.heightPct != null
+    ? (layer.heightPct / 100) * scene.height
+    : (layer.aspectRatio > 0 ? w / layer.aspectRatio : w);
+  return { x, y, w, h };
+}
+
 function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
   const text = layerText(layer);
   const fontSize = layer.fontSize;
@@ -64,12 +78,7 @@ function ClipDefs({ scene }: { scene: Scene }) {
     <defs>
       {clipped.map((layer) => {
         const clip = layer.clip!;
-        const x = (layer.xPct / 100) * scene.width;
-        const y = (layer.yPct / 100) * scene.height;
-        const w = (layer.widthPct / 100) * scene.width;
-        const h = layer.heightPct != null
-          ? (layer.heightPct / 100) * scene.height
-          : (layer.aspectRatio > 0 ? w / layer.aspectRatio : w);
+        const { x, y, w, h } = layerRect(layer, scene);
 
         let node: JSX.Element;
         if ("roundedPct" in clip) {
@@ -103,12 +112,7 @@ function ClipDefs({ scene }: { scene: Scene }) {
 }
 
 function ImageNode({ layer, scene }: { layer: ImageLayer; scene: Scene }) {
-  const x = (layer.xPct / 100) * scene.width;
-  const y = (layer.yPct / 100) * scene.height;
-  const w = (layer.widthPct / 100) * scene.width;
-  const h = layer.heightPct != null
-    ? (layer.heightPct / 100) * scene.height
-    : (layer.aspectRatio > 0 ? w / layer.aspectRatio : w);
+  const { x, y, w, h } = layerRect(layer, scene);
   const cx = x + w / 2;
   const cy = y + h / 2;
 
