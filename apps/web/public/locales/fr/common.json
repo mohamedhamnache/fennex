@@ -1408,7 +1408,8 @@
     },
     "done": "Terminer",
     "saving": "Enregistrement...",
-    "saveFailed": "Réessayer"
+    "saveFailed": "Réessayer",
+    "burnFailed": "Impossible d'aplatir les calques."
   },
   "mirage": {
     "header": "Mirage · Artisan d'image",

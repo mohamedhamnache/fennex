@@ -1408,7 +1408,8 @@
     },
     "done": "Listo",
     "saving": "Guardando...",
-    "saveFailed": "Reintentar"
+    "saveFailed": "Reintentar",
+    "burnFailed": "No se pudieron aplanar las capas."
   },
   "mirage": {
     "header": "Mirage · Artesano de imagen",

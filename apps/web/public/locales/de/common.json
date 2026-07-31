@@ -1408,7 +1408,8 @@
     },
     "done": "Fertig",
     "saving": "Wird gespeichert...",
-    "saveFailed": "Erneut versuchen"
+    "saveFailed": "Erneut versuchen",
+    "burnFailed": "Die Ebenen konnten nicht reduziert werden."
   },
   "mirage": {
     "header": "Mirage · Bild-Künstler",

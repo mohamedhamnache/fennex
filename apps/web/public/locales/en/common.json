@@ -1505,7 +1505,8 @@
     },
     "done": "Done",
     "saving": "Saving...",
-    "saveFailed": "Retry save"
+    "saveFailed": "Retry save",
+    "burnFailed": "Could not flatten the layers."
   },
   "mirage": {
     "header": "Mirage · Image Artisan",

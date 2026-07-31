@@ -1408,7 +1408,8 @@
     },
     "done": "Concluir",
     "saving": "A guardar...",
-    "saveFailed": "Tentar novamente"
+    "saveFailed": "Tentar novamente",
+    "burnFailed": "Não foi possível achatar as camadas."
   },
   "mirage": {
     "header": "Mirage · Artesão de imagem",

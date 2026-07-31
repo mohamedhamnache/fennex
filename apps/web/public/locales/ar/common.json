@@ -1408,7 +1408,8 @@
     },
     "done": "تم",
     "saving": "جارٍ الحفظ...",
-    "saveFailed": "إعادة المحاولة"
+    "saveFailed": "إعادة المحاولة",
+    "burnFailed": "تعذّر تسطيح الطبقات."
   },
   "mirage": {
     "header": "Mirage · فنان الصور",
