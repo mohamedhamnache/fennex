@@ -5,6 +5,10 @@ explicit painted selection. Auto mask derivation (mask_service.resolve_mask)
 makes that steering obsolete and actively harmful, so these instructions are
 inverted here.
 """
+
+import uuid
+
+import pytest
 from app.services import ai_command_service
 
 
@@ -61,3 +65,65 @@ def test_the_instructions_tell_the_planner_to_use_the_users_own_words():
     ref = ai_command_service._OPERATIONS_REFERENCE
     assert "user's own words" in ref
     assert "ONLY\nwhen the user singled out" not in ref
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_from_one_provider_falls_through_to_the_next():
+    """These models refuse intermittently. "change background color to green"
+    came back as {"error": "...do not map to available tasks"} from one provider
+    while the same prompt mapped correctly on another. Returning the first
+    refusal turned a transient hiccup into a hard failure the user saw."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.services import ai_command_service as svc
+
+    calls = []
+
+    async def _fake_call_llm(provider, model, key, system, user, locale="en"):
+        calls.append(provider)
+        if provider == "anthropic":
+            return '{"error": "modified operations do not map to available tasks"}'
+        return '{"steps": [{"operation": "replace_background", "params": {"prompt": "solid green background"}}]}'
+
+    with patch.object(svc, "get_org_llm_keys",
+                      AsyncMock(return_value={"anthropic": "k1", "openai": "k2"})), \
+         patch.object(svc, "call_llm", _fake_call_llm):
+        result = await svc.parse_ai_command_steps("change background color to green",
+                                                  [], uuid.uuid4(), None)
+
+    assert "error" not in result, result
+    assert result["steps"][0]["operation"] == "replace_background"
+    assert calls == ["anthropic", "openai"], "should have tried the second provider"
+
+
+@pytest.mark.asyncio
+async def test_a_genuine_refusal_from_every_provider_is_still_surfaced():
+    """If nothing can map it, the user should see the model's own explanation,
+    not a generic 'try rephrasing'."""
+    from unittest.mock import AsyncMock, patch
+
+    from app.services import ai_command_service as svc
+
+    async def _all_refuse(provider, model, key, system, user, locale="en"):
+        return '{"error": "that is not an image edit"}'
+
+    with patch.object(svc, "get_org_llm_keys",
+                      AsyncMock(return_value={"anthropic": "k1", "openai": "k2"})), \
+         patch.object(svc, "call_llm", _all_refuse):
+        result = await svc.parse_ai_command_steps("book me a flight", [], uuid.uuid4(), None)
+
+    assert result["error"] == "that is not an image edit"
+
+
+@pytest.mark.asyncio
+async def test_a_colour_change_is_documented_as_a_background_replacement():
+    """The reference now says so explicitly, with worked examples in two
+    languages -- a bare 'prompt(str describing new background)' left the model
+    to infer that a colour counts."""
+    from app.services import ai_command_service as svc
+
+    ref = svc._OPERATIONS_REFERENCE
+    assert "replace_background" in ref
+    assert "colour" in ref or "color" in ref
+    assert "solid green background" in ref
+    assert "fond blanc" in ref
