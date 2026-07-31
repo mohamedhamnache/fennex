@@ -1,11 +1,12 @@
 import type { TextLayer } from "./EditCanvas";
 import type { BrandKit } from "@/lib/api";
 import { type ShapeId, type TemplateBackground, shadeHex } from "./shapes";
+import { bestTextOn, type TemplateCategory } from "./palette";
 
 /** A reusable design composition: optional background, shape objects, and text.
  *  Positions are canvas percentages; font sizes assume an ~800px-wide canvas
  *  and are scaled to the real canvas on apply. */
-export type TemplateCategory = "ecommerce" | "social" | "blog" | "promo";
+export { bestTextOn, type TemplateCategory };
 
 export interface TemplateTextDef extends Omit<TextLayer, "id"> {
   kind?: "text";
@@ -530,16 +531,6 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
 
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-/** Black or white, whichever reads best on the given colour. */
-export function bestTextOn(hex: string): string {
-  const h = hex.replace("#", "");
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  const r = parseInt(full.slice(0, 2), 16) || 0;
-  const g = parseInt(full.slice(2, 4), 16) || 0;
-  const b = parseInt(full.slice(4, 6), 16) || 0;
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#111111" : "#ffffff";
-}
 
 export interface ResolvedTemplate {
   background: TemplateBackground | null;
