@@ -589,10 +589,10 @@ async def test_replicate_run_fails_loudly_on_an_empty_output():
         assert "output" in msg.lower(), f"error should mention output, got: {msg}"
 
 
-async def test_ops_use_the_callers_known_size_instead_of_refetching():
-    """The router already holds image.width/height, yet every op downloaded the
-    whole source again just to read a header -- several megabytes per edit on a
-    large photo."""
+async def test_ops_without_a_mask_use_the_callers_known_size():
+    """The router already holds image.width/height, so downloading the whole
+    source again just to read a header wasted megabytes per edit. Kept for the
+    operations where a stale hint is harmless -- it only picks a policy."""
     from app.services import editing_service
 
     dl = AsyncMock(return_value=_png_bytes((800, 600)))
@@ -600,24 +600,52 @@ async def test_ops_use_the_callers_known_size_instead_of_refetching():
     run = AsyncMock(return_value="https://replicate/out.png")
 
     cases = [
-        (editing_service.replace_background, ("https://cdn/i.png", "p", "https://cdn/m.png")),
-        (editing_service.remove_object, ("https://cdn/i.png", "https://cdn/m.png")),
         (editing_service.restore_face, ("https://cdn/i.png", 0.7)),
         (editing_service.upscale_image, ("https://cdn/i.png", 2)),
         (editing_service.generate_shadow, ("https://cdn/i.png", "bottom")),
         (editing_service.relight_image, ("https://cdn/i.png", "left")),
+        (editing_service.replace_background, ("https://cdn/i.png", "p", None)),
     ]
     for fn, args in cases:
         dl.reset_mock()
         with patch("app.services.editing_service._replicate_run", run), \
              patch("app.services.editing_service._download", dl), \
-             patch("app.services.editing_service._fit_mask_to_image",
-                   AsyncMock(side_effect=lambda m, s: m)), \
              patch("app.services.editing_service.finalize", fin):
             result = await fn(*args, source_size=(1600, 1200))
         assert result["ok"] is True, f"{fn.__name__}: {result.get('error')}"
         dl.assert_not_awaited(), f"{fn.__name__} refetched the source"
         assert fin.call_args.kwargs["source_size"] == (1600, 1200), fn.__name__
+
+
+async def test_ops_WITH_a_mask_measure_the_real_file_and_ignore_the_hint():
+    """A mask is resized to this size, so a stale database value is not a
+    harmless imprecision -- it hands the model a mask that does not match its
+    image, and LaMa answers `succeeded` with a NULL output."""
+    from app.services import editing_service
+
+    real = (1600, 1600)
+    dl = AsyncMock(return_value=_png_bytes(real))
+    fitted = {}
+
+    async def _fake_fit(mask_url, source_size):
+        fitted["size"] = source_size
+        return mask_url
+
+    for fn, args in [
+        (editing_service.remove_object, ("https://cdn/i.png", "https://cdn/m.png")),
+        (editing_service.replace_background, ("https://cdn/i.png", "p", "https://cdn/m.png")),
+    ]:
+        dl.reset_mock(); fitted.clear()
+        with patch("app.services.editing_service._replicate_run",
+                   AsyncMock(return_value="https://replicate/out.png")), \
+             patch("app.services.editing_service._download", dl), \
+             patch("app.services.editing_service._fit_mask_to_image", _fake_fit), \
+             patch("app.services.editing_service.finalize",
+                   AsyncMock(return_value=_stored("https://cdn/o.png"))):
+            result = await fn(*args, source_size=(1792, 1024))  # the stale DB default
+        assert result["ok"] is True, f"{fn.__name__}: {result.get('error')}"
+        dl.assert_awaited(), f"{fn.__name__} trusted the stale hint"
+        assert fitted["size"] == real, f"{fn.__name__} fitted the mask to {fitted['size']}"
 
 
 async def test_ops_still_measure_when_the_caller_does_not_know_the_size():

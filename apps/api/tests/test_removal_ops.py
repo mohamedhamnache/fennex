@@ -197,3 +197,54 @@ async def test_other_failures_are_not_swallowed_by_the_diagnostic():
     assert result["ok"] is False
     assert "429" in result["error"]
     assert "white px" not in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_a_stale_database_size_does_not_mis_fit_the_mask():
+    """The reported failure. GeneratedImage.width/height DEFAULT to 1792x1024,
+    and rows predating proper size recording still carry it -- one claimed
+    1792x1024 for a file that is actually 1600x1600.
+
+    The route passes those DB values as source_size to skip a refetch. The mask
+    was then resized to the CLAIM, so LaMa got a 1600x1600 image with a
+    1792x1024 mask and answered `succeeded` with a NULL output.
+    """
+    real = (1600, 1600)
+    stale_db_claim = (1792, 1024)
+
+    fitted_to = {}
+
+    async def _fake_fit(mask_url, source_size):
+        fitted_to["size"] = source_size
+        return mask_url
+
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.png")), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes(real))), \
+         patch("app.services.editing_service._fit_mask_to_image", _fake_fit), \
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
+        result = await editing_service.smart_erase(
+            "https://cdn/src.png", "https://cdn/mask.png", source_size=stale_db_claim)
+
+    assert result["ok"] is True
+    assert fitted_to["size"] == real, (
+        f"mask was fitted to the database's claim {fitted_to['size']} instead of "
+        f"the file's real size {real}")
+
+
+@pytest.mark.asyncio
+async def test_the_refetch_is_still_skipped_when_no_mask_is_involved():
+    """The optimisation stays where being wrong is harmless: a stale size only
+    picks a resolution policy, it does not silently break the call."""
+    dl = AsyncMock(return_value=_png_bytes((800, 600)))
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.png")), \
+         patch("app.services.editing_service._download", dl), \
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
+        await editing_service.replace_background(
+            "https://cdn/i.png", "marble", None, source_size=(1600, 1200))
+
+    dl.assert_not_awaited()

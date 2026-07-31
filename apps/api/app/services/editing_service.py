@@ -528,7 +528,9 @@ async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str],
     was arriving already lossy before we stored it.
     """
     try:
-        src_size = await _source_dimensions(image_url, source_size)
+        # trust_hint=False when a mask is involved: it is about to be resized to
+        # this, and a stale database size makes that a silent total failure.
+        src_size = await _source_dimensions(image_url, source_size, trust_hint=not mask_url)
         mask_url = await _fit_mask_to_image(mask_url, src_size)
         output = await _replicate_run(_MODEL_FLUX_FILL, {
             "image": image_url, "mask": mask_url, "prompt": prompt,
@@ -733,15 +735,25 @@ async def instruction_edit(image_url: str, instruction: str,
 
 
 async def _source_dimensions(image_url: str,
-                             source_size: Optional[tuple[int, int]]) -> tuple[int, int]:
+                             source_size: Optional[tuple[int, int]],
+                             *, trust_hint: bool = True) -> tuple[int, int]:
     """The source's size, without refetching it when the caller already knows.
 
-    Every operation needs this for its resolution policy, and the edit route
-    already holds image.width/height from the database -- so downloading the
-    whole file again just to read a header cost several megabytes per edit on a
-    large photo. Callers that genuinely do not know still get the measurement.
+    The edit route holds image.width/height from the database, so downloading
+    the whole file again just to read a header cost several megabytes per edit.
+
+    But the database can be WRONG. GeneratedImage.width/height default to
+    1792x1024, and rows created before sizes were recorded properly still carry
+    that default -- one such row claimed 1792x1024 for a file that is actually
+    1600x1600.
+
+    Where that matters, it matters absolutely: a mask is resized to this value,
+    so a wrong one hands the model a mask that does not match its image, and
+    LaMa answers `succeeded` with a NULL output and no explanation. Callers that
+    are about to fit a mask therefore pass trust_hint=False and pay for the
+    measurement. For a resolution policy alone, a stale hint is harmless.
     """
-    if source_size and source_size[0] and source_size[1]:
+    if trust_hint and source_size and source_size[0] and source_size[1]:
         return int(source_size[0]), int(source_size[1])
     return dimensions(await _download(image_url))
 
@@ -787,7 +799,9 @@ async def _lama_erase(image_url: str, mask_url: Optional[str],
     if not mask_url:
         return {"ok": False, "error": "No mask provided."}
     try:
-        src_size = await _source_dimensions(image_url, source_size)
+        # trust_hint=False when a mask is involved: it is about to be resized to
+        # this, and a stale database size makes that a silent total failure.
+        src_size = await _source_dimensions(image_url, source_size, trust_hint=not mask_url)
         mask_url = await _fit_mask_to_image(mask_url, src_size)
         try:
             output = await _replicate_run(
