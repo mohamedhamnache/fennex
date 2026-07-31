@@ -19,21 +19,24 @@ Available operations (use exactly these names):
 - generate_shadow: params: direction("bottom"|"bottom-right"|"bottom-left"|"right"|"left")
 - relight: params: direction("top"|"top-right"|"left"|"right"), intensity(float, 0.1 to 2)
 
-Operations that act on a region of the image.
+Region operations — ALSO fully available, use them freely:
+- replace_background: params: prompt(str describing the new background), target(str, optional — OMIT to mean the background itself)
+- remove_object: params: target(str, REQUIRED — the thing to delete, e.g. "the mint leaves")
+- smart_erase: params: target(str, REQUIRED — the thing to erase)
+- insert_object: params: prompt(str describing what to add), target(str, REQUIRED — where to put it)
+- generative_fill: params: prompt(str describing the fill), target(str, REQUIRED — the region to fill)
 
-`target` names WHAT to act on, in the user's own words. Whenever the user names
-a thing -- "remove the mint", "supprime la menthe", "erase the logo" -- put that
-thing in `target`. Removal operations ALWAYS require it: there is no such thing
-as removing nothing in particular, and guessing produces a confidently wrong
-edit on the wrong object.
+ANY request about how the background LOOKS is replace_background, including a
+plain colour. Put the wanted look in `prompt`:
+  "change the background color to green"  -> replace_background, prompt "solid green background"
+  "mets un fond blanc"                    -> replace_background, prompt "solid white background"
+  "put it on marble"                      -> replace_background, prompt "polished marble surface"
 
-Only `replace_background` may omit `target`, because "the background" genuinely
-is its default region and resolving it that way costs less.
-- replace_background: params: prompt(str describing new background), target(str, optional — OMIT for the background)
-- remove_object: params: target(str, REQUIRED — name the thing to delete, e.g. "the mint leaves")
-- insert_object: params: prompt(str describing object to insert), target(str, REQUIRED — where to insert)
-- generative_fill: params: prompt(str describing fill content), target(str, REQUIRED — region to fill)
-- smart_erase: params: target(str, REQUIRED — name the thing to erase)
+How to fill `target`: name the thing in the user's own words -- "remove the
+mint", "supprime la menthe", "erase the logo". Removal needs it because removing
+nothing in particular would guess, and a wrong guess deletes the wrong object.
+replace_background is the one operation that may omit it, since "the background"
+is its own default region and resolving it that way costs less.
 """
 
 _SYSTEM = (
@@ -84,20 +87,31 @@ async def parse_ai_command_steps(
     messages.append({"role": "user", "content": command})
     user_msg = "\n".join(f"{m['role']}: {m['content']}" for m in messages[-3:]) if len(messages) > 1 else command
 
+    # A refusal is NOT final while another provider is untried. These models
+    # refuse intermittently -- "change background color to green" came back as
+    # {"error": "...do not map to available tasks"} on one provider while the
+    # very same prompt mapped it correctly on another. Returning the first
+    # refusal turned a transient hiccup into a hard failure the user saw.
+    refusal: dict | None = None
     for provider, model in _PROVIDERS:
         if provider not in keys:
             continue
         try:
             raw = await call_llm(provider, model, keys[provider], _STEPS_SYSTEM, user_msg, locale=locale)
             data = json.loads(raw.strip())
-            if "error" in data:
-                return data
             steps = data.get("steps")
             if isinstance(steps, list) and steps:
                 return {"steps": steps[:6]}  # cap to avoid runaway chains
+            if "error" in data:
+                refusal = refusal or data
+                continue
         except Exception:
             continue
 
+    # Every provider that could answer refused, so the request genuinely does not
+    # map. Surface the model's own explanation rather than a generic message.
+    if refusal is not None:
+        return refusal
     return {"error": "Failed to parse command — please try rephrasing."}
 
 
