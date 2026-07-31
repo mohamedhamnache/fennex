@@ -146,3 +146,54 @@ async def test_a_matching_mask_is_not_re_uploaded():
     upload.assert_not_awaited()
     (_, params), _ = run.call_args
     assert params["mask"] == "https://cdn/mask.png"
+
+
+@pytest.mark.asyncio
+async def test_a_null_output_reports_what_lama_was_actually_given():
+    """LaMa reports `succeeded` with a NULL output and says nothing about why.
+    Size mismatch is the known cause and is fixed, so a recurrence means
+    something else -- the error must carry the evidence instead of leaving it
+    to guesswork."""
+    import io as _io
+
+    from PIL import Image as _PIL
+
+    buf = _io.BytesIO()
+    m = _PIL.new("L", (620, 480), 0)
+    for x in range(10, 30):
+        for y in range(10, 30):
+            m.putpixel((x, y), 255)
+    m.save(buf, format="PNG")
+    mask_bytes = buf.getvalue()
+
+    async def _dl(url):
+        return mask_bytes if "mask" in url else _png_bytes((800, 600))
+
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(side_effect=RuntimeError(
+                   "Replicate model allenhooo/lama succeeded but returned no output"))), \
+         patch("app.services.editing_service._download", _dl), \
+         patch("app.services.editing_service._fit_mask_to_image",
+               AsyncMock(side_effect=lambda mu, ss: mu)):
+        result = await editing_service.smart_erase("https://cdn/src.png", "https://cdn/mask.png")
+
+    assert result["ok"] is False
+    err = result["error"]
+    assert "800x600" in err, err          # what image it had
+    assert "620x480" in err, err          # what mask it had
+    assert "400 white px" in err, err     # whether anything was marked
+
+
+@pytest.mark.asyncio
+async def test_other_failures_are_not_swallowed_by_the_diagnostic():
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(side_effect=RuntimeError("Replicate create failed 429"))), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((800, 600)))), \
+         patch("app.services.editing_service._fit_mask_to_image",
+               AsyncMock(side_effect=lambda mu, ss: mu)):
+        result = await editing_service.smart_erase("https://cdn/src.png", "https://cdn/mask.png")
+
+    assert result["ok"] is False
+    assert "429" in result["error"]
+    assert "white px" not in result["error"]

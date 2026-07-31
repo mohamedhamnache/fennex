@@ -789,11 +789,32 @@ async def _lama_erase(image_url: str, mask_url: Optional[str],
     try:
         src_size = await _source_dimensions(image_url, source_size)
         mask_url = await _fit_mask_to_image(mask_url, src_size)
-        output = await _replicate_run(
-            _MODEL_LAMA,
-            {"image": image_url, "mask": mask_url},
-            version=_LAMA_VERSION,
-        )
+        try:
+            output = await _replicate_run(
+                _MODEL_LAMA,
+                {"image": image_url, "mask": mask_url},
+                version=_LAMA_VERSION,
+            )
+        except RuntimeError as e:
+            # LaMa reports `succeeded` with a NULL output for inputs it cannot
+            # use, and says nothing about why. Size mismatch is the known cause
+            # and is fixed above, so a recurrence means something else -- report
+            # what it was actually given rather than leaving it to guesswork.
+            if "no output" not in str(e):
+                raise
+            mask_desc = "none"
+            if mask_url:
+                try:
+                    mask_bytes = await _download(mask_url)
+                    m = PILImage.open(io.BytesIO(mask_bytes))
+                    white = sum(1 for p in m.convert("L").getdata() if p > 127)
+                    mask_desc = (f"{m.size[0]}x{m.size[1]} {m.mode}, "
+                                 f"{white} white px, {len(mask_bytes)} bytes")
+                except Exception:  # noqa: BLE001
+                    mask_desc = "unreadable"
+            raise RuntimeError(
+                f"{e} [image {src_size[0]}x{src_size[1]}, mask {mask_desc}]"
+            ) from e
         stored = await finalize(output, source_size=src_size)
         return {"ok": True, "image_url": stored.url,
                 "width": stored.width, "height": stored.height}
