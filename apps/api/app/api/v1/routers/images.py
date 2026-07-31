@@ -523,6 +523,54 @@ async def update_image_tags(image_id: uuid.UUID, body: TagsUpdate, current_user:
     return ImageOut.model_validate(image)
 
 
+class CommitVersion(BaseModel):
+    version_id: uuid.UUID
+
+
+@router.post("/{image_id}/commit-version", response_model=ImageOut)
+async def commit_version(image_id: uuid.UUID, body: CommitVersion,
+                         current_user: CurrentUser, db: DB):
+    """Make an edited version the image itself.
+
+    Every edit writes a CHILD row (source_image_id set), and the gallery
+    deliberately hides children so intermediate steps do not clutter it. Nothing
+    ever pointed the original at the result, so edits were stored and then
+    invisible: the library kept showing the untouched original and reopening the
+    editor loaded it back. "Done" was pure navigation.
+
+    This commits the chosen version's file onto the original record. History is
+    NOT destroyed -- the child rows remain, so the version chain is still there
+    to walk back through.
+    """
+    image = await _get_image_or_404(image_id, current_user.org_id, db)
+    version = await _get_image_or_404(body.version_id, current_user.org_id, db)
+
+    # The version must belong to THIS image's chain, or one org member could
+    # graft an unrelated picture onto another image.
+    if version.id != image.id and version.source_image_id != image.id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "That version does not belong to this image.",
+        )
+    if not version.image_url:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "That version has no stored file.",
+        )
+
+    image.image_url = version.image_url
+    image.thumbnail_url = version.thumbnail_url or version.image_url
+    # Carried because edits legitimately change them -- upscale, relight and
+    # shadow all do -- and a stale size here is what the UI would report.
+    image.width = version.width
+    image.height = version.height
+    image.edit_operation = version.edit_operation
+    await db.flush()
+    await db.refresh(image)
+    await db.commit()
+    return ImageOut.model_validate(image)
+
+
 @router.patch("/{image_id}/folder", response_model=ImageOut)
 async def move_image_to_folder(image_id: uuid.UUID, body: FolderMove, current_user: CurrentUser, db: DB):
     image = await _get_image_or_404(image_id, current_user.org_id, db)

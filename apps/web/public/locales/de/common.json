@@ -1402,7 +1402,10 @@
     "tabs": {
       "edit": "Bearbeiten",
       "assistant": "Mirage"
-    }
+    },
+    "done": "Fertig",
+    "saving": "Wird gespeichert...",
+    "saveFailed": "Erneut versuchen"
   },
   "mirage": {
     "header": "Mirage · Bild-Künstler",

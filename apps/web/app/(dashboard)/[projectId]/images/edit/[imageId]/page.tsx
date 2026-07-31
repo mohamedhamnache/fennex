@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, PencilLine, Undo2, Redo2, Sparkles, Eye, Download, BarChart3, Check, SlidersHorizontal, Keyboard, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
-import { getImage, uploadImage, type GeneratedImage } from "@/lib/api";
+import { commitImageVersion, getImage, uploadImage, type GeneratedImage } from "@/lib/api";
 import { EditToolsSidebar } from "@/components/studio/edit/EditToolsSidebar";
 import { EditCanvas, type EditCanvasRef, type Layer, type TextLayer, type ImageLayer } from "@/components/studio/edit/EditCanvas";
 import { EditControlsPanel } from "@/components/studio/edit/EditControlsPanel";
@@ -84,6 +84,34 @@ export default function EditPage({
 
   function handleRedo() {
     setHistoryIdx((prev) => Math.min(versions.length, prev + 1));
+  }
+
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  /**
+   * Done used to be pure navigation, so every edit stayed a hidden child row and
+   * the library kept showing the untouched original. It now commits whichever
+   * version is on screen onto the image itself before leaving.
+   */
+  async function handleDone() {
+    const target = displayImage;
+    // Nothing edited, or already looking at the original: just leave.
+    if (!target || target.id === imageId) {
+      router.push(`/${projectId}/images`);
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await commitImageVersion(imageId, target.id);
+      router.push(`/${projectId}/images`);
+    } catch (e) {
+      // Do NOT navigate away on failure -- leaving would silently discard the
+      // edit, which is the very bug this replaces.
+      setSaveError(e instanceof Error ? e.message : "Could not save");
+      setSaving(false);
+    }
   }
 
   function handleVersionAdded(img: GeneratedImage) {
@@ -553,10 +581,23 @@ export default function EditPage({
 
           <button
             type="button"
-            onClick={() => router.push(`/${projectId}/images`)}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+            onClick={handleDone}
+            disabled={saving}
+            title={saveError ?? undefined}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+              saveError
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : "bg-primary text-primary-foreground hover:bg-primary/90",
+              saving && "opacity-60 cursor-not-allowed",
+            )}
           >
-            <Check className="h-3.5 w-3.5" /> Done
+            <Check className="h-3.5 w-3.5" />
+            {saving
+              ? t("imageEdit.saving", { defaultValue: "Saving..." })
+              : saveError
+                ? t("imageEdit.saveFailed", { defaultValue: "Retry save" })
+                : t("imageEdit.done", { defaultValue: "Done" })}
           </button>
         </div>
       </div>
@@ -648,6 +689,9 @@ export default function EditPage({
             {rightTab === "assistant" ? (
               <AiChatPanel
                 imageId={editTargetId}
+                // Operations target the CURRENT version; the conversation
+                // belongs to the picture as a whole, which is the route's id.
+                conversationId={imageId}
                 onVersionAdded={handleVersionAdded}
                 canvasRef={canvasRef}
                 onProcessingChange={setIsAiProcessing}

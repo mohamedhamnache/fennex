@@ -1402,7 +1402,10 @@
     "tabs": {
       "edit": "Édition",
       "assistant": "Mirage"
-    }
+    },
+    "done": "Terminer",
+    "saving": "Enregistrement...",
+    "saveFailed": "Réessayer"
   },
   "mirage": {
     "header": "Mirage · Artisan d'image",
