@@ -1380,6 +1380,9 @@
       "hintOptional": "Laissez vide pour utiliser la zone automatique gratuite. Nommer un objet le cible précisément et vous demande de confirmer la zone mise en évidence au préalable.",
       "hintRequired": "Nous ne savons pas où intervenir sans un nom ici ou un masque peint."
     },
+    "templates": {
+      "search": "Search templates"
+    },
     "score": {
       "title": "Score",
       "rescore": "Recalculer",

@@ -1380,6 +1380,9 @@
       "hintOptional": "Leer lassen, um den kostenlosen automatischen Bereich zu verwenden. Die Benennung eines Objekts zielt präzise darauf ab und bittet dich, den markierten Bereich zuerst zu bestätigen.",
       "hintRequired": "Ohne einen Namen hier oder eine gemalte Maske wissen wir nicht, wo wir arbeiten sollen."
     },
+    "templates": {
+      "search": "Search templates"
+    },
     "score": {
       "title": "Score",
       "rescore": "Neu bewerten",

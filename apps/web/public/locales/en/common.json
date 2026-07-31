@@ -1477,6 +1477,9 @@
       "hintOptional": "Leave blank to use the free automatic region. Naming an object targets it precisely, and asks you to confirm the highlighted area first.",
       "hintRequired": "We don't know where to work without a name here or a painted mask."
     },
+    "templates": {
+      "search": "Search templates"
+    },
     "score": {
       "title": "Score",
       "rescore": "Re-score",

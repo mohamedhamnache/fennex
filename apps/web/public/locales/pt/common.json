@@ -1380,6 +1380,9 @@
       "hintOptional": "Deixe em branco para usar a área automática gratuita. Nomear um objeto o direciona com precisão e pede que você confirme a área destacada primeiro.",
       "hintRequired": "Não sabemos onde atuar sem um nome aqui ou uma máscara pintada."
     },
+    "templates": {
+      "search": "Search templates"
+    },
     "score": {
       "title": "Pontuação",
       "rescore": "Recalcular",
