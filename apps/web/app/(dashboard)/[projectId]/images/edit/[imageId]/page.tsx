@@ -648,6 +648,9 @@ export default function EditPage({
             {rightTab === "assistant" ? (
               <AiChatPanel
                 imageId={editTargetId}
+                // Operations target the CURRENT version; the conversation
+                // belongs to the picture as a whole, which is the route's id.
+                conversationId={imageId}
                 onVersionAdded={handleVersionAdded}
                 canvasRef={canvasRef}
                 onProcessingChange={setIsAiProcessing}

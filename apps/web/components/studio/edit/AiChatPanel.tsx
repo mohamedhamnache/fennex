@@ -18,6 +18,13 @@ interface AiChatPanelProps {
   canvasRef?: RefObject<EditCanvasRef>;
   /** Drives the scan overlay on the image, the same one the manual panel uses. */
   onProcessingChange?: (processing: boolean) => void;
+  /**
+   * Stable id for the PICTURE being worked on, across its whole version chain.
+   * Chat history keys on this, not on imageId: every successful edit creates a
+   * new version and switches imageId to it, so keying history on imageId wiped
+   * the conversation after every single edit (and on every undo/redo).
+   */
+  conversationId: string;
 }
 
 /** Awaiting the user's approval of an auto-derived mask for one step of a
@@ -58,16 +65,18 @@ function TypingIndicator() {
 
 export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   onProcessingChange,
+  conversationId,
 }: AiChatPanelProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<AiCommandMessage[]>([]);
 
-  // Chat history is scoped to the image and survives unmount, so switching to
-  // the Edit tab and back -- or reloading -- does not lose the conversation
-  // about THIS picture. Kept in localStorage rather than the server: it is a
-  // per-browser working note about one image, not shared state.
-  const historyKey = `fennex.mirage.chat.${imageId}`;
+  // Chat history is scoped to the PICTURE (conversationId, stable across its
+  // versions) and survives unmount, so switching to the Edit tab and back --
+  // or reloading, or applying an edit -- does not lose the conversation about
+  // it. Kept in localStorage rather than the server: it is a per-browser
+  // working note about one image, not shared state.
+  const historyKey = `fennex.mirage.chat.${conversationId}`;
   const [pendingConfirm, setPendingConfirm] = useState<PendingMaskConfirm | null>(null);
   // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
   // area never rendered, so Apply must be disabled: approving a mask the
