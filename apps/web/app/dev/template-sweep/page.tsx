@@ -8,28 +8,55 @@
  *  it with `rasterizeScene`, and reports mechanical PASS/FAIL per template. The
  *  pictures are for judging design; the checks are for judging correctness.
  *
+ *  Every template is swept twice: as authored, and through `brandTemplate` with
+ *  a deliberately awkward brand kit, because brand-aware mode recolours the
+ *  fields without touching the text colours and can invert a palette's
+ *  contrast. That path is what a customer with a brand kit actually sees.
+ *
  *  Not linked from the app and not translated: it is a workbench, not a screen.
  */
 
 import { useEffect, useState } from "react";
 import {
-  TEXT_TEMPLATES, LEGACY_TEXT_TEMPLATES, templateToLayers,
-  type TextTemplate,
+  TEXT_TEMPLATES, LEGACY_TEXT_TEMPLATES, templateToLayers, brandTemplate,
+  type TextTemplate, type ResolvedTemplate,
 } from "@/components/studio/edit/text-templates";
-import { findUnbackedText } from "@/components/studio/edit/families";
+import { analyzeText } from "@/components/studio/edit/families";
+import { worstCaseContrast, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
 import { measureTextLayer } from "@/components/studio/edit/scene/measure";
 import type { Scene } from "@/components/studio/edit/scene/types";
 import type { TextLayer } from "@/components/studio/edit/EditCanvas";
+import type { BrandKit } from "@/lib/api";
 
 const TEST_PHOTO = "/dev/sweep-test-photo.jpg";
 const W = 800;
 const H = 800;
 const PREVIEW = 320;
 
+/** Deliberately awkward: a pale first colour, which brandTemplate cycles into a
+ *  field shape while leaving a light `ink` text colour alone. That is the exact
+ *  combination the contrast check exists to catch. */
+const SWEEP_BRAND: BrandKit = {
+  logo_url: null,
+  colors: ["#f3d9a4", "#123a6b", "#7f1d3f"],
+  primary_font: null,
+  secondary_font: null,
+  style_rules: null,
+  tone: null,
+};
+
 interface Check { name: string; pass: boolean; detail: string }
-interface Row { id: string; name: string; scene: Scene; png: string; checks: Check[] }
+interface Row {
+  key: string;
+  id: string;
+  name: string;
+  variant: string;
+  scene: Scene;
+  png: string;
+  checks: Check[];
+}
 
 /** Primary family of a CSS font stack, unquoted: "'Anton', sans-serif" -> Anton. */
 function primaryFamily(stack: string): string {
@@ -39,7 +66,12 @@ function primaryFamily(stack: string): string {
 /** Families declared anywhere in the document's font set (webfonts loaded via
  *  @font-face or an imported stylesheet). A family missing from this set can
  *  never load, which `document.fonts.check` alone will not tell you: it returns
- *  true for an unknown family because zero matching faces are unloaded. */
+ *  true for an unknown family, because zero matching faces are unloaded.
+ *
+ *  Only read this after `document.fonts.ready`. On a cold load the set is still
+ *  filling from the stylesheet, and reading it early reports families as
+ *  undeclared that are merely late. A check that fails for the wrong reason is
+ *  worse than no check, and this route is what the branch gets judged on. */
 function declaredFamilies(): Set<string> {
   const out = new Set<string>();
   document.fonts.forEach((f) => out.add(primaryFamily(f.family)));
@@ -50,10 +82,12 @@ function textLayers(scene: Scene): TextLayer[] {
   return scene.layers.filter((l): l is TextLayer => l.type === "text");
 }
 
-async function checkTemplate(tpl: TextTemplate): Promise<Row> {
-  const layers = templateToLayers(
-    { background: tpl.background ?? null, layers: tpl.layers }, TEST_PHOTO, W, H,
-  );
+async function checkVariant(
+  tpl: TextTemplate,
+  variant: string,
+  resolved: ResolvedTemplate,
+): Promise<Row> {
+  const layers = templateToLayers(resolved, TEST_PHOTO, W, H);
   const scene: Scene = { width: W, height: H, baseImageUrl: null, layers };
   const checks: Check[] = [];
   const texts = textLayers(scene);
@@ -96,23 +130,44 @@ async function checkTemplate(tpl: TextTemplate): Promise<Row> {
     detail: over.map((l) => l.text).join(", ") || "ok",
   });
 
-  // 4. Readability. Every text run must sit on a scrim, band or solid field —
-  //    measured with the real font metrics rather than the authoring estimate,
-  //    so this is a stricter test than the one families.ts applies at build.
-  const issues = findUnbackedText(tpl.layers, {
+  // 4 and 5. Readability, in two parts. Geometry: every run sits on a scrim,
+  //    band or solid field that nothing painted since has covered, measured
+  //    with real font metrics rather than the authoring estimate, so this is
+  //    stricter than the check families.ts applies at build time. Contrast: the
+  //    run must clear WCAG AA against that field. The second is what catches
+  //    brand-aware mode, which recolours fields but not the text on them.
+  const backings = analyzeText(resolved.layers, {
     widthPct: (def) => {
       const match = texts.find((l) => l.text === def.text);
       const px = match ? measureTextLayer(match, def.fontSize) : def.fontSize * def.text.length * 0.6;
       return (px / W) * 100;
     },
   });
+  const unbacked = backings.filter((b) => b.reason !== null);
   checks.push({
     name: "text on a field",
-    pass: issues.length === 0,
-    detail: issues.map((i) => `${i.text} (${i.reason})`).join("; ") || "every run backed",
+    pass: unbacked.length === 0,
+    detail: unbacked.map((b) => `${b.text} (${b.reason})`).join("; ") || "every run backed",
   });
 
-  // 5. Export. Rasterises, and at the requested size.
+  const contrasts = backings
+    .filter((b) => b.fieldColor)
+    .map((b) => ({
+      text: b.text,
+      ratio: worstCaseContrast(b.color, b.fieldColor as string, b.fieldOpacity),
+    }));
+  const poor = contrasts.filter((c) => c.ratio < MIN_CONTRAST);
+  checks.push({
+    name: "contrast",
+    pass: poor.length === 0,
+    detail: poor.length
+      ? poor.map((c) => `${c.text} ${c.ratio.toFixed(2)}:1`).join("; ")
+      : contrasts.length
+        ? `worst ${Math.min(...contrasts.map((c) => c.ratio)).toFixed(2)}:1`
+        : "no backed runs to measure",
+  });
+
+  // 6. Export. Rasterises, and at the requested size.
   let png = "";
   try {
     png = await rasterizeScene(scene);
@@ -131,7 +186,19 @@ async function checkTemplate(tpl: TextTemplate): Promise<Row> {
     checks.push({ name: "export", pass: false, detail: String(e) });
   }
 
-  return { id: tpl.id, name: tpl.name, scene, png, checks };
+  return { key: `${tpl.id}:${variant}`, id: tpl.id, name: tpl.name, variant, scene, png, checks };
+}
+
+async function sweep(templates: TextTemplate[]): Promise<Row[]> {
+  const out: Row[] = [];
+  for (const tpl of templates) {
+    out.push(await checkVariant(tpl, "as authored", {
+      background: tpl.background ?? null,
+      layers: tpl.layers,
+    }));
+    out.push(await checkVariant(tpl, "brand kit", brandTemplate(tpl, SWEEP_BRAND)));
+  }
+  return out;
 }
 
 export default function TemplateSweepPage() {
@@ -143,8 +210,9 @@ export default function TemplateSweepPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const out: Row[] = [];
-      for (const tpl of TEXT_TEMPLATES) out.push(await checkTemplate(tpl));
+      // Never read document.fonts before it has settled.
+      await document.fonts.ready;
+      const out = await sweep(TEXT_TEMPLATES);
       if (cancelled) return;
       setRows(out);
       setBusy(false);
@@ -155,9 +223,8 @@ export default function TemplateSweepPage() {
   async function runLegacy() {
     setShowLegacy(true);
     if (legacyRows.length > 0) return;
-    const out: Row[] = [];
-    for (const tpl of LEGACY_TEXT_TEMPLATES) out.push(await checkTemplate(tpl));
-    setLegacyRows(out);
+    await document.fonts.ready;
+    setLegacyRows(await sweep(LEGACY_TEXT_TEMPLATES));
   }
 
   const failures = rows.reduce((n, r) => n + r.checks.filter((c) => !c.pass).length, 0);
@@ -168,8 +235,8 @@ export default function TemplateSweepPage() {
         <h1 className="text-2xl font-bold">Template sweep</h1>
         <p className="text-sm text-muted-foreground">
           {busy
-            ? "Rendering and exporting every template…"
-            : `${rows.length} templates, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
+            ? "Waiting for fonts, then rendering and exporting every template…"
+            : `${TEXT_TEMPLATES.length} templates x 2 variants = ${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
         </p>
         <button
           type="button"
@@ -200,9 +267,11 @@ function SweepList({ rows }: { rows: Row[] }) {
   return (
     <div className="space-y-12">
       {rows.map((r) => (
-        <section key={r.id} className="space-y-3">
+        <section key={r.key} className="space-y-3">
           <h2 className="font-semibold">
-            {r.name} <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
+            {r.name}{" "}
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{r.variant}</span>{" "}
+            <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
           </h2>
           <div className="flex flex-wrap gap-6">
             <figure>

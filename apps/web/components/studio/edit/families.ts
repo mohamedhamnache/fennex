@@ -4,19 +4,27 @@
  *  where the colour fields go, and where the type sits inside them. One family
  *  yields many templates by varying only the palette and the copy.
  *
- *  Two rules are enforced by this module rather than by discipline:
+ *  Three rules are enforced by this module rather than by discipline:
  *
  *  1. READABILITY. Text over an arbitrary photo is unreadable on light images.
  *     Every text layer here is produced by `panel()`, and `panel()` always
  *     emits its backing field first. There is no exported way to author a bare
  *     text layer, so a family in this file structurally cannot place one.
- *     `findUnbackedText()` re-checks the finished layer list, so the guarantee
- *     survives later hand-editing of a template too.
+ *     `analyzeText()` re-checks the finished layer list — including whether
+ *     anything painted since has covered the run — so the guarantee survives
+ *     hand-editing and re-colouring passes, and `text-templates.ts` gates the
+ *     shipped set on it at module load in development.
  *
  *  2. HIERARCHY. Sizes come from `TYPE_STEPS`, derived from TYPE_SCALE, and a
  *     line names a step rather than a pixel size. The 5:1 headline-to-support
  *     ratio therefore holds across every family and cannot be flattened by an
  *     individual template.
+ *
+ *  3. CONTRAST. A line does not choose a colour. The field names a palette role
+ *     and the type takes the role guaranteed to contrast with it — ink on
+ *     surface, onAccent on accent. `resolvePalette` promises 4.5:1 for those
+ *     two pairs and no others, so accent-on-surface, which passes in one
+ *     category palette and fails in the next, cannot be written here at all.
  *
  *  Positions are percentages of the canvas, authored against the same ~800px
  *  reference canvas the rest of the template system assumes.
@@ -51,30 +59,14 @@ export const TYPE_STEPS = {
 export type TypeStep = keyof typeof TYPE_STEPS;
 export type FontKey = keyof typeof FONT_ROLES;
 
-/** FONT_ROLES holds bare family names. "Source Sans 3" is not a valid unquoted
- *  CSS identifier (the trailing "3" cannot start an ident), which makes both
- *  `ctx.font = "16px Source Sans 3"` and `document.fonts.load(...)` reject it.
- *  Quoting here keeps the roles untouched while emitting something every
- *  consumer can parse. */
-function cssFamily(name: string): string {
-  const quoted = /^[A-Za-z][A-Za-z-]*$/.test(name) ? name : `'${name}'`;
-  return `${quoted}, sans-serif`;
-}
-
-export const FONT_STACKS: Record<FontKey, string> = {
-  impact: cssFamily(FONT_ROLES.impact),
-  modern: cssFamily(FONT_ROLES.modern),
-  support: cssFamily(FONT_ROLES.support),
-};
-
 /** Approximate advance width per glyph as a fraction of font size. Deliberately
  *  generous: it drives the authoring-time fit guard, where over-estimating
  *  costs a warning and under-estimating ships an overflowing headline. */
 const WIDTH_FACTOR: Record<FontKey, number> = { impact: 0.46, modern: 0.56, support: 0.52 };
 
 function factorFor(fontFamily: string): number {
-  for (const key of Object.keys(FONT_STACKS) as FontKey[]) {
-    if (fontFamily === FONT_STACKS[key]) return WIDTH_FACTOR[key];
+  for (const key of Object.keys(FONT_ROLES) as FontKey[]) {
+    if (fontFamily === FONT_ROLES[key]) return WIDTH_FACTOR[key];
   }
   return 0.6;
 }
@@ -117,9 +109,13 @@ export const MIN_FIELD_OPACITY = 0.72;
 const INSCRIBE = 0.72;
 const RECTANGULAR: FieldShape[] = ["rect", "rounded", "pill", "ribbon", "tag"];
 
+/** Which palette role paints the field. This, not a free colour, is what a
+ *  family chooses — see `panel()` for why. */
+export type FieldRole = "surface" | "accent";
+
 export interface FieldSpec {
   shape: FieldShape;
-  color: string;
+  role: FieldRole;
   xPct: number;
   yPct: number;
   widthPct: number;
@@ -135,11 +131,13 @@ export interface PanelLine {
   text?: string;
   step: TypeStep;
   font: FontKey;
-  color: string;
   xPct: number;
   yPct: number;
   /** Centre the run on the field horizontally; xPct is then ignored. */
   center?: boolean;
+  /** Set the run in the accent as a pill. A pill is its own field, so this is
+   *  the one way accent colour can touch type and stay contrast-guaranteed. */
+  emphasis?: boolean;
   uppercase?: boolean;
   letterSpacing?: number;
   opacity?: number;
@@ -151,12 +149,15 @@ export interface PanelLine {
 
 interface Box { x: number; y: number; w: number; h: number }
 
-function fieldBox(f: FieldSpec): Box {
+/** Geometry-only view of a field, so box maths does not need the palette. */
+type FieldGeometry = Pick<FieldSpec, "shape" | "xPct" | "yPct" | "widthPct" | "heightPct" | "shadow">;
+
+function fieldBox(f: FieldGeometry): Box {
   const h = f.heightPct ?? f.widthPct / shapeAspect(f.shape, !!f.shadow);
   return { x: f.xPct, y: f.yPct, w: f.widthPct, h };
 }
 
-function inscribed(f: FieldSpec): Box {
+function inscribed(f: FieldGeometry): Box {
   const b = fieldBox(f);
   if (RECTANGULAR.includes(f.shape)) return b;
   return {
@@ -181,8 +182,16 @@ function warn(message: string): void {
  * first, then any `above` layers (a photo tucked between the field and the
  * type), then one text layer per non-empty line. Because families compose only
  * `panel()` and `photo()`, a family cannot place text over a bare photograph.
+ *
+ * A line does not choose its colour. The field names a palette role and the
+ * type takes the role that role guarantees contrast against: ink on surface,
+ * onAccent on accent. Those are the only two pairs `resolvePalette` promises
+ * clear 4.5:1 — accent-on-surface, which reads well in one palette and fails
+ * in the next, is simply not expressible. `emphasis` sets a run as an accent
+ * pill instead, which is contrast-guaranteed because the pill is its own field.
  */
 export function panel(
+  p: Palette,
   field: FieldSpec,
   lines: PanelLine[],
   opts?: { above?: TemplateLayerDef[] },
@@ -190,7 +199,7 @@ export function panel(
   const shape: TemplateShapeDef = {
     kind: "shape",
     shape: field.shape,
-    color: field.color,
+    color: p[field.role],
     xPct: field.xPct,
     yPct: field.yPct,
     widthPct: field.widthPct,
@@ -208,7 +217,7 @@ export function panel(
     if (!text) continue;
 
     const fontSize = TYPE_STEPS[line.step];
-    const fontFamily = FONT_STACKS[line.font];
+    const fontFamily = FONT_ROLES[line.font];
     const rendered = line.uppercase ? text.toUpperCase() : text;
     const w = estWidthPct(rendered, fontSize, WIDTH_FACTOR[line.font], line.letterSpacing ?? 0);
     const h = runHeightPct(fontSize);
@@ -225,7 +234,8 @@ export function panel(
       xPct: Number(x.toFixed(2)),
       yPct: line.yPct,
       fontSize,
-      color: line.color,
+      color: line.emphasis ? p.onAccent : field.role === "accent" ? p.onAccent : p.ink,
+      bgColor: line.emphasis ? p.accent : undefined,
       // Default to regular weight. Anton ships one weight and Inter is loaded
       // at 400-600, so asking for bold would synthesise a face the export
       // cannot reproduce. Weight is not how hierarchy is expressed here; the
@@ -243,6 +253,36 @@ export function panel(
       fontRole: line.step === "support" ? "body" : "heading",
       lockColor: line.lockColor,
     });
+  }
+
+  // `above` layers are painted over the field and under the type, so one that
+  // overlaps a run replaces the field as what that run actually sits on. Catch
+  // it here as well as in analyzeText, so it is a warning at authoring time
+  // rather than a surprise in the sweep.
+  for (const extra of opts?.above ?? []) {
+    if (extra.kind !== "image" && extra.kind !== "shape") continue;
+    const eb = {
+      x: extra.xPct,
+      y: extra.yPct,
+      w: extra.widthPct,
+      h: extra.heightPct ?? extra.widthPct,
+    };
+    for (const t of texts) {
+      const tb = {
+        x: t.xPct,
+        y: t.yPct,
+        w: estWidthPct(
+          t.uppercase ? t.text.toUpperCase() : t.text,
+          t.fontSize,
+          factorFor(t.fontFamily),
+          t.letterSpacing ?? 0,
+        ),
+        h: runHeightPct(t.fontSize),
+      };
+      if (eb.x < tb.x + tb.w && tb.x < eb.x + eb.w && eb.y < tb.y + tb.h && tb.y < eb.y + eb.h) {
+        warn(`an "above" layer covers "${t.text}"; it would sit on that layer, not on the field`);
+      }
+    }
   }
 
   return [shape, ...(opts?.above ?? []), ...texts];
@@ -285,11 +325,12 @@ export function scrimStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   return [
     photo(),
     ...panel(
-      { shape: "rect", color: p.surface, xPct: 0, yPct: 45, widthPct: 100, heightPct: 55, opacity: 0.82 },
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 45, widthPct: 100, heightPct: 55, opacity: 0.82 },
       [
-        { text: copy.headline, step: "headline", font: "impact", color: p.ink, xPct: 8, yPct: 62, uppercase: true, letterSpacing: -1 },
-        { text: copy.subhead, step: "subhead", font: "modern", color: p.accent, xPct: 8, yPct: 76 },
-        { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 8, yPct: 88, opacity: 0.85 },
+        { text: copy.headline, step: "headline", font: "impact", xPct: 8, yPct: 62, uppercase: true, letterSpacing: -1 },
+        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 76 },
+        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 88, opacity: 0.85 },
       ],
     ),
   ];
@@ -299,11 +340,12 @@ export function scrimStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
  *  field, with the type occupying the lower third. Editorial, calm. */
 export function framedInset(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   return panel(
-    { shape: "rect", color: p.surface, xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+    p,
+    { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
     [
-      { text: copy.headline, step: "headline", font: "impact", color: p.ink, xPct: 10, yPct: 66, uppercase: true, letterSpacing: -1 },
-      { text: copy.subhead, step: "subhead", font: "modern", color: p.accent, xPct: 10, yPct: 82 },
-      { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 10, yPct: 90, opacity: 0.8 },
+      { text: copy.headline, step: "headline", font: "impact", xPct: 10, yPct: 66, uppercase: true, letterSpacing: -1 },
+      { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 10, yPct: 82 },
+      { text: copy.support, step: "support", font: "support", xPct: 10, yPct: 90, opacity: 0.8 },
     ],
     { above: [photo({ xPct: 14, yPct: 8, widthPct: 72, heightPct: 52, clip: { shape: "circle" } })] },
   );
@@ -315,11 +357,12 @@ export function splitBlock(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   return [
     photo({ xPct: 0, yPct: 0, widthPct: 52, heightPct: 100 }),
     ...panel(
-      { shape: "rect", color: p.surface, xPct: 52, yPct: 0, widthPct: 48, heightPct: 100 },
+      p,
+      { shape: "rect", role: "surface", xPct: 52, yPct: 0, widthPct: 48, heightPct: 100 },
       [
-        { text: copy.headline, step: "headline", font: "impact", color: p.ink, xPct: 58, yPct: 26, uppercase: true, letterSpacing: -1 },
-        { text: copy.subhead, step: "subhead", font: "modern", color: p.accent, xPct: 58, yPct: 44 },
-        { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 58, yPct: 56, opacity: 0.85 },
+        { text: copy.headline, step: "headline", font: "impact", xPct: 58, yPct: 26, uppercase: true, letterSpacing: -1 },
+        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 58, yPct: 44 },
+        { text: copy.support, step: "support", font: "support", xPct: 58, yPct: 56, opacity: 0.85 },
       ],
     ),
   ];
@@ -332,10 +375,11 @@ export function editorialBand(p: Palette, copy: FamilyCopy): TemplateLayerDef[] 
   return [
     photo(),
     ...panel(
-      { shape: "rect", color: p.surface, xPct: 0, yPct: 72, widthPct: 100, heightPct: 28, opacity: 1 },
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 72, widthPct: 100, heightPct: 28, opacity: 1 },
       [
-        { text: copy.headline, step: "subhead", font: "modern", color: p.ink, xPct: 8, yPct: 76 },
-        { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 8, yPct: 88, opacity: 0.8 },
+        { text: copy.headline, step: "subhead", font: "modern", xPct: 8, yPct: 76 },
+        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 88, opacity: 0.8 },
       ],
     ),
   ];
@@ -347,14 +391,16 @@ export function priceCorner(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   return [
     photo(),
     ...panel(
-      { shape: "seal", color: p.accent, xPct: 66, yPct: 8, widthPct: 28, shadow: true },
-      [{ text: copy.headline, step: "subhead", font: "impact", color: p.onAccent, xPct: 66, yPct: 19.5, center: true, uppercase: true }],
+      p,
+      { shape: "seal", role: "accent", xPct: 66, yPct: 8, widthPct: 28, shadow: true },
+      [{ text: copy.headline, step: "subhead", font: "impact", xPct: 66, yPct: 19.5, center: true, uppercase: true }],
     ),
     ...panel(
-      { shape: "rect", color: p.surface, xPct: 0, yPct: 80, widthPct: 100, heightPct: 20, opacity: 0.9 },
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 80, widthPct: 100, heightPct: 20, opacity: 0.9 },
       [
-        { text: copy.subhead, step: "subhead", font: "modern", color: p.ink, xPct: 8, yPct: 84 },
-        { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 8, yPct: 93, opacity: 0.85 },
+        { text: copy.subhead, step: "subhead", font: "modern", xPct: 8, yPct: 84 },
+        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 93, opacity: 0.85 },
       ],
     ),
   ];
@@ -364,11 +410,12 @@ export function priceCorner(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
  *  sits under it as a rounded plate, support closes the page. */
 export function posterStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   return panel(
-    { shape: "rect", color: p.surface, xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+    p,
+    { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
     [
-      { text: copy.headline, step: "display", font: "impact", color: p.ink, xPct: 8, yPct: 14, uppercase: true, letterSpacing: -3 },
-      { text: copy.subhead, step: "subhead", font: "modern", color: p.accent, xPct: 8, yPct: 92 },
-      { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 62, yPct: 94, opacity: 0.8 },
+      { text: copy.headline, step: "display", font: "impact", xPct: 8, yPct: 14, uppercase: true, letterSpacing: -3 },
+      { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 92 },
+      { text: copy.support, step: "support", font: "support", xPct: 62, yPct: 94, opacity: 0.8 },
     ],
     { above: [photo({ xPct: 10, yPct: 34, widthPct: 80, heightPct: 56, clip: { roundedPct: 4 } })] },
   );
@@ -380,14 +427,16 @@ export function bento(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   return [
     photo({ xPct: 4, yPct: 4, widthPct: 56, heightPct: 92, clip: { roundedPct: 5 } }),
     ...panel(
-      { shape: "rounded", color: p.accent, xPct: 63, yPct: 4, widthPct: 33, heightPct: 44 },
-      [{ text: copy.headline, step: "headline", font: "impact", color: p.onAccent, xPct: 66, yPct: 16, uppercase: true, letterSpacing: -1 }],
+      p,
+      { shape: "rounded", role: "accent", xPct: 63, yPct: 4, widthPct: 33, heightPct: 44 },
+      [{ text: copy.headline, step: "headline", font: "impact", xPct: 66, yPct: 16, uppercase: true, letterSpacing: -1 }],
     ),
     ...panel(
-      { shape: "rounded", color: p.surface, xPct: 63, yPct: 52, widthPct: 33, heightPct: 44 },
+      p,
+      { shape: "rounded", role: "surface", xPct: 63, yPct: 52, widthPct: 33, heightPct: 44 },
       [
-        { text: copy.subhead, step: "subhead", font: "modern", color: p.ink, xPct: 66, yPct: 60 },
-        { text: copy.support, step: "support", font: "support", color: p.ink, xPct: 66, yPct: 74, opacity: 0.85 },
+        { text: copy.subhead, step: "subhead", font: "modern", xPct: 66, yPct: 60 },
+        { text: copy.support, step: "support", font: "support", xPct: 66, yPct: 74, opacity: 0.85 },
       ],
     ),
   ];
@@ -412,65 +461,154 @@ export interface ReadabilityIssue {
   reason: string;
 }
 
+/** What a text run actually sits on, once paint order is taken into account. */
+export interface TextBacking {
+  /** Index of the text layer within the layer list it was analysed from. */
+  index: number;
+  text: string;
+  /** The text layer's own colour, for a contrast check by the caller. */
+  color: string;
+  /** Colour of the field the run resolves onto, or null when nothing backs it. */
+  fieldColor: string | null;
+  /** Effective opacity of that field. Below 1 the photo shows through it. */
+  fieldOpacity: number;
+  /** Null when the run is properly backed. */
+  reason: string | null;
+}
+
+function contains(outer: Box, inner: Box): boolean {
+  return (
+    inner.x >= outer.x - 0.5 &&
+    inner.y >= outer.y - 0.5 &&
+    inner.x + inner.w <= outer.x + outer.w + 0.5 &&
+    inner.y + inner.h <= outer.y + outer.h + 0.5
+  );
+}
+
+function overlaps(a: Box, b: Box): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+function shapeFieldBox(shape: TemplateShapeDef): Box {
+  return inscribed({
+    shape: shape.shape as FieldShape,
+    xPct: shape.xPct,
+    yPct: shape.yPct,
+    widthPct: shape.widthPct,
+    heightPct: shape.heightPct,
+    shadow: shape.shadow,
+  });
+}
+
+function imageBox(def: { xPct: number; yPct: number; widthPct: number; heightPct?: number }): Box {
+  return { x: def.xPct, y: def.yPct, w: def.widthPct, h: def.heightPct ?? def.widthPct };
+}
+
 /**
- * Every text layer must sit on something opaque: its own background pill, or a
- * solid field shape painted earlier in the list that contains its whole run.
+ * Resolve what every text run sits on.
  *
- * `panel()` guarantees this at authoring time; this re-checks the finished
- * layer list, so it also catches a hand-written template and any damage a
- * later re-colouring pass does. `widthPct` lets a caller substitute real text
- * measurement for the estimate.
+ * A run is backed when it has its own background pill, or when some earlier
+ * field-shape layer contains its whole box AND nothing painted between that
+ * field and the text covers the run. That second half matters: `panel()`'s
+ * `above` layers sit between the field and the type, so a photo passed there
+ * would replace the field as the run's actual backdrop while still leaving a
+ * field somewhere earlier in the list. Image layers and opaque non-field
+ * shapes both count as occluders, so a template cannot smuggle a photograph
+ * under its own headline.
+ *
+ * `widthPct` lets a caller substitute real text measurement for the authoring
+ * estimate.
  */
-export function findUnbackedText(
+export function analyzeText(
   layers: TemplateLayerDef[],
   opts?: { widthPct?: (layer: TemplateTextDef) => number },
-): ReadabilityIssue[] {
-  const issues: ReadabilityIssue[] = [];
-  const fields: Box[] = [];
+): TextBacking[] {
+  /** `box` is the area the layer can back type over (inscribed for a field);
+   *  `hitBox` is its full extent, which is what occludes something below it. */
+  interface Painted { box: Box; hitBox: Box; index: number; field: TemplateShapeDef | null }
+  const painted: Painted[] = [];
+  const out: TextBacking[] = [];
 
-  for (const layer of layers) {
-    if (layer.kind === "image") continue;
+  layers.forEach((layer, index) => {
+    if (layer.kind === "image") {
+      const b = imageBox(layer);
+      painted.push({ box: b, hitBox: b, index, field: null });
+      return;
+    }
     if (layer.kind === "shape") {
       const shape = layer as TemplateShapeDef;
-      if (!isFieldShape(shape.shape)) continue;
-      if ((shape.opacity ?? 1) < MIN_FIELD_OPACITY) continue;
-      fields.push(inscribed({
-        shape: shape.shape,
-        color: shape.color,
-        xPct: shape.xPct,
-        yPct: shape.yPct,
-        widthPct: shape.widthPct,
-        heightPct: shape.heightPct,
-        shadow: shape.shadow,
-      }));
-      continue;
+      const usable = isFieldShape(shape.shape) && (shape.opacity ?? 1) >= MIN_FIELD_OPACITY;
+      const hitBox = imageBox(shape);
+      painted.push({
+        box: usable ? shapeFieldBox(shape) : hitBox,
+        hitBox,
+        index,
+        field: usable ? shape : null,
+      });
+      return;
     }
 
     const text = layer as TemplateTextDef;
-    if (text.visible === false) continue;
-    if (text.bgColor) continue; // self-backed pill
+    if (text.visible === false) return;
+
+    if (text.bgColor) {
+      out.push({ index, text: text.text, color: text.color, fieldColor: text.bgColor, fieldOpacity: 1, reason: null });
+      return;
+    }
 
     const rendered = text.uppercase ? text.text.toUpperCase() : text.text;
     const w = opts?.widthPct
       ? opts.widthPct(text)
       : estWidthPct(rendered, text.fontSize, factorFor(text.fontFamily), text.letterSpacing ?? 0);
-    const h = runHeightPct(text.fontSize);
-    const box: Box = { x: text.xPct, y: text.yPct, w, h };
+    const box: Box = { x: text.xPct, y: text.yPct, w, h: runHeightPct(text.fontSize) };
 
-    const covered = fields.some(
-      (f) =>
-        box.x >= f.x - 0.5 &&
-        box.y >= f.y - 0.5 &&
-        box.x + box.w <= f.x + f.w + 0.5 &&
-        box.y + box.h <= f.y + f.h + 0.5,
+    // Latest field first: the last thing painted under the run wins.
+    const candidates = painted.filter((p) => p.field && contains(p.box, box)).reverse();
+    const backing = candidates.find(
+      (c) => !painted.some((p) => p.index > c.index && overlaps(p.hitBox, box)),
     );
-    if (!covered) {
-      issues.push({
+
+    if (backing?.field) {
+      out.push({
+        index,
         text: text.text,
-        reason: fields.length === 0 ? "no field behind it" : "runs outside every field behind it",
+        color: text.color,
+        fieldColor: backing.field.color,
+        fieldOpacity: backing.field.opacity ?? 1,
+        reason: null,
+      });
+    } else {
+      out.push({
+        index,
+        text: text.text,
+        color: text.color,
+        fieldColor: null,
+        fieldOpacity: 1,
+        reason: candidates.length > 0
+          ? "a layer painted after its field covers the run"
+          : painted.some((p) => p.field)
+            ? "runs outside every field behind it"
+            : "no field behind it",
       });
     }
-  }
+  });
 
-  return issues;
+  return out;
+}
+
+/**
+ * Every text layer must sit on something opaque: its own background pill, or a
+ * solid field painted earlier and not covered since.
+ *
+ * `panel()` guarantees this at authoring time; this re-checks the finished
+ * layer list, so it also catches a hand-written template and any damage a
+ * later re-colouring pass does.
+ */
+export function findUnbackedText(
+  layers: TemplateLayerDef[],
+  opts?: { widthPct?: (layer: TemplateTextDef) => number },
+): ReadabilityIssue[] {
+  return analyzeText(layers, opts)
+    .filter((b) => b.reason !== null)
+    .map((b) => ({ text: b.text, reason: b.reason as string }));
 }

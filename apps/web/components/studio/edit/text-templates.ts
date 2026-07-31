@@ -8,6 +8,7 @@ import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import {
   scrimStack, framedInset, splitBlock, editorialBand, priceCorner, posterStack, bento,
+  findUnbackedText, analyzeText,
 } from "./families";
 
 /** A reusable design composition: optional background, shape objects, and text.
@@ -635,6 +636,39 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
   },
 ];
 
+/**
+ * Dev-only gate on the readability rule.
+ *
+ * The families make it hard to author unbacked text; this makes it impossible
+ * to ship. A template that spreads a family's output and appends its own text
+ * def, or that hand-writes layers entirely, bypasses `panel()` — this catches
+ * it at module load, before anything renders, and names the offending copy.
+ *
+ * `process.env.NODE_ENV` is inlined by the bundler, so this whole block is
+ * dead code in a production build and costs nothing there.
+ */
+export function assertTemplatesReadable(templates: TextTemplate[]): void {
+  const bad: string[] = [];
+  for (const t of templates) {
+    for (const issue of findUnbackedText(t.layers)) {
+      bad.push(`  ${t.id}: "${issue.text}" — ${issue.reason}`);
+    }
+  }
+  if (bad.length === 0) return;
+  const message =
+    `${bad.length} template text run(s) are not on a scrim, band or solid field.\n` +
+    `Text over a bare photo is unreadable on light images. Build the layers with\n` +
+    `panel() from families.ts, which cannot emit text without its backing field.\n` +
+    bad.join("\n");
+  // eslint-disable-next-line no-console
+  console.error(`[text-templates] ${message}`);
+  throw new Error(`[text-templates] ${message}`);
+}
+
+if (process.env.NODE_ENV === "development") {
+  assertTemplatesReadable(TEXT_TEMPLATES);
+}
+
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
 
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -786,5 +820,23 @@ export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): Resolve
     return out;
   });
 
-  return { background, layers };
+  // Recolouring the fields without recolouring the type on them is how brand
+  // mode used to produce light ink on a pale brand field. The families pick
+  // text colours that are guaranteed against the *palette's* field roles, and
+  // that guarantee does not survive a brand kit cycling arbitrary colours
+  // through those fields — so re-derive each run's colour from whatever it
+  // actually ends up sitting on. Runs with their own pill, or with lockColor,
+  // are already handled above and left alone.
+  const rebranded = [...layers];
+  if (colors.length > 0) {
+    for (const backing of analyzeText(rebranded)) {
+      if (!backing.fieldColor) continue;
+      const layer = rebranded[backing.index];
+      if (layer.kind === "shape" || layer.kind === "image") continue;
+      if (layer.lockColor || layer.bgColor) continue;
+      rebranded[backing.index] = { ...layer, color: bestTextOn(backing.fieldColor) };
+    }
+  }
+
+  return { background, layers: rebranded };
 }

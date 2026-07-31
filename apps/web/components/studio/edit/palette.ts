@@ -13,6 +13,60 @@ export function bestTextOn(hex: string): string {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#111111" : "#ffffff";
 }
 
+function rgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  return [
+    parseInt(full.slice(0, 2), 16) || 0,
+    parseInt(full.slice(2, 4), 16) || 0,
+    parseInt(full.slice(4, 6), 16) || 0,
+  ];
+}
+
+function toHex(c: [number, number, number]): string {
+  return `#${c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** WCAG 2.x relative luminance. */
+export function relativeLuminance(hex: string): number {
+  const [r, g, b] = rgb(hex).map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio between two opaque colours, 1..21. */
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/** Flatten a translucent colour onto a backdrop. A scrim at opacity < 1 does
+ *  not have a fixed colour, so contrast has to be measured against what it
+ *  actually composites to. */
+export function compositeOver(fg: string, bg: string, alpha: number): string {
+  const f = rgb(fg);
+  const b = rgb(bg);
+  return toHex([0, 1, 2].map((i) => f[i] * alpha + b[i] * (1 - alpha)) as [number, number, number]);
+}
+
+/** Contrast of `text` against a field of `fieldColor` at `opacity`, assuming
+ *  the worst photograph underneath it. A translucent scrim is composited over
+ *  both white and black and the poorer of the two ratios is returned, because a
+ *  template has no idea what image a user will drop behind it. */
+export function worstCaseContrast(text: string, fieldColor: string, opacity = 1): number {
+  if (opacity >= 1) return contrastRatio(text, fieldColor);
+  return Math.min(
+    contrastRatio(text, compositeOver(fieldColor, "#ffffff", opacity)),
+    contrastRatio(text, compositeOver(fieldColor, "#000000", opacity)),
+  );
+}
+
+/** WCAG AA for body text. */
+export const MIN_CONTRAST = 4.5;
+
 export type PaletteRole = "surface" | "ink" | "accent" | "onAccent";
 
 export type Palette = Record<PaletteRole, string>;
@@ -44,11 +98,24 @@ export function resolvePalette(
   };
 }
 
-/** Three type roles. Templates name a role; the role picks the face. */
+/** Three type roles. Templates name a role; the role picks the face.
+ *
+ *  These are complete CSS font stacks, not bare family names, and the quoting
+ *  is load-bearing. "Source Sans 3" is not a valid unquoted CSS identifier —
+ *  an identifier cannot begin with a digit, so the trailing "3" invalidates the
+ *  whole declaration — and every consumer fails silently and differently:
+ *    - `ctx.font = "16px Source Sans 3"` is rejected as an invalid shorthand
+ *      and the assignment is IGNORED, so measureTextLayer keeps whatever the
+ *      context had (10px sans-serif) and returns badly wrong widths.
+ *    - `document.fonts.load("16px Source Sans 3")` rejects, and rasterize.ts
+ *      does not catch it, so the PNG export fails outright.
+ *    - SceneSvg puts the string straight into a font-family attribute, which
+ *      also fails to parse and falls back to the default face.
+ *  Quoting here means every consumer can use FONT_ROLES raw and be correct. */
 export const FONT_ROLES = {
-  impact: "Anton",
-  modern: "Inter",
-  support: "Source Sans 3",
+  impact: "'Anton', sans-serif",
+  modern: "'Inter', sans-serif",
+  support: "'Source Sans 3', sans-serif",
 } as const;
 
 export type FontRole = keyof typeof FONT_ROLES;
