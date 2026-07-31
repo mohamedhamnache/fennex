@@ -58,9 +58,17 @@ primitives.
 Layers become a declarative scene rendered to **SVG**. The same markup serves both
 jobs:
 
-- **Live editing** — inlined in the DOM. Drag, resize and selection operate on layer
-  geometry, not on the paint path, so they continue to work unchanged.
+- **Live editing** — inlined in the DOM, beneath a layer of transparent hit-boxes.
 - **Export** — the same markup serialized and rasterized to PNG at full resolution.
+
+Today the layer overlays in `EditCanvas.tsx:717` are *both* the visuals and the
+interaction surface: one absolutely positioned element per layer carries the CSS that
+paints it and the pointer handlers that move it. Splitting those is part of this
+work. Visual truth moves into a single `<svg>`; the per-layer elements remain, keep
+their existing pointer handlers and geometry, and become transparent hit-boxes
+carrying selection chrome. Inline text editing keeps its existing `<input>` overlay.
+Geometry is already expressed in canvas percentages, so the handlers themselves do
+not change — only what they paint.
 
 WYSIWYG stops being a property maintained by hand and becomes structural.
 
@@ -83,7 +91,13 @@ rather than a new problem.
 
 **Rasterizing SVG that references remote images taints the canvas** and makes
 `toDataURL` throw. Every referenced image must be inlined as a data URI before
-rasterization, including the subject photo.
+rasterization.
+
+This is narrower than it first appears. `shapes.ts` already emits every shape and
+background as an SVG data URI consumed as an ordinary image layer — its header notes
+this was done precisely to avoid CORS on the burn canvas. So shapes, backgrounds and
+clip sources are already safe. Only the **subject photo and user-uploaded image
+layers** need inlining.
 
 ---
 
@@ -218,10 +232,13 @@ layout. This also removes the miniature as a third approximation to keep in sync
 **Browsing at ~38 templates.** Category tabs stay; a name and keyword filter is added
 ("sale", "quote", "bundle").
 
-**Applying a template lands in an editable state.** The primary headline slot is
-selected and ready to edit on apply. Templates ship with placeholder copy sized to
-the slot, so a composition never previews with text whose length breaks the layout
-once replaced.
+**Applying a template lands in an editable state** — already implemented.
+`applyTemplate` (`EditControlsPanel.tsx:457`) selects the first foreground layer,
+skipping the background, and switches to the text tool. No work needed; it is
+recorded here so it is not rebuilt.
+
+What this work does add: templates ship with placeholder copy sized to the slot, so a
+composition never previews with text whose length breaks the layout once replaced.
 
 **Panel extraction.** `EditControlsPanel.tsx` is 2,495 lines and holds the template
 picker, every tool's controls, and the mask-confirm UI. Two extractions along
