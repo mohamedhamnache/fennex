@@ -516,7 +516,8 @@ _IC_LIGHT_SOURCES = {
 }
 
 
-async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str]) -> dict:
+async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str],
+                     source_size: Optional[tuple[int, int]] = None) -> dict:
     """Shared body for the three GENERATIVE mask operations.
 
     These genuinely want new content, so flux-fill and its high default guidance
@@ -527,7 +528,7 @@ async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str]) -> di
     was arriving already lossy before we stored it.
     """
     try:
-        src_size = dimensions(await _download(image_url))
+        src_size = await _source_dimensions(image_url, source_size)
         mask_url = await _fit_mask_to_image(mask_url, src_size)
         output = await _replicate_run(_MODEL_FLUX_FILL, {
             "image": image_url, "mask": mask_url, "prompt": prompt,
@@ -540,8 +541,9 @@ async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str]) -> di
         return {"ok": False, "error": str(e)}
 
 
-async def replace_background(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
-    return await _flux_fill(image_url, prompt, mask_url)
+async def replace_background(image_url: str, prompt: str, mask_url: Optional[str] = None,
+                                  source_size: Optional[tuple[int, int]] = None) -> dict:
+    return await _flux_fill(image_url, prompt, mask_url, source_size)
 
 
 # ── Instruction-based editing ────────────────────────────────────────────────
@@ -696,6 +698,20 @@ async def instruction_edit(image_url: str, instruction: str,
         return {"ok": False, "error": str(e)}
 
 
+async def _source_dimensions(image_url: str,
+                             source_size: Optional[tuple[int, int]]) -> tuple[int, int]:
+    """The source's size, without refetching it when the caller already knows.
+
+    Every operation needs this for its resolution policy, and the edit route
+    already holds image.width/height from the database -- so downloading the
+    whole file again just to read a header cost several megabytes per edit on a
+    large photo. Callers that genuinely do not know still get the measurement.
+    """
+    if source_size and source_size[0] and source_size[1]:
+        return int(source_size[0]), int(source_size[1])
+    return dimensions(await _download(image_url))
+
+
 async def _fit_mask_to_image(mask_url: Optional[str], source_size: tuple[int, int]) -> Optional[str]:
     """Make a mask match its image, re-uploading only if it did not already.
 
@@ -727,7 +743,8 @@ async def _fit_mask_to_image(mask_url: Optional[str], source_size: tuple[int, in
     return await upload_bytes(buf.read(), f"masks/{uuid.uuid4().hex}.png", "image/png")
 
 
-async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
+async def _lama_erase(image_url: str, mask_url: Optional[str],
+                      source_size: Optional[tuple[int, int]] = None) -> dict:
     """Reconstruct whatever the mask covers from surrounding context.
 
     No prompt is sent because LaMa has no prompt input -- that is precisely why
@@ -736,7 +753,7 @@ async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
     if not mask_url:
         return {"ok": False, "error": "No mask provided."}
     try:
-        src_size = dimensions(await _download(image_url))
+        src_size = await _source_dimensions(image_url, source_size)
         mask_url = await _fit_mask_to_image(mask_url, src_size)
         output = await _replicate_run(
             _MODEL_LAMA,
@@ -750,28 +767,33 @@ async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-async def remove_object(image_url: str, mask_url: Optional[str] = None) -> dict:
-    return await _lama_erase(image_url, mask_url)
+async def remove_object(image_url: str, mask_url: Optional[str] = None,
+                        source_size: Optional[tuple[int, int]] = None) -> dict:
+    return await _lama_erase(image_url, mask_url, source_size)
 
 
 # smart_erase and remove_object are the same intent -- reconstruct what is under
 # the mask -- so they share one implementation. Both names are kept because the
 # planner vocabulary and the UI reference them.
-async def smart_erase(image_url: str, mask_url: Optional[str] = None) -> dict:
-    return await _lama_erase(image_url, mask_url)
+async def smart_erase(image_url: str, mask_url: Optional[str] = None,
+                      source_size: Optional[tuple[int, int]] = None) -> dict:
+    return await _lama_erase(image_url, mask_url, source_size)
 
 
-async def insert_object(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
-    return await _flux_fill(image_url, prompt, mask_url)
+async def insert_object(image_url: str, prompt: str, mask_url: Optional[str] = None,
+                             source_size: Optional[tuple[int, int]] = None) -> dict:
+    return await _flux_fill(image_url, prompt, mask_url, source_size)
 
 
-async def generative_fill(image_url: str, prompt: str, mask_url: Optional[str] = None) -> dict:
-    return await _flux_fill(image_url, prompt, mask_url)
+async def generative_fill(image_url: str, prompt: str, mask_url: Optional[str] = None,
+                               source_size: Optional[tuple[int, int]] = None) -> dict:
+    return await _flux_fill(image_url, prompt, mask_url, source_size)
 
 
-async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
+async def generate_shadow(image_url: str, direction: str = "bottom",
+                          source_size: Optional[tuple[int, int]] = None) -> dict:
     try:
-        src_size = dimensions(await _download(image_url))
+        src_size = await _source_dimensions(image_url, source_size)
         offset_x, offset_y = _SHADOW_OFFSETS.get(direction, _SHADOW_OFFSETS["bottom"])
         output = await _replicate_run(
             _MODEL_SHADOW,
@@ -797,7 +819,8 @@ async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
         return {"ok": False, "error": str(e)}
 
 
-async def relight_image(image_url: str, direction: str = "top", intensity: float = 1.0) -> dict:
+async def relight_image(image_url: str, direction: str = "top", intensity: float = 1.0,
+                        source_size: Optional[tuple[int, int]] = None) -> dict:
     """Relight via ic-light.
 
     `intensity` is accepted for call-compatibility but NOT sent: ic-light's
@@ -807,7 +830,7 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
     verified against the model's live schema.
     """
     try:
-        src_w, src_h = dimensions(await _download(image_url))
+        src_w, src_h = await _source_dimensions(image_url, source_size)
         w, h = _clamp_to_ic_light_dims(src_w, src_h)
         light_prompt = _RELIGHT_PROMPTS.get(direction, f"light from {direction}")
         output = await _replicate_run(
@@ -830,9 +853,10 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
         return {"ok": False, "error": str(e)}
 
 
-async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
+async def restore_face(image_url: str, fidelity: float = 0.7,
+                       source_size: Optional[tuple[int, int]] = None) -> dict:
     try:
-        src_size = dimensions(await _download(image_url))
+        src_size = await _source_dimensions(image_url, source_size)
         output = await _replicate_run(
             _MODEL_CODEFORMER,
             {
@@ -853,10 +877,11 @@ async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-async def upscale_image(image_url: str, scale: int = 2) -> dict:
+async def upscale_image(image_url: str, scale: int = 2,
+                        source_size: Optional[tuple[int, int]] = None) -> dict:
     """Upscaling exists to CHANGE the size, so parity must not be asserted."""
     try:
-        src_size = dimensions(await _download(image_url))
+        src_size = await _source_dimensions(image_url, source_size)
         output = await _replicate_run(_MODEL_REAL_ESRGAN, {"image": image_url, "scale": scale})
         stored = await finalize(output, source_size=src_size,
                                 policy=ResolutionPolicy.ALLOW_CHANGE)

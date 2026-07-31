@@ -587,3 +587,50 @@ async def test_replicate_run_fails_loudly_on_an_empty_output():
         msg = str(exc.value)
         assert "owner/model" in msg, f"error should name the model, got: {msg}"
         assert "output" in msg.lower(), f"error should mention output, got: {msg}"
+
+
+async def test_ops_use_the_callers_known_size_instead_of_refetching():
+    """The router already holds image.width/height, yet every op downloaded the
+    whole source again just to read a header -- several megabytes per edit on a
+    large photo."""
+    from app.services import editing_service
+
+    dl = AsyncMock(return_value=_png_bytes((800, 600)))
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
+    run = AsyncMock(return_value="https://replicate/out.png")
+
+    cases = [
+        (editing_service.replace_background, ("https://cdn/i.png", "p", "https://cdn/m.png")),
+        (editing_service.remove_object, ("https://cdn/i.png", "https://cdn/m.png")),
+        (editing_service.restore_face, ("https://cdn/i.png", 0.7)),
+        (editing_service.upscale_image, ("https://cdn/i.png", 2)),
+        (editing_service.generate_shadow, ("https://cdn/i.png", "bottom")),
+        (editing_service.relight_image, ("https://cdn/i.png", "left")),
+    ]
+    for fn, args in cases:
+        dl.reset_mock()
+        with patch("app.services.editing_service._replicate_run", run), \
+             patch("app.services.editing_service._download", dl), \
+             patch("app.services.editing_service._fit_mask_to_image",
+                   AsyncMock(side_effect=lambda m, s: m)), \
+             patch("app.services.editing_service.finalize", fin):
+            result = await fn(*args, source_size=(1600, 1200))
+        assert result["ok"] is True, f"{fn.__name__}: {result.get('error')}"
+        dl.assert_not_awaited(), f"{fn.__name__} refetched the source"
+        assert fin.call_args.kwargs["source_size"] == (1600, 1200), fn.__name__
+
+
+async def test_ops_still_measure_when_the_caller_does_not_know_the_size():
+    """Callers without the dimensions to hand must keep working unchanged."""
+    from app.services import editing_service
+
+    dl = AsyncMock(return_value=_png_bytes((800, 600)))
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.png")), \
+         patch("app.services.editing_service._download", dl), \
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
+        result = await editing_service.restore_face("https://cdn/i.png", 0.7)
+
+    assert result["ok"] is True
+    dl.assert_awaited()

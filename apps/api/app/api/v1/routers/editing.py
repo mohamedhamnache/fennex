@@ -1,5 +1,6 @@
 """POST /images/{image_id}/edit — dispatch to editing_service operations."""
 import base64
+import inspect
 import uuid
 from typing import Annotated, Any, Optional
 
@@ -193,6 +194,16 @@ async def edit_image(
     # to a generative model -- the cause of removals producing a new object.
     # LaMa takes only an image and a mask. smart_erase never used the key at all,
     # so this decrypt was pure waste on every call.
+
+    # The record already carries the source dimensions, so hand them to the
+    # operation rather than making it download the whole file again just to read
+    # a header -- several megabytes per edit on a large photo.
+    #
+    # Only the operations that declare the parameter get it: the Pillow ops
+    # (crop, rotate, filter and friends) never take one, and passing it blindly
+    # would raise TypeError on every one of them.
+    if image.width and image.height and "source_size" in inspect.signature(fn).parameters:
+        kwargs["source_size"] = (image.width, image.height)
 
     # Call service
     edit_result = await fn(image.image_url, **kwargs)
