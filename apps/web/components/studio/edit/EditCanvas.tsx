@@ -38,6 +38,7 @@ export interface TextLayer {
   fontFamily: string;
   visible: boolean;
   locked?: boolean;
+  rotation?: number;
   // Text effects (all optional — defaults preserve legacy layers)
   opacity?: number;          // 0-1, default 1
   letterSpacing?: number;    // px at the layer's fontSize, default 0
@@ -46,6 +47,7 @@ export interface TextLayer {
   bgColor?: string | null;   // background pill colour, null/undefined = off
   shadow?: boolean;          // drop shadow, default true (legacy behaviour)
   uppercase?: boolean;
+  blend?: import("./scene/types").BlendMode;
 }
 
 export interface ImageLayer {
@@ -64,6 +66,9 @@ export interface ImageLayer {
   visible: boolean;
   rotation?: number;
   locked?: boolean;
+  blend?: import("./scene/types").BlendMode;
+  clip?: import("./scene/types").ClipSpec;
+  fit?: "cover" | "contain";
 }
 
 export type Layer = TextLayer | ImageLayer;
