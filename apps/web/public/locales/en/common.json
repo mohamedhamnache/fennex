@@ -1499,7 +1499,10 @@
     "tabs": {
       "edit": "Edit",
       "assistant": "Mirage"
-    }
+    },
+    "done": "Done",
+    "saving": "Saving...",
+    "saveFailed": "Retry save"
   },
   "mirage": {
     "header": "Mirage · Image Artisan",

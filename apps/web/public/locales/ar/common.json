@@ -1402,7 +1402,10 @@
     "tabs": {
       "edit": "تحرير",
       "assistant": "Mirage"
-    }
+    },
+    "done": "تم",
+    "saving": "جارٍ الحفظ...",
+    "saveFailed": "إعادة المحاولة"
   },
   "mirage": {
     "header": "Mirage · فنان الصور",

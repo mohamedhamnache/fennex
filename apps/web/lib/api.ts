@@ -888,6 +888,22 @@ export async function getImage(imageId: string): Promise<GeneratedImage> {
   return apiClient.get<GeneratedImage>(`/images/${imageId}`);
 }
 
+/**
+ * Make an edited version the image itself.
+ *
+ * Edits are stored as hidden child rows, and the gallery excludes children, so
+ * until this is called the library keeps showing the untouched original and
+ * reopening the editor loads it back. Earlier versions are kept as history.
+ */
+export async function commitImageVersion(
+  imageId: string,
+  versionId: string,
+): Promise<GeneratedImage> {
+  return apiClient.post<GeneratedImage>(`/images/${imageId}/commit-version`, {
+    version_id: versionId,
+  });
+}
+
 export interface CampaignAsset {
   title: string;
   prompt: string;
