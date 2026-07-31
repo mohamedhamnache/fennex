@@ -523,6 +523,30 @@ async def update_image_tags(image_id: uuid.UUID, body: TagsUpdate, current_user:
     return ImageOut.model_validate(image)
 
 
+# Depth cap: a cycle in source_image_id would otherwise loop forever, and no
+# legitimate edit chain comes close to this.
+_MAX_VERSION_CHAIN = 200
+
+
+async def _is_in_chain(version: GeneratedImage, root_id: uuid.UUID, db) -> bool:
+    """True when `version` descends from `root_id` (or IS it)."""
+    seen: set[uuid.UUID] = set()
+    current = version
+    for _ in range(_MAX_VERSION_CHAIN):
+        if current.id == root_id:
+            return True
+        parent_id = current.source_image_id
+        if parent_id is None or parent_id in seen:
+            return False
+        seen.add(parent_id)
+        current = (await db.execute(
+            select(GeneratedImage).where(GeneratedImage.id == parent_id)
+        )).scalar_one_or_none()
+        if current is None:
+            return False
+    return False
+
+
 class CommitVersion(BaseModel):
     version_id: uuid.UUID
 
@@ -547,7 +571,14 @@ async def commit_version(image_id: uuid.UUID, body: CommitVersion,
 
     # The version must belong to THIS image's chain, or one org member could
     # graft an unrelated picture onto another image.
-    if version.id != image.id and version.source_image_id != image.id:
+    #
+    # Editing is a CHAIN, not one level: each edit applies to the version on
+    # screen and records THAT as its parent, so the second edit's parent is the
+    # first edit, not the original. Checking only source_image_id therefore
+    # accepted the first edit and rejected every one after it -- which is what
+    # made Done fail with a retry state once you had edited twice. Walk up to
+    # the root instead.
+    if not await _is_in_chain(version, image.id, db):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "That version does not belong to this image.",

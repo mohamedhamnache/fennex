@@ -30,6 +30,8 @@ _SRC = uuid.uuid4()
 _VERSION = uuid.uuid4()
 _FOREIGN = uuid.uuid4()
 _UNRELATED = uuid.uuid4()
+_V2 = uuid.uuid4()
+_V3 = uuid.uuid4()
 
 
 async def _override_get_db():
@@ -57,6 +59,16 @@ async def client():
                              thumbnail_url="https://cdn/edited.png",
                              width=1600, height=1200, source_image_id=_SRC,
                              edit_operation="upscale"))
+        # A CHAIN: each edit applies to the version on screen, so v2's parent is
+        # v1 and v3's parent is v2 -- not the original.
+        s.add(GeneratedImage(id=_V2, org_id=_ORG, project_id=_PROJECT, prompt="p",
+                             status=ImageStatus.ready, image_url="https://cdn/v2.png",
+                             width=1600, height=1200, source_image_id=_VERSION,
+                             edit_operation="relight"))
+        s.add(GeneratedImage(id=_V3, org_id=_ORG, project_id=_PROJECT, prompt="p",
+                             status=ImageStatus.ready, image_url="https://cdn/v3.png",
+                             width=1600, height=1200, source_image_id=_V2,
+                             edit_operation="remove_object"))
         # a version of a DIFFERENT image, in the same org
         s.add(GeneratedImage(id=_UNRELATED, org_id=_ORG, project_id=_PROJECT, prompt="p",
                              status=ImageStatus.ready, image_url="https://cdn/other.png",
@@ -122,3 +134,42 @@ async def test_an_image_from_another_org_is_not_reachable(client):
 async def test_committing_a_foreign_image_itself_is_not_reachable(client):
     resp = await _commit(client, _FOREIGN, _VERSION)
     assert resp.status_code == 404
+
+
+async def test_a_version_deeper_in_the_chain_is_accepted(client):
+    """Editing twice makes the second edit a child of the FIRST, not of the
+    original. Checking only source_image_id accepted the first edit and rejected
+    every one after it -- which is what made Done fail with a retry state."""
+    resp = await _commit(client, _SRC, _V3)
+    assert resp.status_code == 200, resp.text
+
+    async with _Session() as s:
+        src = (await s.execute(select(GeneratedImage).where(GeneratedImage.id == _SRC))).scalar_one()
+        assert src.image_url == "https://cdn/v3.png"
+        assert src.edit_operation == "remove_object"
+
+
+async def test_every_step_of_a_chain_is_committable(client):
+    """Undo then Done must work too: any version on screen is a valid target."""
+    for version_id, expected in ((_VERSION, "https://cdn/edited.png"),
+                                 (_V2, "https://cdn/v2.png"),
+                                 (_V3, "https://cdn/v3.png")):
+        resp = await _commit(client, _SRC, version_id)
+        assert resp.status_code == 200, f"{version_id}: {resp.text}"
+        async with _Session() as s:
+            src = (await s.execute(
+                select(GeneratedImage).where(GeneratedImage.id == _SRC))).scalar_one()
+            assert src.image_url == expected
+
+
+async def test_a_broken_parent_link_is_refused_not_hung(client):
+    """A version whose parent row is missing must fail closed rather than loop."""
+    orphan = uuid.uuid4()
+    async with _Session() as s:
+        s.add(GeneratedImage(id=orphan, org_id=_ORG, project_id=_PROJECT, prompt="p",
+                             status=ImageStatus.ready, image_url="https://cdn/orphan.png",
+                             width=10, height=10, source_image_id=uuid.uuid4()))
+        await s.commit()
+
+    resp = await _commit(client, _SRC, orphan)
+    assert resp.status_code == 422

@@ -108,25 +108,37 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   // confirmation left pending from the PREVIOUS image would otherwise still
   // be Apply-able against the new one. History is handled by the effect above,
   // which swaps in the new image's own conversation.
-  // Load THIS image's conversation whenever the displayed image changes.
   useEffect(() => () => onProcessingChange?.(false), [onProcessingChange]);
 
+  // Which key the loaded conversation belongs to. The persist effect refuses to
+  // write until this matches, because on MOUNT `history` is still [] while the
+  // load effect's setHistory only takes effect on the NEXT render -- so the
+  // persist effect would run with [] and erase the very conversation being
+  // restored. That is what wiped the chat on every switch to the Edit tab.
+  const loadedKeyRef = useRef<string | null>(null);
+
+  // Load THIS picture's conversation whenever it changes.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    loadedKeyRef.current = null;
     try {
       const saved = window.localStorage.getItem(historyKey);
       setHistory(saved ? (JSON.parse(saved) as AiCommandMessage[]) : []);
     } catch {
       setHistory([]);
     }
+    loadedKeyRef.current = historyKey;
   }, [historyKey]);
 
   // Persist on every change so an unmount (tab switch) cannot lose it.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (loadedKeyRef.current !== historyKey) return;  // see loadedKeyRef
     try {
       if (history.length) window.localStorage.setItem(historyKey, JSON.stringify(history));
-      else window.localStorage.removeItem(historyKey);
+      // An empty history is NOT written as a deletion: the conversation is kept
+      // forever unless the user clears it, so a transient empty render can never
+      // destroy it.
     } catch {
       // a full or disabled localStorage must never break the chat itself
     }
