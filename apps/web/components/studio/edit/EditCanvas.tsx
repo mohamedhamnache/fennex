@@ -819,7 +819,11 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                   borderRadius: layer.bgColor ? "0.25em" : "3px",
                   pointerEvents: interactive ? "auto" : "none",
                   transform: layer.rotation ? `rotate(${layer.rotation}deg)` : undefined,
-                  transformOrigin: "top left",
+                  // Pivot at the unpadded anchor (x, y) — the same point
+                  // SceneSvg rotates its <g> around — not the div's own
+                  // top-left corner, which sits at (box.x, box.y) and is
+                  // offset from (x, y) whenever a bgColor pill is painted.
+                  transformOrigin: `${x - box.x}px ${y - box.y}px`,
                   zIndex: isSelected ? 10 : 5,
                 }}
                 onClick={(e) => e.stopPropagation()}
