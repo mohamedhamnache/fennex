@@ -290,3 +290,28 @@ async def test_the_verbatim_request_reaches_the_model_with_the_preserve_clause()
     (_, params), _ = run.call_args
     assert _TEETH_REQUEST in params["prompt"]
     assert "exactly as it is" in params["prompt"].lower()
+
+
+def test_removal_needs_no_target_on_the_chat_path():
+    """The "removal must name a target" rule guards the SEGMENTER, which will
+    otherwise cut out the wrong thing. Nothing on this path uses a segmenter --
+    the model reads the whole sentence, and extracting a target from it only
+    throws context away."""
+    got = build_instruction("remove_object", {}, user_command="supprime la menthe")
+    assert got == "supprime la menthe"
+
+    got = build_instruction("generative_fill", {},
+                            user_command="fill the crack in the wall with matching plaster")
+    assert got == "fill the crack in the wall with matching plaster"
+
+
+def test_the_planner_extraction_is_ignored_entirely_for_a_single_step():
+    """Even a confident, wrong extraction cannot override what the user said."""
+    got = build_instruction(
+        "replace_background",
+        {"target": "the bottle", "prompt": "something the planner invented"},
+        user_command="make the background a warm sunset",
+    )
+    assert got == "make the background a warm sunset"
+    assert "invented" not in got
+    assert "the bottle" not in got

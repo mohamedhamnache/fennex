@@ -204,6 +204,13 @@ async def resolve_mask(image_url: str, operation: str, target: Optional[str],
     """
     if not target and operation in AMBIGUOUS_WITHOUT_TARGET:
         # Ask BEFORE spending anything: no supplier call has happened yet.
+        #
+        # This gate protects the SEGMENTER, which needs to be told what to cut
+        # out and will otherwise mask the wrong thing -- asked to remove the
+        # mint with no target it masked the bottle and erased it. The chat
+        # surface never reaches here: it sends the user's whole sentence to an
+        # instruction model, which reads "remove the mint" perfectly well
+        # without any extraction.
         return MaskResolution(ok=False, question=AMBIGUITY_QUESTION)
 
     try:

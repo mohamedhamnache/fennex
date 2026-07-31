@@ -575,21 +575,24 @@ _PRESERVE_CLAUSE = (
 
 def build_instruction(operation: str, params: dict,
                      user_command: Optional[str] = None) -> Optional[str]:
-    """Phrase one planned step as a plain-language edit instruction.
+    """The instruction to send for one planned step.
 
-    When `user_command` is given -- meaning the whole request is this ONE step --
-    it is used verbatim. For an instruction model the user's own words ARE the
-    instruction, and paraphrasing them destroys the request.
+    On the chat surface this is the USER'S OWN SENTENCE, untouched. The planner
+    decides only WHETHER a request is an instruction edit; it does not get to
+    rewrite what was asked.
 
-    That is not hypothetical. Asked to paint a flag "exclusively to the visible
-    upper teeth", with explicit "do not modify the lips, gums, skin, lighting"
-    and "do not add any paint outside the teeth", the planner reduced all of it
-    to {target, prompt} and this function rebuilt it as "Replace the visible
-    upper teeth with the Algerian flag." Every constraint was discarded before
-    the model saw it, and it painted the entire face.
+    That distinction is not academic. The planner reduces a request to
+    {target, prompt}, which is lossy by design, and the loss is exactly the part
+    that makes a precise edit work. Asked to paint a flag "exclusively to the
+    visible upper teeth", with "do not modify the lips, gums, skin, lighting"
+    and "do not add any paint outside the teeth", the extracted fields kept the
+    flag and dropped every constraint -- and the model painted the whole face.
 
-    A synthesized phrasing is still used for MULTI-step chains, where the user's
-    single sentence covers several operations and cannot be handed whole to each.
+    The extraction exists for the MASK pipeline, which genuinely needs a target
+    to segment. Nothing on this path uses a mask, so nothing here needs a target.
+
+    A synthesized phrasing remains only for MULTI-step chains, where one sentence
+    covers several operations and cannot be handed whole to each of them.
 
     Returns None for operations that are not instruction edits (crop, upscale
     and friends stay on their deterministic paths -- an instruction model is a
@@ -602,13 +605,15 @@ def build_instruction(operation: str, params: dict,
     if command:
         return command
 
+    # Multi-step fallback only. `target` here is the planner's extraction, used
+    # because the user's one sentence describes several steps at once.
     target = (params.get("target") or "").strip()
     prompt = (params.get("prompt") or "").strip()
 
     if operation in ("remove_object", "smart_erase"):
-        if not target:
-            return None
-        return f"Remove {target} from the image completely, filling the area so it looks natural."
+        what = target or prompt
+        return (f"Remove {what} from the image completely, filling the area so it "
+                "looks natural.") if what else None
     if operation == "replace_background":
         return f"Replace the background with {prompt}." if prompt else None
     if operation == "insert_object":
