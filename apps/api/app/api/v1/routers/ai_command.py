@@ -406,7 +406,13 @@ async def ai_command(
         # This is the chat surface only. The manual editor keeps the mask
         # pipeline, where the user paints a region deliberately and masks are
         # genuinely the better tool.
-        instruction = build_instruction(operation, params)
+        # Hand the user's OWN sentence to the model when the whole request is
+        # this single step. Paraphrasing it through the planner discards the
+        # constraints that make a precise edit work -- see build_instruction.
+        instruction = build_instruction(
+            operation, params,
+            user_command=body.command if len(steps) == 1 else None,
+        )
         if instruction and not _painted_mask_supplied(mask_queue, mask_step_index):
             edit_result = await instruction_edit(current_url, instruction, operation)
             if not edit_result.get("ok"):

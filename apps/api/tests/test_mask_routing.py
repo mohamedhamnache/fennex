@@ -45,7 +45,7 @@ def _force_mask_path():
     tests/test_instruction_edit.py.
     """
     with patch("app.api.v1.routers.ai_command.build_instruction",
-               lambda operation, params: None):
+               lambda operation, params, user_command=None: None):
         yield
 
 

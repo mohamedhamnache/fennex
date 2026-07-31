@@ -228,3 +228,65 @@ async def test_local_operations_are_composited_but_background_replacement_is_not
                                                    "replace_background")
         assert r["image_url"] == "https://cdn/whole.png"
         assert "composited" not in calls
+
+
+# ── the user's own words reach the model ─────────────────────────────────────
+
+_TEETH_REQUEST = (
+    "Apply the Algerian flag exclusively to the visible upper teeth. The flag "
+    "must be perfectly aligned across the teeth: left half green, right half "
+    "white, with the red crescent and five-pointed star centered across the two "
+    "front incisors. Preserve the natural shape, texture, reflections, enamel "
+    "details, and tooth separation. Do not modify the lips, gums, skin, "
+    "lighting, expression, composition, or background. Do not add any paint "
+    "outside the teeth."
+)
+
+
+def test_a_single_step_request_is_sent_verbatim():
+    """The planner reduced this to {target, prompt} and build_instruction rebuilt
+    it as "Replace the visible upper teeth with the Algerian flag." -- every
+    constraint discarded before the model saw it, and it painted the whole face.
+    """
+    got = build_instruction(
+        "generative_fill",
+        {"target": "the visible upper teeth", "prompt": "the Algerian flag"},
+        user_command=_TEETH_REQUEST,
+    )
+    assert got == _TEETH_REQUEST
+    # the constraints that were being thrown away
+    assert "exclusively" in got
+    assert "Do not add any paint outside the teeth" in got
+    assert "Do not modify the lips" in got
+
+
+def test_a_multi_step_chain_still_gets_a_synthesized_step_instruction():
+    """One sentence covering several operations cannot be handed whole to each
+    step, so those keep the phrased form."""
+    got = build_instruction("remove_object", {"target": "the mint"}, user_command=None)
+    assert got is not None
+    assert "the mint" in got
+    assert got != _TEETH_REQUEST
+
+
+def test_deterministic_operations_ignore_the_user_command():
+    """A raw sentence must not turn crop or upscale into an instruction edit."""
+    for op in ("crop", "resize", "rotate", "upscale", "restore_face", "relight",
+               "generate_shadow", "remove_background", "flip", "adjust"):
+        assert build_instruction(op, {}, user_command=_TEETH_REQUEST) is None, op
+
+
+@pytest.mark.asyncio
+async def test_the_verbatim_request_reaches_the_model_with_the_preserve_clause():
+    run = AsyncMock(return_value="https://replicate/out.png")
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png())), \
+         patch("app.services.editing_service._composite_local_edit", lambda a, b: a), \
+         patch("app.services.editing_service.upload_bytes",
+               AsyncMock(return_value="https://cdn/o.png")):
+        await editing_service.instruction_edit("https://cdn/i.png", _TEETH_REQUEST,
+                                               "generative_fill")
+
+    (_, params), _ = run.call_args
+    assert _TEETH_REQUEST in params["prompt"]
+    assert "exactly as it is" in params["prompt"].lower()

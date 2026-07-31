@@ -573,13 +573,35 @@ _PRESERVE_CLAUSE = (
 )
 
 
-def build_instruction(operation: str, params: dict) -> Optional[str]:
+def build_instruction(operation: str, params: dict,
+                     user_command: Optional[str] = None) -> Optional[str]:
     """Phrase one planned step as a plain-language edit instruction.
+
+    When `user_command` is given -- meaning the whole request is this ONE step --
+    it is used verbatim. For an instruction model the user's own words ARE the
+    instruction, and paraphrasing them destroys the request.
+
+    That is not hypothetical. Asked to paint a flag "exclusively to the visible
+    upper teeth", with explicit "do not modify the lips, gums, skin, lighting"
+    and "do not add any paint outside the teeth", the planner reduced all of it
+    to {target, prompt} and this function rebuilt it as "Replace the visible
+    upper teeth with the Algerian flag." Every constraint was discarded before
+    the model saw it, and it painted the entire face.
+
+    A synthesized phrasing is still used for MULTI-step chains, where the user's
+    single sentence covers several operations and cannot be handed whole to each.
 
     Returns None for operations that are not instruction edits (crop, upscale
     and friends stay on their deterministic paths -- an instruction model is a
     worse, costlier way to rotate an image).
     """
+    if operation not in _INSTRUCTION_OPS:
+        return None
+
+    command = (user_command or "").strip()
+    if command:
+        return command
+
     target = (params.get("target") or "").strip()
     prompt = (params.get("prompt") or "").strip()
 
@@ -605,6 +627,13 @@ def build_instruction(operation: str, params: dict) -> Optional[str]:
 # Operations whose intent is LOCAL: the user named one thing to change and
 # expects the rest of the frame untouched. replace_background is deliberately
 # absent -- it is supposed to change most of the picture.
+# Operations an instruction model handles. Deterministic ones (crop, rotate,
+# upscale...) stay on their own paths.
+_INSTRUCTION_OPS = frozenset({
+    "remove_object", "smart_erase", "replace_background",
+    "insert_object", "generative_fill",
+})
+
 _LOCAL_INSTRUCTION_OPS = frozenset({
     "remove_object", "smart_erase", "insert_object", "generative_fill",
 })
