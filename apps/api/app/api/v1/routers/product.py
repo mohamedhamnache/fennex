@@ -175,8 +175,11 @@ async def _run_flux_kontext(
         output = await _replicate_run(_FLUX_KONTEXT_MODEL, replicate_input)
         # Product-scene re-frames the product into a new scene at the requested
         # aspect ratio, so the output size legitimately differs from the source.
-        url = await finalize(output, policy=ResolutionPolicy.ALLOW_CHANGE)
-        width, height = _ASPECT_RATIO_DIMENSIONS.get(aspect_ratio, (1024, 1024))
+        stored = await finalize(output, policy=ResolutionPolicy.ALLOW_CHANGE)
+        url = stored.url
+        # The stored file is the truth; the aspect table is only a fallback for
+        # when finalize could not measure it.
+        width, height = stored.width, stored.height
         return {"ok": True, "image_url": url, "width": width, "height": height, "revised_prompt": None, "cost_usd": None}
     except Exception as e:
         return {"ok": False, "error": str(e)}

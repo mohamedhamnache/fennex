@@ -6,6 +6,13 @@ from PIL import Image as PILImage
 from app.services.editing_service import crop_image, resize_image, rotate_image, adjust_image, apply_filter
 
 
+def _stored(url, width=64, height=48):
+    """finalize/_upload_result now report the size they stored, not just a URL."""
+    from app.services.image_output import StoredImage
+    return StoredImage(url, width, height)
+
+
+
 def _make_test_png(w=200, h=200, color=(255, 0, 0)) -> bytes:
     img = PILImage.new("RGB", (w, h), color)
     buf = io.BytesIO()
@@ -23,7 +30,7 @@ def mock_download_and_upload(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.editing_service._upload_result",
-        AsyncMock(return_value="https://storage.example.com/result.png"),
+        AsyncMock(return_value=_stored("https://storage.example.com/result.png")),
     )
 
 
@@ -80,7 +87,7 @@ async def test_relight_pins_a_version_and_sends_the_models_real_field_names():
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
          patch("app.services.editing_service.finalize",
-               AsyncMock(return_value="https://cdn/out.png")):
+               AsyncMock(return_value=_stored("https://cdn/out.png"))):
         result = await editing_service.relight_image("https://cdn/in.png", "left", 1.0)
 
     assert result["ok"] is True
@@ -107,7 +114,7 @@ async def test_relight_maps_direction_onto_the_light_source_enum():
         with patch("app.services.editing_service._replicate_run", run), \
              patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
              patch("app.services.editing_service.finalize",
-                   AsyncMock(return_value="https://cdn/out.png")):
+               AsyncMock(return_value=_stored("https://cdn/out.png"))):
             await editing_service.relight_image("https://cdn/in.png", direction)
         (_, params), _ = run.call_args
         assert params["light_source"] == expected
@@ -121,7 +128,7 @@ async def test_relight_falls_back_to_a_valid_enum_for_an_unknown_direction():
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
          patch("app.services.editing_service.finalize",
-               AsyncMock(return_value="https://cdn/out.png")):
+               AsyncMock(return_value=_stored("https://cdn/out.png"))):
         await editing_service.relight_image("https://cdn/in.png", "top-right")
     (_, params), _ = run.call_args
     assert params["light_source"] in {"None", "Left Light", "Right Light", "Top Light", "Bottom Light"}
@@ -135,7 +142,7 @@ async def test_restore_face_pins_a_version():
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
          patch("app.services.editing_service.finalize",
-               AsyncMock(return_value="https://cdn/out.png")):
+               AsyncMock(return_value=_stored("https://cdn/out.png"))):
         await editing_service.restore_face("https://cdn/in.png", 0.7)
 
     (model, params), kwargs = run.call_args
@@ -202,7 +209,8 @@ async def test_flux_fill_requests_lossless_output():
     run = AsyncMock(return_value="https://replicate/out.png")
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         await editing_service.replace_background("https://cdn/in.png", "green marble", "https://cdn/m.png")
     (_, params), _ = run.call_args
     assert params["output_format"] == "png"
@@ -217,7 +225,7 @@ async def test_download_and_upload_url_is_gone():
 async def test_upscale_allows_a_size_change_but_replace_background_does_not():
     from app.services import editing_service
     from app.services.image_output import ResolutionPolicy
-    fin = AsyncMock(return_value="https://cdn/o.png")
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
     run = AsyncMock(return_value="https://replicate/out.png")
 
     with patch("app.services.editing_service._replicate_run", run), \
@@ -237,7 +245,7 @@ async def test_upscale_allows_a_size_change_but_replace_background_does_not():
 async def test_every_replicate_op_passes_the_source_size_to_finalize():
     """Without source_size the resolution assertion is inert."""
     from app.services import editing_service
-    fin = AsyncMock(return_value="https://cdn/o.png")
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
     run = AsyncMock(return_value="https://replicate/out.png")
     cases = [
         (editing_service.replace_background, ("https://cdn/in.png", "p", "https://cdn/m.png")),
@@ -263,7 +271,7 @@ async def test_relight_clamps_dimensions_to_the_ic_light_enum():
     from app.services.image_output import ResolutionPolicy
 
     allowed = set(editing_service._IC_LIGHT_DIMS)
-    fin = AsyncMock(return_value="https://cdn/o.png")
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
     run = AsyncMock(return_value="https://replicate/out.webp")
 
     # Source below the 1024 cap: clamped down to the nearest allowed value, and
@@ -295,7 +303,7 @@ async def test_relight_preserves_when_the_source_is_exactly_an_enum_size():
     from app.services import editing_service
     from app.services.image_output import ResolutionPolicy
 
-    fin = AsyncMock(return_value="https://cdn/o.png")
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
     with patch("app.services.editing_service._replicate_run",
                AsyncMock(return_value="https://replicate/out.webp")), \
          patch("app.services.editing_service._download",
@@ -312,7 +320,7 @@ async def test_pillow_ops_preserve_the_source_colour_mode(monkeypatch):
 
     async def _fake_upload(img, folder="edits"):
         captured["mode"] = img.mode
-        return "https://cdn/out.png"
+        return _stored("https://cdn/out.png", img.width, img.height)
 
     monkeypatch.setattr(editing_service, "_download", AsyncMock(return_value=_png_bytes()))
     monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
@@ -342,7 +350,7 @@ async def test_rgba_sources_keep_their_alpha(monkeypatch):
 
     async def _fake_upload(img, folder="edits"):
         captured["mode"] = img.mode
-        return "https://cdn/out.png"
+        return _stored("https://cdn/out.png", img.width, img.height)
 
     buf = io.BytesIO()
     PILImage.new("RGBA", (32, 32), (1, 2, 3, 128)).save(buf, format="PNG")
@@ -361,7 +369,7 @@ async def test_rotate_keeps_rgb_for_a_solid_fill_but_promotes_for_transparency(m
 
     async def _fake_upload(img, folder="edits"):
         captured["mode"] = img.mode
-        return "https://cdn/out.png"
+        return _stored("https://cdn/out.png", img.width, img.height)
 
     monkeypatch.setattr(editing_service, "_download", AsyncMock(return_value=_png_bytes()))
     monkeypatch.setattr(editing_service, "_upload_result", _fake_upload)
@@ -382,7 +390,7 @@ async def test_generate_shadow_uses_a_model_that_actually_exists():
     from app.services.image_output import ResolutionPolicy
 
     run = AsyncMock(return_value="https://replicate/out.png")
-    fin = AsyncMock(return_value="https://cdn/o.png")
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download",
                AsyncMock(return_value=_png_bytes((800, 600)))), \
@@ -416,7 +424,7 @@ async def test_generate_shadow_maps_direction_onto_offsets():
         with patch("app.services.editing_service._replicate_run", run), \
              patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
              patch("app.services.editing_service.finalize",
-                   AsyncMock(return_value="https://cdn/o.png")):
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
             await editing_service.generate_shadow("https://cdn/in.png", direction)
         (_, params), _ = run.call_args
         seen[direction] = (params["shadow_offset_x"], params["shadow_offset_y"])
@@ -436,7 +444,8 @@ async def test_generate_shadow_falls_back_to_a_valid_offset_for_an_unknown_direc
     run = AsyncMock(return_value="https://replicate/out.png")
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         result = await editing_service.generate_shadow("https://cdn/in.png", "sideways")
 
     assert result["ok"] is True
@@ -458,7 +467,8 @@ async def test_restore_face_pins_upscale_so_it_does_not_resize(monkeypatch):
     run = AsyncMock(return_value="https://replicate/out.png")
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         await editing_service.restore_face("https://cdn/in.png", 0.7)
     (_, params), _ = run.call_args
     assert params["upscale"] == 1
@@ -487,7 +497,7 @@ async def test_pillow_ops_handle_exotic_source_modes(monkeypatch, mode, fmt):
     monkeypatch.setattr(editing_service, "_download",
                         AsyncMock(return_value=_img_bytes(mode, fmt=fmt)))
     monkeypatch.setattr(editing_service, "_upload_result",
-                        AsyncMock(return_value="https://cdn/out.png"))
+                        AsyncMock(return_value=_stored("https://cdn/out.png")))
 
     for coro in (
         editing_service.crop_image("u", 0, 0, 8, 8),
@@ -507,7 +517,7 @@ async def test_exotic_modes_keep_alpha_when_they_have_it(monkeypatch):
 
     async def _fake_upload(img, folder="edits"):
         captured["mode"] = img.mode
-        return "https://cdn/out.png"
+        return _stored("https://cdn/out.png", img.width, img.height)
 
     monkeypatch.setattr(editing_service, "_download",
                         AsyncMock(return_value=_img_bytes("LA")))
@@ -522,7 +532,7 @@ async def test_generate_shadow_allows_the_canvas_to_grow():
     from app.services import editing_service
     from app.services.image_output import ResolutionPolicy
 
-    fin = AsyncMock(return_value="https://cdn/o.png")
+    fin = AsyncMock(return_value=_stored("https://cdn/o.png"))
     with patch("app.services.editing_service._replicate_run",
                AsyncMock(return_value="https://replicate/out.png")), \
          patch("app.services.editing_service._download",

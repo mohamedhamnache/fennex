@@ -25,7 +25,8 @@ logger = logging.getLogger(__name__)
 # NOTE for test authors: image_output.finalize calls image_output's own
 # _download, so patching editing_service._download does NOT affect it. Patch
 # app.services.image_output._download instead.
-from app.services.image_output import (  # noqa: E402
+from app.services.image_output import (
+    StoredImage,  # noqa: E402
     ResolutionPolicy,
     _TRANSIENT_ERRORS,
     _download,
@@ -65,13 +66,18 @@ async def _create_prediction(client: httpx.AsyncClient, url: str, payload: dict,
     return resp
 
 
-async def _upload_result(img: PILImage.Image, folder: str = "edits") -> str:
+async def _upload_result(img: PILImage.Image, folder: str = "edits") -> StoredImage:
     """Always lossless. The old JPEG-at-quality-95 branch silently degraded every
-    non-RGBA result -- which, once _open stopped forcing RGBA, is most of them."""
+    non-RGBA result -- which, once _open stopped forcing RGBA, is most of them.
+
+    Reports the stored size as well: crop and resize genuinely change it, so a
+    caller that assumed the source's dimensions would record a lie.
+    """
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
-    return await upload_bytes(buf.read(), f"{folder}/{uuid.uuid4().hex}.png", "image/png")
+    url = await upload_bytes(buf.read(), f"{folder}/{uuid.uuid4().hex}.png", "image/png")
+    return StoredImage(url, img.width, img.height)
 
 
 # Modes PNG cannot store, or that Pillow's filters and enhancers reject. A CMYK
@@ -108,8 +114,9 @@ async def crop_image(image_url: str, x: int, y: int, w: int, h: int) -> dict:
         data = await _download(image_url)
         img = _open(data)
         cropped = img.crop((x, y, x + w, y + h))
-        url = await _upload_result(cropped)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(cropped)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -122,8 +129,9 @@ async def resize_image(image_url: str, width: int, height: int, keep_aspect: boo
             img.thumbnail((width, height), PILImage.LANCZOS)
         else:
             img = img.resize((width, height), PILImage.LANCZOS)
-        url = await _upload_result(img)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(img)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -146,8 +154,9 @@ async def rotate_image(image_url: str, angle: float, fill_color: str | None = No
                 img = img.convert("RGBA")
             fill = (0, 0, 0, 0)
         rotated = img.rotate(-angle, expand=True, fillcolor=fill)
-        url = await _upload_result(rotated)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(rotated)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -157,8 +166,9 @@ async def flip_image(image_url: str, direction: str = "horizontal") -> dict:
         data = await _download(image_url)
         img = _open(data)
         img = ImageOps.mirror(img) if direction == "horizontal" else ImageOps.flip(img)
-        url = await _upload_result(img)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(img)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -176,8 +186,9 @@ async def adjust_image(image_url: str, brightness: float = 0, contrast: float = 
         if saturation != 0:
             factor = 1.0 + saturation / 100.0
             img = ImageEnhance.Color(img).enhance(max(0.0, factor))
-        url = await _upload_result(img)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(img)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -215,8 +226,9 @@ async def apply_filter(image_url: str, filter_name: str) -> dict:
         data = await _download(image_url)
         img = _open(data)
         result = _FILTER_MAP[filter_name](img)
-        url = await _upload_result(result)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(result)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -228,8 +240,9 @@ async def denoise_image(image_url: str, strength: float = 0.5) -> dict:
         passes = max(1, round(strength * 5))
         for _ in range(passes):
             img = img.filter(ImageFilter.MedianFilter(size=3))
-        url = await _upload_result(img)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(img)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -240,8 +253,9 @@ async def sharpen_image(image_url: str, strength: float = 0.5) -> dict:
         img = _open(data)
         factor = 1.0 + strength * 3
         img = ImageEnhance.Sharpness(img).enhance(factor)
-        url = await _upload_result(img)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(img)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -296,8 +310,9 @@ async def remove_background(image_url: str) -> dict:
     """Background removal via Remove.bg API."""
     try:
         img = await _removebg_cutout(image_url)
-        url = await _upload_result(img)
-        return {"ok": True, "image_url": url}
+        stored = await _upload_result(img)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -518,7 +533,9 @@ async def _flux_fill(image_url: str, prompt: str, mask_url: Optional[str]) -> di
             "image": image_url, "mask": mask_url, "prompt": prompt,
             "output_format": "png",
         })
-        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+        stored = await finalize(output, source_size=src_size)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -664,14 +681,17 @@ async def instruction_edit(image_url: str, instruction: str,
         )
         if operation in _LOCAL_INSTRUCTION_OPS:
             merged = _composite_local_edit(source, await _download(output))
-            return {"ok": True, "image_url": await upload_bytes(
-                merged, f"edits/{uuid.uuid4().hex}.png", "image/png")}
+            url = await upload_bytes(merged, f"edits/{uuid.uuid4().hex}.png", "image/png")
+            w, h = dimensions(merged)
+            return {"ok": True, "image_url": url, "width": w, "height": h}
 
         # Global edits (replace_background) keep the model's whole frame. It
         # matches the input ASPECT but not its exact pixels, so parity is
         # restored on our side rather than asserted.
-        return {"ok": True, "image_url": await finalize(
-            output, source_size=src_size, policy=ResolutionPolicy.UPSCALE)}
+        stored = await finalize(output, source_size=src_size,
+                                policy=ResolutionPolicy.UPSCALE)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -723,7 +743,9 @@ async def _lama_erase(image_url: str, mask_url: Optional[str]) -> dict:
             {"image": image_url, "mask": mask_url},
             version=_LAMA_VERSION,
         )
-        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+        stored = await finalize(output, source_size=src_size)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -767,8 +789,10 @@ async def generate_shadow(image_url: str, direction: str = "bottom") -> dict:
         # VERIFIED with a real prediction: this model EXTENDS the canvas to make
         # room for the shadow (512x384 in -> 592x494 out), so parity is wrong
         # here by design. Asserting PRESERVE failed every call.
-        return {"ok": True, "image_url": await finalize(
-            output, source_size=src_size, policy=ResolutionPolicy.ALLOW_CHANGE)}
+        stored = await finalize(output, source_size=src_size,
+                                policy=ResolutionPolicy.ALLOW_CHANGE)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -799,8 +823,9 @@ async def relight_image(image_url: str, direction: str = "top", intensity: float
         )
         policy = (ResolutionPolicy.PRESERVE if (w, h) == (src_w, src_h)
                   else ResolutionPolicy.UPSCALE)
-        return {"ok": True, "image_url": await finalize(
-            output, source_size=(src_w, src_h), policy=policy)}
+        stored = await finalize(output, source_size=(src_w, src_h), policy=policy)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -821,7 +846,9 @@ async def restore_face(image_url: str, fidelity: float = 0.7) -> dict:
             },
             version=_CODEFORMER_VERSION,
         )
-        return {"ok": True, "image_url": await finalize(output, source_size=src_size)}
+        stored = await finalize(output, source_size=src_size)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -831,7 +858,9 @@ async def upscale_image(image_url: str, scale: int = 2) -> dict:
     try:
         src_size = dimensions(await _download(image_url))
         output = await _replicate_run(_MODEL_REAL_ESRGAN, {"image": image_url, "scale": scale})
-        return {"ok": True, "image_url": await finalize(
-            output, source_size=src_size, policy=ResolutionPolicy.ALLOW_CHANGE)}
+        stored = await finalize(output, source_size=src_size,
+                                policy=ResolutionPolicy.ALLOW_CHANGE)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}

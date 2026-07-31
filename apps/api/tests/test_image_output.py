@@ -114,3 +114,41 @@ async def test_download_still_accepts_the_three_valid_shapes():
     import base64 as _b64
     assert await image_output._download(
         "data:image/png;base64," + _b64.b64encode(raw).decode()) == raw
+
+
+@pytest.mark.asyncio
+async def test_finalize_reports_the_stored_dimensions():
+    """The edit route persisted the SOURCE's width/height on the new record, so
+    after an upscale the file was one size and the database said another. Only
+    finalize has the final bytes, so only it can say what was actually stored."""
+    with patch("app.services.image_output._download", AsyncMock(return_value=_png((640, 480)))), \
+         patch("app.services.image_output.upload_bytes",
+               AsyncMock(return_value="https://cdn/out.png")):
+        stored = await finalize("https://replicate/out.png",
+                                source_size=(320, 240),
+                                policy=ResolutionPolicy.ALLOW_CHANGE)
+
+    assert stored.url == "https://cdn/out.png"
+    assert (stored.width, stored.height) == (640, 480)
+
+
+@pytest.mark.asyncio
+async def test_finalize_reports_the_upscaled_size_not_the_model_output_size():
+    """UPSCALE resizes back to the source, so the stored size is the source's."""
+    with patch("app.services.image_output._download", AsyncMock(return_value=_png((100, 50)))), \
+         patch("app.services.image_output.upload_bytes",
+               AsyncMock(return_value="https://cdn/out.png")):
+        stored = await finalize("https://replicate/out.png",
+                                source_size=(200, 100),
+                                policy=ResolutionPolicy.UPSCALE)
+
+    assert (stored.width, stored.height) == (200, 100)
+
+
+@pytest.mark.asyncio
+async def test_finalize_result_still_reads_as_its_url_for_logging():
+    with patch("app.services.image_output._download", AsyncMock(return_value=_png((8, 8)))), \
+         patch("app.services.image_output.upload_bytes",
+               AsyncMock(return_value="https://cdn/x.png")):
+        stored = await finalize("https://replicate/out.png")
+    assert stored.url == "https://cdn/x.png"

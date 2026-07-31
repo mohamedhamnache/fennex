@@ -21,7 +21,7 @@ import base64
 import io
 import uuid
 from enum import Enum
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import httpx
 from PIL import Image as PILImage
@@ -84,6 +84,19 @@ class ResolutionPolicy(str, Enum):
     ALLOW_CHANGE = "allow_change"  # the operation's purpose IS changing size
 
 
+class StoredImage(NamedTuple):
+    """Where the result was stored, and what size it actually is.
+
+    The edit route used to persist the SOURCE's width and height on the new
+    record, so after an upscale the file was one size and the database said
+    another. finalize is the only place holding the final bytes, so it is the
+    only place that can answer this honestly.
+    """
+    url: str
+    width: int
+    height: int
+
+
 class ResolutionMismatch(RuntimeError):
     """A model returned a different size than its input under PRESERVE."""
 
@@ -107,8 +120,12 @@ _EXT = {
 
 async def finalize(output_url: str, *, source_size: Optional[tuple[int, int]] = None,
                    policy: ResolutionPolicy = ResolutionPolicy.PRESERVE,
-                   folder: str = "edits") -> str:
-    """Store a model's output, transforming it as little as possible."""
+                   folder: str = "edits") -> StoredImage:
+    """Store a model's output, transforming it as little as possible.
+
+    Returns where it was stored AND the size actually stored, so callers never
+    have to guess or re-measure.
+    """
     data = await _download(output_url)
     fmt = (PILImage.open(io.BytesIO(data)).format or "PNG").upper()
 
@@ -129,4 +146,6 @@ async def finalize(output_url: str, *, source_size: Optional[tuple[int, int]] = 
             data, fmt = buf.getvalue(), "PNG"
 
     ext, content_type = _EXT.get(fmt, ("png", "image/png"))
-    return await upload_bytes(data, f"{folder}/{uuid.uuid4().hex}.{ext}", content_type)
+    url = await upload_bytes(data, f"{folder}/{uuid.uuid4().hex}.{ext}", content_type)
+    width, height = dimensions(data)
+    return StoredImage(url, width, height)

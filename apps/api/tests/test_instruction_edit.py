@@ -19,6 +19,13 @@ from app.services import editing_service
 from app.services.editing_service import build_instruction
 
 
+def _stored(url, width=64, height=48):
+    """finalize/_upload_result now report the size they stored, not just a URL."""
+    from app.services.image_output import StoredImage
+    return StoredImage(url, width, height)
+
+
+
 def _png(size=(64, 48)) -> bytes:
     buf = io.BytesIO()
     PILImage.new("RGB", size, (1, 2, 3)).save(buf, format="PNG")
@@ -68,7 +75,8 @@ async def test_instruction_edit_sends_the_verified_input_shape():
     run = AsyncMock(return_value="https://replicate/out.png")
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png())), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         result = await editing_service.instruction_edit("https://cdn/in.png", "Remove the mint")
 
     assert result["ok"] is True
@@ -93,7 +101,8 @@ async def test_the_instruction_tells_the_model_to_leave_everything_else_alone():
     run = AsyncMock(return_value="https://replicate/out.png")
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png())), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         await editing_service.instruction_edit("https://cdn/in.png", "Remove the mint")
 
     (_, params), _ = run.call_args
@@ -206,7 +215,7 @@ async def test_local_operations_are_composited_but_background_replacement_is_not
          patch("app.services.editing_service.upload_bytes",
                AsyncMock(return_value="https://cdn/merged.png")), \
          patch("app.services.editing_service.finalize",
-               AsyncMock(return_value="https://cdn/whole.png")):
+               AsyncMock(return_value=_stored("https://cdn/whole.png"))):
 
         for op in ("remove_object", "smart_erase", "insert_object", "generative_fill"):
             calls.clear()

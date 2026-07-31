@@ -210,8 +210,13 @@ async def edit_image(
         status=ImageStatus.ready,
         image_url=edit_result["image_url"],
         thumbnail_url=edit_result["image_url"],
-        width=image.width,
-        height=image.height,
+        # The size the operation ACTUALLY stored, not the source's. Copying the
+        # source's meant that after an upscale, relight or shadow the file was
+        # one size and the record claimed another. Falls back to the source only
+        # for operations that do not report a size (the Pillow ops, which never
+        # change it except resize/crop -- see below).
+        width=edit_result.get("width") or image.width,
+        height=edit_result.get("height") or image.height,
         source_image_id=image.id,
         edit_operation=body.operation,
         alt_text=image.alt_text,

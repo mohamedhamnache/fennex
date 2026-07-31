@@ -1291,3 +1291,55 @@ async def test_store_snapshot_failure_degrades_to_the_original_422_without_a_res
     assert exc.value.status_code == 422
     assert exc.value.detail["code"] == "mask_confirm_required"
     assert "resume_token" not in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_the_edit_record_stores_the_real_output_size_not_the_sources(mask_route_client):
+    """The route copied image.width/height from the SOURCE onto the new record,
+    so after an upscale the file was one size and the database claimed another --
+    undercutting the very 'preserve resolution' contract this work exists for.
+    Asserts the row that was actually persisted."""
+    from sqlalchemy import select
+
+    resolution = MaskResolution(ok=True, mask_url="https://cdn/masks/auto.png", tier="product")
+    # An upscale legitimately changes the size, so the record must follow it.
+    mock_fn = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/edited.png",
+                                      "width": 2048, "height": 1536})
+
+    with patch.dict(editing._DISPATCH, {"replace_background": (mock_fn, ["prompt"], [])}), \
+         patch("app.api.v1.routers.editing.resolve_mask", AsyncMock(return_value=resolution)):
+        resp = await _post_edit(mask_route_client, "replace_background", {"prompt": "marble"})
+
+    assert resp.status_code == 200
+    new_id = resp.json()["image_id"]
+
+    async with _RouteTestSessionLocal() as session:
+        row = (await session.execute(
+            select(GeneratedImage).where(GeneratedImage.id == uuid.UUID(new_id))
+        )).scalar_one()
+        assert (row.width, row.height) == (2048, 1536)
+
+
+@pytest.mark.asyncio
+async def test_the_edit_record_falls_back_to_the_source_size_when_none_reported(mask_route_client):
+    """Operations that never change the size need not report one."""
+    from sqlalchemy import select
+
+    resolution = MaskResolution(ok=True, mask_url="https://cdn/masks/auto.png", tier="product")
+    mock_fn = AsyncMock(return_value={"ok": True, "image_url": "https://cdn/edited.png"})
+
+    with patch.dict(editing._DISPATCH, {"replace_background": (mock_fn, ["prompt"], [])}), \
+         patch("app.api.v1.routers.editing.resolve_mask", AsyncMock(return_value=resolution)):
+        resp = await _post_edit(mask_route_client, "replace_background", {"prompt": "marble"})
+
+    assert resp.status_code == 200
+    new_id = resp.json()["image_id"]
+
+    async with _RouteTestSessionLocal() as session:
+        src = (await session.execute(
+            select(GeneratedImage).where(GeneratedImage.id == _ROUTE_IMAGE_ID)
+        )).scalar_one()
+        row = (await session.execute(
+            select(GeneratedImage).where(GeneratedImage.id == uuid.UUID(new_id))
+        )).scalar_one()
+        assert (row.width, row.height) == (src.width, src.height)

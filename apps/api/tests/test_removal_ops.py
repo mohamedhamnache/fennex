@@ -5,6 +5,13 @@ import pytest
 from app.services import editing_service
 
 
+def _stored(url, width=64, height=48):
+    """finalize/_upload_result now report the size they stored, not just a URL."""
+    from app.services.image_output import StoredImage
+    return StoredImage(url, width, height)
+
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("op", ["remove_object", "smart_erase"])
 async def test_removal_sends_no_prompt_channel(op):
@@ -14,7 +21,7 @@ async def test_removal_sends_no_prompt_channel(op):
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png_bytes())), \
          patch("app.services.editing_service.finalize",
-               AsyncMock(return_value="https://cdn/out.png")):
+               AsyncMock(return_value=_stored("https://cdn/out.png"))):
         result = await getattr(editing_service, op)("https://cdn/in.png", "https://cdn/mask.png")
 
     assert result["ok"] is True
@@ -109,7 +116,8 @@ async def test_a_painted_mask_is_resized_to_the_source_before_the_model_sees_it(
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", _fake_download), \
          patch("app.services.editing_service.upload_bytes", _fake_upload), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         result = await editing_service.remove_object("https://cdn/source.png",
                                                      "https://cdn/painted-mask.png")
 
@@ -131,7 +139,8 @@ async def test_a_matching_mask_is_not_re_uploaded():
     with patch("app.services.editing_service._replicate_run", run), \
          patch("app.services.editing_service._download", _fake_download), \
          patch("app.services.editing_service.upload_bytes", upload), \
-         patch("app.services.editing_service.finalize", AsyncMock(return_value="https://cdn/o.png")):
+         patch("app.services.editing_service.finalize",
+               AsyncMock(return_value=_stored("https://cdn/o.png"))):
         await editing_service.remove_object("https://cdn/source.png", "https://cdn/mask.png")
 
     upload.assert_not_awaited()
