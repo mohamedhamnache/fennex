@@ -16,15 +16,24 @@
  *     shipped set on it at module load in development.
  *
  *  2. HIERARCHY. Sizes come from `TYPE_STEPS`, derived from TYPE_SCALE, and a
- *     line names a step rather than a pixel size. The 5:1 headline-to-support
+ *     line names a step rather than a pixel size. The 7:1 display-to-support
  *     ratio therefore holds across every family and cannot be flattened by an
  *     individual template.
  *
  *  3. CONTRAST. A line does not choose a colour. The field names a palette role
- *     and the type takes the role guaranteed to contrast with it — ink on
- *     surface, onAccent on accent. `resolvePalette` promises 4.5:1 for those
- *     two pairs and no others, so accent-on-surface, which passes in one
- *     category palette and fails in the next, cannot be written here at all.
+ *     and the type takes a role guaranteed to contrast with it. `resolvePalette`
+ *     promises 4.5:1 for exactly three pairs — ink on surface, onAccent on
+ *     accent, and accentInk on surface — so a line picks between `ink` and
+ *     `accentInk` on a surface field and has no choice at all on an accent one.
+ *     Raw `accent` on `surface` is the pairing that measured 3.80:1 in the
+ *     default ecommerce palette; `accentInk` is the same hue moved in lightness
+ *     until it clears, and is the only way coloured type is expressible here.
+ *
+ *  These seven families are built to use the renderer, not just to be safe with
+ *  it. The set they replaced set zero blends, zero rotations and clipped with
+ *  one circle and three rounded rects across 34 templates; every family below
+ *  earns its place with at least one of a blend mode, a non-zero rotation, a
+ *  non-rounded-rect clip, or a background-free subject cutout.
  *
  *  Positions are percentages of the canvas, authored against the same ~800px
  *  reference canvas the rest of the template system assumes.
@@ -33,7 +42,7 @@
 import type { TemplateLayerDef, TemplateShapeDef, TemplateTextDef } from "./text-templates";
 import type { Palette } from "./palette";
 import { FONT_ROLES, TYPE_SCALE } from "./palette";
-import type { ClipSpec } from "./scene/types";
+import type { BlendMode, ClipSpec } from "./scene/types";
 import { shapeAspect } from "./shapes";
 
 /** The reference canvas template geometry is authored against. */
@@ -105,7 +114,11 @@ export function isFieldShape(shape: string): shape is FieldShape {
 }
 
 /** Below this a scrim stops hiding the photo's texture and the type starts to
- *  fight it. `panel()` clamps to it, so a translucent field cannot be authored. */
+ *  fight it. `panel()` clamps to it, so a translucent field cannot be authored.
+ *
+ *  No family below authors a translucent field at all. A scrim is a way of
+ *  half-committing to a colour, and half-committing is what made the previous
+ *  set read as safe; these fields are opaque and their edges are hard. */
 export const MIN_FIELD_OPACITY = 0.72;
 
 /** Non-rectangular fields only reliably back type near their centre, so the fit
@@ -128,6 +141,11 @@ export interface FieldSpec {
   opacity?: number;
   gradient?: boolean;
   shadow?: boolean;
+  /** Composite this field against what is already painted. A blended field is
+   *  a wash over a photograph, so what it composites to depends on the
+   *  photograph — which means it cannot carry type. `panel()` therefore only
+   *  accepts a blend on a field with no lines. */
+  blend?: BlendMode;
 }
 
 export interface PanelLine {
@@ -140,13 +158,23 @@ export interface PanelLine {
   /** Centre the run on the field horizontally; xPct is then ignored. */
   center?: boolean;
   /** Set the run in the accent as a pill. A pill is its own field, so this is
-   *  the one way accent colour can touch type and stay contrast-guaranteed. */
+   *  one of the two ways accent colour can touch type and stay guaranteed. */
   emphasis?: boolean;
+  /** Set the run in `accentInk` — the accent's hue, shifted in lightness until
+   *  it clears 4.5:1 on `surface`. Only meaningful on a surface field; on an
+   *  accent field the run stays `onAccent`, because accentInk is derived
+   *  against surface and carries no promise against accent. */
+  accent?: boolean;
   uppercase?: boolean;
   letterSpacing?: number;
   opacity?: number;
   bold?: boolean;
   italic?: boolean;
+  /** Degrees clockwise about the run's own anchor point, matching SceneSvg's
+   *  `rotate(deg, x, y)` on the text group. The fit guard and `analyzeText`
+   *  both measure the rotated footprint, so a vertical label still has to sit
+   *  inside its field. */
+  rotation?: number;
   /** Keep the authored colour when a brand kit is applied. */
   lockColor?: boolean;
 }
@@ -172,6 +200,27 @@ function inscribed(f: FieldGeometry): Box {
   };
 }
 
+/** Axis-aligned box a run occupies once rotated about its anchor.
+ *
+ *  `SceneSvg` rotates a text group with `rotate(deg, x, y)`, where x/y is the
+ *  run's own anchor — not its centre — so the same origin is used here. The
+ *  percentages are mixed across axes by the rotation, which is only exact on a
+ *  square canvas; `runHeightPct` already makes that assumption (it divides a
+ *  pixel height by the reference *width*), so the approximation is the module's
+ *  existing one rather than a new one. */
+function rotatedBox(b: Box, deg?: number): Box {
+  if (!deg) return b;
+  const rad = (deg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const corners: [number, number][] = [[0, 0], [b.w, 0], [b.w, b.h], [0, b.h]];
+  const xs = corners.map(([dx, dy]) => b.x + dx * cos - dy * sin);
+  const ys = corners.map(([dx, dy]) => b.y + dx * sin + dy * cos);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+
 function warn(message: string): void {
   if (process.env.NODE_ENV !== "production") {
     // eslint-disable-next-line no-console
@@ -185,14 +234,20 @@ function warn(message: string): void {
  * This is the only text-producing function in the module. It emits the field
  * first, then any `above` layers (a photo tucked between the field and the
  * type), then one text layer per non-empty line. Because families compose only
- * `panel()` and `photo()`, a family cannot place text over a bare photograph.
+ * `panel()`, `photo()` and `cutout()`, a family cannot place text over a bare
+ * photograph.
+ *
+ * Called with no lines it is just a field — which is how a family emits a
+ * decorative slab, a hairline rule or a blended wash without a second
+ * shape-producing entry point existing.
  *
  * A line does not choose its colour. The field names a palette role and the
- * type takes the role that role guarantees contrast against: ink on surface,
- * onAccent on accent. Those are the only two pairs `resolvePalette` promises
- * clear 4.5:1 — accent-on-surface, which reads well in one palette and fails
- * in the next, is simply not expressible. `emphasis` sets a run as an accent
- * pill instead, which is contrast-guaranteed because the pill is its own field.
+ * type takes a role that role guarantees contrast against: on an accent field,
+ * `onAccent`; on a surface field, `ink`, or `accentInk` when the line asks for
+ * `accent`. Those three pairs are what `resolvePalette` promises at 4.5:1 —
+ * raw accent on surface, which reads well in one palette and fails in the next,
+ * is still not expressible. `emphasis` sets a run as an accent pill, which is
+ * guaranteed because the pill is its own field.
  */
 export function panel(
   p: Palette,
@@ -211,6 +266,7 @@ export function panel(
     opacity: Math.max(MIN_FIELD_OPACITY, field.opacity ?? 1),
     gradient: field.gradient,
     shadow: field.shadow,
+    blend: field.blend,
   };
 
   const fit = inscribed(field);
@@ -220,14 +276,22 @@ export function panel(
     const text = line.text?.trim();
     if (!text) continue;
 
+    // A blended field composites against whatever photograph is under it, so
+    // its final colour is unknown at authoring time and no ink can be promised
+    // against it. Blend is for washes; type goes on an opaque field over them.
+    if (field.blend && field.blend !== "normal") {
+      warn(`"${text}" sits on a ${field.blend} field, whose colour depends on the photo; put it on an opaque field instead`);
+    }
+
     const fontSize = TYPE_STEPS[line.step];
     const fontFamily = FONT_ROLES[line.font];
     const rendered = line.uppercase ? text.toUpperCase() : text;
     const w = estWidthPct(rendered, fontSize, WIDTH_FACTOR[line.font], line.letterSpacing ?? 0);
     const h = runHeightPct(fontSize);
     const x = line.center ? fit.x + (fit.w - w) / 2 : line.xPct;
+    const box = rotatedBox({ x, y: line.yPct, w, h }, line.rotation);
 
-    if (x < fit.x - 0.5 || x + w > fit.x + fit.w + 0.5 || line.yPct < fit.y - 0.5 || line.yPct + h > fit.y + fit.h + 0.5) {
+    if (box.x < fit.x - 0.5 || box.x + box.w > fit.x + fit.w + 0.5 || box.y < fit.y - 0.5 || box.y + box.h > fit.y + fit.h + 0.5) {
       warn(`"${text}" does not fit its ${field.shape} field; shorten the copy or grow the field`);
     }
 
@@ -238,7 +302,13 @@ export function panel(
       xPct: Number(x.toFixed(2)),
       yPct: line.yPct,
       fontSize,
-      color: line.emphasis ? p.onAccent : field.role === "accent" ? p.onAccent : p.ink,
+      color: line.emphasis
+        ? p.onAccent
+        : field.role === "accent"
+          ? p.onAccent
+          : line.accent
+            ? p.accentInk
+            : p.ink,
       bgColor: line.emphasis ? p.accent : undefined,
       // Default to regular weight. Anton ships one weight and Inter is loaded
       // at 400-600, so asking for bold would synthesise a face the export
@@ -251,6 +321,7 @@ export function panel(
       uppercase: line.uppercase,
       letterSpacing: line.letterSpacing,
       opacity: line.opacity,
+      rotation: line.rotation,
       // The field already carries the contrast; a drop shadow on top of it only
       // muddies the edge.
       shadow: false,
@@ -272,7 +343,7 @@ export function panel(
       h: extra.heightPct ?? extra.widthPct,
     };
     for (const t of texts) {
-      const tb = {
+      const tb = rotatedBox({
         x: t.xPct,
         y: t.yPct,
         w: estWidthPct(
@@ -282,7 +353,7 @@ export function panel(
           t.letterSpacing ?? 0,
         ),
         h: runHeightPct(t.fontSize),
-      };
+      }, t.rotation);
       if (eb.x < tb.x + tb.w && tb.x < eb.x + eb.w && eb.y < tb.y + tb.h && tb.y < eb.y + eb.h) {
         warn(`an "above" layer covers "${t.text}"; it would sit on that layer, not on the field`);
       }
@@ -300,9 +371,13 @@ export interface PhotoSpec {
   widthPct?: number;
   heightPct?: number;
   fit?: "cover" | "contain";
+  /** Only `circle`, `roundedPct` and `insetPct` are rendered as authored.
+   *  `SceneSvg` degrades every other `ShapeId` to a rounded rect, so a family
+   *  asking for one would look right in this file and wrong on screen. */
   clip?: ClipSpec;
   opacity?: number;
   rotation?: number;
+  blend?: BlendMode;
 }
 
 /** The edited photo, placed. Defaults to full bleed. */
@@ -318,7 +393,14 @@ export function photo(spec: PhotoSpec = {}): TemplateLayerDef {
     clip: spec.clip,
     opacity: spec.opacity,
     rotation: spec.rotation,
+    blend: spec.blend,
   };
+}
+
+/** The edited photo with its background removed. Costs credits to produce, so
+ *  a template using this triggers a consent dialog before it applies. */
+export function cutout(spec: PhotoSpec = {}): TemplateLayerDef {
+  return { ...photo(spec), source: "subject-cutout" } as TemplateLayerDef;
 }
 
 // ── The seven families ────────────────────────────────────────────────────────
@@ -329,209 +411,277 @@ export function photo(spec: PhotoSpec = {}): TemplateLayerDef {
 // that its instances differ by palette and copy, and a second knob is how you
 // get back to the unrelated one-offs this set replaced. If a variant needs more
 // than one knob it is a different family, not a parameter.
+//
+// Each family's doc comment states the character budget its copy is authored
+// to, measured at the tighter of its two variants. `panel()` warns in
+// development when a run overruns its field, so the budgets are checkable
+// rather than folklore.
 
-/** Which half of the frame the scrim covers. */
-export type ScrimAnchor = "bottom" | "top";
+/** Which side of the frame the type block occupies; the subject stands on the
+ *  other. */
+export type TypeWrapSide = "left" | "right";
 
-/** Scrim stack: full-bleed photo, a scrim across half the frame, headline
- *  stacked into it with the support line under it. The workhorse social crop. */
-export function scrimStack(
+/** Type Wrap: the headline is the artwork. A display run crosses the whole
+ *  frame on a flat colour field, and the subject — cut out of its background —
+ *  is painted last, so the words pass behind it.
+ *
+ *  The cutout is deliberately NOT passed to `panel()`'s `above`: `above` paints
+ *  under the type, which would put the words in front of the subject and leave
+ *  them sitting on a photograph. Painted last, the type keeps its guaranteed
+ *  field and the subject occludes it, which is the whole effect.
+ *
+ *  Budgets: headline 16, subhead 18, support 38. */
+export function typeWrap(
   p: Palette,
   copy: FamilyCopy,
-  anchor: ScrimAnchor = "bottom",
+  side: TypeWrapSide = "left",
 ): TemplateLayerDef[] {
-  // The whole block moves together: the type keeps its position inside the
-  // scrim, the scrim changes which half of the photo it sits on.
-  const dy = anchor === "top" ? -45 : 0;
+  const textX = side === "left" ? 4 : 54;
+  const subjectX = side === "left" ? 50 : 0;
+  return [
+    ...panel(
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+      [
+        { text: copy.headline, step: "display", font: "impact", xPct: 4, yPct: 14, uppercase: true, letterSpacing: -4 },
+        { text: copy.subhead, step: "subhead", font: "mono", xPct: textX, yPct: 60, uppercase: true, accent: true },
+        { text: copy.support, step: "support", font: "mono", xPct: textX, yPct: 90 },
+      ],
+    ),
+    // `contain`, not `cover`: a cutout has no background to crop into, and
+    // slicing one cuts the subject's head off.
+    cutout({ xPct: subjectX, yPct: 20, widthPct: 50, heightPct: 80, fit: "contain" }),
+  ];
+}
+
+/** Which way the accent floods the photograph. `multiply` drives it toward the
+ *  accent's shadow, `screen` toward its light. */
+export type WashBlend = "multiply" | "screen";
+
+/** Duotone Wash: a full-bleed photograph flooded with the accent through a
+ *  blend mode, cut hard by an opaque block of type across the bottom.
+ *
+ *  The wash carries no type. What a blended field composites to depends on the
+ *  photograph under it — `multiply` runs the accent to black, `screen` runs it
+ *  to white — so no ink can be promised against it. The type sits on its own
+ *  opaque surface block over the wash, which is where the 4.5:1 guarantee is
+ *  real. `panel()` warns if anyone later puts a line on a blended field.
+ *
+ *  Budgets: headline 16, subhead 40, support 79. */
+export function duotoneWash(
+  p: Palette,
+  copy: FamilyCopy,
+  wash: WashBlend = "multiply",
+): TemplateLayerDef[] {
   return [
     photo(),
     ...panel(
       p,
-      // 0.88, not 0.82. A scrim exists to establish a known field over an
-      // unknown photograph, so it has to be opaque enough that the worst
-      // photograph still leaves the type readable. At 0.82 a mid-luminance
-      // brand surface fell to 4.16:1 worst-case (sage #7a9a5a) and 4.46:1
-      // (mid grey) -- both under AA, and no ink colour fixes it: near-black is
-      // already the better of the two candidates there, white being 2.50:1.
-      // 0.86 is the exact threshold; 0.88 leaves margin. editorialBand's band
-      // is already 0.9 and clears for the same reason.
-      { shape: "rect", role: "surface", xPct: 0, yPct: 45 + dy, widthPct: 100, heightPct: 55, opacity: 0.88 },
+      { shape: "rect", role: "accent", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100, blend: wash },
+      [],
+    ),
+    ...panel(
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 56, widthPct: 100, heightPct: 44 },
       [
-        { text: copy.headline, step: "headline", font: "impact", xPct: 8, yPct: 62 + dy, uppercase: true, letterSpacing: -1 },
-        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 76 + dy },
-        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 88 + dy, opacity: 0.85 },
+        { text: copy.headline, step: "display", font: "impact", xPct: 4, yPct: 59, uppercase: true, letterSpacing: -4 },
+        { text: copy.subhead, step: "subhead", font: "modern", xPct: 4, yPct: 79, accent: true },
+        { text: copy.support, step: "support", font: "mono", xPct: 4, yPct: 90 },
       ],
     ),
   ];
 }
 
-/** How the inset photo is cropped. Both are clips `SceneSvg` renders natively;
- *  every other `ShapeId` degrades silently to a rounded rect, so the family
- *  does not offer them. */
-export type InsetCrop = "circle" | "rounded";
+/** How far the two plates are pulled apart. */
+export type StackSpread = "tight" | "wide";
 
-/** Framed inset: the photo cropped and offset high on a colour field, with the
- *  type occupying the lower third. Editorial, calm. */
-export function framedInset(
+/** Offset Stack: two photo plates dropped at opposing angles so they overlap
+ *  and deliberately fail to align, with a mono caption slab landing across the
+ *  overlap. Collage, not grid.
+ *
+ *  Budgets: headline 21, subhead 15, support 33. */
+export function offsetStack(
   p: Palette,
   copy: FamilyCopy,
-  crop: InsetCrop = "circle",
+  spread: StackSpread = "tight",
 ): TemplateLayerDef[] {
-  const clip: ClipSpec = crop === "circle" ? { shape: "circle" } : { roundedPct: 6 };
+  const wide = spread === "wide";
+  const plateW = wide ? 54 : 56;
+  const plateH = wide ? 40 : 44;
+  const capX = wide ? 40 : 34;
+  const capY = wide ? 44 : 47;
+  return [
+    ...panel(
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+      [{ text: copy.headline, step: "headline", font: "impact", xPct: 5, yPct: 3, uppercase: true, letterSpacing: -2 }],
+    ),
+    photo({ xPct: wide ? 2 : 6, yPct: 20, widthPct: plateW, heightPct: plateH, rotation: -3 }),
+    photo({ xPct: wide ? 44 : 38, yPct: wide ? 52 : 46, widthPct: plateW, heightPct: plateH, rotation: 2 }),
+    ...panel(
+      p,
+      { shape: "rect", role: "surface", xPct: capX, yPct: capY, widthPct: 44, heightPct: 12 },
+      [
+        { text: copy.subhead, step: "subhead", font: "mono", xPct: capX + 2, yPct: capY + 1.5, uppercase: true, accent: true },
+        { text: copy.support, step: "support", font: "mono", xPct: capX + 2, yPct: capY + 7.5 },
+      ],
+    ),
+  ];
+}
+
+/** Which side the photo column stands on; the vertical label runs down the
+ *  opposite edge. */
+export type GridSide = "left" | "right";
+
+/** Rule Grid: the layout grid left visible. Accent hairlines mark the
+ *  divisions, the photo is cut into a tall column with a hard rectangular
+ *  inset, and a monospace label runs vertically down the outer edge.
+ *
+ *  The rules and the column go through `panel()`'s `above`, so both the fit
+ *  guard and `analyzeText` see them: a rule that crossed a run would be caught
+ *  as an occluder rather than discovered on screen.
+ *
+ *  Budgets: headline 21, subhead 39, support 40 (the vertical label). */
+export function ruleGrid(
+  p: Palette,
+  copy: FamilyCopy,
+  side: GridSide = "left",
+): TemplateLayerDef[] {
+  const columnX = side === "left" ? 6 : 50;
+  const dividerX = side === "left" ? 52 : 48;
+  const railX = side === "left" ? 95.5 : 2.5;
   return panel(
     p,
     { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
     [
-      { text: copy.headline, step: "headline", font: "impact", xPct: 10, yPct: 66, uppercase: true, letterSpacing: -1 },
-      { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 10, yPct: 82 },
-      { text: copy.support, step: "support", font: "support", xPct: 10, yPct: 90, opacity: 0.8 },
+      { text: copy.headline, step: "headline", font: "impact", xPct: 6, yPct: 4, uppercase: true, letterSpacing: -2 },
+      { text: copy.subhead, step: "subhead", font: "modern", xPct: 6, yPct: 23 },
+      { text: copy.support, step: "support", font: "mono", xPct: railX, yPct: 88, rotation: -90, uppercase: true, accent: true },
     ],
-    { above: [photo({ xPct: 14, yPct: 8, widthPct: 72, heightPct: 52, clip })] },
+    {
+      above: [
+        ...panel(p, { shape: "rect", role: "accent", xPct: 6, yPct: 20, widthPct: 88, heightPct: 0.4 }, []),
+        ...panel(p, { shape: "rect", role: "accent", xPct: 6, yPct: 90, widthPct: 88, heightPct: 0.4 }, []),
+        ...panel(p, { shape: "rect", role: "accent", xPct: dividerX, yPct: 30, widthPct: 0.4, heightPct: 56 }, []),
+        photo({ xPct: columnX, yPct: 30, widthPct: 44, heightPct: 56, clip: { insetPct: [3, 0, 3, 0] } }),
+      ],
+    },
   );
 }
 
-/** Which edge the photo is hard against. */
-export type BlockSide = "left" | "right";
+/** Which half of the frame the photograph occupies. */
+export type EdgeAnchor = "top" | "bottom";
 
-/** Split block: photo hard against one edge, a full-height colour block on the
- *  other carrying the whole message. The catalogue layout. */
-export function splitBlock(
+/** Hard Edge: neo-brutalist. Rectangles only, no rounding, no gradient, no
+ *  shadow, no translucency. The photograph is trimmed with a rectangular inset
+ *  clip and a thick accent keyline is butted straight into the cut, so the two
+ *  meet without a seam and without a transition.
+ *
+ *  Budgets: headline 15, subhead 36, support 76. */
+export function hardEdge(
   p: Palette,
   copy: FamilyCopy,
-  side: BlockSide = "left",
+  anchor: EdgeAnchor = "top",
 ): TemplateLayerDef[] {
-  const photoX = side === "left" ? 0 : 48;
-  const blockX = side === "left" ? 52 : 0;
-  const textX = blockX + 6;
+  const top = anchor === "top";
+  const photoY = top ? 0 : 42;
+  const keylineY = top ? 53 : 42;
+  const blockY = top ? 58 : 0;
+  // The keyline overlaps the trimmed edge by a hair rather than meeting it
+  // exactly: butted at the same coordinate, rounding in the rasteriser can
+  // leave a one-pixel seam of the photo showing through.
+  const inset: ClipSpec = { insetPct: top ? [0, 0, 7, 0] : [7, 0, 0, 0] };
   return [
-    photo({ xPct: photoX, yPct: 0, widthPct: 52, heightPct: 100 }),
+    photo({ xPct: 0, yPct: photoY, widthPct: 100, heightPct: 58, clip: inset }),
+    ...panel(p, { shape: "rect", role: "accent", xPct: 0, yPct: keylineY, widthPct: 100, heightPct: 5 }, []),
     ...panel(
       p,
-      { shape: "rect", role: "surface", xPct: blockX, yPct: 0, widthPct: 48, heightPct: 100 },
+      { shape: "rect", role: "surface", xPct: 0, yPct: blockY, widthPct: 100, heightPct: 42 },
       [
-        { text: copy.headline, step: "headline", font: "impact", xPct: textX, yPct: 26, uppercase: true, letterSpacing: -1 },
-        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: textX, yPct: 44 },
-        { text: copy.support, step: "support", font: "support", xPct: textX, yPct: 56, opacity: 0.85 },
+        { text: copy.headline, step: "display", font: "impact", xPct: 4, yPct: blockY + 4, uppercase: true, letterSpacing: -4 },
+        { text: copy.subhead, step: "subhead", font: "mono", xPct: 4, yPct: blockY + 24, uppercase: true, accent: true },
+        { text: copy.support, step: "support", font: "mono", xPct: 4, yPct: blockY + 34 },
       ],
     ),
   ];
 }
 
-/** Which edge the caption band runs along. */
-export type BandEdge = "foot" | "head";
+/** Where the numeral slab lands across the plate. */
+export type SlabPlace = "corner" | "centre";
 
-/** Editorial band: full-bleed photo with an opaque caption band across one
- *  edge. The headline steps down to subhead size because the band is the
- *  emphasis, not the type. */
-export function editorialBand(
+/** Price Slab: extreme scale contrast. The product sits on a circular plate,
+ *  and a display-step numeral on a hard accent slab cuts across it, with the
+ *  product line and monospace microcopy in a band below.
+ *
+ *  The numeral is `copy.subhead` — the price is the loudest thing in the
+ *  composition, and `copy.headline` is the product line that names it.
+ *
+ *  Budgets: headline 21, subhead 7 (the numeral), support 79. */
+export function priceSlab(
   p: Palette,
   copy: FamilyCopy,
-  edge: BandEdge = "foot",
+  place: SlabPlace = "corner",
 ): TemplateLayerDef[] {
-  const bandY = edge === "foot" ? 72 : 0;
+  const slabX = place === "corner" ? 6 : 27;
   return [
-    photo(),
+    ...panel(p, { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, []),
+    photo({ xPct: 14, yPct: 4, widthPct: 72, heightPct: 62, clip: { shape: "circle" } }),
     ...panel(
       p,
-      { shape: "rect", role: "surface", xPct: 0, yPct: bandY, widthPct: 100, heightPct: 28, opacity: 1 },
+      { shape: "rect", role: "accent", xPct: slabX, yPct: 50, widthPct: 46, heightPct: 22 },
+      [{ text: copy.subhead, step: "display", font: "impact", xPct: slabX, yPct: 52, center: true, letterSpacing: -2 }],
+    ),
+    ...panel(
+      p,
+      { shape: "rect", role: "surface", xPct: 0, yPct: 76, widthPct: 100, heightPct: 24 },
       [
-        { text: copy.headline, step: "subhead", font: "modern", xPct: 8, yPct: bandY + 4 },
-        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: bandY + 16, opacity: 0.8 },
+        { text: copy.headline, step: "headline", font: "impact", xPct: 5, yPct: 78, uppercase: true, letterSpacing: -2 },
+        { text: copy.support, step: "support", font: "mono", xPct: 5, yPct: 92 },
       ],
     ),
   ];
 }
 
-/** Which top corner the seal sits in. */
-export type BadgeCorner = "right" | "left";
+/** Which end of the field the type occupies. */
+export type SpaceAnchor = "high" | "low";
 
-/** Price corner: full-bleed photo, a scalloped seal in the accent carrying the
- *  offer, and a foot band for the product line. */
-export function priceCorner(
+/** Negative Space: restraint. Type takes about a quarter of a large flat field
+ *  and the photograph is demoted to a small plate, tilted two degrees off
+ *  square so the emptiness reads as deliberate rather than unfinished.
+ *
+ *  Budgets: headline 21, subhead 36, support 77. */
+export function negativeSpace(
   p: Palette,
   copy: FamilyCopy,
-  corner: BadgeCorner = "right",
+  anchor: SpaceAnchor = "high",
 ): TemplateLayerDef[] {
-  // `center: true` measures against the seal's own box, so moving the seal
-  // carries its type with it.
-  const sealX = corner === "right" ? 66 : 6;
-  return [
-    photo(),
-    ...panel(
-      p,
-      { shape: "seal", role: "accent", xPct: sealX, yPct: 8, widthPct: 28, shadow: true },
-      [{ text: copy.headline, step: "subhead", font: "impact", xPct: sealX, yPct: 19.5, center: true, uppercase: true }],
-    ),
-    ...panel(
-      p,
-      { shape: "rect", role: "surface", xPct: 0, yPct: 80, widthPct: 100, heightPct: 20, opacity: 0.9 },
-      [
-        { text: copy.subhead, step: "subhead", font: "modern", xPct: 8, yPct: 84 },
-        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 93, opacity: 0.85 },
-      ],
-    ),
-  ];
-}
-
-/** How the poster plate is cropped. */
-export type PlateShape = "rounded" | "circle";
-
-/** Poster stack: type first. A display headline owns the top third, the photo
- *  sits under it as a plate, support closes the page. */
-export function posterStack(
-  p: Palette,
-  copy: FamilyCopy,
-  plate: PlateShape = "rounded",
-): TemplateLayerDef[] {
-  const clip: ClipSpec = plate === "circle" ? { shape: "circle" } : { roundedPct: 4 };
+  const high = anchor === "high";
+  const typeY = high ? 10 : 62;
+  const plateY = high ? 52 : 8;
   return panel(
     p,
     { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
     [
-      { text: copy.headline, step: "display", font: "impact", xPct: 8, yPct: 14, uppercase: true, letterSpacing: -3 },
-      { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 92 },
-      { text: copy.support, step: "support", font: "support", xPct: 62, yPct: 94, opacity: 0.8 },
+      { text: copy.headline, step: "headline", font: "impact", xPct: 8, yPct: typeY, uppercase: true, letterSpacing: -2 },
+      { text: copy.subhead, step: "subhead", font: "mono", xPct: 8, yPct: typeY + 16, uppercase: true, accent: true },
+      { text: copy.support, step: "support", font: "mono", xPct: 8, yPct: typeY + 24 },
     ],
-    { above: [photo({ xPct: 10, yPct: 34, widthPct: 80, heightPct: 56, clip })] },
-  );
-}
-
-/** Bento: a tall rounded photo cell beside two stacked cells, one accent and
- *  one surface. Reads as a modern card grid rather than a poster. */
-export function bento(
-  p: Palette,
-  copy: FamilyCopy,
-  side: BlockSide = "left",
-): TemplateLayerDef[] {
-  const photoX = side === "left" ? 4 : 40;
-  const cellX = side === "left" ? 63 : 4;
-  const textX = cellX + 3;
-  return [
-    photo({ xPct: photoX, yPct: 4, widthPct: 56, heightPct: 92, clip: { roundedPct: 5 } }),
-    ...panel(
-      p,
-      { shape: "rounded", role: "accent", xPct: cellX, yPct: 4, widthPct: 33, heightPct: 44 },
-      [{ text: copy.headline, step: "headline", font: "impact", xPct: textX, yPct: 16, uppercase: true, letterSpacing: -1 }],
-    ),
-    ...panel(
-      p,
-      { shape: "rounded", role: "surface", xPct: cellX, yPct: 52, widthPct: 33, heightPct: 44 },
-      [
-        { text: copy.subhead, step: "subhead", font: "modern", xPct: textX, yPct: 60 },
-        { text: copy.support, step: "support", font: "support", xPct: textX, yPct: 74, opacity: 0.85 },
+    {
+      above: [
+        photo({ xPct: 56, yPct: plateY, widthPct: 38, heightPct: 34, clip: { roundedPct: 2 }, rotation: -2 }),
       ],
-    ),
-  ];
+    },
+  );
 }
 
 export const FAMILIES = {
-  scrimStack,
-  framedInset,
-  splitBlock,
-  editorialBand,
-  priceCorner,
-  posterStack,
-  bento,
+  typeWrap,
+  duotoneWash,
+  offsetStack,
+  ruleGrid,
+  hardEdge,
+  priceSlab,
+  negativeSpace,
 } as const;
 
 export type FamilyId = keyof typeof FAMILIES;
@@ -598,6 +748,10 @@ function imageBox(def: { xPct: number; yPct: number; widthPct: number; heightPct
  * shapes both count as occluders, so a template cannot smuggle a photograph
  * under its own headline.
  *
+ * A field that blends is not a field: its composited colour depends on the
+ * photograph beneath it, so a run over one is treated as unbacked rather than
+ * measured against a colour it will not have.
+ *
  * `widthPct` lets a caller substitute real text measurement for the authoring
  * estimate.
  */
@@ -619,7 +773,8 @@ export function analyzeText(
     }
     if (layer.kind === "shape") {
       const shape = layer as TemplateShapeDef;
-      const usable = isFieldShape(shape.shape) && (shape.opacity ?? 1) >= MIN_FIELD_OPACITY;
+      const blended = !!shape.blend && shape.blend !== "normal";
+      const usable = isFieldShape(shape.shape) && (shape.opacity ?? 1) >= MIN_FIELD_OPACITY && !blended;
       const hitBox = imageBox(shape);
       painted.push({
         box: usable ? shapeFieldBox(shape) : hitBox,
@@ -642,7 +797,10 @@ export function analyzeText(
     const w = opts?.widthPct
       ? opts.widthPct(text)
       : estWidthPct(rendered, text.fontSize, factorFor(text.fontFamily), text.letterSpacing ?? 0);
-    const box: Box = { x: text.xPct, y: text.yPct, w, h: runHeightPct(text.fontSize) };
+    const box = rotatedBox(
+      { x: text.xPct, y: text.yPct, w, h: runHeightPct(text.fontSize) },
+      text.rotation,
+    );
 
     // Latest field first: the last thing painted under the run wins.
     const candidates = painted.filter((p) => p.field && contains(p.box, box)).reverse();

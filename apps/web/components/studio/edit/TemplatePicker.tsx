@@ -128,16 +128,23 @@ export function TemplatePicker({
                           height: def.heightPct != null ? `${def.heightPct}%` : undefined,
                           opacity: def.opacity ?? 1,
                           transform: def.rotation ? `rotate(${def.rotation}deg)` : undefined,
+                          // A blended field is a wash over the photo; without
+                          // this the thumbnail paints it as a flat block and
+                          // hides the photograph the template is built on.
+                          mixBlendMode: def.blend,
                         }}
                       />
                     ) : def.kind === "image" ? (
                       // Every family places the photo, so with no subject yet
                       // the slot stays empty rather than showing a broken image.
-                      !(def.source === "subject" ? subjectImageUrl : def.source.url) ? null : (
+                      // A "subject-cutout" slot previews with the plain subject:
+                      // the background-free copy is a paid operation that only
+                      // happens once the user has agreed to it on apply.
+                      !(typeof def.source === "string" ? subjectImageUrl : def.source.url) ? null : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         key={i}
-                        src={def.source === "subject" ? (subjectImageUrl ?? "") : def.source.url}
+                        src={typeof def.source === "string" ? (subjectImageUrl ?? "") : def.source.url}
                         alt=""
                         style={{
                           position: "absolute",

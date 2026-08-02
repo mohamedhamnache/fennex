@@ -7,7 +7,7 @@ import {
 import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import {
-  scrimStack, framedInset, splitBlock, editorialBand, priceCorner, posterStack, bento,
+  typeWrap, duotoneWash, offsetStack, ruleGrid, hardEdge, priceSlab, negativeSpace,
   findUnbackedText, analyzeText,
 } from "./families";
 
@@ -42,12 +42,18 @@ export interface TemplateShapeDef {
   color2?: string;
   gradient?: boolean;
   shadow?: boolean;
+  /** Composite this field against what is already painted. Only a field with no
+   *  type on it may blend — see `panel()` in families.ts. */
+  blend?: BlendMode;
 }
 
 export interface TemplateImageDef {
   kind: "image";
-  /** "subject" places the image being edited. An explicit url places a fixed asset. */
-  source: "subject" | { url: string };
+  /** "subject" places the image being edited. "subject-cutout" places it with
+   *  its background removed, which is a paid operation and so is gated behind a
+   *  consent dialog before the template applies. An explicit url places a fixed
+   *  asset. */
+  source: "subject" | "subject-cutout" | { url: string };
   xPct: number;
   yPct: number;
   widthPct: number;
@@ -80,7 +86,14 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
 
 // ── The composition families ─────────────────────────────────────────────────
 
-/** The shipped set: 34 templates built from the seven composition families.
+/** The shipped set, built from the seven composition families.
+ *
+ *  PROVISIONAL. This is a two-per-family placeholder that exercises every
+ *  family and both of its variants, so the module compiles and the readability
+ *  gate below has something real to check. The full 34-template set — its
+ *  distribution across categories, its copy, and its geometric distinctness —
+ *  is authored in the task that follows the families, and replaces this array
+ *  wholesale.
  *
  *  Every entry places the edited photo through an image layer, so these are
  *  compositions rather than decoration laid over whatever the user happened to
@@ -89,10 +102,11 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
  *  Three axes of variation, and no fourth. An instance differs from its
  *  siblings by:
  *    1. its palette — one of the four category palettes, each of which
- *       guarantees ink/surface and onAccent/accent at 4.5:1;
+ *       guarantees ink/surface, onAccent/accent and accentInk/surface at
+ *       4.5:1;
  *    2. its copy;
- *    3. its family's single composition parameter (scrim anchor, crop, block
- *       side, band edge, badge corner, plate shape).
+ *    3. its family's single composition parameter (type side, wash blend,
+ *       plate spread, grid side, edge anchor, slab place, space anchor).
  *  Nothing here invents structure. A template that needed its own geometry
  *  would be the twenty-seventh unrelated one-off this set was written to
  *  replace.
@@ -103,355 +117,157 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
  *  literal appearing in this file. All four palettes carry the same contrast
  *  guarantee, so any pairing is safe.
  *
- *  Copy is authored to the family's field width. `panel()` warns in development
- *  when a run overflows its field; the widths that matter are roughly 20
- *  characters for a scrimStack or framedInset headline, 15 for posterStack, 10
- *  for the priceCorner seal, 9 for splitBlock and 6 for a bento cell. Lengthen
- *  a headline past that and the guard will say so.
+ *  Copy is authored to each family's character budget, which is stated in that
+ *  family's doc comment in `families.ts`. `panel()` warns in development when a
+ *  run overruns its field.
  */
 export const TEXT_TEMPLATES: TextTemplate[] = [
   // ── Ecommerce ──────────────────────────────────────────────────────────────
   {
-    id: "ec_split_new_in",
-    name: "New Arrival",
+    id: "ec_grid_lookbook",
+    name: "Lookbook Grid",
     category: "ecommerce",
-    layers: splitBlock(resolvePalette("ecommerce"), {
-      headline: "Just In",
-      subhead: "Aurora Desk Lamp",
-      support: "Free returns  ·  2-year warranty",
-    }),
-  },
-  {
-    id: "ec_split_restock",
-    name: "Back in Stock",
-    category: "ecommerce",
-    layers: splitBlock(resolvePalette("blog"), {
-      headline: "Restock",
-      subhead: "Linen Throw, Sand",
-      support: "Sold out twice  ·  limited run",
-    }, "right"),
-  },
-  {
-    id: "ec_split_bundle",
-    name: "Bundle Block",
-    category: "ecommerce",
-    layers: splitBlock(resolvePalette("promo"), {
-      headline: "Bundle",
-      subhead: "Two for 60",
-      support: "Mix any two  ·  ends Sunday",
-    }),
-  },
-  {
-    id: "ec_price_markdown",
-    name: "Markdown Seal",
-    category: "ecommerce",
-    layers: priceCorner(resolvePalette("ecommerce"), {
-      headline: "-40%",
-      subhead: "Aurora Desk Lamp",
-      support: "Today only  ·  while stocks last",
-    }),
-  },
-  {
-    id: "ec_price_from",
-    name: "From Price",
-    category: "ecommerce",
-    layers: priceCorner(resolvePalette("blog"), {
-      headline: "From $29",
-      subhead: "Everyday ceramics, made to be used",
-      support: "Dishwasher safe  ·  free delivery over $50",
-    }, "left"),
-  },
-  {
-    id: "ec_price_clearance",
-    name: "Clearance Seal",
-    category: "ecommerce",
-    layers: priceCorner(resolvePalette("promo"), {
-      headline: "-70%",
-      subhead: "End of season clearance",
-      support: "Final markdown  ·  sale items are not returnable",
-    }),
-  },
-  {
-    id: "ec_bento_sale",
-    name: "Sale Bento",
-    category: "ecommerce",
-    layers: bento(resolvePalette("ecommerce"), {
-      headline: "Sale",
-      subhead: "Half price",
-      support: "Ends Sunday at midnight",
-    }),
-  },
-  {
-    id: "ec_bento_gift",
-    name: "Gift Bento",
-    category: "ecommerce",
-    layers: bento(resolvePalette("social"), {
-      headline: "Gifts",
-      subhead: "Under $50",
-      support: "Wrapped free, shipped fast",
-    }, "right"),
-  },
-  {
-    id: "ec_scrim_lookbook",
-    name: "Lookbook",
-    category: "ecommerce",
-    layers: scrimStack(resolvePalette("ecommerce"), {
+    layers: ruleGrid(resolvePalette("ecommerce"), {
       headline: "The Winter Edit",
       subhead: "Twelve pieces, one palette",
-      support: "Shop the full collection at fennex.studio",
+      support: "atelier / no 12",
+    }, "right"),
+  },
+  {
+    id: "ec_edge_restock",
+    name: "Restock Block",
+    category: "ecommerce",
+    layers: hardEdge(resolvePalette("blog"), {
+      headline: "Back in Stock",
+      subhead: "Linen throw, sand",
+      support: "sold out twice / limited run",
+    }, "bottom"),
+  },
+  {
+    id: "ec_slab_markdown",
+    name: "Markdown Slab",
+    category: "ecommerce",
+    layers: priceSlab(resolvePalette("ecommerce"), {
+      headline: "Aurora Desk Lamp",
+      subhead: "-40%",
+      support: "today only, while stocks last",
     }),
   },
 
   // ── Social ─────────────────────────────────────────────────────────────────
   {
-    id: "so_scrim_golden_hour",
+    id: "so_wrap_season",
+    name: "Season Wrap",
+    category: "social",
+    layers: typeWrap(resolvePalette("social"), {
+      headline: "New Season",
+      subhead: "Spring 26",
+      support: "in store from friday",
+    }),
+  },
+  {
+    id: "so_wash_golden",
     name: "Golden Hour",
     category: "social",
-    layers: scrimStack(resolvePalette("social"), {
+    layers: duotoneWash(resolvePalette("social"), {
       headline: "Golden Hour",
-      subhead: "The autumn edit",
-      support: "Shot on location  ·  Fennex Studio",
+      subhead: "The autumn edit, shot on location",
+      support: "three looks, one roll of film",
     }),
   },
   {
-    id: "so_scrim_hook",
-    name: "Reel Hook",
-    category: "social",
-    layers: scrimStack(resolvePalette("promo"), {
-      headline: "Wait For It",
-      subhead: "Three things nobody tells you",
-      support: "Full breakdown in the caption",
-    }, "top"),
-  },
-  {
-    id: "so_scrim_behind",
+    id: "so_stack_behind",
     name: "Behind the Build",
     category: "social",
-    layers: scrimStack(resolvePalette("blog"), {
+    layers: offsetStack(resolvePalette("promo"), {
       headline: "Behind the Build",
-      subhead: "Day 41 of shipping in public",
-      support: "New clips every Friday",
-    }),
+      subhead: "Day 41",
+      support: "new clips every friday",
+    }, "wide"),
   },
   {
-    id: "so_frame_quote",
+    id: "so_space_quote",
     name: "Quote Card",
     category: "social",
-    layers: framedInset(resolvePalette("social"), {
+    layers: negativeSpace(resolvePalette("social"), {
       headline: "Make It Obvious",
       subhead: "Habits beat motivation",
-      support: "From the Fennex newsletter  ·  Issue 12",
-    }),
-  },
-  {
-    id: "so_frame_intro",
-    name: "Meet the Team",
-    category: "social",
-    layers: framedInset(resolvePalette("blog"), {
-      headline: "Meet Nadia",
-      subhead: "Lead designer, joined 2024",
-      support: "Say hello in the comments",
-    }, "rounded"),
-  },
-  {
-    id: "so_frame_giveaway",
-    name: "Giveaway",
-    category: "social",
-    layers: framedInset(resolvePalette("promo"), {
-      headline: "Giveaway",
-      subhead: "Win the full studio kit",
-      support: "Follow, like and tag a friend  ·  closes Friday",
-    }),
-  },
-  {
-    id: "so_poster_drop",
-    name: "Drop Poster",
-    category: "social",
-    layers: posterStack(resolvePalette("social"), {
-      headline: "Summer Drop",
-      subhead: "Saturday, 10am",
-      support: "fennex.studio",
-    }),
-  },
-  {
-    id: "so_poster_live",
-    name: "Going Live",
-    category: "social",
-    layers: posterStack(resolvePalette("promo"), {
-      headline: "We Go Live",
-      subhead: "Thursday at 6pm CET",
-      support: "Set a reminder",
-    }, "circle"),
-  },
-  {
-    id: "so_band_caption",
-    name: "Caption Band",
-    category: "social",
-    layers: editorialBand(resolvePalette("social"), {
-      headline: "Five things we learned this month",
-      support: "Swipe for the full thread",
-    }),
+      support: "from this month's letter",
+    }, "low"),
   },
 
   // ── Blog ───────────────────────────────────────────────────────────────────
   {
-    id: "bl_band_field_notes",
+    id: "bl_grid_guide",
+    name: "Guide Grid",
+    category: "blog",
+    layers: ruleGrid(resolvePalette("blog"), {
+      headline: "Page Speed",
+      subhead: "A practical guide for small teams",
+      support: "updated for 2026",
+    }),
+  },
+  {
+    id: "bl_wash_essay",
+    name: "Essay Wash",
+    category: "blog",
+    layers: duotoneWash(resolvePalette("blog"), {
+      headline: "The Slow Web",
+      subhead: "In praise of smaller, quieter sites",
+      support: "essay / 9 min read",
+    }, "screen"),
+  },
+  {
+    id: "bl_stack_notes",
     name: "Field Notes",
     category: "blog",
-    layers: editorialBand(resolvePalette("blog"), {
-      headline: "How we rebuilt the studio",
-      support: "Field notes  ·  Issue 04",
+    layers: offsetStack(resolvePalette("blog"), {
+      headline: "Field Notes",
+      subhead: "Issue 04",
+      support: "everything we shipped in july",
     }),
   },
   {
-    id: "bl_band_guide",
-    name: "Guide Header",
+    id: "bl_space_interview",
+    name: "Interview Cover",
     category: "blog",
-    layers: editorialBand(resolvePalette("social"), {
-      headline: "A practical guide to page speed",
-      support: "12 min read  ·  updated for 2026",
-    }, "head"),
-  },
-  {
-    id: "bl_band_interview",
-    name: "Interview",
-    category: "blog",
-    layers: editorialBand(resolvePalette("promo"), {
-      headline: "An interview with Nadia Berger",
-      support: "Craft series  ·  part three",
+    layers: negativeSpace(resolvePalette("blog"), {
+      headline: "In Conversation",
+      subhead: "With Nadia Berger",
+      support: "craft series, part three",
     }),
-  },
-  {
-    id: "bl_scrim_deep_work",
-    name: "Deep Work",
-    category: "blog",
-    layers: scrimStack(resolvePalette("blog"), {
-      headline: "Deep Work",
-      subhead: "Focus in a distracted world",
-      support: "8 min read  ·  by Fennex",
-    }),
-  },
-  {
-    id: "bl_scrim_case_study",
-    name: "Case Study",
-    category: "blog",
-    layers: scrimStack(resolvePalette("ecommerce"), {
-      headline: "Case Study",
-      subhead: "From 400 to 40,000 visits",
-      support: "What we changed, in the order we changed it",
-    }, "top"),
-  },
-  {
-    id: "bl_bento_series",
-    name: "Series Card",
-    category: "blog",
-    layers: bento(resolvePalette("blog"), {
-      headline: "Part 3",
-      subhead: "SEO basics",
-      support: "A six-part beginner series",
-    }),
-  },
-  {
-    id: "bl_bento_recap",
-    name: "Weekly Recap",
-    category: "blog",
-    layers: bento(resolvePalette("social"), {
-      headline: "Recap",
-      subhead: "Week 32",
-      support: "Everything we shipped",
-    }, "right"),
-  },
-  {
-    id: "bl_frame_essay",
-    name: "Essay Cover",
-    category: "blog",
-    layers: framedInset(resolvePalette("blog"), {
-      headline: "The Slow Web",
-      subhead: "In praise of smaller sites",
-      support: "Essay  ·  9 min read",
-    }, "rounded"),
   },
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   {
-    id: "pr_poster_big_drop",
-    name: "Big Drop",
+    id: "pr_wrap_opening",
+    name: "Opening Wrap",
     category: "promo",
-    layers: posterStack(resolvePalette("promo"), {
-      headline: "Big Drop",
-      subhead: "March 15",
-      support: "fennex.studio",
-    }),
-  },
-  {
-    id: "pr_poster_opening",
-    name: "Now Open",
-    category: "promo",
-    layers: posterStack(resolvePalette("ecommerce"), {
-      headline: "Now Open",
-      subhead: "Doors open at 9am",
-      support: "24 Rue Didouche",
-    }, "circle"),
-  },
-  {
-    id: "pr_poster_webinar",
-    name: "Webinar Poster",
-    category: "promo",
-    layers: posterStack(resolvePalette("social"), {
-      headline: "Free Webinar",
-      subhead: "Scale your store in 2026",
-      support: "Thursday, 6pm CET",
-    }),
-  },
-  {
-    id: "pr_price_flash",
-    name: "Flash Sale",
-    category: "promo",
-    layers: priceCorner(resolvePalette("promo"), {
-      headline: "-50%",
-      subhead: "Flash sale, 24 hours only",
-      support: "Discount applied at checkout  ·  ends midnight",
-    }),
-  },
-  {
-    id: "pr_price_two_for_one",
-    name: "Two for One",
-    category: "promo",
-    layers: priceCorner(resolvePalette("ecommerce"), {
-      headline: "2 for 1",
-      subhead: "Every mug, every colour",
-      support: "Add both to the basket  ·  the cheaper one is free",
-    }, "left"),
-  },
-  {
-    id: "pr_split_launch",
-    name: "Launch Block",
-    category: "promo",
-    layers: splitBlock(resolvePalette("promo"), {
-      headline: "Launch",
-      subhead: "The Fennex Studio",
-      support: "Live Tuesday  ·  early access open",
-    }),
-  },
-  {
-    id: "pr_split_last_call",
-    name: "Last Call",
-    category: "promo",
-    layers: splitBlock(resolvePalette("ecommerce"), {
-      headline: "Last Call",
-      subhead: "Sale ends tonight",
-      support: "Midnight, everywhere  ·  no extensions",
+    layers: typeWrap(resolvePalette("promo"), {
+      headline: "Doors Open",
+      subhead: "Thursday 7pm",
+      support: "24 rue de la paix",
     }, "right"),
   },
   {
-    id: "pr_scrim_event",
-    name: "Event Scrim",
+    id: "pr_edge_flash",
+    name: "Flash Block",
     category: "promo",
-    layers: scrimStack(resolvePalette("social"), {
-      headline: "Doors at Eight",
-      subhead: "Rooftop set, city view",
-      support: "Tickets at fennex.studio  ·  limited capacity",
+    layers: hardEdge(resolvePalette("promo"), {
+      headline: "48 Hours",
+      subhead: "Everything reduced",
+      support: "discount applied at checkout",
     }),
+  },
+  {
+    id: "pr_slab_two_for",
+    name: "Two for One",
+    category: "promo",
+    layers: priceSlab(resolvePalette("promo"), {
+      headline: "Every Mug in Store",
+      subhead: "2 for 1",
+      support: "add both, the cheaper one is free",
+    }, "centre"),
   },
 ];
 
@@ -538,13 +354,16 @@ export function templateToLayers(
 
   t.layers.forEach((def, i) => {
     if (def.kind === "image") {
-      const url = def.source === "subject" ? subjectUrl : def.source.url;
+      // "subject-cutout" resolves to the subject here too: the background-free
+      // copy is fetched by the apply path, which passes it in as `subjectUrl`
+      // once the user has agreed to spend the credits.
+      const url = typeof def.source === "string" ? subjectUrl : def.source.url;
       if (!url) return; // no subject to place; skip rather than render an empty box
       out.push({
         id: `tpl-${now}-${i}`,
         type: "image",
         imageUrl: url,
-        name: def.source === "subject" ? "Photo" : "Image",
+        name: def.source === "subject-cutout" ? "Cutout" : def.source === "subject" ? "Photo" : "Image",
         xPct: def.xPct,
         yPct: def.yPct,
         widthPct: def.widthPct,
@@ -568,6 +387,7 @@ export function templateToLayers(
         xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
         heightPct: def.heightPct,
         aspectRatio: shapeAspect(def.shape, !!def.shadow),
+        blend: def.blend,
         // Shape layers are flat vector artwork authored against their box, so
         // they stretch to it rather than crop. This marker is the only thing
         // that makes SceneSvg stretch a layer, and it is set here and nowhere
@@ -596,7 +416,11 @@ export function templateToLayers(
 /** True when a template places the edited photo as a layer — the caller must
  *  then hide the backdrop copy of it, or the subject renders twice. */
 export function placesSubject(defs: TemplateLayerDef[]): boolean {
-  return defs.some((d) => d.kind === "image" && (d as TemplateImageDef).source === "subject");
+  return defs.some((d) => {
+    if (d.kind !== "image") return false;
+    const source = (d as TemplateImageDef).source;
+    return source === "subject" || source === "subject-cutout";
+  });
 }
 
 /**
