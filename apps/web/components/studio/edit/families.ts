@@ -61,8 +61,12 @@ export type FontKey = keyof typeof FONT_ROLES;
 
 /** Approximate advance width per glyph as a fraction of font size. Deliberately
  *  generous: it drives the authoring-time fit guard, where over-estimating
- *  costs a warning and under-estimating ships an overflowing headline. */
-const WIDTH_FACTOR: Record<FontKey, number> = { impact: 0.46, modern: 0.56, support: 0.52 };
+ *  costs a warning and under-estimating ships an overflowing headline.
+ *
+ *  `mono` is the exception: JetBrains Mono is monospaced, so every glyph has
+ *  the same 0.6em advance width. That is not an estimate, so do not "correct"
+ *  it upward the way the others are padded. */
+const WIDTH_FACTOR: Record<FontKey, number> = { impact: 0.46, modern: 0.56, support: 0.52, mono: 0.6 };
 
 function factorFor(fontFamily: string): number {
   for (const key of Object.keys(FONT_ROLES) as FontKey[]) {
