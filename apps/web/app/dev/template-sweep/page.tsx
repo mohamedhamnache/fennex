@@ -8,10 +8,17 @@
  *  it with `rasterizeScene`, and reports mechanical PASS/FAIL per template. The
  *  pictures are for judging design; the checks are for judging correctness.
  *
- *  Every template is swept twice: as authored, and through `brandTemplate` with
- *  a deliberately awkward brand kit, because brand-aware mode recolours the
- *  fields without touching the text colours and can invert a palette's
- *  contrast. That path is what a customer with a brand kit actually sees.
+ *  By default only "as authored" is swept — one render per template, which is
+ *  what a human needs to judge the design. The four brand kits below are an
+ *  additional correctness guard: `brandTemplate` recolours the fields without
+ *  touching the text colours and can invert a palette's contrast, which is what
+ *  a customer with a brand kit actually sees. They are opt-in via the checkboxes
+ *  in the header so the page stays fast to open, but every kit stays reachable
+ *  and unchanged in what it checks.
+ *
+ *  Rendering is progressive: each row is appended to state as its checks and
+ *  rasterisation finish, rather than computing the whole sweep before painting
+ *  anything, so the page never sits blank while 34+ templates resolve.
  *
  *  Not linked from the app and not translated: it is a workbench, not a screen.
  */
@@ -29,6 +36,7 @@ import { measureTextLayer } from "@/components/studio/edit/scene/measure";
 import type { Scene } from "@/components/studio/edit/scene/types";
 import type { TextLayer } from "@/components/studio/edit/EditCanvas";
 import type { BrandKit } from "@/lib/api";
+import { cn } from "@/lib/cn";
 
 const TEST_PHOTO = "/dev/sweep-test-photo.jpg";
 const W = 800;
@@ -46,7 +54,7 @@ function brandKit(colors: string[]): BrandKit {
   };
 }
 
-/** The brand kits every template is swept through, beyond "as authored".
+/** The brand kits every template may be swept through, beyond "as authored".
  *
  *  One fixture is not a guard. The pale kit only exercises the case where a
  *  light field takes dark ink, and any brand colour far from mid-luminance
@@ -68,6 +76,9 @@ const SWEEP_BRANDS: { label: string; kit: BrandKit }[] = [
   // Achromatic mid-grey: the hardest possible field, no readable ink exists.
   { label: "brand: mid grey", kit: brandKit(["#969696", "#8a8a8a"]) },
 ];
+
+/** The always-on baseline variant: the template as its author wrote it. */
+const AS_AUTHORED: { label: string; kit: BrandKit | null } = { label: "as authored", kit: null };
 
 interface Check { name: string; pass: boolean; detail: string }
 interface Row {
@@ -211,48 +222,127 @@ async function checkVariant(
   return { key: `${tpl.id}:${variant}`, id: tpl.id, name: tpl.name, variant, scene, png, checks };
 }
 
-async function sweep(templates: TextTemplate[]): Promise<Row[]> {
-  const out: Row[] = [];
+/** Sweeps every template through every requested variant, calling `onRow` as
+ *  each one finishes rather than collecting into an array first — that is what
+ *  makes the page paint progressively instead of staring at blank space until
+ *  the last of 34+ templates resolves.
+ *
+ *  `isCancelled` is checked before *and* after each await, so a caller whose
+ *  effect has been superseded (dependency change or unmount) stops emitting
+ *  rows the instant it is told to, rather than mid-checkVariant. That is what
+ *  keeps a stale run from appending rows onto a newer run's state: it never
+ *  gets the chance to call `onRow` again once cancelled. */
+async function sweep(
+  templates: TextTemplate[],
+  variants: { label: string; kit: BrandKit | null }[],
+  onRow: (row: Row) => void,
+  isCancelled: () => boolean,
+): Promise<void> {
   for (const tpl of templates) {
-    out.push(await checkVariant(tpl, "as authored", {
-      background: tpl.background ?? null,
-      layers: tpl.layers,
-    }));
-    for (const b of SWEEP_BRANDS) {
-      out.push(await checkVariant(tpl, b.label, brandTemplate(tpl, b.kit)));
+    for (const variant of variants) {
+      if (isCancelled()) return;
+      const resolved: ResolvedTemplate = variant.kit
+        ? brandTemplate(tpl, variant.kit)
+        : { background: tpl.background ?? null, layers: tpl.layers };
+      const row = await checkVariant(tpl, variant.label, resolved);
+      if (isCancelled()) return;
+      onRow(row);
     }
   }
-  return out;
 }
 
 export default function TemplateSweepPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(true);
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+
+  const variants = [
+    AS_AUTHORED,
+    ...SWEEP_BRANDS.filter((b) => selectedBrands.has(b.label)),
+  ];
 
   useEffect(() => {
     let cancelled = false;
+    setRows([]);
+    setBusy(true);
+    setTotal(TEXT_TEMPLATES.length * variants.length);
+
     (async () => {
       // Never read document.fonts before it has settled.
       await document.fonts.ready;
-      const out = await sweep(TEXT_TEMPLATES);
       if (cancelled) return;
-      setRows(out);
-      setBusy(false);
+      await sweep(
+        TEXT_TEMPLATES,
+        variants,
+        // Functional updates: each row appends onto whatever state currently
+        // holds, never a snapshot captured when the effect started, so rows
+        // arriving 100ms apart can't clobber one another.
+        (row) => setRows((prev) => [...prev, row]),
+        () => cancelled,
+      );
+      if (!cancelled) setBusy(false);
     })();
+
     return () => { cancelled = true; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBrands]);
 
   const failures = rows.reduce((n, r) => n + r.checks.filter((c) => !c.pass).length, 0);
+  const allBrandsSelected = selectedBrands.size === SWEEP_BRANDS.length;
+
+  function toggleBrand(label: string) {
+    setSelectedBrands((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  }
+
+  function toggleAllBrands() {
+    setSelectedBrands(allBrandsSelected ? new Set() : new Set(SWEEP_BRANDS.map((b) => b.label)));
+  }
 
   return (
     <div className="min-h-screen bg-background p-8 text-foreground">
-      <header className="mb-8 space-y-2">
+      <header className="mb-8 space-y-3">
         <h1 className="text-2xl font-bold">Template sweep</h1>
         <p className="text-sm text-muted-foreground">
           {busy
-            ? "Waiting for fonts, then rendering and exporting every template…"
-            : `${TEXT_TEMPLATES.length} templates x ${SWEEP_BRANDS.length + 1} variants (as authored, plus ${SWEEP_BRANDS.length} brand kits) = ${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
+            ? `Rendering ${rows.length} / ${total}…`
+            : `${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
         </p>
+
+        <div
+          className="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuenow={rows.length}
+          aria-valuemin={0}
+          aria-valuemax={total}
+        >
+          <div
+            className={cn("h-full bg-primary", !busy && "opacity-50")}
+            style={{ width: total ? `${(rows.length / total) * 100}%` : "0%" }}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-sm">
+          <span className="text-muted-foreground">Brand kit sweep (correctness guard, opt-in):</span>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={allBrandsSelected} onChange={toggleAllBrands} />
+            all kits
+          </label>
+          {SWEEP_BRANDS.map((b) => (
+            <label key={b.label} className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={selectedBrands.has(b.label)}
+                onChange={() => toggleBrand(b.label)}
+              />
+              {b.label}
+            </label>
+          ))}
+        </div>
       </header>
 
       <SweepList rows={rows} />
