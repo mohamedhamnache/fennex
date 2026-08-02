@@ -94,15 +94,29 @@ export type Palette = Record<PaletteRole, string>;
  *  Accent-on-surface is NOT a pair resolvePalette can promise -- in the default
  *  ecommerce palette raw accent on surface measures 3.80:1 -- so a family that
  *  wants coloured type takes this instead of `accent`. It keeps the accent's
- *  hue, which is what carries brand recognition, and moves only its lightness. */
+ *  hue, which is what carries brand recognition, and moves only its lightness.
+ *
+ *  Both directions are tried at every step rather than picking one from
+ *  `relativeLuminance(surface) < 0.5`: "the surface is dark" is not the same
+ *  claim as "the surface is darker than the accent", and for a surface whose
+ *  luminance sits between roughly 0.18 and 0.5 with an accent at or below it
+ *  (e.g. accent #0ea5e9 on surface #22c55e), lightening is the wrong -- and
+ *  mathematically incapable -- direction, so a one-directional walk fails
+ *  before it starts and falls through to a hue-less fallback for a case the
+ *  hue-preserving path exists to serve. Trying both and taking the smallest
+ *  step that clears keeps the shift as subtle as the contrast floor allows. */
 function accentInkFor(accent: string, surface: string): string {
   if (contrastRatio(accent, surface) >= MIN_CONTRAST) return accent;
-  const towardLight = relativeLuminance(surface) < 0.5;
   for (let step = 1; step <= 20; step++) {
-    const candidate = towardLight
-      ? mixHex(accent, "#ffffff", step / 20)
-      : shadeHex(accent, 1 - step / 20);
-    if (contrastRatio(candidate, surface) >= MIN_CONTRAST) return candidate;
+    const lighter = mixHex(accent, "#ffffff", step / 20);
+    const darker = shadeHex(accent, 1 - step / 20);
+    const lighterOk = contrastRatio(lighter, surface) >= MIN_CONTRAST;
+    const darkerOk = contrastRatio(darker, surface) >= MIN_CONTRAST;
+    if (lighterOk && darkerOk) {
+      return contrastRatio(lighter, surface) >= contrastRatio(darker, surface) ? lighter : darker;
+    }
+    if (lighterOk) return lighter;
+    if (darkerOk) return darker;
   }
   return bestTextOn(surface);
 }
@@ -135,7 +149,7 @@ export function resolvePalette(
   };
 }
 
-/** Three type roles. Templates name a role; the role picks the face.
+/** Four type roles. Templates name a role; the role picks the face.
  *
  *  These are complete CSS font stacks, not bare family names, and the quoting
  *  is load-bearing. "Source Sans 3" is not a valid unquoted CSS identifier —
