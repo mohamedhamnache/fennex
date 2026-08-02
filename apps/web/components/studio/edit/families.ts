@@ -326,7 +326,15 @@ export function scrimStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
     photo(),
     ...panel(
       p,
-      { shape: "rect", role: "surface", xPct: 0, yPct: 45, widthPct: 100, heightPct: 55, opacity: 0.82 },
+      // 0.88, not 0.82. A scrim exists to establish a known field over an
+      // unknown photograph, so it has to be opaque enough that the worst
+      // photograph still leaves the type readable. At 0.82 a mid-luminance
+      // brand surface fell to 4.16:1 worst-case (sage #7a9a5a) and 4.46:1
+      // (mid grey) -- both under AA, and no ink colour fixes it: near-black is
+      // already the better of the two candidates there, white being 2.50:1.
+      // 0.86 is the exact threshold; 0.88 leaves margin. editorialBand's band
+      // is already 0.9 and clears for the same reason.
+      { shape: "rect", role: "surface", xPct: 0, yPct: 45, widthPct: 100, heightPct: 55, opacity: 0.88 },
       [
         { text: copy.headline, step: "headline", font: "impact", xPct: 8, yPct: 62, uppercase: true, letterSpacing: -1 },
         { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 76 },
