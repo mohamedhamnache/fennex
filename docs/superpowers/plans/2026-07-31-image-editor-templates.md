@@ -1342,7 +1342,7 @@ Expand `TEXT_TEMPLATES` to 34-38 entries by instantiating families per category,
 | blog | editorialBand x3, scrimStack x2, bento x2, framedInset x1 | 8 |
 | promo | posterStack x3, priceCorner x2, splitBlock x2, scrimStack x1 | 8 |
 
-Total: 34. Vary each instance by palette, copy, and one composition parameter (crop shape, block side, headline position) — not by inventing new structure, which is what produced 31 unrelated one-offs.
+Total: 34. Vary each instance by palette, copy, and one composition parameter (crop shape, block side, headline position) — not by inventing new structure, which is what produced 26 unrelated one-offs.
 
 - [ ] **Step 2: Delete the legacy set**
 
@@ -1379,7 +1379,7 @@ git add apps/web/components/studio/edit/text-templates.ts
 git commit -m "feat(editor): rebuild the template set on the seven families
 
 34 templates across four categories, each a real layout that places the
-edited photo rather than decorating over it. Replaces the 31 flat
+edited photo rather than decorating over it. Replaces the 26 flat
 compositions the old renderer could express."
 ```
 
