@@ -35,17 +35,39 @@ const W = 800;
 const H = 800;
 const PREVIEW = 320;
 
-/** Deliberately awkward: a pale first colour, which brandTemplate cycles into a
- *  field shape while leaving a light `ink` text colour alone. That is the exact
- *  combination the contrast check exists to catch. */
-const SWEEP_BRAND: BrandKit = {
-  logo_url: null,
-  colors: ["#f3d9a4", "#123a6b", "#7f1d3f"],
-  primary_font: null,
-  secondary_font: null,
-  style_rules: null,
-  tone: null,
-};
+function brandKit(colors: string[]): BrandKit {
+  return {
+    logo_url: null,
+    colors,
+    primary_font: null,
+    secondary_font: null,
+    style_rules: null,
+    tone: null,
+  };
+}
+
+/** The brand kits every template is swept through, beyond "as authored".
+ *
+ *  One fixture is not a guard. The pale kit only exercises the case where a
+ *  light field takes dark ink, and any brand colour far from mid-luminance
+ *  agrees with any reasonable text-colour rule, so a template set can pass it
+ *  while being unreadable for most real brands. The three that follow sit in the
+ *  mid-luminance band where the choice is actually contested and where the old
+ *  YIQ rule in `bestTextOn` picked the worse of the two candidates: white on
+ *  #0ea5e9 is 2.77:1 where near-black is 6.81:1. Sweeping all four is what makes
+ *  the contrast check a guard rather than a fixture.
+ *
+ *  Add colours here, never remove them: each row is a case someone measured. */
+const SWEEP_BRANDS: { label: string; kit: BrandKit }[] = [
+  // Pale first colour: brandTemplate cycles it into a field shape.
+  { label: "brand: pale", kit: brandKit(["#f3d9a4", "#123a6b", "#7f1d3f"]) },
+  // Stock Tailwind sky/green — the most likely accidental brand kit there is.
+  { label: "brand: sky/green", kit: brandKit(["#0ea5e9", "#22c55e"]) },
+  // Muted mid-luminance naturals, the band where YIQ and WCAG disagree most.
+  { label: "brand: sage/steel", kit: brandKit(["#7a9a5a", "#6b8fa8"]) },
+  // Achromatic mid-grey: the hardest possible field, no readable ink exists.
+  { label: "brand: mid grey", kit: brandKit(["#969696", "#8a8a8a"]) },
+];
 
 interface Check { name: string; pass: boolean; detail: string }
 interface Row {
@@ -196,7 +218,9 @@ async function sweep(templates: TextTemplate[]): Promise<Row[]> {
       background: tpl.background ?? null,
       layers: tpl.layers,
     }));
-    out.push(await checkVariant(tpl, "brand kit", brandTemplate(tpl, SWEEP_BRAND)));
+    for (const b of SWEEP_BRANDS) {
+      out.push(await checkVariant(tpl, b.label, brandTemplate(tpl, b.kit)));
+    }
   }
   return out;
 }
@@ -236,7 +260,7 @@ export default function TemplateSweepPage() {
         <p className="text-sm text-muted-foreground">
           {busy
             ? "Waiting for fonts, then rendering and exporting every template…"
-            : `${TEXT_TEMPLATES.length} templates x 2 variants = ${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
+            : `${TEXT_TEMPLATES.length} templates x ${SWEEP_BRANDS.length + 1} variants (as authored, plus ${SWEEP_BRANDS.length} brand kits) = ${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
         </p>
         <button
           type="button"

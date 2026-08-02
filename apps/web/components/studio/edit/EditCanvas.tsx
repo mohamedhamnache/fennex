@@ -70,7 +70,13 @@ export interface ImageLayer {
   locked?: boolean;
   blend?: import("./scene/types").BlendMode;
   clip?: import("./scene/types").ClipSpec;
-  fit?: "cover" | "contain";
+  /** How the source fills the layer box.
+   *  - "cover" (the default for any layer that does not say): crop to fill.
+   *  - "contain": letterbox inside the box.
+   *  - "fill": stretch to the box, ignoring the source aspect. Only correct for
+   *    flat vector artwork authored against its box — template shape layers —
+   *    never for a photograph. `templateToLayers` is the only producer. */
+  fit?: "cover" | "contain" | "fill";
 }
 
 export type Layer = TextLayer | ImageLayer;

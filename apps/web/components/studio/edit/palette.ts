@@ -3,14 +3,24 @@ import { shadeHex } from "./shapes";
 
 export type TemplateCategory = "ecommerce" | "social" | "blog" | "promo";
 
-/** Moved verbatim from text-templates.ts to break the import cycle. */
+/** The two candidates `bestTextOn` picks between: near-black ink and white. */
+const DARK_INK = "#111111";
+const LIGHT_INK = "#ffffff";
+
+/** The readable one of near-black and white on `hex`.
+ *
+ *  This is measured with the same WCAG contrast ratio the readability checks
+ *  use, not with the YIQ brightness heuristic it used to use. The two disagree
+ *  across a wide mid-luminance band, and there YIQ picks the *worse* of the two
+ *  candidates: on #0ea5e9, white is 2.77:1 and #111111 is 6.82:1, yet YIQ scores
+ *  that colour at 149.6 and so returns white. Since there are exactly two
+ *  candidates, taking the higher-contrast one is unambiguously correct.
+ *
+ *  Note this is a best-effort choice, not a guarantee: a mid-grey backdrop has
+ *  no readable pairing at all, and the better of two poor options is still poor.
+ *  Callers that must guarantee 4.5:1 have to change the field, not the ink. */
 export function bestTextOn(hex: string): string {
-  const h = hex.replace("#", "");
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  const r = parseInt(full.slice(0, 2), 16) || 0;
-  const g = parseInt(full.slice(2, 4), 16) || 0;
-  const b = parseInt(full.slice(4, 6), 16) || 0;
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#111111" : "#ffffff";
+  return contrastRatio(DARK_INK, hex) >= contrastRatio(LIGHT_INK, hex) ? DARK_INK : LIGHT_INK;
 }
 
 function rgb(hex: string): [number, number, number] {

@@ -113,18 +113,24 @@ function ClipDefs({ scene }: { scene: Scene }) {
 
 /** How an image layer fills its box.
  *
- *  A layer with an explicit height and no fit rule is a stretched plate, not a
- *  photograph: that is what template shape layers are. Slicing one to its box
- *  aspect crops the artwork — a 33x44 rounded panel would be scaled to a square
- *  and trimmed on both sides, taking most of the corner radius with it, so the
- *  cell renders nearly square. The shape SVGs already declare
- *  preserveAspectRatio="none" internally, so stretching is what they expect.
- *  Photos always carry an explicit fit and are unaffected; so is any layer
- *  whose height comes from its aspect ratio, where slice and none agree. */
+ *  Stretching is opt-in and carried by `fit: "fill"`, which only
+ *  `templateToLayers` sets, and only on template shape layers. Those are flat
+ *  vector artwork authored against their box — the shape SVGs already declare
+ *  preserveAspectRatio="none" internally — and slicing one to its box aspect
+ *  crops the artwork: a 33x44 rounded panel is scaled to a square and trimmed on
+ *  both sides, taking most of the corner radius with it, so the cell renders
+ *  nearly square.
+ *
+ *  It deliberately does NOT key off `heightPct`. Every one of the eight resize
+ *  handles writes `heightPct`, and no non-template producer of an image layer
+ *  sets `fit` at all, so keying off the height would make the first drag of a
+ *  resize handle on an added image or an AI-decomposed object silently switch it
+ *  from cropping to stretching. Anything that is or might be a photograph falls
+ *  through to slice. */
 function preserveAspectRatio(layer: ImageLayer): string {
   if (layer.fit === "contain") return "xMidYMid meet";
-  if (layer.fit === "cover") return "xMidYMid slice";
-  return layer.heightPct != null ? "none" : "xMidYMid slice";
+  if (layer.fit === "fill") return "none";
+  return "xMidYMid slice";
 }
 
 function ImageNode({ layer, scene }: { layer: ImageLayer; scene: Scene }) {

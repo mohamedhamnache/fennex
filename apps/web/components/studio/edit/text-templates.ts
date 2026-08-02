@@ -749,6 +749,12 @@ export function templateToLayers(
         xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
         heightPct: def.heightPct,
         aspectRatio: shapeAspect(def.shape, !!def.shadow),
+        // Shape layers are flat vector artwork authored against their box, so
+        // they stretch to it rather than crop. This marker is the only thing
+        // that makes SceneSvg stretch a layer, and it is set here and nowhere
+        // else: an added image or an AI-decomposed object keeps cover-cropping
+        // however the user resizes it.
+        fit: "fill",
         opacity: def.opacity ?? 1,
         rotation: def.rotation,
         visible: true,
