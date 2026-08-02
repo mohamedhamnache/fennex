@@ -662,3 +662,32 @@ async def test_ops_still_measure_when_the_caller_does_not_know_the_size():
 
     assert result["ok"] is True
     dl.assert_awaited()
+
+
+async def test_cheap_cutout_uses_replicate_and_meters_it():
+    """remove_background_cheap must go through Replicate's 851-labs/background-remover
+    (which meters via _replicate_run at MIN_REPLICATE_CREDITS) rather than
+    Remove.bg, which metered the same operation at 191 credits."""
+    from app.services import editing_service
+    from app.services.image_output import ResolutionPolicy
+
+    run = AsyncMock(return_value="https://replicate/cutout.png")
+    fin = AsyncMock(return_value=_stored("https://cdn.test/c.png", 800, 800))
+    with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service.finalize", fin):
+        out = await editing_service.remove_background_cheap("https://cdn.test/in.jpg")
+
+    assert out["ok"] is True
+    assert out["image_url"] == "https://cdn.test/c.png"
+    assert out["width"] == 800
+    assert out["height"] == 800
+    (model, params), kwargs = run.call_args
+    assert model == "851-labs/background-remover"
+    assert kwargs["version"] == (
+        "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc"
+    )
+    assert params["image"] == "https://cdn.test/in.jpg"
+    # The model returns the subject's bounding box, not the source frame, so
+    # asserting PRESERVE would fail every call -- the same defect that broke
+    # generate_shadow until a real prediction caught it.
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.ALLOW_CHANGE
