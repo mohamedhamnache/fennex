@@ -62,6 +62,15 @@ export function compositeOver(fg: string, bg: string, alpha: number): string {
   return toHex([0, 1, 2].map((i) => f[i] * alpha + b[i] * (1 - alpha)) as [number, number, number]);
 }
 
+/** Linear-interpolate between two opaque colours by `t` (0 = `a`, 1 = `b`).
+ *  Same channel arithmetic as `compositeOver`, but between two foreground
+ *  colours rather than a foreground and a backdrop. */
+export function mixHex(a: string, b: string, t: number): string {
+  const ca = rgb(a);
+  const cb = rgb(b);
+  return toHex([0, 1, 2].map((i) => ca[i] * (1 - t) + cb[i] * t) as [number, number, number]);
+}
+
 /** Contrast of `text` against a field of `fieldColor` at `opacity`, assuming
  *  the worst photograph underneath it. A translucent scrim is composited over
  *  both white and black and the poorer of the two ratios is returned, because a
@@ -77,17 +86,34 @@ export function worstCaseContrast(text: string, fieldColor: string, opacity = 1)
 /** WCAG AA for body text. */
 export const MIN_CONTRAST = 4.5;
 
-export type PaletteRole = "surface" | "ink" | "accent" | "onAccent";
+export type PaletteRole = "surface" | "ink" | "accent" | "onAccent" | "accentInk";
 
 export type Palette = Record<PaletteRole, string>;
+
+/** The accent, darkened or lightened until it clears 4.5:1 on `surface`.
+ *  Accent-on-surface is NOT a pair resolvePalette can promise -- in the default
+ *  ecommerce palette raw accent on surface measures 3.80:1 -- so a family that
+ *  wants coloured type takes this instead of `accent`. It keeps the accent's
+ *  hue, which is what carries brand recognition, and moves only its lightness. */
+function accentInkFor(accent: string, surface: string): string {
+  if (contrastRatio(accent, surface) >= MIN_CONTRAST) return accent;
+  const towardLight = relativeLuminance(surface) < 0.5;
+  for (let step = 1; step <= 20; step++) {
+    const candidate = towardLight
+      ? mixHex(accent, "#ffffff", step / 20)
+      : shadeHex(accent, 1 - step / 20);
+    if (contrastRatio(candidate, surface) >= MIN_CONTRAST) return candidate;
+  }
+  return bestTextOn(surface);
+}
 
 /** Per-category fallbacks, used when the org has no brand kit. Chosen for
  *  contrast: every ink/surface and onAccent/accent pair clears 4.5:1. */
 const DEFAULTS: Record<TemplateCategory, Palette> = {
-  ecommerce: { surface: "#0f172a", ink: "#f8fafc", accent: "#e11d48", onAccent: "#ffffff" },
-  social:    { surface: "#1e1b4b", ink: "#f5f3ff", accent: "#f59e0b", onAccent: "#1c1917" },
-  blog:      { surface: "#f8fafc", ink: "#0f172a", accent: "#2563eb", onAccent: "#ffffff" },
-  promo:     { surface: "#18181b", ink: "#fafafa", accent: "#facc15", onAccent: "#18181b" },
+  ecommerce: { surface: "#0f172a", ink: "#f8fafc", accent: "#e11d48", onAccent: "#ffffff", accentInk: accentInkFor("#e11d48", "#0f172a") },
+  social:    { surface: "#1e1b4b", ink: "#f5f3ff", accent: "#f59e0b", onAccent: "#1c1917", accentInk: accentInkFor("#f59e0b", "#1e1b4b") },
+  blog:      { surface: "#f8fafc", ink: "#0f172a", accent: "#2563eb", onAccent: "#ffffff", accentInk: accentInkFor("#2563eb", "#f8fafc") },
+  promo:     { surface: "#18181b", ink: "#fafafa", accent: "#facc15", onAccent: "#18181b", accentInk: accentInkFor("#facc15", "#18181b") },
 };
 
 export function resolvePalette(
@@ -105,6 +131,7 @@ export function resolvePalette(
     ink: bestTextOn(surface),
     accent,
     onAccent: bestTextOn(accent),
+    accentInk: accentInkFor(accent, surface),
   };
 }
 
@@ -126,6 +153,7 @@ export const FONT_ROLES = {
   impact: "'Anton', sans-serif",
   modern: "'Inter', sans-serif",
   support: "'Source Sans 3', sans-serif",
+  mono: "'JetBrains Mono', monospace",
 } as const;
 
 export type FontRole = keyof typeof FONT_ROLES;
