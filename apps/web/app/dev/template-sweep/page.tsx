@@ -18,7 +18,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  TEXT_TEMPLATES, LEGACY_TEXT_TEMPLATES, templateToLayers, brandTemplate,
+  TEXT_TEMPLATES, templateToLayers, brandTemplate,
   type TextTemplate, type ResolvedTemplate,
 } from "@/components/studio/edit/text-templates";
 import { analyzeText } from "@/components/studio/edit/families";
@@ -227,9 +227,7 @@ async function sweep(templates: TextTemplate[]): Promise<Row[]> {
 
 export default function TemplateSweepPage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [legacyRows, setLegacyRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(true);
-  const [showLegacy, setShowLegacy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,13 +242,6 @@ export default function TemplateSweepPage() {
     return () => { cancelled = true; };
   }, []);
 
-  async function runLegacy() {
-    setShowLegacy(true);
-    if (legacyRows.length > 0) return;
-    await document.fonts.ready;
-    setLegacyRows(await sweep(LEGACY_TEXT_TEMPLATES));
-  }
-
   const failures = rows.reduce((n, r) => n + r.checks.filter((c) => !c.pass).length, 0);
 
   return (
@@ -262,27 +253,9 @@ export default function TemplateSweepPage() {
             ? "Waiting for fonts, then rendering and exporting every template…"
             : `${TEXT_TEMPLATES.length} templates x ${SWEEP_BRANDS.length + 1} variants (as authored, plus ${SWEEP_BRANDS.length} brand kits) = ${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
         </p>
-        <button
-          type="button"
-          onClick={runLegacy}
-          className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent"
-        >
-          Also sweep the {LEGACY_TEXT_TEMPLATES.length} legacy templates
-        </button>
       </header>
 
       <SweepList rows={rows} />
-
-      {showLegacy && (
-        <section className="mt-16">
-          <h2 className="mb-4 text-xl font-bold">Legacy templates (pre-family)</h2>
-          <p className="mb-6 text-sm text-muted-foreground">
-            These decorate over the photo instead of placing it, which is what the
-            families replace. Expect them to fail the photo and field checks.
-          </p>
-          <SweepList rows={legacyRows} />
-        </section>
-      )}
     </div>
   );
 }

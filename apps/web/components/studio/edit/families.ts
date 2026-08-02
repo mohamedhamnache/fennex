@@ -318,10 +318,27 @@ export function photo(spec: PhotoSpec = {}): TemplateLayerDef {
 }
 
 // ── The seven families ────────────────────────────────────────────────────────
+//
+// Each family takes exactly one optional composition parameter, defaulting to
+// the arrangement the family was designed around. That single knob is the only
+// structural variation a template may ask for: the whole point of a family is
+// that its instances differ by palette and copy, and a second knob is how you
+// get back to the unrelated one-offs this set replaced. If a variant needs more
+// than one knob it is a different family, not a parameter.
 
-/** Scrim stack: full-bleed photo, a scrim across the lower half, headline
- *  stacked low with the support line under it. The workhorse social crop. */
-export function scrimStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+/** Which half of the frame the scrim covers. */
+export type ScrimAnchor = "bottom" | "top";
+
+/** Scrim stack: full-bleed photo, a scrim across half the frame, headline
+ *  stacked into it with the support line under it. The workhorse social crop. */
+export function scrimStack(
+  p: Palette,
+  copy: FamilyCopy,
+  anchor: ScrimAnchor = "bottom",
+): TemplateLayerDef[] {
+  // The whole block moves together: the type keeps its position inside the
+  // scrim, the scrim changes which half of the photo it sits on.
+  const dy = anchor === "top" ? -45 : 0;
   return [
     photo(),
     ...panel(
@@ -334,19 +351,29 @@ export function scrimStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
       // already the better of the two candidates there, white being 2.50:1.
       // 0.86 is the exact threshold; 0.88 leaves margin. editorialBand's band
       // is already 0.9 and clears for the same reason.
-      { shape: "rect", role: "surface", xPct: 0, yPct: 45, widthPct: 100, heightPct: 55, opacity: 0.88 },
+      { shape: "rect", role: "surface", xPct: 0, yPct: 45 + dy, widthPct: 100, heightPct: 55, opacity: 0.88 },
       [
-        { text: copy.headline, step: "headline", font: "impact", xPct: 8, yPct: 62, uppercase: true, letterSpacing: -1 },
-        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 76 },
-        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 88, opacity: 0.85 },
+        { text: copy.headline, step: "headline", font: "impact", xPct: 8, yPct: 62 + dy, uppercase: true, letterSpacing: -1 },
+        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 76 + dy },
+        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 88 + dy, opacity: 0.85 },
       ],
     ),
   ];
 }
 
-/** Framed inset: the photo clipped to a circle and offset high on a colour
- *  field, with the type occupying the lower third. Editorial, calm. */
-export function framedInset(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+/** How the inset photo is cropped. Both are clips `SceneSvg` renders natively;
+ *  every other `ShapeId` degrades silently to a rounded rect, so the family
+ *  does not offer them. */
+export type InsetCrop = "circle" | "rounded";
+
+/** Framed inset: the photo cropped and offset high on a colour field, with the
+ *  type occupying the lower third. Editorial, calm. */
+export function framedInset(
+  p: Palette,
+  copy: FamilyCopy,
+  crop: InsetCrop = "circle",
+): TemplateLayerDef[] {
+  const clip: ClipSpec = crop === "circle" ? { shape: "circle" } : { roundedPct: 6 };
   return panel(
     p,
     { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
@@ -355,53 +382,81 @@ export function framedInset(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
       { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 10, yPct: 82 },
       { text: copy.support, step: "support", font: "support", xPct: 10, yPct: 90, opacity: 0.8 },
     ],
-    { above: [photo({ xPct: 14, yPct: 8, widthPct: 72, heightPct: 52, clip: { shape: "circle" } })] },
+    { above: [photo({ xPct: 14, yPct: 8, widthPct: 72, heightPct: 52, clip })] },
   );
 }
 
-/** Split block: photo hard against the left edge, a full-height colour block on
- *  the right carrying the whole message. The catalogue layout. */
-export function splitBlock(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+/** Which edge the photo is hard against. */
+export type BlockSide = "left" | "right";
+
+/** Split block: photo hard against one edge, a full-height colour block on the
+ *  other carrying the whole message. The catalogue layout. */
+export function splitBlock(
+  p: Palette,
+  copy: FamilyCopy,
+  side: BlockSide = "left",
+): TemplateLayerDef[] {
+  const photoX = side === "left" ? 0 : 48;
+  const blockX = side === "left" ? 52 : 0;
+  const textX = blockX + 6;
   return [
-    photo({ xPct: 0, yPct: 0, widthPct: 52, heightPct: 100 }),
+    photo({ xPct: photoX, yPct: 0, widthPct: 52, heightPct: 100 }),
     ...panel(
       p,
-      { shape: "rect", role: "surface", xPct: 52, yPct: 0, widthPct: 48, heightPct: 100 },
+      { shape: "rect", role: "surface", xPct: blockX, yPct: 0, widthPct: 48, heightPct: 100 },
       [
-        { text: copy.headline, step: "headline", font: "impact", xPct: 58, yPct: 26, uppercase: true, letterSpacing: -1 },
-        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 58, yPct: 44 },
-        { text: copy.support, step: "support", font: "support", xPct: 58, yPct: 56, opacity: 0.85 },
+        { text: copy.headline, step: "headline", font: "impact", xPct: textX, yPct: 26, uppercase: true, letterSpacing: -1 },
+        { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: textX, yPct: 44 },
+        { text: copy.support, step: "support", font: "support", xPct: textX, yPct: 56, opacity: 0.85 },
       ],
     ),
   ];
 }
 
-/** Editorial band: full-bleed photo with an opaque caption band across the
- *  foot. The headline steps down to subhead size because the band is the
+/** Which edge the caption band runs along. */
+export type BandEdge = "foot" | "head";
+
+/** Editorial band: full-bleed photo with an opaque caption band across one
+ *  edge. The headline steps down to subhead size because the band is the
  *  emphasis, not the type. */
-export function editorialBand(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+export function editorialBand(
+  p: Palette,
+  copy: FamilyCopy,
+  edge: BandEdge = "foot",
+): TemplateLayerDef[] {
+  const bandY = edge === "foot" ? 72 : 0;
   return [
     photo(),
     ...panel(
       p,
-      { shape: "rect", role: "surface", xPct: 0, yPct: 72, widthPct: 100, heightPct: 28, opacity: 1 },
+      { shape: "rect", role: "surface", xPct: 0, yPct: bandY, widthPct: 100, heightPct: 28, opacity: 1 },
       [
-        { text: copy.headline, step: "subhead", font: "modern", xPct: 8, yPct: 76 },
-        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: 88, opacity: 0.8 },
+        { text: copy.headline, step: "subhead", font: "modern", xPct: 8, yPct: bandY + 4 },
+        { text: copy.support, step: "support", font: "support", xPct: 8, yPct: bandY + 16, opacity: 0.8 },
       ],
     ),
   ];
 }
+
+/** Which top corner the seal sits in. */
+export type BadgeCorner = "right" | "left";
 
 /** Price corner: full-bleed photo, a scalloped seal in the accent carrying the
  *  offer, and a foot band for the product line. */
-export function priceCorner(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+export function priceCorner(
+  p: Palette,
+  copy: FamilyCopy,
+  corner: BadgeCorner = "right",
+): TemplateLayerDef[] {
+  // `center: true` measures against the seal's own box, so moving the seal
+  // carries its type with it.
+  const sealX = corner === "right" ? 66 : 6;
   return [
     photo(),
     ...panel(
       p,
-      { shape: "seal", role: "accent", xPct: 66, yPct: 8, widthPct: 28, shadow: true },
-      [{ text: copy.headline, step: "subhead", font: "impact", xPct: 66, yPct: 19.5, center: true, uppercase: true }],
+      { shape: "seal", role: "accent", xPct: sealX, yPct: 8, widthPct: 28, shadow: true },
+      [{ text: copy.headline, step: "subhead", font: "impact", xPct: sealX, yPct: 19.5, center: true, uppercase: true }],
     ),
     ...panel(
       p,
@@ -414,9 +469,17 @@ export function priceCorner(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
   ];
 }
 
+/** How the poster plate is cropped. */
+export type PlateShape = "rounded" | "circle";
+
 /** Poster stack: type first. A display headline owns the top third, the photo
- *  sits under it as a rounded plate, support closes the page. */
-export function posterStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+ *  sits under it as a plate, support closes the page. */
+export function posterStack(
+  p: Palette,
+  copy: FamilyCopy,
+  plate: PlateShape = "rounded",
+): TemplateLayerDef[] {
+  const clip: ClipSpec = plate === "circle" ? { shape: "circle" } : { roundedPct: 4 };
   return panel(
     p,
     { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
@@ -425,26 +488,33 @@ export function posterStack(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
       { text: copy.subhead, step: "subhead", font: "modern", emphasis: true, xPct: 8, yPct: 92 },
       { text: copy.support, step: "support", font: "support", xPct: 62, yPct: 94, opacity: 0.8 },
     ],
-    { above: [photo({ xPct: 10, yPct: 34, widthPct: 80, heightPct: 56, clip: { roundedPct: 4 } })] },
+    { above: [photo({ xPct: 10, yPct: 34, widthPct: 80, heightPct: 56, clip })] },
   );
 }
 
 /** Bento: a tall rounded photo cell beside two stacked cells, one accent and
  *  one surface. Reads as a modern card grid rather than a poster. */
-export function bento(p: Palette, copy: FamilyCopy): TemplateLayerDef[] {
+export function bento(
+  p: Palette,
+  copy: FamilyCopy,
+  side: BlockSide = "left",
+): TemplateLayerDef[] {
+  const photoX = side === "left" ? 4 : 40;
+  const cellX = side === "left" ? 63 : 4;
+  const textX = cellX + 3;
   return [
-    photo({ xPct: 4, yPct: 4, widthPct: 56, heightPct: 92, clip: { roundedPct: 5 } }),
+    photo({ xPct: photoX, yPct: 4, widthPct: 56, heightPct: 92, clip: { roundedPct: 5 } }),
     ...panel(
       p,
-      { shape: "rounded", role: "accent", xPct: 63, yPct: 4, widthPct: 33, heightPct: 44 },
-      [{ text: copy.headline, step: "headline", font: "impact", xPct: 66, yPct: 16, uppercase: true, letterSpacing: -1 }],
+      { shape: "rounded", role: "accent", xPct: cellX, yPct: 4, widthPct: 33, heightPct: 44 },
+      [{ text: copy.headline, step: "headline", font: "impact", xPct: textX, yPct: 16, uppercase: true, letterSpacing: -1 }],
     ),
     ...panel(
       p,
-      { shape: "rounded", role: "surface", xPct: 63, yPct: 52, widthPct: 33, heightPct: 44 },
+      { shape: "rounded", role: "surface", xPct: cellX, yPct: 52, widthPct: 33, heightPct: 44 },
       [
-        { text: copy.subhead, step: "subhead", font: "modern", xPct: 66, yPct: 60 },
-        { text: copy.support, step: "support", font: "support", xPct: 66, yPct: 74, opacity: 0.85 },
+        { text: copy.subhead, step: "subhead", font: "modern", xPct: textX, yPct: 60 },
+        { text: copy.support, step: "support", font: "support", xPct: textX, yPct: 74, opacity: 0.85 },
       ],
     ),
   ];

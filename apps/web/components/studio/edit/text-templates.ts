@@ -78,535 +78,72 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
   { id: "promo", label: "Promo" },
 ];
 
-const base = { type: "text" as const, visible: true, bold: false, italic: false };
-
-const BEBAS = "'Bebas Neue', cursive";
-const MONT = "Montserrat, sans-serif";
-const JAKARTA = "'Plus Jakarta Sans', sans-serif";
-const INTER = "Inter, sans-serif";
-const PLAYFAIR = "'Playfair Display', serif";
-
-/** The pre-family set: decoration painted over a photo the template could not
- *  place. Kept so the sweep can compare the old flat compositions against the
- *  new ones; it is not offered in the picker. */
-export const LEGACY_TEXT_TEMPLATES: TextTemplate[] = [
-  // ── Ecommerce ──────────────────────────────────────────────────────────────
-  {
-    id: "flash_sale",
-    name: "Flash Sale",
-    category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "FLASH SALE", xPct: 8, yPct: 16, fontSize: 76, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 5, outlineWidth: 3, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "-40%", xPct: 10, yPct: 40, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, bgColor: "#dc2626", shadow: false,
-      },
-      {
-        ...base, text: "Today only · While stocks last", xPct: 10, yPct: 60, fontSize: 20,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.92,
-      },
-    ],
-  },
-  {
-    id: "new_in",
-    name: "New In",
-    category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "NEW IN", xPct: 8, yPct: 8, fontSize: 18, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "The Autumn Collection", xPct: 8, yPct: 78, fontSize: 46,
-        color: "#ffffff", fontFamily: PLAYFAIR, fontRole: "heading", shadow: true,
-      },
-    ],
-  },
-  {
-    id: "price_drop",
-    name: "Price Drop",
-    category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "PRICE DROP", xPct: 8, yPct: 9, fontSize: 20, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#16a34a", shadow: false,
-      },
-      {
-        ...base, text: "NOW $29.99", xPct: 46, yPct: 84, fontSize: 38, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading",
-        bgColor: "#111111", letterSpacing: 1, shadow: false,
-      },
-    ],
-  },
-  {
-    id: "free_shipping",
-    name: "Free Shipping",
-    category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "FREE SHIPPING ON ORDERS $50+", xPct: 12, yPct: 89, fontSize: 22, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#0f172a", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "bestseller",
-    name: "Bestseller",
-    category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "#1 BESTSELLER", xPct: 8, yPct: 8, fontSize: 20, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#f59e0b", shadow: false,
-      },
-      {
-        ...base, text: "Loved by 10,000+ customers", xPct: 8, yPct: 18, fontSize: 18,
-        color: "#ffffff", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
-  },
-
-  // ── Social ─────────────────────────────────────────────────────────────────
-  {
-    id: "giveaway",
-    name: "Giveaway",
-    category: "social",
-    layers: [
-      {
-        ...base, text: "GIVEAWAY", xPct: 14, yPct: 26, fontSize: 80, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 8, outlineWidth: 3, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "Tag a friend to enter", xPct: 24, yPct: 52, fontSize: 22, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body", bgColor: "#ffffff", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "quote_card",
-    name: "Quote",
-    category: "social",
-    layers: [
-      {
-        ...base, text: "“Design is intelligence made visible.”", xPct: 10, yPct: 38,
-        fontSize: 34, italic: true, color: "#ffffff",
-        fontFamily: PLAYFAIR, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "— ALINA WHEELER", xPct: 12, yPct: 54, fontSize: 16,
-        color: "#e2e8f0", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, shadow: true, opacity: 0.85,
-      },
-    ],
-  },
-  {
-    id: "reel_hook",
-    name: "Reel Hook",
-    category: "social",
-    layers: [
-      {
-        ...base, text: "WAIT FOR IT…", xPct: 28, yPct: 8, fontSize: 24, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "heading",
-        uppercase: true, letterSpacing: 2, bgColor: "#111111", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "tips_header",
-    name: "Tips Header",
-    category: "social",
-    layers: [
-      {
-        ...base, text: "5", xPct: 8, yPct: 14, fontSize: 120, bold: true,
-        color: "#facc15", fontFamily: BEBAS, fontRole: "heading",
-        outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "QUICK TIPS", xPct: 24, yPct: 24, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 6, shadow: true,
-      },
-      {
-        ...base, text: "to level up your content", xPct: 24, yPct: 42, fontSize: 20,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
-  },
-  {
-    id: "link_in_bio",
-    name: "Link in Bio",
-    category: "social",
-    layers: [
-      {
-        ...base, text: "LINK IN BIO", xPct: 32, yPct: 86, fontSize: 24, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#ffffff", shadow: false,
-      },
-    ],
-  },
-
-  // ── Blog ───────────────────────────────────────────────────────────────────
-  {
-    id: "article_cover",
-    name: "Article Cover",
-    category: "blog",
-    layers: [
-      {
-        ...base, text: "PRODUCTIVITY", xPct: 8, yPct: 10, fontSize: 16, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "Deep Work in a Distracted World", xPct: 8, yPct: 64, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "8 min read · by Fennex", xPct: 8, yPct: 82, fontSize: 16,
-        color: "#cbd5e1", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
-  },
-  {
-    id: "how_to",
-    name: "How-To",
-    category: "blog",
-    layers: [
-      {
-        ...base, text: "HOW TO", xPct: 8, yPct: 50, fontSize: 20, bold: true,
-        color: "#facc15", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 6, shadow: true,
-      },
-      {
-        ...base, text: "Grow an audience from zero", xPct: 8, yPct: 58, fontSize: 40, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: true,
-      },
-    ],
-  },
-  {
-    id: "listicle",
-    name: "Listicle",
-    category: "blog",
-    layers: [
-      {
-        ...base, text: "07", xPct: 8, yPct: 8, fontSize: 110, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "ways to grow your brand", xPct: 27, yPct: 26, fontSize: 30, italic: true,
-        color: "#ffffff", fontFamily: PLAYFAIR, fontRole: "body", shadow: true,
-      },
-    ],
-  },
-  {
-    id: "versus",
-    name: "Versus",
-    category: "blog",
-    layers: [
-      {
-        ...base, text: "SEO vs. PAID ADS", xPct: 10, yPct: 38, fontSize: 54, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 3, outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "Which one is right for you?", xPct: 12, yPct: 56, fontSize: 20,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
-  },
-
-  // ── Promo / events ─────────────────────────────────────────────────────────
-  {
-    id: "webinar",
-    name: "Webinar",
-    category: "promo",
-    layers: [
-      {
-        ...base, text: "FREE WEBINAR", xPct: 8, yPct: 10, fontSize: 20, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "Scale Your Store in 2026", xPct: 8, yPct: 24, fontSize: 42, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "Thursday · 6 PM CET · Live Q&A", xPct: 8, yPct: 40, fontSize: 18,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
-  },
-  {
-    id: "coming_soon",
-    name: "Coming Soon",
-    category: "promo",
-    layers: [
-      {
-        ...base, text: "COMING SOON", xPct: 16, yPct: 42, fontSize: 64, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 10, outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-    ],
-  },
-  {
-    id: "grand_opening",
-    name: "Grand Opening",
-    category: "promo",
-    layers: [
-      {
-        ...base, text: "GRAND OPENING", xPct: 12, yPct: 28, fontSize: 60, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 5, outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "MARCH 15", xPct: 34, yPct: 50, fontSize: 22, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#ffffff", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "last_chance",
-    name: "Last Chance",
-    category: "promo",
-    layers: [
-      {
-        ...base, text: "LAST CHANCE", xPct: 8, yPct: 8, fontSize: 26, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "heading",
-        uppercase: true, letterSpacing: 2, bgColor: "#dc2626", lockColor: true, shadow: false,
-      },
-      {
-        ...base, text: "Sale ends tonight at midnight", xPct: 8, yPct: 19, fontSize: 20,
-        color: "#ffffff", fontFamily: INTER, fontRole: "body", shadow: true,
-      },
-    ],
-  },
-
-  // ── Full designs: background + objects + text ─────────────────────────────
-  {
-    id: "sale_splash",
-    name: "Sale Splash",
-    category: "ecommerce",
-    background: { type: "gradient", colors: ["#dc2626", "#f97316"], angle: 135 },
-    layers: [
-      { kind: "shape", shape: "circle", color: "#ffffff", xPct: 64, yPct: -18, widthPct: 52, opacity: 0.12 },
-      { kind: "shape", shape: "circle", color: "#ffffff", xPct: -14, yPct: 64, widthPct: 42, opacity: 0.1 },
-      { kind: "shape", shape: "star", color: "#facc15", xPct: 79, yPct: 10, widthPct: 14, rotation: 16, shadow: true },
-      {
-        ...base, text: "MEGA SALE", xPct: 8, yPct: 24, fontSize: 84, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 5, shadow: true,
-      },
-      {
-        ...base, text: "-50% TODAY", xPct: 10, yPct: 54, fontSize: 30, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#ffffff", shadow: false,
-      },
-      {
-        ...base, text: "Free returns · Ends midnight", xPct: 10, yPct: 74, fontSize: 18,
-        color: "#ffffff", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.92,
-      },
-    ],
-  },
-  {
-    id: "product_card",
-    name: "Product Card",
-    category: "ecommerce",
-    background: { type: "gradient", colors: ["#0f172a", "#1e293b"], angle: 160 },
-    layers: [
-      { kind: "shape", shape: "ring", color: "#38bdf8", xPct: 62, yPct: 6, widthPct: 30, opacity: 0.35 },
-      { kind: "shape", shape: "rounded", color: "#ffffff", xPct: 0, yPct: 55, widthPct: 100, opacity: 0.97, shadow: true },
-      {
-        ...base, text: "Aurora Desk Lamp", xPct: 12, yPct: 64, fontSize: 34, bold: true,
-        color: "#111111", fontFamily: JAKARTA, fontRole: "heading", lockColor: true, shadow: false,
-      },
-      {
-        ...base, text: "$49", xPct: 76, yPct: 64, fontSize: 30, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "Warm light · 3 modes · USB-C", xPct: 12, yPct: 78, fontSize: 16,
-        color: "#475569", fontFamily: INTER, fontRole: "body", lockColor: true, shadow: false,
-      },
-    ],
-  },
-  {
-    id: "insta_quote",
-    name: "Insta Quote",
-    category: "social",
-    background: { type: "gradient", colors: ["#7c3aed", "#ec4899"], angle: 135 },
-    layers: [
-      { kind: "shape", shape: "ring", color: "#ffffff", xPct: 62, yPct: 6, widthPct: 34, opacity: 0.3 },
-      { kind: "shape", shape: "circle", color: "#ffffff", xPct: -10, yPct: 74, widthPct: 34, opacity: 0.12 },
-      {
-        ...base, text: "“Create more than you consume.”", xPct: 10, yPct: 36,
-        fontSize: 36, italic: true, color: "#ffffff",
-        fontFamily: PLAYFAIR, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "— @FENNEX", xPct: 12, yPct: 56, fontSize: 16,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 4, shadow: true, opacity: 0.85,
-      },
-    ],
-  },
-  {
-    id: "story_promo",
-    name: "Story Promo",
-    category: "social",
-    background: { type: "gradient", colors: ["#0ea5e9", "#6366f1"], angle: 180 },
-    layers: [
-      { kind: "shape", shape: "blob", color: "#ffffff", xPct: -12, yPct: 58, widthPct: 66, opacity: 0.14 },
-      { kind: "shape", shape: "line", color: "#facc15", xPct: 10, yPct: 18, widthPct: 16 },
-      {
-        ...base, text: "SUMMER DROP", xPct: 10, yPct: 22, fontSize: 62, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 4, shadow: true,
-      },
-      {
-        ...base, text: "SHOP NOW", xPct: 12, yPct: 44, fontSize: 24, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#ffffff", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "blog_cover_bold",
-    name: "Bold Blog Cover",
-    category: "blog",
-    background: { type: "solid", colors: ["#0f172a"] },
-    layers: [
-      { kind: "shape", shape: "circle", color: "#facc15", xPct: 74, yPct: -20, widthPct: 44, opacity: 0.18 },
-      {
-        ...base, text: "GUIDE", xPct: 8, yPct: 12, fontSize: 16, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#facc15", shadow: false,
-      },
-      { kind: "shape", shape: "line", color: "#facc15", xPct: 8, yPct: 50, widthPct: 14 },
-      {
-        ...base, text: "The Complete SEO Playbook", xPct: 8, yPct: 55, fontSize: 46, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: false,
-      },
-      {
-        ...base, text: "12 min read · Updated for 2026", xPct: 8, yPct: 78, fontSize: 16,
-        color: "#94a3b8", fontFamily: INTER, fontRole: "body", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "webinar_card",
-    name: "Webinar Card",
-    category: "promo",
-    background: { type: "gradient", colors: ["#0f172a", "#334155"], angle: 120 },
-    layers: [
-      { kind: "shape", shape: "ring", color: "#38bdf8", xPct: 70, yPct: -16, widthPct: 46, opacity: 0.25 },
-      { kind: "shape", shape: "circle", color: "#38bdf8", xPct: 86, yPct: 72, widthPct: 12, opacity: 0.3 },
-      {
-        ...base, text: "FREE WEBINAR", xPct: 8, yPct: 12, fontSize: 18, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#38bdf8", shadow: false,
-      },
-      {
-        ...base, text: "Scale Your Store in 2026", xPct: 8, yPct: 30, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: false,
-      },
-      {
-        ...base, text: "Thursday · 6 PM CET · Live Q&A", xPct: 8, yPct: 50, fontSize: 18,
-        color: "#cbd5e1", fontFamily: INTER, fontRole: "body", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "minimal_frame",
-    name: "Minimal Frame",
-    category: "social",
-    background: { type: "solid", colors: ["#111827"] },
-    layers: [
-      { kind: "shape", shape: "frame", color: "#ffffff", xPct: 18, yPct: 8, widthPct: 64, opacity: 0.9 },
-      {
-        ...base, text: "LESS IS MORE", xPct: 30, yPct: 44, fontSize: 30, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "heading",
-        uppercase: true, letterSpacing: 8, shadow: false,
-      },
-    ],
-  },
-  {
-    id: "discount_badge",
-    name: "Discount Badge",
-    category: "ecommerce",
-    // No background — an overlay that sits on your product photo
-    layers: [
-      { kind: "shape", shape: "star", color: "#facc15", xPct: 61, yPct: 1, widthPct: 37, rotation: 12, shadow: true },
-      {
-        ...base, text: "-30%", xPct: 72, yPct: 16, fontSize: 34, bold: true,
-        color: "#111111", fontFamily: JAKARTA, fontRole: "heading", lockColor: true, shadow: false,
-      },
-      {
-        ...base, text: "LIMITED", xPct: 71, yPct: 34, fontSize: 14, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, lockColor: true, shadow: false,
-      },
-    ],
-  },
-];
-
 // ── The composition families ─────────────────────────────────────────────────
 
-/** One template per family — the checkpoint set. Every entry places the edited
- *  photo through an image layer, so these are compositions rather than
- *  decoration laid over whatever the user happened to upload. Colours come from
- *  `resolvePalette` roles, never from literals. */
+/** The shipped set: 34 templates built from the seven composition families.
+ *
+ *  Every entry places the edited photo through an image layer, so these are
+ *  compositions rather than decoration laid over whatever the user happened to
+ *  upload. Colours come from `resolvePalette` roles, never from literals.
+ *
+ *  Three axes of variation, and no fourth. An instance differs from its
+ *  siblings by:
+ *    1. its palette — one of the four category palettes, each of which
+ *       guarantees ink/surface and onAccent/accent at 4.5:1;
+ *    2. its copy;
+ *    3. its family's single composition parameter (scrim anchor, crop, block
+ *       side, band edge, badge corner, plate shape).
+ *  Nothing here invents structure. A template that needed its own geometry
+ *  would be the twenty-seventh unrelated one-off this set was written to
+ *  replace.
+ *
+ *  `category` is the picker filter — what the template is *for*. The palette
+ *  argument is a colour decision and is deliberately allowed to differ from it,
+ *  which is how a category gets more than one colour scheme without a hex
+ *  literal appearing in this file. All four palettes carry the same contrast
+ *  guarantee, so any pairing is safe.
+ *
+ *  Copy is authored to the family's field width. `panel()` warns in development
+ *  when a run overflows its field; the widths that matter are roughly 20
+ *  characters for a scrimStack or framedInset headline, 15 for posterStack, 10
+ *  for the priceCorner seal, 9 for splitBlock and 6 for a bento cell. Lengthen
+ *  a headline past that and the guard will say so.
+ */
 export const TEXT_TEMPLATES: TextTemplate[] = [
+  // ── Ecommerce ──────────────────────────────────────────────────────────────
   {
-    id: "fam_scrim_stack",
-    name: "Scrim Stack",
-    category: "social",
-    layers: scrimStack(resolvePalette("social"), {
-      headline: "Golden Hour",
-      subhead: "The autumn edit",
-      support: "Shot on location  ·  Fennex Studio",
-    }),
-  },
-  {
-    id: "fam_framed_inset",
-    name: "Framed Inset",
-    category: "blog",
-    layers: framedInset(resolvePalette("blog"), {
-      headline: "Deep Work",
-      subhead: "Focus in a distracted world",
-      support: "8 min read  ·  by Fennex",
-    }),
-  },
-  {
-    id: "fam_split_block",
-    name: "Split Block",
+    id: "ec_split_new_in",
+    name: "New Arrival",
     category: "ecommerce",
     layers: splitBlock(resolvePalette("ecommerce"), {
-      headline: "New In",
+      headline: "Just In",
       subhead: "Aurora Desk Lamp",
       support: "Free returns  ·  2-year warranty",
     }),
   },
   {
-    id: "fam_editorial_band",
-    name: "Editorial Band",
-    category: "blog",
-    layers: editorialBand(resolvePalette("blog"), {
-      headline: "How we rebuilt the studio",
-      support: "Field notes  ·  Issue 04",
+    id: "ec_split_restock",
+    name: "Back in Stock",
+    category: "ecommerce",
+    layers: splitBlock(resolvePalette("blog"), {
+      headline: "Restock",
+      subhead: "Linen Throw, Sand",
+      support: "Sold out twice  ·  limited run",
+    }, "right"),
+  },
+  {
+    id: "ec_split_bundle",
+    name: "Bundle Block",
+    category: "ecommerce",
+    layers: splitBlock(resolvePalette("promo"), {
+      headline: "Bundle",
+      subhead: "Two for 60",
+      support: "Mix any two  ·  ends Sunday",
     }),
   },
   {
-    id: "fam_price_corner",
-    name: "Price Corner",
+    id: "ec_price_markdown",
+    name: "Markdown Seal",
     category: "ecommerce",
     layers: priceCorner(resolvePalette("ecommerce"), {
       headline: "-40%",
@@ -615,8 +152,230 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     }),
   },
   {
-    id: "fam_poster_stack",
-    name: "Poster Stack",
+    id: "ec_price_from",
+    name: "From Price",
+    category: "ecommerce",
+    layers: priceCorner(resolvePalette("blog"), {
+      headline: "From $29",
+      subhead: "Everyday ceramics, made to be used",
+      support: "Dishwasher safe  ·  free delivery over $50",
+    }, "left"),
+  },
+  {
+    id: "ec_price_clearance",
+    name: "Clearance Seal",
+    category: "ecommerce",
+    layers: priceCorner(resolvePalette("promo"), {
+      headline: "-70%",
+      subhead: "End of season clearance",
+      support: "Final markdown  ·  sale items are not returnable",
+    }),
+  },
+  {
+    id: "ec_bento_sale",
+    name: "Sale Bento",
+    category: "ecommerce",
+    layers: bento(resolvePalette("ecommerce"), {
+      headline: "Sale",
+      subhead: "Half price",
+      support: "Ends Sunday at midnight",
+    }),
+  },
+  {
+    id: "ec_bento_gift",
+    name: "Gift Bento",
+    category: "ecommerce",
+    layers: bento(resolvePalette("social"), {
+      headline: "Gifts",
+      subhead: "Under $50",
+      support: "Wrapped free, shipped fast",
+    }, "right"),
+  },
+  {
+    id: "ec_scrim_lookbook",
+    name: "Lookbook",
+    category: "ecommerce",
+    layers: scrimStack(resolvePalette("ecommerce"), {
+      headline: "The Winter Edit",
+      subhead: "Twelve pieces, one palette",
+      support: "Shop the full collection at fennex.studio",
+    }),
+  },
+
+  // ── Social ─────────────────────────────────────────────────────────────────
+  {
+    id: "so_scrim_golden_hour",
+    name: "Golden Hour",
+    category: "social",
+    layers: scrimStack(resolvePalette("social"), {
+      headline: "Golden Hour",
+      subhead: "The autumn edit",
+      support: "Shot on location  ·  Fennex Studio",
+    }),
+  },
+  {
+    id: "so_scrim_hook",
+    name: "Reel Hook",
+    category: "social",
+    layers: scrimStack(resolvePalette("promo"), {
+      headline: "Wait For It",
+      subhead: "Three things nobody tells you",
+      support: "Full breakdown in the caption",
+    }, "top"),
+  },
+  {
+    id: "so_scrim_behind",
+    name: "Behind the Build",
+    category: "social",
+    layers: scrimStack(resolvePalette("blog"), {
+      headline: "Behind the Build",
+      subhead: "Day 41 of shipping in public",
+      support: "New clips every Friday",
+    }),
+  },
+  {
+    id: "so_frame_quote",
+    name: "Quote Card",
+    category: "social",
+    layers: framedInset(resolvePalette("social"), {
+      headline: "Make It Obvious",
+      subhead: "Habits beat motivation",
+      support: "From the Fennex newsletter  ·  Issue 12",
+    }),
+  },
+  {
+    id: "so_frame_intro",
+    name: "Meet the Team",
+    category: "social",
+    layers: framedInset(resolvePalette("blog"), {
+      headline: "Meet Nadia",
+      subhead: "Lead designer, joined 2024",
+      support: "Say hello in the comments",
+    }, "rounded"),
+  },
+  {
+    id: "so_frame_giveaway",
+    name: "Giveaway",
+    category: "social",
+    layers: framedInset(resolvePalette("promo"), {
+      headline: "Giveaway",
+      subhead: "Win the full studio kit",
+      support: "Follow, like and tag a friend  ·  closes Friday",
+    }),
+  },
+  {
+    id: "so_poster_drop",
+    name: "Drop Poster",
+    category: "social",
+    layers: posterStack(resolvePalette("social"), {
+      headline: "Summer Drop",
+      subhead: "Saturday, 10am",
+      support: "fennex.studio",
+    }),
+  },
+  {
+    id: "so_poster_live",
+    name: "Going Live",
+    category: "social",
+    layers: posterStack(resolvePalette("promo"), {
+      headline: "We Go Live",
+      subhead: "Thursday at 6pm CET",
+      support: "Set a reminder",
+    }, "circle"),
+  },
+  {
+    id: "so_band_caption",
+    name: "Caption Band",
+    category: "social",
+    layers: editorialBand(resolvePalette("social"), {
+      headline: "Five things we learned this month",
+      support: "Swipe for the full thread",
+    }),
+  },
+
+  // ── Blog ───────────────────────────────────────────────────────────────────
+  {
+    id: "bl_band_field_notes",
+    name: "Field Notes",
+    category: "blog",
+    layers: editorialBand(resolvePalette("blog"), {
+      headline: "How we rebuilt the studio",
+      support: "Field notes  ·  Issue 04",
+    }),
+  },
+  {
+    id: "bl_band_guide",
+    name: "Guide Header",
+    category: "blog",
+    layers: editorialBand(resolvePalette("social"), {
+      headline: "A practical guide to page speed",
+      support: "12 min read  ·  updated for 2026",
+    }, "head"),
+  },
+  {
+    id: "bl_band_interview",
+    name: "Interview",
+    category: "blog",
+    layers: editorialBand(resolvePalette("promo"), {
+      headline: "An interview with Nadia Berger",
+      support: "Craft series  ·  part three",
+    }),
+  },
+  {
+    id: "bl_scrim_deep_work",
+    name: "Deep Work",
+    category: "blog",
+    layers: scrimStack(resolvePalette("blog"), {
+      headline: "Deep Work",
+      subhead: "Focus in a distracted world",
+      support: "8 min read  ·  by Fennex",
+    }),
+  },
+  {
+    id: "bl_scrim_case_study",
+    name: "Case Study",
+    category: "blog",
+    layers: scrimStack(resolvePalette("ecommerce"), {
+      headline: "Case Study",
+      subhead: "From 400 to 40,000 visits",
+      support: "What we changed, in the order we changed it",
+    }, "top"),
+  },
+  {
+    id: "bl_bento_series",
+    name: "Series Card",
+    category: "blog",
+    layers: bento(resolvePalette("blog"), {
+      headline: "Part 3",
+      subhead: "SEO basics",
+      support: "A six-part beginner series",
+    }),
+  },
+  {
+    id: "bl_bento_recap",
+    name: "Weekly Recap",
+    category: "blog",
+    layers: bento(resolvePalette("social"), {
+      headline: "Recap",
+      subhead: "Week 32",
+      support: "Everything we shipped",
+    }, "right"),
+  },
+  {
+    id: "bl_frame_essay",
+    name: "Essay Cover",
+    category: "blog",
+    layers: framedInset(resolvePalette("blog"), {
+      headline: "The Slow Web",
+      subhead: "In praise of smaller sites",
+      support: "Essay  ·  9 min read",
+    }, "rounded"),
+  },
+
+  // ── Promo ──────────────────────────────────────────────────────────────────
+  {
+    id: "pr_poster_big_drop",
+    name: "Big Drop",
     category: "promo",
     layers: posterStack(resolvePalette("promo"), {
       headline: "Big Drop",
@@ -625,13 +384,73 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     }),
   },
   {
-    id: "fam_bento",
-    name: "Bento",
-    category: "social",
-    layers: bento(resolvePalette("social"), {
-      headline: "Sale",
-      subhead: "Half price",
-      support: "Ends Sunday at midnight",
+    id: "pr_poster_opening",
+    name: "Now Open",
+    category: "promo",
+    layers: posterStack(resolvePalette("ecommerce"), {
+      headline: "Now Open",
+      subhead: "Doors open at 9am",
+      support: "24 Rue Didouche",
+    }, "circle"),
+  },
+  {
+    id: "pr_poster_webinar",
+    name: "Webinar Poster",
+    category: "promo",
+    layers: posterStack(resolvePalette("social"), {
+      headline: "Free Webinar",
+      subhead: "Scale your store in 2026",
+      support: "Thursday, 6pm CET",
+    }),
+  },
+  {
+    id: "pr_price_flash",
+    name: "Flash Sale",
+    category: "promo",
+    layers: priceCorner(resolvePalette("promo"), {
+      headline: "-50%",
+      subhead: "Flash sale, 24 hours only",
+      support: "Discount applied at checkout  ·  ends midnight",
+    }),
+  },
+  {
+    id: "pr_price_two_for_one",
+    name: "Two for One",
+    category: "promo",
+    layers: priceCorner(resolvePalette("ecommerce"), {
+      headline: "2 for 1",
+      subhead: "Every mug, every colour",
+      support: "Add both to the basket  ·  the cheaper one is free",
+    }, "left"),
+  },
+  {
+    id: "pr_split_launch",
+    name: "Launch Block",
+    category: "promo",
+    layers: splitBlock(resolvePalette("promo"), {
+      headline: "Launch",
+      subhead: "The Fennex Studio",
+      support: "Live Tuesday  ·  early access open",
+    }),
+  },
+  {
+    id: "pr_split_last_call",
+    name: "Last Call",
+    category: "promo",
+    layers: splitBlock(resolvePalette("ecommerce"), {
+      headline: "Last Call",
+      subhead: "Sale ends tonight",
+      support: "Midnight, everywhere  ·  no extensions",
+    }, "right"),
+  },
+  {
+    id: "pr_scrim_event",
+    name: "Event Scrim",
+    category: "promo",
+    layers: scrimStack(resolvePalette("social"), {
+      headline: "Doors at Eight",
+      subhead: "Rooftop set, city view",
+      support: "Tickets at fennex.studio  ·  limited capacity",
     }),
   },
 ];
