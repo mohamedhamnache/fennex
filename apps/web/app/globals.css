@@ -1,6 +1,13 @@
 /* Geist (UI/body) is loaded via next/font in app/layout.tsx and exposed as
-   --font-sans. Fraunces (display) + the brand-kit faces are loaded here. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Plus+Jakarta+Sans:wght@600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&family=Bebas+Neue&family=Roboto:wght@400;700&display=swap');
+   --font-sans. Fraunces (display) + the brand-kit faces are loaded here.
+   Anton + Source Sans 3 + JetBrains Mono are the editor's impact/support/mono
+   template faces (see components/studio/edit/palette.ts FONT_ROLES) — loaded
+   here rather than via next/font/google so the registered font-family stays
+   the literal "Anton" / "Source Sans 3" / "JetBrains Mono" that FONT_ROLES
+   and canvas rendering reference; next/font/google hashes the family name,
+   which document.fonts and ctx.font lookups by literal name would silently
+   miss. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Plus+Jakarta+Sans:wght@600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&family=Bebas+Neue&family=Anton&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Roboto:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;

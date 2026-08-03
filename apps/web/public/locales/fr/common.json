@@ -1380,6 +1380,9 @@
       "hintOptional": "Laissez vide pour utiliser la zone automatique gratuite. Nommer un objet le cible précisément et vous demande de confirmer la zone mise en évidence au préalable.",
       "hintRequired": "Nous ne savons pas où intervenir sans un nom ici ou un masque peint."
     },
+    "templates": {
+      "search": "Rechercher des modèles"
+    },
     "score": {
       "title": "Score",
       "rescore": "Recalculer",
@@ -1405,7 +1408,14 @@
     },
     "done": "Terminer",
     "saving": "Enregistrement...",
-    "saveFailed": "Réessayer"
+    "saveFailed": "Réessayer",
+    "burnFailed": "Impossible d'aplatir les calques.",
+    "cutout": {
+      "title": "Détourer l'arrière-plan ?",
+      "body": "Ce modèle place le sujet avec son arrière-plan supprimé — une étape IA qui coûte {{count}} crédits.",
+      "confirm": "Détourer et appliquer",
+      "cancel": "Annuler"
+    }
   },
   "mirage": {
     "header": "Mirage · Artisan d'image",

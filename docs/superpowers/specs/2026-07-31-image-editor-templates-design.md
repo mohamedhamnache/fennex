@@ -32,7 +32,7 @@ pixel-for-pixel:
   letter-spacing and manual shadow.
 
 Adding one capability means writing it twice and keeping the two in sync by hand.
-That, not a lack of design ambition, is why the 31 templates are shapes on a colour
+That, not a lack of design ambition, is why the 26 templates are shapes on a colour
 field. Redesigning them within the current limits would only rearrange the same
 primitives.
 
@@ -184,7 +184,7 @@ A family is a layout archetype; the category supplies copy slots and palette.
 | Bento | Two or three photo slots plus a text cell | Ecommerce, blog |
 
 Seven families across four categories yields roughly 34–38 templates, comparable in
-count to today's 31 but each a real layout. The existing four categories
+count to today's 26 but each a real layout. The existing four categories
 (ecommerce, social, blog, promo) are unchanged.
 
 ### Typography
@@ -274,14 +274,14 @@ substitutes for a test suite and is cheap because the renderer is declarative.
 
 **Backwards compatibility.** Every new field (`source`, `clip`, `blend`, `fit`) is
 optional, so layers already saved against existing images render unchanged. Replacing
-the 31 templates does not touch saved work.
+the 26 templates does not touch saved work.
 
 ---
 
 ## 6. Order of work
 
 1. Build the SVG scene renderer. Prove equivalence by rendering each of the current
-   31 templates through both the new renderer and the existing DOM path, and
+   26 templates through both the new renderer and the existing DOM path, and
    confirming visually that they match. The current set is the fixture; it is not
    replaced until step 5.
 2. Switch the export path to rasterize that scene. Delete the canvas-2D

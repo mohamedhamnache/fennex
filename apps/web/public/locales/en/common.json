@@ -1477,6 +1477,9 @@
       "hintOptional": "Leave blank to use the free automatic region. Naming an object targets it precisely, and asks you to confirm the highlighted area first.",
       "hintRequired": "We don't know where to work without a name here or a painted mask."
     },
+    "templates": {
+      "search": "Search templates"
+    },
     "score": {
       "title": "Score",
       "rescore": "Re-score",
@@ -1502,7 +1505,14 @@
     },
     "done": "Done",
     "saving": "Saving...",
-    "saveFailed": "Retry save"
+    "saveFailed": "Retry save",
+    "burnFailed": "Could not flatten the layers.",
+    "cutout": {
+      "title": "Cut out the background?",
+      "body": "This template places the subject with its background removed — an AI step that costs {{count}} credits.",
+      "confirm": "Cut out and apply",
+      "cancel": "Cancel"
+    }
   },
   "mirage": {
     "header": "Mirage · Image Artisan",

@@ -526,18 +526,25 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { SceneSvg } from "./SceneSvg";
 import { inlineSceneImages } from "./inlineImages";
+import { fontString } from "./measure";
 import type { Scene } from "./types";
 import type { TextLayer } from "../EditCanvas";
 
 /** Wait for every font the scene actually uses. Rasterising before a display
  *  face has loaded silently renders the export in a fallback font: the preview
- *  is right and the download is wrong, with no error anywhere. */
+ *  is right and the download is wrong, with no error anywhere.
+ *
+ *  Build the shorthand with fontString from measure.ts — never by hand.
+ *  document.fonts.load matches on the FULL shorthand including font-style, so
+ *  a string that omits "italic" requests the normal face and leaves an italic
+ *  layer unwaited. Playfair Display ships its italic as a separate file and is
+ *  already used by shipped templates, so this is reachable, not theoretical. */
 async function waitForFonts(scene: Scene): Promise<void> {
   const families = new Set<string>();
   for (const layer of scene.layers) {
     if (layer.type === "text") {
       const t = layer as TextLayer;
-      families.add(`${t.bold ? "bold " : ""}${t.fontSize}px ${t.fontFamily}`);
+      families.add(fontString(t, t.fontSize));
     }
   }
   await Promise.all([...families].map((f) => document.fonts.load(f)));
@@ -1335,7 +1342,7 @@ Expand `TEXT_TEMPLATES` to 34-38 entries by instantiating families per category,
 | blog | editorialBand x3, scrimStack x2, bento x2, framedInset x1 | 8 |
 | promo | posterStack x3, priceCorner x2, splitBlock x2, scrimStack x1 | 8 |
 
-Total: 34. Vary each instance by palette, copy, and one composition parameter (crop shape, block side, headline position) — not by inventing new structure, which is what produced 31 unrelated one-offs.
+Total: 34. Vary each instance by palette, copy, and one composition parameter (crop shape, block side, headline position) — not by inventing new structure, which is what produced 26 unrelated one-offs.
 
 - [ ] **Step 2: Delete the legacy set**
 
@@ -1372,7 +1379,7 @@ git add apps/web/components/studio/edit/text-templates.ts
 git commit -m "feat(editor): rebuild the template set on the seven families
 
 34 templates across four categories, each a real layout that places the
-edited photo rather than decorating over it. Replaces the 31 flat
+edited photo rather than decorating over it. Replaces the 26 flat
 compositions the old renderer could express."
 ```
 

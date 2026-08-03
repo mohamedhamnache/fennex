@@ -1380,6 +1380,9 @@
       "hintOptional": "Leer lassen, um den kostenlosen automatischen Bereich zu verwenden. Die Benennung eines Objekts zielt präzise darauf ab und bittet dich, den markierten Bereich zuerst zu bestätigen.",
       "hintRequired": "Ohne einen Namen hier oder eine gemalte Maske wissen wir nicht, wo wir arbeiten sollen."
     },
+    "templates": {
+      "search": "Vorlagen durchsuchen"
+    },
     "score": {
       "title": "Score",
       "rescore": "Neu bewerten",
@@ -1405,7 +1408,14 @@
     },
     "done": "Fertig",
     "saving": "Wird gespeichert...",
-    "saveFailed": "Erneut versuchen"
+    "saveFailed": "Erneut versuchen",
+    "burnFailed": "Die Ebenen konnten nicht reduziert werden.",
+    "cutout": {
+      "title": "Hintergrund freistellen?",
+      "body": "Diese Vorlage platziert das Motiv mit entferntem Hintergrund — ein KI-Schritt, der {{count}} Credits kostet.",
+      "confirm": "Freistellen und anwenden",
+      "cancel": "Abbrechen"
+    }
   },
   "mirage": {
     "header": "Mirage · Bild-Künstler",

@@ -1,11 +1,20 @@
-import type { TextLayer } from "./EditCanvas";
+import type { Layer, TextLayer } from "./EditCanvas";
 import type { BrandKit } from "@/lib/api";
-import { type ShapeId, type TemplateBackground, shadeHex } from "./shapes";
+import {
+  type ShapeId, type TemplateBackground,
+  shadeHex, shapeAspect, shapeDataUri, backgroundDataUri,
+} from "./shapes";
+import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
+import type { BlendMode, ClipSpec } from "./scene/types";
+import {
+  typeWrap, duotoneWash, offsetStack, ruleGrid, hardEdge, priceSlab, negativeSpace,
+  findUnbackedText, analyzeText, isWashMode, washFor, type FamilyId,
+} from "./families";
 
 /** A reusable design composition: optional background, shape objects, and text.
  *  Positions are canvas percentages; font sizes assume an ~800px-wide canvas
  *  and are scaled to the real canvas on apply. */
-export type TemplateCategory = "ecommerce" | "social" | "blog" | "promo";
+export { bestTextOn, type TemplateCategory };
 
 export interface TemplateTextDef extends Omit<TextLayer, "id"> {
   kind?: "text";
@@ -22,6 +31,10 @@ export interface TemplateShapeDef {
   xPct: number;
   yPct: number;
   widthPct: number;
+  /** Explicit height as % of canvas height. Omit to derive it from the shape's
+   *  own aspect ratio — which is right for badges but wrong for the panels and
+   *  bands the composition families build out of `rect`. */
+  heightPct?: number;
   opacity?: number;
   rotation?: number;
   lockColor?: boolean;
@@ -29,14 +42,42 @@ export interface TemplateShapeDef {
   color2?: string;
   gradient?: boolean;
   shadow?: boolean;
+  /** Composite this field against what is already painted. Only a field with no
+   *  type on it may blend — see `panel()` in families.ts. */
+  blend?: BlendMode;
 }
 
-export type TemplateLayerDef = TemplateTextDef | TemplateShapeDef;
+export interface TemplateImageDef {
+  kind: "image";
+  /** "subject" places the image being edited. "subject-cutout" places it with
+   *  its background removed, which is a paid operation and so is gated behind a
+   *  consent dialog before the template applies. An explicit url places a fixed
+   *  asset. */
+  source: "subject" | "subject-cutout" | { url: string };
+  xPct: number;
+  yPct: number;
+  widthPct: number;
+  heightPct?: number;
+  fit?: "cover" | "contain";
+  clip?: ClipSpec;
+  blend?: BlendMode;
+  opacity?: number;
+  rotation?: number;
+}
+
+export type TemplateLayerDef = TemplateTextDef | TemplateShapeDef | TemplateImageDef;
 
 export interface TextTemplate {
   id: string;
   name: string;
   category: TemplateCategory;
+  /** Which composition family produced `layers`. Bookkeeping, not rendered:
+   *  it is how the capability-coverage sweep groups templates back to the
+   *  family that built them, so it can tell "no instance of this family in
+   *  the shipped set earns a capability" from "no template happens to
+   *  today" — see `templateFingerprint` below for the sibling problem this
+   *  solves on the distinctness axis. */
+  family: FamilyId;
   /** Full-bleed background layer. Omit for overlays that sit on a photo. */
   background?: TemplateBackground | null;
   layers: TemplateLayerDef[];
@@ -50,500 +91,601 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
   { id: "promo", label: "Promo" },
 ];
 
-const base = { type: "text" as const, visible: true, bold: false, italic: false };
+// ── The composition families ─────────────────────────────────────────────────
 
-const BEBAS = "'Bebas Neue', cursive";
-const MONT = "Montserrat, sans-serif";
-const JAKARTA = "'Plus Jakarta Sans', sans-serif";
-const INTER = "Inter, sans-serif";
-const PLAYFAIR = "'Playfair Display', serif";
-
+/** The shipped set, built from the seven composition families.
+ *
+ *  Every entry places the edited photo through an image layer, so these are
+ *  compositions rather than decoration laid over whatever the user happened to
+ *  upload. Colours come from `resolvePalette` roles, never from literals.
+ *
+ *  Three axes of variation, and no fourth. An instance differs from its
+ *  siblings by:
+ *    1. its palette — one of the four category palettes, each of which
+ *       guarantees ink/surface, onAccent/accent and accentInk/surface at
+ *       4.5:1;
+ *    2. its copy;
+ *    3. its family's single composition parameter (type side, wash blend,
+ *       plate spread, grid side, edge anchor, slab place, space anchor).
+ *  Nothing here invents structure. A template that needed its own geometry
+ *  would be the twenty-seventh unrelated one-off this set was written to
+ *  replace.
+ *
+ *  `category` is the picker filter — what the template is *for*. The palette
+ *  argument is a colour decision and is deliberately allowed to differ from it,
+ *  which is how a category gets more than one colour scheme without a hex
+ *  literal appearing in this file. All four palettes carry the same contrast
+ *  guarantee, so any pairing is safe.
+ *
+ *  Copy is authored to each family's character budget, which is stated in that
+ *  family's doc comment in `families.ts`. `panel()` warns in development when a
+ *  run overruns its field.
+ *
+ *  DISTINCTNESS IS STRUCTURAL, NOT LUCKY. `templateFingerprint` blanks the copy
+ *  and hashes everything else, so two instances of one family that share a
+ *  palette AND a composition parameter are the same template with different
+ *  words — that is exactly how the set this replaced shipped seven identical
+ *  pairs while appearing to hold 34 entries. The rule the set below follows is
+ *  therefore stronger than the check: no (family, palette, parameter) triple is
+ *  used twice, anywhere, across any category. Each family has eight such
+ *  triples available and spends at most five of them, so a new template always
+ *  has an unused one to take. Do not add an instance that reuses a triple and
+ *  relies on a centred run's copy-dependent x offset to squeak past the sweep.
+ *
+ *  Copy carries no brand of ours. A customer applying one of these is
+ *  publishing under their own name, so nothing here names a product, a domain
+ *  or a company — the sweep's brand-neutrality check fails the build on the
+ *  string "fennex" in any casing, in any field, including `name`.
+ */
 export const TEXT_TEMPLATES: TextTemplate[] = [
   // ── Ecommerce ──────────────────────────────────────────────────────────────
   {
-    id: "flash_sale",
-    name: "Flash Sale",
+    id: "ec_slab_lamp",
+    name: "Markdown Slab",
     category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "FLASH SALE", xPct: 8, yPct: 16, fontSize: 76, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 5, outlineWidth: 3, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "-40%", xPct: 10, yPct: 40, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, bgColor: "#dc2626", shadow: false,
-      },
-      {
-        ...base, text: "Today only · While stocks last", xPct: 10, yPct: 60, fontSize: 20,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.92,
-      },
-    ],
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("ecommerce"), {
+      headline: "Aurora Desk Lamp",
+      subhead: "-40%",
+      support: "Today only, and free returns for thirty days",
+    }),
   },
   {
-    id: "new_in",
-    name: "New In",
+    id: "ec_slab_bundle",
+    name: "Bundle Slab",
     category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "NEW IN", xPct: 8, yPct: 8, fontSize: 18, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "The Autumn Collection", xPct: 8, yPct: 78, fontSize: 46,
-        color: "#ffffff", fontFamily: PLAYFAIR, fontRole: "heading", shadow: true,
-      },
-    ],
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("ecommerce"), {
+      headline: "Ceramic Mug Set",
+      subhead: "2 for 1",
+      support: "Add both to the basket and the second one is free",
+    }, "centre"),
   },
   {
-    id: "price_drop",
-    name: "Price Drop",
+    id: "ec_slab_outlet",
+    name: "Outlet Slab",
     category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "PRICE DROP", xPct: 8, yPct: 9, fontSize: 20, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#16a34a", shadow: false,
-      },
-      {
-        ...base, text: "NOW $29.99", xPct: 46, yPct: 84, fontSize: 38, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading",
-        bgColor: "#111111", letterSpacing: 1, shadow: false,
-      },
-    ],
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("blog"), {
+      headline: "Trail Runner 3",
+      subhead: "$89",
+      // Dollars, so US spelling. Register is picked per template rather than
+      // per set: "colourway" beside "$89" is nobody's storefront.
+      support: "Last season's color, same outsole and the same fit",
+    }),
   },
   {
-    id: "free_shipping",
-    name: "Free Shipping",
+    id: "ec_grid_lookbook",
+    name: "Lookbook Grid",
     category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "FREE SHIPPING ON ORDERS $50+", xPct: 12, yPct: 89, fontSize: 22, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#0f172a", shadow: false,
-      },
-    ],
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("ecommerce"), {
+      headline: "The Winter Edit",
+      subhead: "Twelve pieces cut from one palette",
+      support: "Atelier / No 12",
+    }, "right"),
   },
   {
-    id: "bestseller",
-    name: "Bestseller",
+    id: "ec_grid_care",
+    name: "Care Guide Grid",
     category: "ecommerce",
-    layers: [
-      {
-        ...base, text: "#1 BESTSELLER", xPct: 8, yPct: 8, fontSize: 20, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#f59e0b", shadow: false,
-      },
-      {
-        ...base, text: "Loved by 10,000+ customers", xPct: 8, yPct: 18, fontSize: 18,
-        color: "#ffffff", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("ecommerce"), {
+      headline: "How to Wash Linen",
+      subhead: "Cold water, flat dry, no softener",
+      support: "Care guide / 4 steps",
+    }),
+  },
+  {
+    id: "ec_edge_restock",
+    name: "Restock Block",
+    category: "ecommerce",
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("blog"), {
+      headline: "Back in Stock",
+      subhead: "The linen throw, in sand",
+      support: "It sold out twice. This run is four hundred pieces.",
+    }, "bottom"),
+  },
+  {
+    id: "ec_edge_landed",
+    name: "Just Landed Block",
+    category: "ecommerce",
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("ecommerce"), {
+      headline: "Just Landed",
+      subhead: "The all-weather parka",
+      support: "Taped seams, recycled shell, cut wide enough to layer.",
+    }),
+  },
+  {
+    id: "ec_stack_studio",
+    name: "Studio Stack",
+    category: "ecommerce",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("ecommerce"), {
+      headline: "Made in the Studio",
+      subhead: "Batch 07",
+      support: "Thrown, glazed and fired here",
+    }),
+  },
+  {
+    id: "ec_wrap_bespoke",
+    // A made-to-order voice, not a second seasonal-drop one. This and
+    // `so_wrap_season` are both typeWrap and sit next to each other under the
+    // All tab; "New Arrivals / Autumn Drop 02" beside "New Season / Spring 26"
+    // read as one template written twice even though the geometry differs.
+    name: "Made to Order Wrap",
+    category: "ecommerce",
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("ecommerce"), {
+      headline: "Cut to Order",
+      subhead: "Six-Week Lead Time",
+      support: "Choose your cloth, we cut on Monday",
+    }),
   },
 
   // ── Social ─────────────────────────────────────────────────────────────────
   {
-    id: "giveaway",
-    name: "Giveaway",
+    id: "so_wrap_season",
+    name: "Season Wrap",
     category: "social",
-    layers: [
-      {
-        ...base, text: "GIVEAWAY", xPct: 14, yPct: 26, fontSize: 80, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 8, outlineWidth: 3, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "Tag a friend to enter", xPct: 24, yPct: 52, fontSize: 22, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body", bgColor: "#ffffff", shadow: false,
-      },
-    ],
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("social"), {
+      headline: "New Season",
+      subhead: "Spring 26",
+      support: "Doors open Friday at nine",
+    }),
   },
   {
-    id: "quote_card",
-    name: "Quote",
+    id: "so_wrap_milestone",
+    name: "Milestone Wrap",
     category: "social",
-    layers: [
-      {
-        ...base, text: "“Design is intelligence made visible.”", xPct: 10, yPct: 38,
-        fontSize: 34, italic: true, color: "#ffffff",
-        fontFamily: PLAYFAIR, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "— ALINA WHEELER", xPct: 12, yPct: 54, fontSize: 16,
-        color: "#e2e8f0", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, shadow: true, opacity: 0.85,
-      },
-    ],
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("social"), {
+      headline: "We Hit 10K",
+      subhead: "Giveaway Time",
+      support: "Follow, tag a friend, we draw Sunday",
+    }, "right"),
   },
   {
-    id: "reel_hook",
-    name: "Reel Hook",
+    id: "so_wash_golden",
+    name: "Golden Hour Wash",
     category: "social",
-    layers: [
-      {
-        ...base, text: "WAIT FOR IT…", xPct: 28, yPct: 8, fontSize: 24, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "heading",
-        uppercase: true, letterSpacing: 2, bgColor: "#111111", shadow: false,
-      },
-    ],
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("social"), {
+      headline: "Golden Hour",
+      subhead: "The autumn edit, shot on location",
+      support: "Three looks, one roll of film",
+    }),
   },
   {
-    id: "tips_header",
-    name: "Tips Header",
+    id: "so_wash_release",
+    // Blog palette, in the Social tab, on purpose. This and `so_wash_golden`
+    // are the same family at the same variant in the same tab, so the palette
+    // is the ONLY thing separating them and it has to do real work: on the
+    // promo palette it did not, because promo and social are both dark and
+    // their washes measured 47/441 apart in RGB — two amber-washed photos with
+    // the same centred stack. Blue on near-white puts 311/441 between them.
+    name: "Release Wash",
     category: "social",
-    layers: [
-      {
-        ...base, text: "5", xPct: 8, yPct: 14, fontSize: 120, bold: true,
-        color: "#facc15", fontFamily: BEBAS, fontRole: "heading",
-        outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "QUICK TIPS", xPct: 24, yPct: 24, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 6, shadow: true,
-      },
-      {
-        ...base, text: "to level up your content", xPct: 24, yPct: 42, fontSize: 20,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("blog"), {
+      headline: "Night Shift",
+      subhead: "Twelve tracks for the late commute",
+      support: "Out now wherever you stream",
+    }),
   },
   {
-    id: "link_in_bio",
-    name: "Link in Bio",
+    id: "so_stack_build",
+    name: "Build Log Stack",
     category: "social",
-    layers: [
-      {
-        ...base, text: "LINK IN BIO", xPct: 32, yPct: 86, fontSize: 24, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#ffffff", shadow: false,
-      },
-    ],
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("social"), {
+      headline: "Behind the Build",
+      subhead: "Day 41",
+      support: "New clips every Friday",
+    }, "wide"),
+  },
+  {
+    id: "so_stack_market",
+    // Same reasoning as `so_wash_release`, and the same tab: this and
+    // `so_stack_build` are offsetStack/wide side by side, so the palette is
+    // their only separation. It takes the blog palette and `bl_stack_retro`
+    // takes promo, which is the swap rather than a straight move — every
+    // (family, palette, variant) triple stays used at most once.
+    //
+    // Blog specifically, not ecommerce. `offsetStack` paints a full-bleed
+    // surface field and spends the accent only on a subhead, so what separates
+    // two instances is almost entirely their SURFACE. Three of the four
+    // palettes are dark and their surfaces sit close together — ecommerce vs
+    // social measures 36/441, closer than the promo pairing this replaces —
+    // whereas blog is the one light surface, at 358/441. Picking on accent
+    // distance alone would have made this pair worse while appearing to fix it.
+    name: "Market Recap Stack",
+    category: "social",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("blog"), {
+      headline: "Market Day Recap",
+      subhead: "Stall 12",
+      support: "Same spot again next Saturday",
+    }, "wide"),
+  },
+  {
+    id: "so_grid_carousel",
+    name: "Carousel Grid",
+    category: "social",
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("social"), {
+      headline: "Five Slow Reads",
+      subhead: "What the team finished this month",
+      support: "Swipe / 1 of 5",
+    }),
+  },
+  {
+    id: "so_edge_live",
+    name: "Going Live Block",
+    category: "social",
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("social"), {
+      headline: "We Go Live",
+      subhead: "Wednesday at 8pm CET",
+      support: "Bring questions. We are answering all of them on air.",
+    }),
+  },
+  {
+    id: "so_space_quote",
+    name: "Quote Card",
+    category: "social",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("social"), {
+      headline: "Finish One Thing",
+      subhead: "On the tyranny of the open tab",
+      support: "This week's letter, three minutes end to end",
+    }, "low"),
   },
 
   // ── Blog ───────────────────────────────────────────────────────────────────
   {
-    id: "article_cover",
-    name: "Article Cover",
+    id: "bl_wrap_series",
+    name: "Series Wrap",
     category: "blog",
-    layers: [
-      {
-        ...base, text: "PRODUCTIVITY", xPct: 8, yPct: 10, fontSize: 16, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "Deep Work in a Distracted World", xPct: 8, yPct: 64, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "8 min read · by Fennex", xPct: 8, yPct: 82, fontSize: 16,
-        color: "#cbd5e1", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("blog"), {
+      headline: "Ship It Weekly",
+      subhead: "Season Two",
+      support: "A new build log every Tuesday",
+    }, "right"),
   },
   {
-    id: "how_to",
-    name: "How-To",
+    id: "bl_wash_slowweb",
+    name: "Essay Wash",
     category: "blog",
-    layers: [
-      {
-        ...base, text: "HOW TO", xPct: 8, yPct: 50, fontSize: 20, bold: true,
-        color: "#facc15", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 6, shadow: true,
-      },
-      {
-        ...base, text: "Grow an audience from zero", xPct: 8, yPct: 58, fontSize: 40, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: true,
-      },
-    ],
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("blog"), {
+      headline: "The Slow Web",
+      subhead: "In praise of smaller, quieter sites",
+      support: "Essay / 9 min read",
+    }, "stagger"),
   },
   {
-    id: "listicle",
-    name: "Listicle",
+    id: "bl_wash_interview",
+    name: "Interview Wash",
     category: "blog",
-    layers: [
-      {
-        ...base, text: "07", xPct: 8, yPct: 8, fontSize: 110, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "ways to grow your brand", xPct: 27, yPct: 26, fontSize: 30, italic: true,
-        color: "#ffffff", fontFamily: PLAYFAIR, fontRole: "body", shadow: true,
-      },
-    ],
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("social"), {
+      headline: "After Burnout",
+      subhead: "What changed when we cut the roadmap",
+      support: "Interview / 14 min read",
+    }, "stagger"),
   },
   {
-    id: "versus",
-    name: "Versus",
+    id: "bl_grid_pagespeed",
+    name: "Guide Grid",
     category: "blog",
-    layers: [
-      {
-        ...base, text: "SEO vs. PAID ADS", xPct: 10, yPct: 38, fontSize: 54, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 3, outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "Which one is right for you?", xPct: 12, yPct: 56, fontSize: 20,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("blog"), {
+      headline: "Page Speed",
+      subhead: "A practical guide for small teams",
+      support: "Updated for 2026",
+    }),
+  },
+  {
+    id: "bl_grid_migration",
+    name: "Deep Dive Grid",
+    category: "blog",
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("blog"), {
+      headline: "Leaving the Monolith",
+      subhead: "Eighteen months, one service at a time",
+      support: "Engineering / Part 1",
+    }, "right"),
+  },
+  {
+    id: "bl_stack_notes",
+    name: "Field Notes Stack",
+    category: "blog",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("blog"), {
+      headline: "Field Notes",
+      subhead: "Issue 04",
+      support: "Everything we shipped in July",
+    }),
+  },
+  {
+    id: "bl_stack_retro",
+    // Promo palette, the other half of the `so_stack_market` swap. It shares
+    // the Blog tab with `bl_stack_notes`, which is the same family at the
+    // OTHER variant, so palette is not carrying the separation here.
+    name: "Retro Stack",
+    category: "blog",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("promo"), {
+      headline: "The Q3 Retro",
+      subhead: "Team of nine",
+      support: "What we would not do again",
+    }, "wide"),
+  },
+  {
+    id: "bl_space_profile",
+    name: "Profile Cover",
+    category: "blog",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("blog"), {
+      headline: "In Conversation",
+      // No invented interviewee. Sample copy naming a person who does not
+      // exist is copy a customer can publish unedited and be wrong.
+      subhead: "With the maker who threw this",
+      support: "Craft series, part three of six",
+    }),
+  },
+  {
+    id: "bl_space_column",
+    name: "Column Cover",
+    category: "blog",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("blog"), {
+      headline: "The Long Read",
+      subhead: "On buying less, keeping it longer",
+      support: "Column / Saturday edition",
+    }, "low"),
   },
 
-  // ── Promo / events ─────────────────────────────────────────────────────────
+  // ── Promo ──────────────────────────────────────────────────────────────────
   {
-    id: "webinar",
-    name: "Webinar",
+    id: "pr_wrap_opening",
+    name: "Opening Wrap",
     category: "promo",
-    layers: [
-      {
-        ...base, text: "FREE WEBINAR", xPct: 8, yPct: 10, fontSize: 20, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "Scale Your Store in 2026", xPct: 8, yPct: 24, fontSize: 42, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "Thursday · 6 PM CET · Live Q&A", xPct: 8, yPct: 40, fontSize: 18,
-        color: "#e2e8f0", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.9,
-      },
-    ],
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("promo"), {
+      headline: "Doors Open",
+      subhead: "Thursday, 7pm",
+      // Not a real street. The address a customer has to replace should be
+      // obviously theirs to fill in, not someone else's shopfront.
+      support: "Second floor, above the bakery",
+    }),
   },
   {
-    id: "coming_soon",
-    name: "Coming Soon",
+    id: "pr_wash_festival",
+    name: "Festival Wash",
     category: "promo",
-    layers: [
-      {
-        ...base, text: "COMING SOON", xPct: 16, yPct: 42, fontSize: 64, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 10, outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-    ],
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("promo"), {
+      headline: "Two Nights",
+      subhead: "Live sets from eleven local acts",
+      support: "Tickets from twenty euros, doors at seven",
+    }, "stagger"),
   },
   {
-    id: "grand_opening",
-    name: "Grand Opening",
+    id: "pr_edge_flash",
+    name: "Flash Block",
     category: "promo",
-    layers: [
-      {
-        ...base, text: "GRAND OPENING", xPct: 12, yPct: 28, fontSize: 60, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 5, outlineWidth: 2, outlineColor: "#0f172a", shadow: true,
-      },
-      {
-        ...base, text: "MARCH 15", xPct: 34, yPct: 50, fontSize: 22, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#ffffff", shadow: false,
-      },
-    ],
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("promo"), {
+      headline: "48 Hours Only",
+      subhead: "Everything reduced",
+      support: "The discount is applied at checkout. No code needed.",
+    }),
   },
   {
-    id: "last_chance",
-    name: "Last Chance",
+    id: "pr_edge_lastcall",
+    name: "Last Call Block",
     category: "promo",
-    layers: [
-      {
-        ...base, text: "LAST CHANCE", xPct: 8, yPct: 8, fontSize: 26, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "heading",
-        uppercase: true, letterSpacing: 2, bgColor: "#dc2626", lockColor: true, shadow: false,
-      },
-      {
-        ...base, text: "Sale ends tonight at midnight", xPct: 8, yPct: 19, fontSize: 20,
-        color: "#ffffff", fontFamily: INTER, fontRole: "body", shadow: true,
-      },
-    ],
-  },
-
-  // ── Full designs: background + objects + text ─────────────────────────────
-  {
-    id: "sale_splash",
-    name: "Sale Splash",
-    category: "ecommerce",
-    background: { type: "gradient", colors: ["#dc2626", "#f97316"], angle: 135 },
-    layers: [
-      { kind: "shape", shape: "circle", color: "#ffffff", xPct: 64, yPct: -18, widthPct: 52, opacity: 0.12 },
-      { kind: "shape", shape: "circle", color: "#ffffff", xPct: -14, yPct: 64, widthPct: 42, opacity: 0.1 },
-      { kind: "shape", shape: "star", color: "#facc15", xPct: 79, yPct: 10, widthPct: 14, rotation: 16, shadow: true },
-      {
-        ...base, text: "MEGA SALE", xPct: 8, yPct: 24, fontSize: 84, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 5, shadow: true,
-      },
-      {
-        ...base, text: "-50% TODAY", xPct: 10, yPct: 54, fontSize: 30, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#ffffff", shadow: false,
-      },
-      {
-        ...base, text: "Free returns · Ends midnight", xPct: 10, yPct: 74, fontSize: 18,
-        color: "#ffffff", fontFamily: INTER, fontRole: "body", shadow: true, opacity: 0.92,
-      },
-    ],
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("promo"), {
+      headline: "Last Call",
+      subhead: "The sale ends at midnight",
+      support: "Anything left in a basket goes back on the shelf.",
+    }, "bottom"),
   },
   {
-    id: "product_card",
-    name: "Product Card",
-    category: "ecommerce",
-    background: { type: "gradient", colors: ["#0f172a", "#1e293b"], angle: 160 },
-    layers: [
-      { kind: "shape", shape: "ring", color: "#38bdf8", xPct: 62, yPct: 6, widthPct: 30, opacity: 0.35 },
-      { kind: "shape", shape: "rounded", color: "#ffffff", xPct: 0, yPct: 55, widthPct: 100, opacity: 0.97, shadow: true },
-      {
-        ...base, text: "Aurora Desk Lamp", xPct: 12, yPct: 64, fontSize: 34, bold: true,
-        color: "#111111", fontFamily: JAKARTA, fontRole: "heading", lockColor: true, shadow: false,
-      },
-      {
-        ...base, text: "$49", xPct: 76, yPct: 64, fontSize: 30, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, bgColor: "#0f172a", shadow: false,
-      },
-      {
-        ...base, text: "Warm light · 3 modes · USB-C", xPct: 12, yPct: 78, fontSize: 16,
-        color: "#475569", fontFamily: INTER, fontRole: "body", lockColor: true, shadow: false,
-      },
-    ],
-  },
-  {
-    id: "insta_quote",
-    name: "Insta Quote",
-    category: "social",
-    background: { type: "gradient", colors: ["#7c3aed", "#ec4899"], angle: 135 },
-    layers: [
-      { kind: "shape", shape: "ring", color: "#ffffff", xPct: 62, yPct: 6, widthPct: 34, opacity: 0.3 },
-      { kind: "shape", shape: "circle", color: "#ffffff", xPct: -10, yPct: 74, widthPct: 34, opacity: 0.12 },
-      {
-        ...base, text: "“Create more than you consume.”", xPct: 10, yPct: 36,
-        fontSize: 36, italic: true, color: "#ffffff",
-        fontFamily: PLAYFAIR, fontRole: "heading", shadow: true,
-      },
-      {
-        ...base, text: "— @FENNEX", xPct: 12, yPct: 56, fontSize: 16,
-        color: "#ffffff", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 4, shadow: true, opacity: 0.85,
-      },
-    ],
-  },
-  {
-    id: "story_promo",
-    name: "Story Promo",
-    category: "social",
-    background: { type: "gradient", colors: ["#0ea5e9", "#6366f1"], angle: 180 },
-    layers: [
-      { kind: "shape", shape: "blob", color: "#ffffff", xPct: -12, yPct: 58, widthPct: 66, opacity: 0.14 },
-      { kind: "shape", shape: "line", color: "#facc15", xPct: 10, yPct: 18, widthPct: 16 },
-      {
-        ...base, text: "SUMMER DROP", xPct: 10, yPct: 22, fontSize: 62, bold: true,
-        color: "#ffffff", fontFamily: BEBAS, fontRole: "heading",
-        uppercase: true, letterSpacing: 4, shadow: true,
-      },
-      {
-        ...base, text: "SHOP NOW", xPct: 12, yPct: 44, fontSize: 24, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#ffffff", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "blog_cover_bold",
-    name: "Bold Blog Cover",
-    category: "blog",
-    background: { type: "solid", colors: ["#0f172a"] },
-    layers: [
-      { kind: "shape", shape: "circle", color: "#facc15", xPct: 74, yPct: -20, widthPct: 44, opacity: 0.18 },
-      {
-        ...base, text: "GUIDE", xPct: 8, yPct: 12, fontSize: 16, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 3, bgColor: "#facc15", shadow: false,
-      },
-      { kind: "shape", shape: "line", color: "#facc15", xPct: 8, yPct: 50, widthPct: 14 },
-      {
-        ...base, text: "The Complete SEO Playbook", xPct: 8, yPct: 55, fontSize: 46, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: false,
-      },
-      {
-        ...base, text: "12 min read · Updated for 2026", xPct: 8, yPct: 78, fontSize: 16,
-        color: "#94a3b8", fontFamily: INTER, fontRole: "body", shadow: false,
-      },
-    ],
-  },
-  {
-    id: "webinar_card",
-    name: "Webinar Card",
+    id: "pr_slab_membership",
+    name: "Membership Slab",
     category: "promo",
-    background: { type: "gradient", colors: ["#0f172a", "#334155"], angle: 120 },
-    layers: [
-      { kind: "shape", shape: "ring", color: "#38bdf8", xPct: 70, yPct: -16, widthPct: 46, opacity: 0.25 },
-      { kind: "shape", shape: "circle", color: "#38bdf8", xPct: 86, yPct: 72, widthPct: 12, opacity: 0.3 },
-      {
-        ...base, text: "FREE WEBINAR", xPct: 8, yPct: 12, fontSize: 18, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, bgColor: "#38bdf8", shadow: false,
-      },
-      {
-        ...base, text: "Scale Your Store in 2026", xPct: 8, yPct: 30, fontSize: 44, bold: true,
-        color: "#ffffff", fontFamily: JAKARTA, fontRole: "heading", shadow: false,
-      },
-      {
-        ...base, text: "Thursday · 6 PM CET · Live Q&A", xPct: 8, yPct: 50, fontSize: 18,
-        color: "#cbd5e1", fontFamily: INTER, fontRole: "body", shadow: false,
-      },
-    ],
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("promo"), {
+      headline: "Founding Membership",
+      subhead: "$9/mo",
+      support: "Locked for life. The price goes up in January.",
+    }),
   },
   {
-    id: "minimal_frame",
-    name: "Minimal Frame",
-    category: "social",
-    background: { type: "solid", colors: ["#111827"] },
-    layers: [
-      { kind: "shape", shape: "frame", color: "#ffffff", xPct: 18, yPct: 8, widthPct: 64, opacity: 0.9 },
-      {
-        ...base, text: "LESS IS MORE", xPct: 30, yPct: 44, fontSize: 30, bold: true,
-        color: "#ffffff", fontFamily: MONT, fontRole: "heading",
-        uppercase: true, letterSpacing: 8, shadow: false,
-      },
-    ],
+    id: "pr_slab_multibuy",
+    name: "Multibuy Slab",
+    category: "promo",
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("promo"), {
+      headline: "Every Candle in Store",
+      subhead: "3 for 2",
+      support: "Mix the scents however you like, cheapest comes off.",
+    }, "centre"),
   },
   {
-    id: "discount_badge",
-    name: "Discount Badge",
-    category: "ecommerce",
-    // No background — an overlay that sits on your product photo
-    layers: [
-      { kind: "shape", shape: "star", color: "#facc15", xPct: 61, yPct: 1, widthPct: 37, rotation: 12, shadow: true },
-      {
-        ...base, text: "-30%", xPct: 72, yPct: 16, fontSize: 34, bold: true,
-        color: "#111111", fontFamily: JAKARTA, fontRole: "heading", lockColor: true, shadow: false,
-      },
-      {
-        ...base, text: "LIMITED", xPct: 71, yPct: 34, fontSize: 14, bold: true,
-        color: "#111111", fontFamily: MONT, fontRole: "body",
-        uppercase: true, letterSpacing: 2, lockColor: true, shadow: false,
-      },
-    ],
+    id: "pr_space_workshop",
+    name: "Workshop Card",
+    category: "promo",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("promo"), {
+      headline: "Knife Skills",
+      subhead: "One evening, eight seats",
+      support: "Thursday the 14th, apron and dinner included",
+    }),
   },
 ];
+
+/** A template's geometry with its words removed. Two templates that differ only
+ *  in copy produce the same fingerprint -- which is how the previous set came
+ *  to ship seven visually identical pairs while appearing to have 34 entries.
+ *
+ *  Everything but the text survives the blank: colour, position, size, blend,
+ *  clip, rotation, opacity, fit and image source are all still keys on the
+ *  spread layer, so two templates that share geometry but differ in, say,
+ *  blend mode are NOT collapsed into the same fingerprint -- they differ in a
+ *  field this function keeps. */
+export function templateFingerprint(t: TextTemplate): string {
+  const layers = t.layers.map((l) =>
+    l.kind === "text" ? { ...l, text: "" } : l,
+  );
+  return JSON.stringify({ background: t.background ?? null, layers });
+}
 
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
 
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
-/** Black or white, whichever reads best on the given colour. */
-export function bestTextOn(hex: string): string {
-  const h = hex.replace("#", "");
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  const r = parseInt(full.slice(0, 2), 16) || 0;
-  const g = parseInt(full.slice(2, 4), 16) || 0;
-  const b = parseInt(full.slice(4, 6), 16) || 0;
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#111111" : "#ffffff";
-}
-
 export interface ResolvedTemplate {
   background: TemplateBackground | null;
   layers: TemplateLayerDef[];
+}
+
+/**
+ * Turn a resolved template into editable canvas layers.
+ *
+ * Lives here rather than in the panel so the editor and the sweep route build
+ * layers through exactly the same code — a template that renders in one and not
+ * the other is the failure mode this function exists to prevent.
+ *
+ * `width`/`height` are the pixel size the layers will be laid out at: font
+ * sizes are authored against an ~800px reference canvas and are scaled to it,
+ * and shapes without an explicit height take their height from the canvas
+ * aspect. A subject image layer resolves to `subjectUrl`; when that is empty
+ * the layer is skipped rather than rendered as an empty box, so the caller must
+ * handle an empty result.
+ */
+export function templateToLayers(
+  t: ResolvedTemplate,
+  subjectUrl: string,
+  width: number,
+  height: number,
+): Layer[] {
+  const scale = width ? Math.max(0.5, Math.min(2.5, width / 800)) : 1;
+  const canvasAspect = width && height ? width / height : 1;
+  const now = Date.now();
+  const out: Layer[] = [];
+
+  // Full-bleed background layer (covers the whole canvas)
+  if (t.background) {
+    out.push({
+      id: `tpl-${now}-bg`,
+      type: "image",
+      imageUrl: backgroundDataUri(t.background),
+      name: "Background",
+      xPct: 0, yPct: 0, widthPct: 100,
+      aspectRatio: canvasAspect,
+      opacity: 1,
+      visible: true,
+    });
+  }
+
+  t.layers.forEach((def, i) => {
+    if (def.kind === "image") {
+      // "subject-cutout" resolves to the subject here too: the background-free
+      // copy is fetched by the apply path, which passes it in as `subjectUrl`
+      // once the user has agreed to spend the credits.
+      const url = typeof def.source === "string" ? subjectUrl : def.source.url;
+      if (!url) return; // no subject to place; skip rather than render an empty box
+      out.push({
+        id: `tpl-${now}-${i}`,
+        type: "image",
+        imageUrl: url,
+        name: def.source === "subject-cutout" ? "Cutout" : def.source === "subject" ? "Photo" : "Image",
+        xPct: def.xPct,
+        yPct: def.yPct,
+        widthPct: def.widthPct,
+        heightPct: def.heightPct,
+        aspectRatio: canvasAspect,
+        fit: def.fit ?? "cover",
+        clip: def.clip,
+        blend: def.blend,
+        opacity: def.opacity ?? 1,
+        rotation: def.rotation,
+        visible: true,
+      });
+      return;
+    }
+    if (def.kind === "shape") {
+      out.push({
+        id: `tpl-${now}-${i}`,
+        type: "image",
+        imageUrl: shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow }),
+        name: `shape:${def.shape}`,
+        xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
+        heightPct: def.heightPct,
+        aspectRatio: shapeAspect(def.shape, !!def.shadow),
+        blend: def.blend,
+        // Shape layers are flat vector artwork authored against their box, so
+        // they stretch to it rather than crop. This marker is the only thing
+        // that makes SceneSvg stretch a layer, and it is set here and nowhere
+        // else: an added image or an AI-decomposed object keeps cover-cropping
+        // however the user resizes it.
+        fit: "fill",
+        opacity: def.opacity ?? 1,
+        rotation: def.rotation,
+        visible: true,
+      });
+      return;
+    }
+    const { kind, fontRole, lockColor, ...l } = def as TemplateTextDef; // strip template-only fields
+    void kind; void fontRole; void lockColor;
+    out.push({
+      ...l,
+      fontSize: Math.round(l.fontSize * scale),
+      letterSpacing: l.letterSpacing !== undefined ? Math.round(l.letterSpacing * scale) : undefined,
+      id: `tpl-${now}-${i}`,
+    });
+  });
+
+  return out;
+}
+
+/** True when a template places the edited photo as a layer — the caller must
+ *  then hide the backdrop copy of it, or the subject renders twice. */
+export function placesSubject(defs: TemplateLayerDef[]): boolean {
+  return defs.some((d) => {
+    if (d.kind !== "image") return false;
+    const source = (d as TemplateImageDef).source;
+    return source === "subject" || source === "subject-cutout";
+  });
 }
 
 /**
@@ -575,8 +717,24 @@ export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): Resolve
       if (def.lockColor || colors.length === 0) return def;
       // Decorative white shapes (soft accents) keep their colour; solid shapes rebrand
       if (def.color === "#ffffff" && (def.opacity ?? 1) < 0.5) return def;
-      return { ...def, color: colors[badge++ % colors.length] };
+      const color = colors[badge++ % colors.length];
+      // A wash's direction is a function of its colour and its ink, not a
+      // style the layer carries around. Recolouring one without re-deriving
+      // the direction is how brand mode produced near-black type on a
+      // multiply wash of a pale brand colour — 1.11:1 against a dark
+      // photograph, because multiply can only take that field darker still.
+      // The ink below is chosen by `bestTextOn` against this same colour, so
+      // deriving the direction from that exact value here is what keeps the
+      // two agreeing, and the monotone floor is re-established against the
+      // brand palette instead of inherited from the palette the template was
+      // authored in.
+      if (isWashMode(def.blend)) {
+        return { ...def, color, blend: washFor(color, bestTextOn(color)) };
+      }
+      return { ...def, color };
     }
+    // Photos aren't recoloured by the brand kit — pass through unchanged.
+    if (def.kind === "image") return def;
     const out: TemplateTextDef = { ...def };
     if (def.fontRole === "heading" && brand.primary_font) out.fontFamily = brand.primary_font;
     if (def.fontRole === "body" && brand.secondary_font) out.fontFamily = brand.secondary_font;
@@ -590,5 +748,121 @@ export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): Resolve
     return out;
   });
 
-  return { background, layers };
+  // Recolouring the fields without recolouring the type on them is how brand
+  // mode used to produce light ink on a pale brand field. The families pick
+  // text colours that are guaranteed against the *palette's* field roles, and
+  // that guarantee does not survive a brand kit cycling arbitrary colours
+  // through those fields — so re-derive each run's colour from whatever it
+  // actually ends up sitting on. Runs with their own pill, or with lockColor,
+  // are already handled above and left alone.
+  //
+  // Order matters, and it is the order it is for a reason. Every field this
+  // function touches — colour AND wash direction — is already final in
+  // `layers`, so `analyzeText` here reads the rebranded fields and only the ink
+  // is still open. That is the one thing this loop writes, so nothing it
+  // decides is invalidated by a later step.
+  const rebranded = [...layers];
+  if (colors.length > 0) {
+    for (const backing of analyzeText(rebranded)) {
+      const layer = rebranded[backing.index];
+      if (layer.kind === "shape" || layer.kind === "image") continue;
+      if (layer.lockColor || layer.bgColor) continue;
+      // No field at all, so there is no colour to contrast against and no
+      // recolouring that would help. `assertTemplatesReadable` is what catches
+      // this; it is not silently acceptable, it is simply not fixable here.
+      if (!backing.fieldColor) continue;
+      // `backing.fieldColor` is a wash's own colour rather than what it
+      // composites to, which is exactly what makes this correct on a wash:
+      // monotonicity puts the true worst case at that colour, and the field's
+      // direction was derived from `bestTextOn` of it above.
+      rebranded[backing.index] = { ...layer, color: bestTextOn(backing.fieldColor) };
+    }
+  }
+
+  return { background, layers: rebranded };
+}
+
+// ── The readability gate ──────────────────────────────────────────────────────
+
+/** Helper so a kit is one line of colours rather than six fields of nulls. */
+function readabilityKit(colors: string[]): BrandKit {
+  return { logo_url: null, colors, primary_font: null, secondary_font: null, style_rules: null, tone: null };
+}
+
+/**
+ * Brand kits the gate below re-checks every template through, and the same
+ * kits `/dev/template-sweep` offers for visual review.
+ *
+ * Deliberately adversarial rather than pretty. Each one broke something real:
+ * a pale primary and a near-white primary put light-seeking ink on a light
+ * field, a near-black primary does the mirror, mid grey has no good ink at all,
+ * and stock Tailwind sky/green is the most likely accidental kit there is.
+ *
+ * ONE LIST, deliberately. The sweep page used to carry its own near-copy of
+ * this array, so the mechanical gate and the thing a human actually looks at
+ * could — and did — disagree about which brands were covered: three of the
+ * seven rows here were checked at module load and invisible in the browser.
+ * Exported rather than duplicated so a kit added for one is a kit added for
+ * both.
+ *
+ * Add colours here, never remove them: each row is a case someone measured.
+ */
+export const BRAND_KIT_FIXTURES: { label: string; kit: BrandKit }[] = [
+  { label: "pale", kit: readabilityKit(["#f3d9a4", "#123a6b", "#7f1d3f"]) },
+  { label: "sky/green", kit: readabilityKit(["#0ea5e9", "#22c55e"]) },
+  { label: "sage/steel", kit: readabilityKit(["#7a9a5a", "#6b8fa8"]) },
+  { label: "mid grey", kit: readabilityKit(["#969696", "#8a8a8a"]) },
+  { label: "near-black", kit: readabilityKit(["#101820", "#1e293b"]) },
+  { label: "near-white", kit: readabilityKit(["#f8fafc", "#e2e8f0"]) },
+  { label: "single colour", kit: readabilityKit(["#7f1d3f"]) },
+];
+
+/**
+ * Dev-only gate on the readability rule.
+ *
+ * The families make it hard to author unbacked text; this makes it impossible
+ * to ship. A template that spreads a family's output and appends its own text
+ * def, or that hand-writes layers entirely, bypasses `panel()` — this catches
+ * it at module load, before anything renders, and names the offending copy.
+ *
+ * It checks the BRANDED form as well as the authored one, and that half is not
+ * optional. `brandTemplate` defaults to on in the editor, so branded is the
+ * normal path, not an edge case — and it is the path that re-colours fields
+ * out from under type that was contrast-checked against different colours.
+ * Checking only `TEXT_TEMPLATES` is precisely how a wash whose direction no
+ * longer matched its ink — 1.11:1 at the worst photograph — passed this gate
+ * while being wrong in every brand kit.
+ *
+ * `process.env.NODE_ENV` is inlined by the bundler, so this whole block is
+ * dead code in a production build and costs nothing there.
+ */
+export function assertTemplatesReadable(templates: TextTemplate[]): void {
+  const bad: string[] = [];
+  for (const t of templates) {
+    for (const issue of findUnbackedText(t.layers)) {
+      bad.push(`  ${t.id}: "${issue.text}" — ${issue.reason}`);
+    }
+    for (const { label, kit } of BRAND_KIT_FIXTURES) {
+      for (const issue of findUnbackedText(brandTemplate(t, kit).layers)) {
+        bad.push(`  ${t.id} [${label}]: "${issue.text}" — ${issue.reason}`);
+      }
+    }
+  }
+  if (bad.length === 0) return;
+  const message =
+    `${bad.length} template text run(s) are not on a scrim, band or solid field.\n` +
+    `Text over a bare photo is unreadable on light images. Build the layers with\n` +
+    `panel() from families.ts, which cannot emit text without its backing field.\n` +
+    `A "[kit]" tag means the authored template is fine and the brand-kit mapping\n` +
+    `broke it, so the fix belongs in brandTemplate rather than in the template.\n` +
+    bad.join("\n");
+  // eslint-disable-next-line no-console
+  console.error(`[text-templates] ${message}`);
+  throw new Error(`[text-templates] ${message}`);
+}
+
+// Runs last in the module on purpose: it calls `brandTemplate`, which reads
+// module-level constants declared above it.
+if (process.env.NODE_ENV === "development") {
+  assertTemplatesReadable(TEXT_TEMPLATES);
 }

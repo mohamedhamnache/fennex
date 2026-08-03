@@ -1817,6 +1817,26 @@ export async function editImage(
   return withCreditRefresh(apiClient.post<EditImageResult>(`/images/${imageId}/edit`, { operation, params }));
 }
 
+export interface CutoutResult {
+  image_url: string;
+  width: number;
+  height: number;
+}
+
+/**
+ * Background-removed copy of an image via the cheap Replicate cutout
+ * (apps/api/app/services/editing_service.py::remove_background_cheap, meters
+ * at the MIN_REPLICATE_CREDITS floor). Backs the editor's "subject-cutout"
+ * template layers -- the caller shows a consent dialog stating the credit
+ * cost first, then calls this on confirm and rebuilds the template's layers
+ * from the returned URL. Not routed through /images/{id}/edit: that endpoint
+ * always persists a new library version, which is wrong for an ingredient
+ * being folded into a template rather than kept as one.
+ */
+export async function removeBackgroundCheap(imageId: string): Promise<CutoutResult> {
+  return withCreditRefresh(apiClient.post<CutoutResult>(`/images/${imageId}/cutout`, {}));
+}
+
 export interface SeoResult {
   id: string;
   alt_text: string | null;

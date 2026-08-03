@@ -6,16 +6,20 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Lock, Unlock, RotateCcw, RotateCw, FlipHorizontal2, FlipVertical2,
   Trash2, Bold, Italic, Eye, EyeOff, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown,
-  ImageIcon, Type, Upload, ScanLine, Sparkles, Loader2, Box, Copy,
+  ImageIcon, Type, Upload, ScanLine, Sparkles, Loader2, Copy,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
 } from "lucide-react";
-import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
+import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, removeBackgroundCheap, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
+import { CUTOUT_CREDIT_COST } from "@/lib/creditCosts";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
-import { TEXT_TEMPLATES, TEMPLATE_CATEGORIES, brandTemplate, type TextTemplate, type TemplateCategory, type TemplateTextDef, type ResolvedTemplate } from "./text-templates";
-import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, backgroundDataUri, backgroundCss, type ShapeId, type ShapeStyle } from "./shapes";
+import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
+import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId, type ShapeStyle } from "./shapes";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
+import { TemplatePicker } from "./TemplatePicker";
+import { LayersPanel } from "./LayersPanel";
+import { CutoutConsentDialog } from "./CutoutConsentDialog";
 
 const CANVAS_FONTS = [
   { value: "Inter, sans-serif", label: "Inter" },
@@ -33,6 +37,8 @@ interface EditControlsPanelProps {
   tool: string;
   imageId: string;
   imageUrl: string;
+  /** URL of the image being edited — the "subject" a template's image layer can place. */
+  subjectImageUrl?: string;
   projectId?: string;
   canvasRef: RefObject<EditCanvasRef>;
   onVersionAdded: (img: GeneratedImage) => void;
@@ -203,6 +209,7 @@ export function EditControlsPanel({
   tool,
   imageId,
   imageUrl,
+  subjectImageUrl,
   projectId,
   canvasRef,
   onVersionAdded,
@@ -338,7 +345,6 @@ export function EditControlsPanel({
   };
 
   // Text templates state
-  const [templateCategory, setTemplateCategory] = useState<"all" | TemplateCategory>("all");
   const [brandTemplates, setBrandTemplates] = useState(true);
   const { data: templateBrandKit } = useQuery({
     queryKey: ["brand-kit"],
@@ -454,59 +460,92 @@ export function EditControlsPanel({
       : { background: t.background ?? null, layers: t.layers };
   }
 
-  function applyTemplate(t: TextTemplate) {
-    // Template sizes assume an ~800px canvas — scale to the real display size.
-    const disp = canvasRef.current?.getDisplayedSize();
-    const scale = disp?.width ? Math.max(0.5, Math.min(2.5, disp.width / 800)) : 1;
-    const canvasAspect = disp?.width && disp?.height ? disp.width / disp.height : 1;
-    const { background, layers: defs } = resolveTemplate(t);
-    const now = Date.now();
-    const newLayers: Layer[] = [];
+  /** True when a resolved template needs the paid Replicate cutout (a
+   *  "subject-cutout" image layer) before it can be applied. Gates
+   *  applyTemplate behind CutoutConsentDialog -- see its docstring. */
+  function needsCutout(resolved: ResolvedTemplate): boolean {
+    return resolved.layers.some((l) => l.kind === "image" && l.source === "subject-cutout");
+  }
 
-    // Full-bleed background layer (covers the whole canvas)
-    if (background) {
-      newLayers.push({
-        id: `tpl-${now}-bg`,
-        type: "image",
-        imageUrl: backgroundDataUri(background),
-        name: "Background",
-        xPct: 0, yPct: 0, widthPct: 100,
-        aspectRatio: canvasAspect,
-        opacity: 1,
-        visible: true,
-      });
-    }
+  /** Turns a resolved template into canvas layers and lands the user in the
+   *  Add Text tool, ready to edit them. Shared by the plain apply path and
+   *  the cutout-confirm path so both build layers identically. */
+  function insertTemplateLayers(
+    resolved: ResolvedTemplate,
+    subjectUrl: string,
+    disp?: { width: number; height: number } | null,
+  ) {
+    const newLayers = templateToLayers(
+      resolved,
+      subjectUrl,
+      disp?.width ?? 0,
+      disp?.height ?? 0,
+    );
 
-    defs.forEach((def, i) => {
-      if (def.kind === "shape") {
-        newLayers.push({
-          id: `tpl-${now}-${i}`,
-          type: "image",
-          imageUrl: shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow }),
-          name: `shape:${def.shape}`,
-          xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
-          aspectRatio: shapeAspect(def.shape, !!def.shadow),
-          opacity: def.opacity ?? 1,
-          rotation: def.rotation,
-          visible: true,
-        });
-      } else {
-        const { kind, fontRole, lockColor, ...l } = def as TemplateTextDef; // strip template-only fields
-        void kind; void fontRole; void lockColor;
-        newLayers.push({
-          ...l,
-          fontSize: Math.round(l.fontSize * scale),
-          letterSpacing: l.letterSpacing !== undefined ? Math.round(l.letterSpacing * scale) : undefined,
-          id: `tpl-${now}-${i}`,
-        });
-      }
-    });
+    // A subject-only template can skip every def (no subjectImageUrl yet),
+    // leaving nothing to append or select.
+    if (newLayers.length === 0) return;
 
     onSetLayers([...layers, ...newLayers]);
     // Select the first foreground layer, not the background
-    onSelectLayer((newLayers[background ? 1 : 0] ?? newLayers[0]).id);
+    onSelectLayer((newLayers[resolved.background ? 1 : 0] ?? newLayers[0]).id);
     // Land the user in the Add Text tool so the layers are instantly editable
     onRequestTool?.("text");
+
+    // A template that places the photo as a layer must not also show it as
+    // the backdrop underneath — that would double-render the subject.
+    if (placesSubject(resolved.layers)) onHideBaseImage?.(true);
+  }
+
+  // Template pending the user's sign-off on CutoutConsentDialog -- set only
+  // when the resolved template carries a "subject-cutout" layer, which is a
+  // paid Replicate call. Cleared on cancel, on confirm success, and never
+  // acted on before the user explicitly agrees to spend the credits.
+  const [pendingCutout, setPendingCutout] = useState<{
+    resolved: ResolvedTemplate;
+    disp?: { width: number; height: number } | null;
+  } | null>(null);
+  const [cutoutError, setCutoutError] = useState<string | null>(null);
+
+  function applyTemplate(t: TextTemplate) {
+    // Template sizes assume an ~800px canvas — templateToLayers scales them to
+    // the real display size.
+    const disp = canvasRef.current?.getDisplayedSize();
+    const resolved = resolveTemplate(t);
+
+    if (needsCutout(resolved)) {
+      // Applying a template must never silently spend a customer's credits —
+      // ask first. Nothing is built or appended until the user confirms.
+      setCutoutError(null);
+      setPendingCutout({ resolved, disp });
+      return;
+    }
+
+    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp);
+  }
+
+  // Runs the paid cutout and, on success, builds the template's layers from
+  // its result. Only reachable via the dialog's Confirm button.
+  const cutoutMutation = useMutation({
+    mutationFn: async () => {
+      if (!pendingCutout) throw new Error("Nothing to cut out");
+      const result = await removeBackgroundCheap(imageId);
+      return result.image_url;
+    },
+    onSuccess: (cutoutUrl) => {
+      if (pendingCutout) insertTemplateLayers(pendingCutout.resolved, cutoutUrl, pendingCutout.disp);
+      setPendingCutout(null);
+      setCutoutError(null);
+    },
+    // API failure surfaces the error and applies nothing -- pendingCutout is
+    // left set so the dialog stays open with the error, rather than
+    // half-applying the template.
+    onError: (e: Error) => setCutoutError(e.message),
+  });
+
+  function handleCutoutCancel() {
+    setPendingCutout(null);
+    setCutoutError(null);
   }
 
   type EditOutcome =
@@ -667,8 +706,8 @@ export function EditControlsPanel({
   });
 
   useEffect(() => {
-    onProcessingChange?.(mutation.isPending || confirmMutation.isPending || flipMutation.isPending || decomposeLoading);
-  }, [mutation.isPending, confirmMutation.isPending, flipMutation.isPending, decomposeLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+    onProcessingChange?.(mutation.isPending || confirmMutation.isPending || flipMutation.isPending || decomposeLoading || cutoutMutation.isPending);
+  }, [mutation.isPending, confirmMutation.isPending, flipMutation.isPending, decomposeLoading, cutoutMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toolLabel = tool.replace(/_/g, " ");
   const selectedLayer = layers.find((l) => l.id === selectedLayerId) ?? null;
@@ -1725,121 +1764,14 @@ export function EditControlsPanel({
 
           {/* ── Text Templates ────────────────────────────────────────────── */}
           {tool === "templates" && (
-            <div className="flex flex-col gap-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Drop a pre-styled text composition onto your image. Every layer stays fully editable — move, restyle, or rewrite it.
-              </p>
-
-              {/* Persona categories */}
-              <div className="flex flex-wrap gap-1.5">
-                {TEMPLATE_CATEGORIES.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setTemplateCategory(c.id)}
-                    className={cn(
-                      "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                      templateCategory === c.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground hover:bg-accent",
-                    )}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Brand-aware toggle */}
-              {brandUsable && (
-                <button
-                  type="button"
-                  onClick={() => setBrandTemplates((v) => !v)}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-accent"
-                >
-                  <span className="flex-1 text-xs text-foreground">
-                    Use brand kit <span className="text-muted-foreground">(badges take your colours &amp; fonts)</span>
-                  </span>
-                  <span className={cn("relative inline-flex h-4 w-7 items-center rounded-full transition-colors", brandTemplates ? "bg-primary" : "bg-border")}>
-                    <span className={cn("inline-block h-3 w-3 transform rounded-full bg-white transition-transform", brandTemplates ? "translate-x-3.5" : "translate-x-0.5")} />
-                  </span>
-                </button>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                {TEXT_TEMPLATES.filter((t) => templateCategory === "all" || t.category === templateCategory).map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => applyTemplate(t)}
-                    className="group rounded-xl border border-border overflow-hidden text-left transition-all hover:border-primary/50 hover:shadow-md"
-                  >
-                    {/* Live miniature preview — real backgrounds, shapes and text styles.
-                        Overlay templates use a dark gradient photo stand-in. */}
-                    {(() => {
-                      const { background, layers: defs } = resolveTemplate(t);
-                      return (
-                        <div
-                          className="relative aspect-[4/3] w-full overflow-hidden"
-                          style={{ background: background ? backgroundCss(background) : "linear-gradient(135deg, #64748b, #1e293b)" }}
-                        >
-                          {defs.map((def, i) =>
-                            def.kind === "shape" ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                key={i}
-                                src={shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow })}
-                                alt=""
-                                style={{
-                                  position: "absolute",
-                                  left: `${def.xPct}%`,
-                                  top: `${def.yPct}%`,
-                                  width: `${def.widthPct}%`,
-                                  opacity: def.opacity ?? 1,
-                                  transform: def.rotation ? `rotate(${def.rotation}deg)` : undefined,
-                                }}
-                              />
-                            ) : (
-                              <span
-                                key={i}
-                                style={{
-                                  position: "absolute",
-                                  left: `${def.xPct}%`,
-                                  top: `${def.yPct}%`,
-                                  fontSize: Math.max(5, def.fontSize * 0.17),
-                                  color: def.color,
-                                  fontFamily: def.fontFamily,
-                                  fontWeight: def.bold ? "bold" : "normal",
-                                  fontStyle: def.italic ? "italic" : "normal",
-                                  letterSpacing: `${(def.letterSpacing ?? 0) * 0.17}px`,
-                                  WebkitTextStroke: (def.outlineWidth ?? 0) > 0
-                                    ? `${Math.max(0.5, (def.outlineWidth ?? 0) * 0.17)}px ${def.outlineColor ?? "#000000"}`
-                                    : undefined,
-                                  background: def.bgColor || undefined,
-                                  padding: def.bgColor ? "0.18em 0.3em" : undefined,
-                                  borderRadius: def.bgColor ? "0.25em" : undefined,
-                                  textTransform: def.uppercase ? "uppercase" : undefined,
-                                  opacity: def.opacity ?? 1,
-                                  textShadow: (def.shadow ?? true) ? "0 1px 2px rgba(0,0,0,0.5)" : undefined,
-                                  whiteSpace: "nowrap",
-                                  lineHeight: 1.2,
-                                }}
-                              >
-                                {def.text}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      );
-                    })()}
-                    <div className="px-2 py-1.5">
-                      <span className="text-[11px] font-medium text-foreground group-hover:text-primary transition-colors">
-                        {t.name}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TemplatePicker
+              onApply={applyTemplate}
+              brandKit={templateBrandKit}
+              brandTemplates={brandTemplates}
+              onBrandTemplatesChange={setBrandTemplates}
+              brandUsable={brandUsable}
+              subjectImageUrl={subjectImageUrl}
+            />
           )}
 
           {/* ── Convert to Canvas ─────────────────────────────────────────── */}
@@ -2140,61 +2072,15 @@ export function EditControlsPanel({
                     </div>
                   )}
 
-                  {/* Layer list */}
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Layers ({layers.length})</p>
-                  {[...layers].reverse().map((layer, displayIdx) => {
-                    const arrayIdx = layers.length - 1 - displayIdx;
-                    const isSelected = selectedLayerId === layer.id;
-                    return (
-                      <div
-                        key={layer.id}
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg border px-2 py-1.5 cursor-pointer transition-colors",
-                          isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent/50",
-                        )}
-                        onClick={() => onSelectLayer(layer.id)}
-                      >
-                        <button type="button"
-                          onClick={(e) => { e.stopPropagation(); onToggleLayerVisible(layer.id); }}
-                          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
-                          {layer.visible !== false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 opacity-40" />}
-                        </button>
-                        <div className="h-7 w-7 flex items-center justify-center rounded bg-muted shrink-0 border border-border overflow-hidden">
-                          {layer.type === "image"
-                            ? <Box className="h-3.5 w-3.5 text-muted-foreground" />
-                            : <Type className="h-3.5 w-3.5 text-muted-foreground" />}
-                        </div>
-                        <span className="flex-1 text-xs text-foreground truncate"
-                          style={layer.type === "text" ? {
-                            fontFamily: (layer as TextLayer).fontFamily,
-                            fontWeight: (layer as TextLayer).bold ? "bold" : "normal",
-                            fontStyle: (layer as TextLayer).italic ? "italic" : "normal",
-                            color: (layer as TextLayer).color,
-                          } : undefined}>
-                          {layer.type === "text" ? (layer as TextLayer).text || "Empty text" : (layer as ImageLayer).name}
-                        </span>
-                        <div className="flex flex-col shrink-0">
-                          <button type="button"
-                            onClick={(e) => { e.stopPropagation(); onMoveLayerUp(layer.id); }}
-                            disabled={arrayIdx === layers.length - 1}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors">
-                            <ChevronUp className="h-3 w-3" />
-                          </button>
-                          <button type="button"
-                            onClick={(e) => { e.stopPropagation(); onMoveLayerDown(layer.id); }}
-                            disabled={arrayIdx === 0}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors">
-                            <ChevronDown className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <button type="button"
-                          onClick={(e) => { e.stopPropagation(); onRemoveLayer(layer.id); }}
-                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                  <LayersPanel
+                    layers={layers}
+                    selectedLayerId={selectedLayerId}
+                    onSelectLayer={onSelectLayer}
+                    onMoveLayerUp={onMoveLayerUp}
+                    onMoveLayerDown={onMoveLayerDown}
+                    onRemoveLayer={onRemoveLayer}
+                    onToggleLayerVisible={onToggleLayerVisible}
+                  />
                 </div>
               )}
             </div>
@@ -2490,6 +2376,15 @@ export function EditControlsPanel({
             </>
           )}
         </div>
+
+        <CutoutConsentDialog
+          open={!!pendingCutout}
+          credits={CUTOUT_CREDIT_COST}
+          loading={cutoutMutation.isPending}
+          error={cutoutError}
+          onConfirm={() => cutoutMutation.mutate()}
+          onCancel={handleCutoutCancel}
+        />
     </div>
   );
 }

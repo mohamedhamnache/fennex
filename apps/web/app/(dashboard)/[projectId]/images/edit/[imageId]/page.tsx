@@ -15,6 +15,7 @@ import { VersionStrip } from "@/components/studio/edit/VersionStrip";
 import { SeoPanel } from "@/components/studio/edit/SeoPanel";
 import { ScorePanel } from "@/components/studio/edit/ScorePanel";
 import { ExportModal } from "@/components/studio/edit/ExportModal";
+import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
 
 export default function EditPage({
   params,
@@ -348,6 +349,29 @@ export default function EditPage({
     });
   }
 
+  /** rasterizeScene resolves to a PNG data URL. It never leaves the browser,
+   *  so decoding it into a Blob here is a local conversion, not a network
+   *  request -- it doesn't go through apiClient. */
+  function dataUrlToBlob(dataUrl: string): Blob {
+    const [header, base64] = dataUrl.split(",");
+    const mime = /data:(.*);base64/.exec(header)?.[1] ?? "image/png";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+
+  // Upload tail, preserved verbatim from the canvas-2D implementation this
+  // replaces: same apiClient call, same version/layer/state updates.
+  async function uploadBurnedImage(dataUrl: string) {
+    const blob = dataUrlToBlob(dataUrl);
+    const uploaded = await uploadImage(projectId, blob);
+    handleVersionAdded(uploaded);
+    setLayers([]);
+    setSelectedLayerId(null);
+    setHideBaseImage(false);
+  }
+
   async function handleBurnLayers() {
     if (layers.length === 0) return;
     setIsBurning(true);
@@ -356,122 +380,26 @@ export default function EditPage({
     try {
       const baseUrl = displayImage?.image_url ?? "";
       const baseImg = baseUrl ? await loadImg(baseUrl) : null;
-      const canvas = document.createElement("canvas");
-      canvas.width = baseImg?.naturalWidth ?? 1024;
-      canvas.height = baseImg?.naturalHeight ?? 1024;
-      const ctx = canvas.getContext("2d")!;
-      // Only draw the base image if it's visible (not replaced by layers)
-      if (baseImg && !hideBaseImage) ctx.drawImage(baseImg, 0, 0);
+      const width = baseImg?.naturalWidth ?? 1024;
+      const height = baseImg?.naturalHeight ?? 1024;
 
-      const displayedSize = canvasRef.current?.getDisplayedSize();
-      const scaleX = canvas.width / (displayedSize?.width || canvas.width);
-      const scaleY = canvas.height / (displayedSize?.height || canvas.height);
-
-      const visibleLayers = layers.filter((l) => l.visible !== false);
-
-      // Pre-load all image layers in parallel
-      const imgLayersData = await Promise.all(
-        visibleLayers.map(async (layer) => {
-          if (layer.type !== "image") return null;
-          try {
-            return await loadImg((layer as ImageLayer).imageUrl);
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      for (let i = 0; i < visibleLayers.length; i++) {
-        const layer = visibleLayers[i];
-
-        if (layer.type === "image") {
-          const imgEl = imgLayersData[i];
-          if (!imgEl) continue;
-          const il = layer as ImageLayer;
-          const drawX = (il.xPct / 100) * canvas.width;
-          const drawY = (il.yPct / 100) * canvas.height;
-          const drawW = (il.widthPct / 100) * canvas.width;
-          const drawH = il.heightPct != null
-            ? (il.heightPct / 100) * canvas.height
-            : (il.aspectRatio > 0 ? drawW / il.aspectRatio : drawW);
-          const rotation = il.rotation ?? 0;
-          ctx.save();
-          ctx.globalAlpha = il.opacity ?? 1;
-          if (rotation !== 0) {
-            ctx.translate(drawX + drawW / 2, drawY + drawH / 2);
-            ctx.rotate((rotation * Math.PI) / 180);
-            ctx.drawImage(imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
-          } else {
-            ctx.drawImage(imgEl, drawX, drawY, drawW, drawH);
-          }
-          ctx.restore();
-        } else if (layer.type === "text") {
-          const tl = layer as TextLayer;
-          const text = tl.uppercase ? tl.text.toUpperCase() : tl.text;
-          const drawX = (tl.xPct / 100) * canvas.width;
-          const drawY = (tl.yPct / 100) * canvas.height;
-          const scale = Math.min(scaleX, scaleY);
-          const scaledSize = Math.round(tl.fontSize * scale);
-          const weight = tl.bold ? "bold " : "";
-          const style = tl.italic ? "italic " : "";
-          ctx.save();
-          ctx.globalAlpha = tl.opacity ?? 1;
-          ctx.font = `${style}${weight}${scaledSize}px ${tl.fontFamily}`;
-          // Letter spacing (supported by modern canvas implementations)
-          try {
-            (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing =
-              `${(tl.letterSpacing ?? 0) * scale}px`;
-          } catch { /* older browsers: spacing skipped on export */ }
-          ctx.textBaseline = "top";
-
-          // Background pill — geometry mirrors the DOM's em-based padding
-          if (tl.bgColor) {
-            const m = ctx.measureText(text);
-            const padX = scaledSize * 0.3;
-            const padY = scaledSize * 0.18;
-            const w = m.width + padX * 2;
-            const h = scaledSize * 1.2 + padY * 2;
-            const r = Math.min(scaledSize * 0.25, h / 2);
-            ctx.fillStyle = tl.bgColor;
-            if (typeof ctx.roundRect === "function") {
-              ctx.beginPath();
-              ctx.roundRect(drawX - padX, drawY - padY, w, h, r);
-              ctx.fill();
-            } else {
-              ctx.fillRect(drawX - padX, drawY - padY, w, h);
-            }
-          }
-
-          if (tl.shadow ?? true) {
-            ctx.shadowColor = "rgba(0,0,0,0.5)";
-            ctx.shadowBlur = Math.round(4 * scale);
-          }
-          if ((tl.outlineWidth ?? 0) > 0) {
-            ctx.lineWidth = (tl.outlineWidth ?? 0) * scale;
-            ctx.strokeStyle = tl.outlineColor ?? "#000000";
-            ctx.lineJoin = "round";
-            ctx.strokeText(text, drawX, drawY);
-          }
-          ctx.fillStyle = tl.color;
-          ctx.fillText(text, drawX, drawY);
-          ctx.restore();
-        }
-      }
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
-          "image/png",
-        );
+      // Layer geometry is in canvas percentages, so it is resolution
+      // independent: the same scene renders at display size for preview and at
+      // natural size here. No scale factors.
+      const dataUrl = await rasterizeScene({
+        width,
+        height,
+        baseImageUrl: hideBaseImage ? null : baseUrl,
+        layers: layers.filter((l) => l.visible !== false),
       });
 
-      const uploaded = await uploadImage(projectId, blob);
-      handleVersionAdded(uploaded);
-      setLayers([]);
-      setSelectedLayerId(null);
-      setHideBaseImage(false);
+      await uploadBurnedImage(dataUrl);
     } catch (e) {
-      setBurnError(e instanceof Error ? e.message : "Export failed");
+      setBurnError(
+        e instanceof Error
+          ? e.message
+          : t("imageEdit.burnFailed", { defaultValue: "Could not flatten the layers." }),
+      );
     } finally {
       setIsBurning(false);
     }
@@ -701,6 +629,7 @@ export default function EditPage({
                 tool={selectedTool}
                 imageId={editTargetId}
                 imageUrl={displayImage?.image_url ?? ""}
+                subjectImageUrl={displayImage?.image_url ?? undefined}
                 projectId={projectId}
                 canvasRef={canvasRef}
                 onVersionAdded={handleVersionAdded}

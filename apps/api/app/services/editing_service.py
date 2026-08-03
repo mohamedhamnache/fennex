@@ -317,6 +317,37 @@ async def remove_background(image_url: str) -> dict:
         return {"ok": False, "error": str(e)}
 
 
+_MODEL_REMBG = "851-labs/background-remover"
+_REMBG_VERSION = "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc"
+
+
+async def remove_background_cheap(image_url: str) -> dict:
+    """Cutout via Replicate rather than Remove.bg.
+
+    Remove.bg bills $0.20 per image, which meters to 191 AI credits. This
+    community model runs a few GPU-seconds and lands on MIN_REPLICATE_CREDITS
+    (10) -- 19x cheaper for the customer's allowance and for our margin.
+    Output carries alpha, so the policy must be ALLOW_CHANGE: the model
+    returns the subject's bounding box, not the source frame -- asserting
+    PRESERVE would fail every call, the same defect that broke
+    generate_shadow until a real prediction caught it.
+
+    Separate from remove_background(), which is untouched: this adds a
+    cheaper path, it does not replace the existing Remove.bg tool.
+    """
+    try:
+        out = await _replicate_run(
+            _MODEL_REMBG,
+            {"image": image_url, "format": "png", "background_type": "rgba"},
+            version=_REMBG_VERSION,
+        )
+        stored = await finalize(out, policy=ResolutionPolicy.ALLOW_CHANGE)
+        return {"ok": True, "image_url": stored.url,
+                "width": stored.width, "height": stored.height}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
+
+
 # ── Replicate ─────────────────────────────────────────────────────────────────
 
 _REPLICATE_API = "https://api.replicate.com/v1"
