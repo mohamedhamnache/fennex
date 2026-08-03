@@ -8,7 +8,7 @@ import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import {
   typeWrap, duotoneWash, offsetStack, ruleGrid, hardEdge, priceSlab, negativeSpace,
-  findUnbackedText, analyzeText,
+  findUnbackedText, analyzeText, type FamilyId,
 } from "./families";
 
 /** A reusable design composition: optional background, shape objects, and text.
@@ -71,6 +71,13 @@ export interface TextTemplate {
   id: string;
   name: string;
   category: TemplateCategory;
+  /** Which composition family produced `layers`. Bookkeeping, not rendered:
+   *  it is how the capability-coverage sweep groups templates back to the
+   *  family that built them, so it can tell "no instance of this family in
+   *  the shipped set earns a capability" from "no template happens to
+   *  today" — see `templateFingerprint` below for the sibling problem this
+   *  solves on the distinctness axis. */
+  family: FamilyId;
   /** Full-bleed background layer. Omit for overlays that sit on a photo. */
   background?: TemplateBackground | null;
   layers: TemplateLayerDef[];
@@ -127,6 +134,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "ec_grid_lookbook",
     name: "Lookbook Grid",
     category: "ecommerce",
+    family: "ruleGrid",
     layers: ruleGrid(resolvePalette("ecommerce"), {
       headline: "The Winter Edit",
       subhead: "Twelve pieces, one palette",
@@ -137,6 +145,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "ec_edge_restock",
     name: "Restock Block",
     category: "ecommerce",
+    family: "hardEdge",
     layers: hardEdge(resolvePalette("blog"), {
       headline: "Back in Stock",
       subhead: "Linen throw, sand",
@@ -147,6 +156,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "ec_slab_markdown",
     name: "Markdown Slab",
     category: "ecommerce",
+    family: "priceSlab",
     layers: priceSlab(resolvePalette("ecommerce"), {
       headline: "Aurora Desk Lamp",
       subhead: "-40%",
@@ -159,6 +169,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "so_wrap_season",
     name: "Season Wrap",
     category: "social",
+    family: "typeWrap",
     layers: typeWrap(resolvePalette("social"), {
       headline: "New Season",
       subhead: "Spring 26",
@@ -169,6 +180,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "so_wash_golden",
     name: "Golden Hour",
     category: "social",
+    family: "duotoneWash",
     layers: duotoneWash(resolvePalette("social"), {
       headline: "Golden Hour",
       subhead: "The autumn edit, shot on location",
@@ -179,6 +191,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "so_stack_behind",
     name: "Behind the Build",
     category: "social",
+    family: "offsetStack",
     layers: offsetStack(resolvePalette("promo"), {
       headline: "Behind the Build",
       subhead: "Day 41",
@@ -189,6 +202,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "so_space_quote",
     name: "Quote Card",
     category: "social",
+    family: "negativeSpace",
     layers: negativeSpace(resolvePalette("social"), {
       headline: "Make It Obvious",
       subhead: "Habits beat motivation",
@@ -201,6 +215,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "bl_grid_guide",
     name: "Guide Grid",
     category: "blog",
+    family: "ruleGrid",
     layers: ruleGrid(resolvePalette("blog"), {
       headline: "Page Speed",
       subhead: "A practical guide for small teams",
@@ -211,6 +226,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "bl_wash_essay",
     name: "Essay Wash",
     category: "blog",
+    family: "duotoneWash",
     layers: duotoneWash(resolvePalette("blog"), {
       headline: "The Slow Web",
       subhead: "In praise of smaller, quieter sites",
@@ -221,6 +237,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "bl_stack_notes",
     name: "Field Notes",
     category: "blog",
+    family: "offsetStack",
     layers: offsetStack(resolvePalette("blog"), {
       headline: "Field Notes",
       subhead: "Issue 04",
@@ -231,6 +248,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "bl_space_interview",
     name: "Interview Cover",
     category: "blog",
+    family: "negativeSpace",
     layers: negativeSpace(resolvePalette("blog"), {
       headline: "In Conversation",
       subhead: "With Nadia Berger",
@@ -243,6 +261,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "pr_wrap_opening",
     name: "Opening Wrap",
     category: "promo",
+    family: "typeWrap",
     layers: typeWrap(resolvePalette("promo"), {
       headline: "Doors Open",
       subhead: "Thursday 7pm",
@@ -253,6 +272,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "pr_edge_flash",
     name: "Flash Block",
     category: "promo",
+    family: "hardEdge",
     layers: hardEdge(resolvePalette("promo"), {
       headline: "48 Hours",
       subhead: "Everything reduced",
@@ -263,6 +283,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     id: "pr_slab_two_for",
     name: "Two for One",
     category: "promo",
+    family: "priceSlab",
     layers: priceSlab(resolvePalette("promo"), {
       headline: "Every Mug in Store",
       subhead: "2 for 1",
@@ -270,6 +291,22 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     }, "centre"),
   },
 ];
+
+/** A template's geometry with its words removed. Two templates that differ only
+ *  in copy produce the same fingerprint -- which is how the previous set came
+ *  to ship seven visually identical pairs while appearing to have 34 entries.
+ *
+ *  Everything but the text survives the blank: colour, position, size, blend,
+ *  clip, rotation, opacity, fit and image source are all still keys on the
+ *  spread layer, so two templates that share geometry but differ in, say,
+ *  blend mode are NOT collapsed into the same fingerprint -- they differ in a
+ *  field this function keeps. */
+export function templateFingerprint(t: TextTemplate): string {
+  const layers = t.layers.map((l) =>
+    l.kind === "text" ? { ...l, text: "" } : l,
+  );
+  return JSON.stringify({ background: t.background ?? null, layers });
+}
 
 /**
  * Dev-only gate on the readability rule.

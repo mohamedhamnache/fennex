@@ -25,8 +25,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  TEXT_TEMPLATES, templateToLayers, brandTemplate,
-  type TextTemplate, type ResolvedTemplate,
+  TEXT_TEMPLATES, templateToLayers, brandTemplate, templateFingerprint,
+  type TextTemplate, type ResolvedTemplate, type TemplateLayerDef,
 } from "@/components/studio/edit/text-templates";
 import { analyzeText } from "@/components/studio/edit/families";
 import { worstCaseContrast, MIN_CONTRAST } from "@/components/studio/edit/palette";
@@ -81,6 +81,141 @@ const SWEEP_BRANDS: { label: string; kit: BrandKit }[] = [
 const AS_AUTHORED: { label: string; kit: BrandKit | null } = { label: "as authored", kit: null };
 
 interface Check { name: string; pass: boolean; detail: string }
+
+/**
+ * Set-level checks -- these judge `TEXT_TEMPLATES` as a whole rather than one
+ * render at a time, so they run once, synchronously, over the static import,
+ * not per row and not per brand variant.
+ *
+ * They exist because the previous 34-template set shipped three defects
+ * nothing mechanical caught: seven pairs that were the same composition with
+ * different words, nine templates advertising fennex.studio to the customer's
+ * own audience, and families that only looked varied because their unused
+ * capability branches were never exercised by a shipped template. Each check
+ * below is built to fail on exactly one of those, and each was proven to fail
+ * against a deliberate violation before being left in this state (see the
+ * task report).
+ */
+
+/** Every fingerprint collision, as a human-readable line naming both ids. A
+ *  template set with no repeats produces zero lines. */
+function checkDistinctness(templates: TextTemplate[]): Check {
+  const firstSeenBy = new Map<string, string>();
+  const collisions: string[] = [];
+  for (const t of templates) {
+    const fp = templateFingerprint(t);
+    const earlier = firstSeenBy.get(fp);
+    if (earlier) {
+      collisions.push(`${earlier} and ${t.id} are geometrically identical`);
+    } else {
+      firstSeenBy.set(fp, t.id);
+    }
+  }
+  return {
+    name: "distinctness",
+    pass: collisions.length === 0,
+    detail: collisions.length
+      ? collisions.join("; ")
+      : `${templates.length} templates, ${firstSeenBy.size} distinct fingerprints`,
+  };
+}
+
+/** Every string value reachable from a template object, recursively -- this
+ *  scans copy, ids, names, colours, everything, rather than trusting a
+ *  hand-picked list of "the fields that hold copy" to stay complete as the
+ *  shape of a template evolves. */
+function collectStrings(value: unknown, out: string[]): void {
+  if (typeof value === "string") {
+    out.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const v of value) collectStrings(v, out);
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) collectStrings(v, out);
+  }
+}
+
+/** Case-insensitive scan for "fennex" in any string anywhere in a template.
+ *  A customer applying a template is publishing under their own name; a
+ *  template that name-drops Fennex burns their post advertising ours instead.
+ */
+function checkBrandNeutrality(templates: TextTemplate[]): Check {
+  const hits: string[] = [];
+  for (const t of templates) {
+    const strings: string[] = [];
+    collectStrings(t, strings);
+    for (const s of strings) {
+      if (s.toLowerCase().includes("fennex")) hits.push(`${t.id}: "${s}"`);
+    }
+  }
+  return {
+    name: "brand neutrality",
+    pass: hits.length === 0,
+    detail: hits.length ? hits.join("; ") : `${templates.length} templates scanned, no "fennex" found`,
+  };
+}
+
+/** Whether a single emitted layer, on its own, uses one of the renderer
+ *  capabilities the families exist to exercise. `clip` and `source` only
+ *  apply to image layers; `blend` and `rotation` are fields on every layer
+ *  kind (text layers can carry a blend or a rotation too). */
+function earnsCapability(l: TemplateLayerDef): boolean {
+  if (l.blend && l.blend !== "normal") return true;
+  if (l.rotation) return true;
+  if (l.kind === "image") {
+    if (l.clip && !("roundedPct" in l.clip)) return true;
+    if (l.source === "subject-cutout") return true;
+  }
+  return false;
+}
+
+/** Groups the shipped templates by the family that produced them and checks
+ *  the UNION of each family's emitted layers -- across every instance of that
+ *  family actually in `TEXT_TEMPLATES` -- for at least one earned capability.
+ *  Grouping by the real, shipped output (not by calling a family function
+ *  with parameters nothing currently ships) is the point: a capability sitting
+ *  behind a parameter no template reaches has not been earned. */
+function checkCapabilityCoverage(templates: TextTemplate[]): Check {
+  const layersByFamily = new Map<string, TemplateLayerDef[]>();
+  for (const t of templates) {
+    layersByFamily.set(t.family, [...(layersByFamily.get(t.family) ?? []), ...t.layers]);
+  }
+  const barren = [...layersByFamily.entries()]
+    .filter(([, layers]) => !layers.some(earnsCapability))
+    .map(([family]) => family);
+  return {
+    name: "capability coverage",
+    pass: barren.length === 0,
+    detail: barren.length
+      ? `${barren.join(", ")} earn(s) no blend, rotation, non-rounded clip or cutout across the shipped set`
+      : `${layersByFamily.size} families, each earning a capability`,
+  };
+}
+
+function SweepSetChecks({ templates }: { templates: TextTemplate[] }) {
+  const checks = [
+    checkDistinctness(templates),
+    checkBrandNeutrality(templates),
+    checkCapabilityCoverage(templates),
+  ];
+  return (
+    <section className="mb-8 space-y-2 rounded-lg border border-border bg-card p-4">
+      <h2 className="font-semibold">Template-set checks</h2>
+      <ul className="space-y-1 text-sm">
+        {checks.map((c) => (
+          <li key={c.name} className={c.pass ? "text-green-600" : "text-red-600"}>
+            <span className="font-mono">{c.pass ? "PASS" : "FAIL"}</span> {c.name}
+            <span className="text-muted-foreground"> — {c.detail}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 interface Row {
   key: string;
   id: string;
@@ -344,6 +479,8 @@ export default function TemplateSweepPage() {
           ))}
         </div>
       </header>
+
+      <SweepSetChecks templates={TEXT_TEMPLATES} />
 
       <SweepList rows={rows} />
     </div>
