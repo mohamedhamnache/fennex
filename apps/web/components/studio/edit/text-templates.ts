@@ -339,6 +339,107 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
       support: "From this month's letter, now in your inbox",
     }, "low"),
   },
+
+  // ── Blog ───────────────────────────────────────────────────────────────────
+  {
+    id: "bl_wrap_series",
+    name: "Series Wrap",
+    category: "blog",
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("blog"), {
+      headline: "Ship It Weekly",
+      subhead: "Season Two",
+      support: "A new build log every Tuesday",
+    }, "right"),
+  },
+  {
+    id: "bl_wash_slowweb",
+    name: "Essay Wash",
+    category: "blog",
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("blog"), {
+      headline: "The Slow Web",
+      subhead: "In praise of smaller, quieter sites",
+      support: "Essay / 9 min read",
+    }, "stagger"),
+  },
+  {
+    id: "bl_wash_interview",
+    name: "Interview Wash",
+    category: "blog",
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("social"), {
+      headline: "After Burnout",
+      subhead: "What changed when we cut the roadmap",
+      support: "Interview / 14 min read",
+    }, "stagger"),
+  },
+  {
+    id: "bl_grid_pagespeed",
+    name: "Guide Grid",
+    category: "blog",
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("blog"), {
+      headline: "Page Speed",
+      subhead: "A practical guide for small teams",
+      support: "Updated for 2026",
+    }),
+  },
+  {
+    id: "bl_grid_migration",
+    name: "Deep Dive Grid",
+    category: "blog",
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("blog"), {
+      headline: "Leaving the Monolith",
+      subhead: "Eighteen months, one service at a time",
+      support: "Engineering / Part 1",
+    }, "right"),
+  },
+  {
+    id: "bl_stack_notes",
+    name: "Field Notes Stack",
+    category: "blog",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("blog"), {
+      headline: "Field Notes",
+      subhead: "Issue 04",
+      support: "Everything we shipped in July",
+    }),
+  },
+  {
+    id: "bl_stack_retro",
+    name: "Retro Stack",
+    category: "blog",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("blog"), {
+      headline: "The Q3 Retro",
+      subhead: "Team of nine",
+      support: "What we would not do again",
+    }, "wide"),
+  },
+  {
+    id: "bl_space_profile",
+    name: "Profile Cover",
+    category: "blog",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("blog"), {
+      headline: "In Conversation",
+      subhead: "With ceramicist Nadia Berger",
+      support: "Craft series, part three of six",
+    }),
+  },
+  {
+    id: "bl_space_column",
+    name: "Column Cover",
+    category: "blog",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("blog"), {
+      headline: "The Long Read",
+      subhead: "On buying less, keeping it longer",
+      support: "Column / Saturday edition",
+    }, "low"),
+  },
 ];
 
 /** A template's geometry with its words removed. Two templates that differ only
