@@ -440,6 +440,85 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
       support: "Column / Saturday edition",
     }, "low"),
   },
+
+  // ── Promo ──────────────────────────────────────────────────────────────────
+  {
+    id: "pr_wrap_opening",
+    name: "Opening Wrap",
+    category: "promo",
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("promo"), {
+      headline: "Doors Open",
+      subhead: "Thursday, 7pm",
+      support: "24 Rue de la Paix, second floor",
+    }),
+  },
+  {
+    id: "pr_wash_festival",
+    name: "Festival Wash",
+    category: "promo",
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("promo"), {
+      headline: "Two Nights",
+      subhead: "Live sets from eleven local acts",
+      support: "Tickets from twenty euros, doors at seven",
+    }, "stagger"),
+  },
+  {
+    id: "pr_edge_flash",
+    name: "Flash Block",
+    category: "promo",
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("promo"), {
+      headline: "48 Hours Only",
+      subhead: "Everything reduced",
+      support: "The discount is applied at checkout. No code needed.",
+    }),
+  },
+  {
+    id: "pr_edge_lastcall",
+    name: "Last Call Block",
+    category: "promo",
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("promo"), {
+      headline: "Last Call",
+      subhead: "The sale ends at midnight",
+      support: "Anything still in your basket at midnight goes back.",
+    }, "bottom"),
+  },
+  {
+    id: "pr_slab_membership",
+    name: "Membership Slab",
+    category: "promo",
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("promo"), {
+      headline: "Founding Membership",
+      subhead: "$9/mo",
+      support: "Locked for life. The price goes up in January.",
+    }),
+  },
+  {
+    id: "pr_slab_multibuy",
+    name: "Multibuy Slab",
+    category: "promo",
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("promo"), {
+      headline: "Every Mug in Store",
+      subhead: "3 for 2",
+      support: "The cheapest one comes off at the checkout, no code.",
+    }, "centre"),
+  },
+  {
+    id: "pr_space_workshop",
+    name: "Workshop Card",
+    category: "promo",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("promo"), {
+      headline: "Knife Skills",
+      subhead: "One evening, eight seats",
+      support: "Thursday the 14th, apron and dinner included",
+    }),
+  },
 ];
 
 /** A template's geometry with its words removed. Two templates that differ only
