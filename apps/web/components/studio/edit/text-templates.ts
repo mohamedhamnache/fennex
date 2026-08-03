@@ -238,6 +238,107 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
       support: "In store and online from Friday",
     }),
   },
+
+  // ── Social ─────────────────────────────────────────────────────────────────
+  {
+    id: "so_wrap_season",
+    name: "Season Wrap",
+    category: "social",
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("social"), {
+      headline: "New Season",
+      subhead: "Spring 26",
+      support: "Doors open Friday at nine",
+    }),
+  },
+  {
+    id: "so_wrap_milestone",
+    name: "Milestone Wrap",
+    category: "social",
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("social"), {
+      headline: "We Hit 10K",
+      subhead: "Giveaway Time",
+      support: "Follow, tag a friend, we draw Sunday",
+    }, "right"),
+  },
+  {
+    id: "so_wash_golden",
+    name: "Golden Hour Wash",
+    category: "social",
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("social"), {
+      headline: "Golden Hour",
+      subhead: "The autumn edit, shot on location",
+      support: "Three looks, one roll of film",
+    }),
+  },
+  {
+    id: "so_wash_release",
+    name: "Release Wash",
+    category: "social",
+    family: "duotoneWash",
+    layers: duotoneWash(resolvePalette("promo"), {
+      headline: "Night Shift",
+      subhead: "Twelve tracks for the late commute",
+      support: "Out now wherever you stream",
+    }),
+  },
+  {
+    id: "so_stack_build",
+    name: "Build Log Stack",
+    category: "social",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("social"), {
+      headline: "Behind the Build",
+      subhead: "Day 41",
+      support: "New clips every Friday",
+    }, "wide"),
+  },
+  {
+    id: "so_stack_market",
+    name: "Market Recap Stack",
+    category: "social",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("promo"), {
+      headline: "Market Day Recap",
+      subhead: "Stall 12",
+      support: "Same spot again next Saturday",
+    }, "wide"),
+  },
+  {
+    id: "so_grid_carousel",
+    name: "Carousel Grid",
+    category: "social",
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("social"), {
+      headline: "Five Slow Reads",
+      subhead: "What the team finished this month",
+      support: "Swipe / 1 of 5",
+    }),
+  },
+  {
+    id: "so_edge_live",
+    name: "Going Live Block",
+    category: "social",
+    family: "hardEdge",
+    layers: hardEdge(resolvePalette("social"), {
+      headline: "We Go Live",
+      subhead: "Wednesday at 8pm CET",
+      support: "Bring questions. We are answering all of them on air.",
+    }),
+  },
+  {
+    id: "so_space_quote",
+    name: "Quote Card",
+    category: "social",
+    family: "negativeSpace",
+    layers: negativeSpace(resolvePalette("social"), {
+      headline: "Make It Obvious",
+      subhead: "Habits beat motivation",
+      support: "From this month's letter, now in your inbox",
+    }, "low"),
+  },
 ];
 
 /** A template's geometry with its words removed. Two templates that differ only
