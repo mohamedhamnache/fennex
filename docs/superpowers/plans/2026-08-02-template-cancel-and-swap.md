@@ -48,7 +48,7 @@ template.
 **Files:**
 - Modify: `apps/web/components/studio/edit/EditCanvas.tsx` (layer types)
 - Modify: `apps/web/components/studio/edit/text-templates.ts` (`templateToLayers`, around line 514)
-- Modify: `apps/web/components/studio/edit/EditControlsPanel.tsx` (`applyTemplate`, and the new control)
+- Modify: `apps/web/components/studio/edit/EditControlsPanel.tsx` (`insertTemplateLayers` at :473, and the new remove control)
 - Modify: `apps/web/public/locales/*/common.json`
 
 **Interfaces:**
@@ -133,7 +133,7 @@ Expected: PASS, zero errors.
 
 - [ ] **Step 7: Browser verification**
 
-`npm run dev`, open an image in the editor, and check all six cases from the spec:
+`npm run dev`, open an image in the editor, and check all seven cases:
 
 1. Apply a template, then a different one. Only the second is present.
 2. Apply a template, add your own text layer, then swap. Your layer survives at its position; the first template's layers are gone.
