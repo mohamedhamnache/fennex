@@ -9,7 +9,7 @@
  *  pictures are for judging design; the checks are for judging correctness.
  *
  *  By default only "as authored" is swept — one render per template, which is
- *  what a human needs to judge the design. The four brand kits below are an
+ *  what a human needs to judge the design. The brand kits below are an
  *  additional correctness guard: `brandTemplate` recolours the fields without
  *  touching the text colours and can invert a palette's contrast, which is what
  *  a customer with a brand kit actually sees. They are opt-in via the checkboxes
@@ -25,7 +25,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  TEXT_TEMPLATES, templateToLayers, brandTemplate, templateFingerprint,
+  TEXT_TEMPLATES, templateToLayers, brandTemplate, templateFingerprint, BRAND_KIT_FIXTURES,
   type TextTemplate, type ResolvedTemplate, type TemplateLayerDef,
 } from "@/components/studio/edit/text-templates";
 import { analyzeText } from "@/components/studio/edit/families";
@@ -43,39 +43,26 @@ const W = 800;
 const H = 800;
 const PREVIEW = 320;
 
-function brandKit(colors: string[]): BrandKit {
-  return {
-    logo_url: null,
-    colors,
-    primary_font: null,
-    secondary_font: null,
-    style_rules: null,
-    tone: null,
-  };
-}
-
 /** The brand kits every template may be swept through, beyond "as authored".
  *
- *  One fixture is not a guard. The pale kit only exercises the case where a
- *  light field takes dark ink, and any brand colour far from mid-luminance
- *  agrees with any reasonable text-colour rule, so a template set can pass it
- *  while being unreadable for most real brands. The three that follow sit in the
- *  mid-luminance band where the choice is actually contested and where the old
- *  YIQ rule in `bestTextOn` picked the worse of the two candidates: white on
- *  #0ea5e9 is 2.77:1 where near-black is 6.81:1. Sweeping all four is what makes
- *  the contrast check a guard rather than a fixture.
+ *  One fixture is not a guard. A pale kit only exercises the case where a light
+ *  field takes dark ink, and any brand colour far from mid-luminance agrees with
+ *  any reasonable text-colour rule, so a template set can pass it while being
+ *  unreadable for most real brands. The mid-luminance rows are where the choice
+ *  is actually contested, and where the old YIQ rule in `bestTextOn` picked the
+ *  worse of the two candidates: white on #0ea5e9 is 2.77:1 where near-black is
+ *  6.81:1. Sweeping all of them is what makes the contrast check a guard rather
+ *  than a fixture.
  *
- *  Add colours here, never remove them: each row is a case someone measured. */
-const SWEEP_BRANDS: { label: string; kit: BrandKit }[] = [
-  // Pale first colour: brandTemplate cycles it into a field shape.
-  { label: "brand: pale", kit: brandKit(["#f3d9a4", "#123a6b", "#7f1d3f"]) },
-  // Stock Tailwind sky/green — the most likely accidental brand kit there is.
-  { label: "brand: sky/green", kit: brandKit(["#0ea5e9", "#22c55e"]) },
-  // Muted mid-luminance naturals, the band where YIQ and WCAG disagree most.
-  { label: "brand: sage/steel", kit: brandKit(["#7a9a5a", "#6b8fa8"]) },
-  // Achromatic mid-grey: the hardest possible field, no readable ink exists.
-  { label: "brand: mid grey", kit: brandKit(["#969696", "#8a8a8a"]) },
-];
+ *  These are `BRAND_KIT_FIXTURES` verbatim — the same rows the module-load
+ *  readability gate uses — with a "brand:" prefix for the checkbox labels. This
+ *  page used to keep its own near-copy, and the two drifted: three of the seven
+ *  fixtures were checked mechanically and never rendered for anyone to look at.
+ *  Add a kit in `text-templates.ts` and it appears here with no edit to this
+ *  file. */
+const SWEEP_BRANDS: { label: string; kit: BrandKit }[] = BRAND_KIT_FIXTURES.map(
+  ({ label, kit }) => ({ label: `brand: ${label}`, kit }),
+);
 
 /** The always-on baseline variant: the template as its author wrote it. */
 const AS_AUTHORED: { label: string; kit: BrandKit | null } = { label: "as authored", kit: null };

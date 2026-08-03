@@ -758,17 +758,24 @@ function readabilityKit(colors: string[]): BrandKit {
 }
 
 /**
- * Brand kits the gate below re-checks every template through.
+ * Brand kits the gate below re-checks every template through, and the same
+ * kits `/dev/template-sweep` offers for visual review.
  *
  * Deliberately adversarial rather than pretty. Each one broke something real:
  * a pale primary and a near-white primary put light-seeking ink on a light
  * field, a near-black primary does the mirror, mid grey has no good ink at all,
- * and stock Tailwind sky/green is the most likely accidental kit there is. The
- * dev sweep has its own overlapping list for visual review; this one exists so
- * the check runs at module load with no page open, because a defect that only
- * a browser can see is a defect that ships.
+ * and stock Tailwind sky/green is the most likely accidental kit there is.
+ *
+ * ONE LIST, deliberately. The sweep page used to carry its own near-copy of
+ * this array, so the mechanical gate and the thing a human actually looks at
+ * could — and did — disagree about which brands were covered: three of the
+ * seven rows here were checked at module load and invisible in the browser.
+ * Exported rather than duplicated so a kit added for one is a kit added for
+ * both.
+ *
+ * Add colours here, never remove them: each row is a case someone measured.
  */
-const READABILITY_KITS: { label: string; kit: BrandKit }[] = [
+export const BRAND_KIT_FIXTURES: { label: string; kit: BrandKit }[] = [
   { label: "pale", kit: readabilityKit(["#f3d9a4", "#123a6b", "#7f1d3f"]) },
   { label: "sky/green", kit: readabilityKit(["#0ea5e9", "#22c55e"]) },
   { label: "sage/steel", kit: readabilityKit(["#7a9a5a", "#6b8fa8"]) },
@@ -803,7 +810,7 @@ export function assertTemplatesReadable(templates: TextTemplate[]): void {
     for (const issue of findUnbackedText(t.layers)) {
       bad.push(`  ${t.id}: "${issue.text}" — ${issue.reason}`);
     }
-    for (const { label, kit } of READABILITY_KITS) {
+    for (const { label, kit } of BRAND_KIT_FIXTURES) {
       for (const issue of findUnbackedText(brandTemplate(t, kit).layers)) {
         bad.push(`  ${t.id} [${label}]: "${issue.text}" — ${issue.reason}`);
       }
