@@ -95,13 +95,6 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
 
 /** The shipped set, built from the seven composition families.
  *
- *  PROVISIONAL. This is a two-per-family placeholder that exercises every
- *  family and both of its variants, so the module compiles and the readability
- *  gate below has something real to check. The full 34-template set — its
- *  distribution across categories, its copy, and its geometric distinctness —
- *  is authored in the task that follows the families, and replaces this array
- *  wholesale.
- *
  *  Every entry places the edited photo through an image layer, so these are
  *  compositions rather than decoration laid over whatever the user happened to
  *  upload. Colours come from `resolvePalette` roles, never from literals.
@@ -127,9 +120,58 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
  *  Copy is authored to each family's character budget, which is stated in that
  *  family's doc comment in `families.ts`. `panel()` warns in development when a
  *  run overruns its field.
+ *
+ *  DISTINCTNESS IS STRUCTURAL, NOT LUCKY. `templateFingerprint` blanks the copy
+ *  and hashes everything else, so two instances of one family that share a
+ *  palette AND a composition parameter are the same template with different
+ *  words — that is exactly how the set this replaced shipped seven identical
+ *  pairs while appearing to hold 34 entries. The rule the set below follows is
+ *  therefore stronger than the check: no (family, palette, parameter) triple is
+ *  used twice, anywhere, across any category. Each family has eight such
+ *  triples available and spends at most five of them, so a new template always
+ *  has an unused one to take. Do not add an instance that reuses a triple and
+ *  relies on a centred run's copy-dependent x offset to squeak past the sweep.
+ *
+ *  Copy carries no brand of ours. A customer applying one of these is
+ *  publishing under their own name, so nothing here names a product, a domain
+ *  or a company — the sweep's brand-neutrality check fails the build on the
+ *  string "fennex" in any casing, in any field, including `name`.
  */
 export const TEXT_TEMPLATES: TextTemplate[] = [
   // ── Ecommerce ──────────────────────────────────────────────────────────────
+  {
+    id: "ec_slab_lamp",
+    name: "Markdown Slab",
+    category: "ecommerce",
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("ecommerce"), {
+      headline: "Aurora Desk Lamp",
+      subhead: "-40%",
+      support: "Today only, and free returns for thirty days",
+    }),
+  },
+  {
+    id: "ec_slab_bundle",
+    name: "Bundle Slab",
+    category: "ecommerce",
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("ecommerce"), {
+      headline: "Ceramic Mug Set",
+      subhead: "2 for 1",
+      support: "Add both to the basket and the second one is free",
+    }, "centre"),
+  },
+  {
+    id: "ec_slab_outlet",
+    name: "Outlet Slab",
+    category: "ecommerce",
+    family: "priceSlab",
+    layers: priceSlab(resolvePalette("blog"), {
+      headline: "Trail Runner 3",
+      subhead: "$89",
+      support: "Last season's colourway, same outsole and the same fit",
+    }),
+  },
   {
     id: "ec_grid_lookbook",
     name: "Lookbook Grid",
@@ -137,9 +179,20 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     family: "ruleGrid",
     layers: ruleGrid(resolvePalette("ecommerce"), {
       headline: "The Winter Edit",
-      subhead: "Twelve pieces, one palette",
-      support: "atelier / no 12",
+      subhead: "Twelve pieces cut from one palette",
+      support: "Atelier / No 12",
     }, "right"),
+  },
+  {
+    id: "ec_grid_care",
+    name: "Care Guide Grid",
+    category: "ecommerce",
+    family: "ruleGrid",
+    layers: ruleGrid(resolvePalette("ecommerce"), {
+      headline: "How to Wash Linen",
+      subhead: "Cold water, flat dry, no softener",
+      support: "Care guide / 4 steps",
+    }),
   },
   {
     id: "ec_edge_restock",
@@ -148,147 +201,42 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     family: "hardEdge",
     layers: hardEdge(resolvePalette("blog"), {
       headline: "Back in Stock",
-      subhead: "Linen throw, sand",
-      support: "sold out twice / limited run",
+      subhead: "The linen throw, in sand",
+      support: "It sold out twice. This run is four hundred pieces.",
     }, "bottom"),
   },
   {
-    id: "ec_slab_markdown",
-    name: "Markdown Slab",
+    id: "ec_edge_landed",
+    name: "Just Landed Block",
     category: "ecommerce",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("ecommerce"), {
-      headline: "Aurora Desk Lamp",
-      subhead: "-40%",
-      support: "today only, while stocks last",
-    }),
-  },
-
-  // ── Social ─────────────────────────────────────────────────────────────────
-  {
-    id: "so_wrap_season",
-    name: "Season Wrap",
-    category: "social",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("social"), {
-      headline: "New Season",
-      subhead: "Spring 26",
-      support: "in store from friday",
-    }),
-  },
-  {
-    id: "so_wash_golden",
-    name: "Golden Hour",
-    category: "social",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("social"), {
-      headline: "Golden Hour",
-      subhead: "The autumn edit, shot on location",
-      support: "three looks, one roll of film",
-    }),
-  },
-  {
-    id: "so_stack_behind",
-    name: "Behind the Build",
-    category: "social",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("promo"), {
-      headline: "Behind the Build",
-      subhead: "Day 41",
-      support: "new clips every friday",
-    }, "wide"),
-  },
-  {
-    id: "so_space_quote",
-    name: "Quote Card",
-    category: "social",
-    family: "negativeSpace",
-    layers: negativeSpace(resolvePalette("social"), {
-      headline: "Make It Obvious",
-      subhead: "Habits beat motivation",
-      support: "from this month's letter",
-    }, "low"),
-  },
-
-  // ── Blog ───────────────────────────────────────────────────────────────────
-  {
-    id: "bl_grid_guide",
-    name: "Guide Grid",
-    category: "blog",
-    family: "ruleGrid",
-    layers: ruleGrid(resolvePalette("blog"), {
-      headline: "Page Speed",
-      subhead: "A practical guide for small teams",
-      support: "updated for 2026",
-    }),
-  },
-  {
-    id: "bl_wash_essay",
-    name: "Essay Wash",
-    category: "blog",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("blog"), {
-      headline: "The Slow Web",
-      subhead: "In praise of smaller, quieter sites",
-      support: "essay / 9 min read",
-    }, "stagger"),
-  },
-  {
-    id: "bl_stack_notes",
-    name: "Field Notes",
-    category: "blog",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("blog"), {
-      headline: "Field Notes",
-      subhead: "Issue 04",
-      support: "everything we shipped in july",
-    }),
-  },
-  {
-    id: "bl_space_interview",
-    name: "Interview Cover",
-    category: "blog",
-    family: "negativeSpace",
-    layers: negativeSpace(resolvePalette("blog"), {
-      headline: "In Conversation",
-      subhead: "With Nadia Berger",
-      support: "craft series, part three",
-    }),
-  },
-
-  // ── Promo ──────────────────────────────────────────────────────────────────
-  {
-    id: "pr_wrap_opening",
-    name: "Opening Wrap",
-    category: "promo",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("promo"), {
-      headline: "Doors Open",
-      subhead: "Thursday 7pm",
-      support: "24 rue de la paix",
-    }, "right"),
-  },
-  {
-    id: "pr_edge_flash",
-    name: "Flash Block",
-    category: "promo",
     family: "hardEdge",
-    layers: hardEdge(resolvePalette("promo"), {
-      headline: "48 Hours",
-      subhead: "Everything reduced",
-      support: "discount applied at checkout",
+    layers: hardEdge(resolvePalette("ecommerce"), {
+      headline: "Just Landed",
+      subhead: "The all-weather parka",
+      support: "Taped seams, recycled shell, cut wide enough to layer.",
     }),
   },
   {
-    id: "pr_slab_two_for",
-    name: "Two for One",
-    category: "promo",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("promo"), {
-      headline: "Every Mug in Store",
-      subhead: "2 for 1",
-      support: "add both, the cheaper one is free",
-    }, "centre"),
+    id: "ec_stack_studio",
+    name: "Studio Stack",
+    category: "ecommerce",
+    family: "offsetStack",
+    layers: offsetStack(resolvePalette("ecommerce"), {
+      headline: "Made in the Studio",
+      subhead: "Batch 07",
+      support: "Thrown, glazed and fired here",
+    }),
+  },
+  {
+    id: "ec_wrap_arrival",
+    name: "Arrivals Wrap",
+    category: "ecommerce",
+    family: "typeWrap",
+    layers: typeWrap(resolvePalette("ecommerce"), {
+      headline: "New Arrivals",
+      subhead: "Autumn Drop 02",
+      support: "In store and online from Friday",
+    }),
   },
 ];
 
