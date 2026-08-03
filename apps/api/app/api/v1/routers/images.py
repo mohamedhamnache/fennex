@@ -23,6 +23,7 @@ from app.models.project import Project
 from app.services.image_service import build_image_prompt, build_social_prompt, generate_image_dalle, get_placeholder_url, SOCIAL_PRESETS
 from app.core.storage import upload_file
 from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
+from app.services import editing_service
 
 router = APIRouter()
 
@@ -1297,3 +1298,50 @@ async def resize_to_platforms(
 
     await db.commit()
     return out
+
+
+# ── Cutout (cheap Replicate background removal, for template layers) ──────────
+#
+# Not in the /edit dispatch table (editing.py): that endpoint always persists
+# its result as a new library version, which is right for a user-facing edit
+# but wrong here -- a template's "subject-cutout" layer needs a background-free
+# copy as an ingredient for a composition being built client-side, not a
+# standalone version cluttering the gallery. Everything else about the call
+# (credit gate, supplier, metering) matches the other paid image operations.
+
+class CutoutOut(BaseModel):
+    image_url: str
+    width: int
+    height: int
+
+
+@router.post("/{image_id}/cutout", response_model=CutoutOut)
+async def cutout_image(
+    image_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
+    """Background-removed copy of an image via the cheap Replicate cutout
+    (editing_service.remove_background_cheap -- 851-labs/background-remover,
+    meters at the MIN_REPLICATE_CREDITS floor). Used by the editor's template
+    picker to gate a paid `typeWrap`-family layer behind a consent dialog
+    before spending: the client confirms the cost with the user, then calls
+    this, then builds the template's layers from the returned URL.
+    """
+    image = await _get_image_or_404(image_id, current_user.org_id, db)
+    if not image.image_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image has no URL")
+
+    result = await editing_service.remove_background_cheap(image.image_url)
+    if not result.get("ok"):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=result.get("error", "Cutout failed"),
+        )
+
+    return CutoutOut(
+        image_url=result["image_url"],
+        width=result.get("width") or image.width,
+        height=result.get("height") or image.height,
+    )

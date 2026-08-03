@@ -358,6 +358,59 @@ async def test_attach_image_to_article(client, org_and_project, article):
     assert data["article_id"] == str(article.id)
 
 
+# ── Cutout (POST /images/{id}/cutout) ──────────────────────────────────────────
+#
+# Backs the editor's "subject-cutout" template layers (task-4-brief.md):
+# the client shows a consent dialog stating the credit cost, then calls this
+# endpoint on confirm and builds the template from the returned URL.
+
+@pytest.mark.asyncio
+async def test_cutout_returns_the_background_removed_url(client, org_and_project):
+    create_resp = await client.post(
+        "/api/v1/images/generate",
+        json={"project_id": str(FAKE_PROJECT_ID), "title": "Cutout Source", "usage": "custom"},
+    )
+    assert create_resp.status_code == 200
+    image_id = create_resp.json()["id"]
+
+    fake_result = {"ok": True, "image_url": "https://cdn/cutout.png", "width": 512, "height": 512}
+    with patch("app.api.v1.routers.images.editing_service.remove_background_cheap",
+               new=AsyncMock(return_value=fake_result)):
+        resp = await client.post(f"/api/v1/images/{image_id}/cutout")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["image_url"] == "https://cdn/cutout.png"
+    assert data["width"] == 512
+    assert data["height"] == 512
+
+
+@pytest.mark.asyncio
+async def test_cutout_supplier_failure_surfaces_as_502_not_a_silent_empty_result(client, org_and_project):
+    """A half-applied template is worse than none: the client must see a real
+    error to apply nothing, not a 200 with a missing URL."""
+    create_resp = await client.post(
+        "/api/v1/images/generate",
+        json={"project_id": str(FAKE_PROJECT_ID), "title": "Cutout Source", "usage": "custom"},
+    )
+    assert create_resp.status_code == 200
+    image_id = create_resp.json()["id"]
+
+    fake_result = {"ok": False, "error": "Replicate timed out"}
+    with patch("app.api.v1.routers.images.editing_service.remove_background_cheap",
+               new=AsyncMock(return_value=fake_result)):
+        resp = await client.post(f"/api/v1/images/{image_id}/cutout")
+
+    assert resp.status_code == 502
+    assert resp.json()["detail"] == "Replicate timed out"
+
+
+@pytest.mark.asyncio
+async def test_cutout_unknown_image_is_404(client, org_and_project):
+    resp = await client.post(f"/api/v1/images/{uuid.uuid4()}/cutout")
+    assert resp.status_code == 404
+
+
 # ── Quality parameter tests ───────────────────────────────────────────────────
 
 from unittest.mock import MagicMock

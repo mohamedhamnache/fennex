@@ -10,10 +10,17 @@
  *     Every text layer here is produced by `panel()`, and `panel()` always
  *     emits its backing field first. There is no exported way to author a bare
  *     text layer, so a family in this file structurally cannot place one.
- *     `analyzeText()` re-checks the finished layer list — including whether
- *     anything painted since has covered the run — so the guarantee survives
- *     hand-editing and re-colouring passes, and `text-templates.ts` gates the
- *     shipped set on it at module load in development.
+ *     `analyzeText()` re-checks the finished layer list — including anything
+ *     painted between a run's field and the run itself — so the guarantee
+ *     survives hand-editing and re-colouring passes, and `text-templates.ts`
+ *     gates the shipped set on it at module load in development.
+ *
+ *     Know its limit. `analyzeText` walks the list in paint order and resolves
+ *     each run against what is already painted, so it says nothing about layers
+ *     appended AFTER a run. A family that paints over its own type — only
+ *     `typeWrap` does, with its cutout — is making a claim the module cannot
+ *     check, and owes an argument for why the type stays legible regardless of
+ *     the photograph. `typeWrap`'s is written out at that family.
  *
  *  2. HIERARCHY. Sizes come from `TYPE_STEPS`, derived from TYPE_SCALE, and a
  *     line names a step rather than a pixel size. The 7:1 display-to-support
@@ -41,7 +48,7 @@
 
 import type { TemplateLayerDef, TemplateShapeDef, TemplateTextDef } from "./text-templates";
 import type { Palette } from "./palette";
-import { FONT_ROLES, TYPE_SCALE } from "./palette";
+import { FONT_ROLES, TYPE_SCALE, relativeLuminance } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import { shapeAspect } from "./shapes";
 
@@ -141,11 +148,46 @@ export interface FieldSpec {
   opacity?: number;
   gradient?: boolean;
   shadow?: boolean;
-  /** Composite this field against what is already painted. A blended field is
-   *  a wash over a photograph, so what it composites to depends on the
-   *  photograph — which means it cannot carry type. `panel()` therefore only
-   *  accepts a blend on a field with no lines. */
+  /** Composite this field against what is already painted.
+   *
+   *  A blended field is a wash over a photograph, so its final colour depends
+   *  on a photograph the template has never seen. That does NOT make it
+   *  unusable for type, because two of the modes are monotone:
+   *
+   *    multiply(a, b) = a*b/255 is channel-wise non-increasing, so every
+   *      channel of the wash is at most the accent's, so L(wash) <= L(accent),
+   *      so a LIGHTER ink's contrast against the wash is at least its contrast
+   *      against the accent — for every photograph, not on average.
+   *    screen(a, b) = 255 - (255-a)(255-b)/255 is the mirror: L(wash) >=
+   *      L(accent), so a DARKER ink is bounded the same way.
+   *
+   *  So a wash carrying type inherits the palette's own onAccent/accent
+   *  guarantee as a floor. The direction is not free: multiply demands the
+   *  lighter ink and screen the darker one, and the wrong pairing has no bound
+   *  at all. `panel()` warns on it and `analyzeText()` reports it as unbacked,
+   *  so it cannot ship. Every other mode is unbounded in both directions and
+   *  may only be used on a field with no lines. */
   blend?: BlendMode;
+}
+
+/** The blend modes with a monotone luminance bound, and which way each one
+ *  moves. A field using anything else cannot carry type. */
+const WASH_DIRECTION: Partial<Record<BlendMode, "lighter" | "darker">> = {
+  multiply: "lighter",
+  screen: "darker",
+};
+
+/** Whether `ink` is on the side of `fieldColor` that the wash's bound protects.
+ *  Returns null when the field does not wash at all. */
+function washPairing(field: TemplateShapeDef): ((ink: string) => boolean) | null {
+  const blend = field.blend;
+  if (!blend || blend === "normal") return null;
+  const direction = WASH_DIRECTION[blend];
+  const fieldLum = relativeLuminance(field.color);
+  if (!direction) return () => false; // unbounded mode: no ink is safe on it
+  return (ink) => direction === "lighter"
+    ? relativeLuminance(ink) > fieldLum
+    : relativeLuminance(ink) < fieldLum;
 }
 
 export interface PanelLine {
@@ -271,16 +313,25 @@ export function panel(
 
   const fit = inscribed(field);
   const texts: TemplateTextDef[] = [];
+  const washAccepts = washPairing(shape);
 
   for (const line of lines) {
     const text = line.text?.trim();
     if (!text) continue;
 
-    // A blended field composites against whatever photograph is under it, so
-    // its final colour is unknown at authoring time and no ink can be promised
-    // against it. Blend is for washes; type goes on an opaque field over them.
-    if (field.blend && field.blend !== "normal") {
-      warn(`"${text}" sits on a ${field.blend} field, whose colour depends on the photo; put it on an opaque field instead`);
+    const color = line.emphasis
+      ? p.onAccent
+      : field.role === "accent"
+        ? p.onAccent
+        : line.accent
+          ? p.accentInk
+          : p.ink;
+
+    // A pill carries its own opaque background inside the text group, which the
+    // field's blend never touches; anything else on a wash has to sit on the
+    // side of it the wash's monotone bound protects.
+    if (washAccepts && !line.emphasis && !washAccepts(color)) {
+      warn(`"${text}" is ${color} on a ${field.blend} wash of ${shape.color}; that wash runs the wrong way for this ink and has no contrast floor`);
     }
 
     const fontSize = TYPE_STEPS[line.step];
@@ -302,13 +353,7 @@ export function panel(
       xPct: Number(x.toFixed(2)),
       yPct: line.yPct,
       fontSize,
-      color: line.emphasis
-        ? p.onAccent
-        : field.role === "accent"
-          ? p.onAccent
-          : line.accent
-            ? p.accentInk
-            : p.ink,
+      color,
       bgColor: line.emphasis ? p.accent : undefined,
       // Default to regular weight. Anton ships one weight and Inter is loaded
       // at 400-600, so asking for bold would synthesise a face the export
@@ -430,6 +475,28 @@ export type TypeWrapSide = "left" | "right";
  *  them sitting on a photograph. Painted last, the type keeps its guaranteed
  *  field and the subject occludes it, which is the whole effect.
  *
+ *  That last layer is outside every check in this module — `analyzeText` only
+ *  resolves a run against what is painted BEFORE it — so the legibility
+ *  argument is geometric and belongs here.
+ *
+ *  `SceneSvg` sets `dominantBaseline="text-before-edge"`, so a run's anchor is
+ *  the top of its em box and one em is `fontSize / REFERENCE_WIDTH` of the
+ *  frame: 14 points of it at the display step. Measured against Anton, capitals
+ *  start 0.27em below the anchor and the baseline sits 1.03em below it, so the
+ *  headline's caps span `yPct + 3.78` to `yPct + 14.42` and are 10.64 points
+ *  tall. The cutout box begins at yPct 20 and can, with a tall subject and
+ *  `contain`, fill everything below that.
+ *
+ *    yPct 14 -> caps 17.78..28.42, only 2.22 points (20.9%) permanently clear
+ *    yPct  8 -> caps 11.78..22.42, 8.22 points (77.3%) permanently clear
+ *
+ *  So the subject reaches at most the bottom quarter of the letterforms, which
+ *  is the overlap the family wants, and three quarters of the headline is
+ *  legible whatever the user uploads. The subhead and support lines are ranged
+ *  into the half of the frame the cutout box does not occupy and are clear of
+ *  it horizontally at their full budgets, so the headline is the only run the
+ *  subject can touch at all.
+ *
  *  Budgets: headline 16, subhead 18, support 38. */
 export function typeWrap(
   p: Palette,
@@ -443,7 +510,11 @@ export function typeWrap(
       p,
       { shape: "rect", role: "surface", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
       [
-        { text: copy.headline, step: "display", font: "impact", xPct: 4, yPct: 14, uppercase: true, letterSpacing: -4 },
+        // yPct 8, not 14, and the difference is the whole guarantee. See the
+        // cap-height arithmetic in this family's doc comment: at 14 the
+        // subject could cover four fifths of the headline, at 8 it can reach
+        // at most the bottom quarter of it.
+        { text: copy.headline, step: "display", font: "impact", xPct: 4, yPct: 8, uppercase: true, letterSpacing: -4 },
         { text: copy.subhead, step: "subhead", font: "mono", xPct: textX, yPct: 60, uppercase: true, accent: true },
         { text: copy.support, step: "support", font: "mono", xPct: textX, yPct: 90 },
       ],
@@ -454,40 +525,58 @@ export function typeWrap(
   ];
 }
 
-/** Which way the accent floods the photograph. `multiply` drives it toward the
- *  accent's shadow, `screen` toward its light. */
-export type WashBlend = "multiply" | "screen";
+/** How the type is set into the wash. `centre` stacks it on the middle of the
+ *  frame; `stagger` steps it diagonally from top-left to bottom-right. */
+export type WashLayout = "centre" | "stagger";
 
-/** Duotone Wash: a full-bleed photograph flooded with the accent through a
- *  blend mode, cut hard by an opaque block of type across the bottom.
+/** The wash direction the palette can carry.
  *
- *  The wash carries no type. What a blended field composites to depends on the
- *  photograph under it — `multiply` runs the accent to black, `screen` runs it
- *  to white — so no ink can be promised against it. The type sits on its own
- *  opaque surface block over the wash, which is where the 4.5:1 guarantee is
- *  real. `panel()` warns if anyone later puts a line on a blended field.
+ *  Not a parameter. `multiply` is channel-wise non-increasing, so the wash is
+ *  never lighter than the accent and only the LIGHTER of the two ink candidates
+ *  keeps a contrast floor; `screen` is the mirror and demands the darker one.
+ *  `onAccent` is already whichever of those two the palette resolved, so the
+ *  palette has effectively chosen the direction, and letting a template
+ *  override it would only let it choose the unbounded pairing. */
+function washFor(p: Palette): BlendMode {
+  return relativeLuminance(p.onAccent) > relativeLuminance(p.accent) ? "multiply" : "screen";
+}
+
+/** Duotone Wash: one photograph, flooded edge to edge with the accent through a
+ *  blend mode, with the type set straight into the wash. No block, no band, no
+ *  panel — the colour cast is the whole composition.
  *
- *  Budgets: headline 16, subhead 40, support 79. */
+ *  Type on a wash is safe here because the mode is monotone, not because the
+ *  photograph is expected to cooperate: `multiply` can only drive the accent
+ *  darker and `screen` can only drive it lighter, so with the ink on the right
+ *  side of it, contrast against the wash is at least contrast against the raw
+ *  accent — which is the `onAccent`/`accent` pair `resolvePalette` already
+ *  guarantees at 4.5:1. `washFor` picks the direction the palette can carry,
+ *  `panel()` warns on the wrong pairing and `analyzeText` reports it unbacked,
+ *  so the unbounded combination cannot ship.
+ *
+ *  Budgets: headline 14, subhead 37, support 63. */
 export function duotoneWash(
   p: Palette,
   copy: FamilyCopy,
-  wash: WashBlend = "multiply",
+  layout: WashLayout = "centre",
 ): TemplateLayerDef[] {
+  const centre = layout === "centre";
   return [
     photo(),
     ...panel(
       p,
-      { shape: "rect", role: "accent", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100, blend: wash },
-      [],
-    ),
-    ...panel(
-      p,
-      { shape: "rect", role: "surface", xPct: 0, yPct: 56, widthPct: 100, heightPct: 44 },
-      [
-        { text: copy.headline, step: "display", font: "impact", xPct: 4, yPct: 59, uppercase: true, letterSpacing: -4 },
-        { text: copy.subhead, step: "subhead", font: "modern", xPct: 4, yPct: 79, accent: true },
-        { text: copy.support, step: "support", font: "mono", xPct: 4, yPct: 90 },
-      ],
+      { shape: "rect", role: "accent", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100, blend: washFor(p) },
+      centre
+        ? [
+          { text: copy.subhead, step: "subhead", font: "mono", xPct: 0, yPct: 32, center: true, uppercase: true },
+          { text: copy.headline, step: "display", font: "impact", xPct: 0, yPct: 40, center: true, uppercase: true, letterSpacing: -4 },
+          { text: copy.support, step: "support", font: "mono", xPct: 0, yPct: 60, center: true },
+        ]
+        : [
+          { text: copy.subhead, step: "subhead", font: "mono", xPct: 6, yPct: 10, uppercase: true },
+          { text: copy.headline, step: "display", font: "impact", xPct: 12, yPct: 34, uppercase: true, letterSpacing: -4 },
+          { text: copy.support, step: "support", font: "mono", xPct: 24, yPct: 82 },
+        ],
     ),
   ];
 }
@@ -773,8 +862,12 @@ export function analyzeText(
     }
     if (layer.kind === "shape") {
       const shape = layer as TemplateShapeDef;
-      const blended = !!shape.blend && shape.blend !== "normal";
-      const usable = isFieldShape(shape.shape) && (shape.opacity ?? 1) >= MIN_FIELD_OPACITY && !blended;
+      const blend = shape.blend;
+      // A wash backs type only in the two modes with a monotone luminance
+      // bound; whether this run's ink is on the protected side of it is
+      // checked below, once the run that lands on it is known.
+      const washable = !blend || blend === "normal" || !!WASH_DIRECTION[blend];
+      const usable = isFieldShape(shape.shape) && (shape.opacity ?? 1) >= MIN_FIELD_OPACITY && washable;
       const hitBox = imageBox(shape);
       painted.push({
         box: usable ? shapeFieldBox(shape) : hitBox,
@@ -809,13 +902,23 @@ export function analyzeText(
     );
 
     if (backing?.field) {
+      // On a wash, the reported field colour is the accent rather than what the
+      // wash composites to — which is the point: monotonicity makes the accent
+      // the FLOOR, so a contrast measured against it holds for every
+      // photograph. That only works if the ink is on the side the bound
+      // protects, so a run that is not gets reported unbacked rather than
+      // measured against a number that does not apply to it.
+      const accepts = washPairing(backing.field);
+      const mispaired = accepts !== null && !accepts(text.color);
       out.push({
         index,
         text: text.text,
         color: text.color,
         fieldColor: backing.field.color,
         fieldOpacity: backing.field.opacity ?? 1,
-        reason: null,
+        reason: mispaired
+          ? `its ${backing.field.blend} wash runs the wrong way for this ink, so nothing bounds the contrast`
+          : null,
       });
     } else {
       out.push({

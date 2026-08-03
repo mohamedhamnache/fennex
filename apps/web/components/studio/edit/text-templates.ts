@@ -215,7 +215,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
       headline: "The Slow Web",
       subhead: "In praise of smaller, quieter sites",
       support: "essay / 9 min read",
-    }, "screen"),
+    }, "stagger"),
   },
   {
     id: "bl_stack_notes",
