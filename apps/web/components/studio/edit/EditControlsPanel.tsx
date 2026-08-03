@@ -10,7 +10,8 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
 } from "lucide-react";
-import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
+import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, removeBackgroundCheap, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
+import { CUTOUT_CREDIT_COST } from "@/lib/creditCosts";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
 import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
@@ -18,6 +19,7 @@ import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId,
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
 import { TemplatePicker } from "./TemplatePicker";
 import { LayersPanel } from "./LayersPanel";
+import { CutoutConsentDialog } from "./CutoutConsentDialog";
 
 const CANVAS_FONTS = [
   { value: "Inter, sans-serif", label: "Inter" },
@@ -458,14 +460,24 @@ export function EditControlsPanel({
       : { background: t.background ?? null, layers: t.layers };
   }
 
-  function applyTemplate(t: TextTemplate) {
-    // Template sizes assume an ~800px canvas — templateToLayers scales them to
-    // the real display size.
-    const disp = canvasRef.current?.getDisplayedSize();
-    const resolved = resolveTemplate(t);
+  /** True when a resolved template needs the paid Replicate cutout (a
+   *  "subject-cutout" image layer) before it can be applied. Gates
+   *  applyTemplate behind CutoutConsentDialog -- see its docstring. */
+  function needsCutout(resolved: ResolvedTemplate): boolean {
+    return resolved.layers.some((l) => l.kind === "image" && l.source === "subject-cutout");
+  }
+
+  /** Turns a resolved template into canvas layers and lands the user in the
+   *  Add Text tool, ready to edit them. Shared by the plain apply path and
+   *  the cutout-confirm path so both build layers identically. */
+  function insertTemplateLayers(
+    resolved: ResolvedTemplate,
+    subjectUrl: string,
+    disp?: { width: number; height: number } | null,
+  ) {
     const newLayers = templateToLayers(
       resolved,
-      subjectImageUrl ?? "",
+      subjectUrl,
       disp?.width ?? 0,
       disp?.height ?? 0,
     );
@@ -483,6 +495,57 @@ export function EditControlsPanel({
     // A template that places the photo as a layer must not also show it as
     // the backdrop underneath — that would double-render the subject.
     if (placesSubject(resolved.layers)) onHideBaseImage?.(true);
+  }
+
+  // Template pending the user's sign-off on CutoutConsentDialog -- set only
+  // when the resolved template carries a "subject-cutout" layer, which is a
+  // paid Replicate call. Cleared on cancel, on confirm success, and never
+  // acted on before the user explicitly agrees to spend the credits.
+  const [pendingCutout, setPendingCutout] = useState<{
+    resolved: ResolvedTemplate;
+    disp?: { width: number; height: number } | null;
+  } | null>(null);
+  const [cutoutError, setCutoutError] = useState<string | null>(null);
+
+  function applyTemplate(t: TextTemplate) {
+    // Template sizes assume an ~800px canvas — templateToLayers scales them to
+    // the real display size.
+    const disp = canvasRef.current?.getDisplayedSize();
+    const resolved = resolveTemplate(t);
+
+    if (needsCutout(resolved)) {
+      // Applying a template must never silently spend a customer's credits —
+      // ask first. Nothing is built or appended until the user confirms.
+      setCutoutError(null);
+      setPendingCutout({ resolved, disp });
+      return;
+    }
+
+    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp);
+  }
+
+  // Runs the paid cutout and, on success, builds the template's layers from
+  // its result. Only reachable via the dialog's Confirm button.
+  const cutoutMutation = useMutation({
+    mutationFn: async () => {
+      if (!pendingCutout) throw new Error("Nothing to cut out");
+      const result = await removeBackgroundCheap(imageId);
+      return result.image_url;
+    },
+    onSuccess: (cutoutUrl) => {
+      if (pendingCutout) insertTemplateLayers(pendingCutout.resolved, cutoutUrl, pendingCutout.disp);
+      setPendingCutout(null);
+      setCutoutError(null);
+    },
+    // API failure surfaces the error and applies nothing -- pendingCutout is
+    // left set so the dialog stays open with the error, rather than
+    // half-applying the template.
+    onError: (e: Error) => setCutoutError(e.message),
+  });
+
+  function handleCutoutCancel() {
+    setPendingCutout(null);
+    setCutoutError(null);
   }
 
   type EditOutcome =
@@ -643,8 +706,8 @@ export function EditControlsPanel({
   });
 
   useEffect(() => {
-    onProcessingChange?.(mutation.isPending || confirmMutation.isPending || flipMutation.isPending || decomposeLoading);
-  }, [mutation.isPending, confirmMutation.isPending, flipMutation.isPending, decomposeLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+    onProcessingChange?.(mutation.isPending || confirmMutation.isPending || flipMutation.isPending || decomposeLoading || cutoutMutation.isPending);
+  }, [mutation.isPending, confirmMutation.isPending, flipMutation.isPending, decomposeLoading, cutoutMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toolLabel = tool.replace(/_/g, " ");
   const selectedLayer = layers.find((l) => l.id === selectedLayerId) ?? null;
@@ -2313,6 +2376,15 @@ export function EditControlsPanel({
             </>
           )}
         </div>
+
+        <CutoutConsentDialog
+          open={!!pendingCutout}
+          credits={CUTOUT_CREDIT_COST}
+          loading={cutoutMutation.isPending}
+          error={cutoutError}
+          onConfirm={() => cutoutMutation.mutate()}
+          onCancel={handleCutoutCancel}
+        />
     </div>
   );
 }

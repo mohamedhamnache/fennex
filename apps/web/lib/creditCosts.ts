@@ -137,3 +137,16 @@ export function estimateProduct3DCredits(
   const credits = Math.ceil((seconds * GPU_SECOND_RATE_MICROS) / CREDIT_MICROS);
   return Math.max(MIN_REPLICATE_CREDITS, credits);
 }
+
+/**
+ * Cost of the editor's "subject-cutout" template layer, shown in
+ * CutoutConsentDialog before the user spends. `remove_background_cheap`
+ * (apps/api/app/services/editing_service.py) runs 851-labs/background-remover
+ * on Replicate, a few-GPU-second job that always lands on the
+ * MIN_REPLICATE_CREDITS floor rather than a variable per-second charge -- so
+ * unlike PRODUCT_3D_CREDIT_COST above, this is not an estimate: it is the
+ * exact number the backend will meter, every time. If the floor is ever
+ * repriced, update it here in the same change (see MIN_REPLICATE_CREDITS
+ * above, apps/api/app/core/credits.py).
+ */
+export const CUTOUT_CREDIT_COST = MIN_REPLICATE_CREDITS;

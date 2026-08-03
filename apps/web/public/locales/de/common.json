@@ -1409,7 +1409,13 @@
     "done": "Fertig",
     "saving": "Wird gespeichert...",
     "saveFailed": "Erneut versuchen",
-    "burnFailed": "Die Ebenen konnten nicht reduziert werden."
+    "burnFailed": "Die Ebenen konnten nicht reduziert werden.",
+    "cutout": {
+      "title": "Hintergrund freistellen?",
+      "body": "Diese Vorlage platziert das Motiv mit entferntem Hintergrund — ein KI-Schritt, der {{count}} Credits kostet.",
+      "confirm": "Freistellen und anwenden",
+      "cancel": "Abbrechen"
+    }
   },
   "mirage": {
     "header": "Mirage · Bild-Künstler",

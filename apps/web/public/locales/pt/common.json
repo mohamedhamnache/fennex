@@ -1409,7 +1409,13 @@
     "done": "Concluir",
     "saving": "A guardar...",
     "saveFailed": "Tentar novamente",
-    "burnFailed": "Não foi possível achatar as camadas."
+    "burnFailed": "Não foi possível achatar as camadas.",
+    "cutout": {
+      "title": "Recortar o fundo?",
+      "body": "Este modelo coloca o assunto com o fundo removido — uma etapa de IA que custa {{count}} créditos.",
+      "confirm": "Recortar e aplicar",
+      "cancel": "Cancelar"
+    }
   },
   "mirage": {
     "header": "Mirage · Artesão de imagem",

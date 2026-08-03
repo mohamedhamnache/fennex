@@ -1409,7 +1409,13 @@
     "done": "Terminer",
     "saving": "Enregistrement...",
     "saveFailed": "Réessayer",
-    "burnFailed": "Impossible d'aplatir les calques."
+    "burnFailed": "Impossible d'aplatir les calques.",
+    "cutout": {
+      "title": "Détourer l'arrière-plan ?",
+      "body": "Ce modèle place le sujet avec son arrière-plan supprimé — une étape IA qui coûte {{count}} crédits.",
+      "confirm": "Détourer et appliquer",
+      "cancel": "Annuler"
+    }
   },
   "mirage": {
     "header": "Mirage · Artisan d'image",

@@ -1506,7 +1506,13 @@
     "done": "Done",
     "saving": "Saving...",
     "saveFailed": "Retry save",
-    "burnFailed": "Could not flatten the layers."
+    "burnFailed": "Could not flatten the layers.",
+    "cutout": {
+      "title": "Cut out the background?",
+      "body": "This template places the subject with its background removed — an AI step that costs {{count}} credits.",
+      "confirm": "Cut out and apply",
+      "cancel": "Cancel"
+    }
   },
   "mirage": {
     "header": "Mirage · Image Artisan",

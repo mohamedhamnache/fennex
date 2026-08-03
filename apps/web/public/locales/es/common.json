@@ -1409,7 +1409,13 @@
     "done": "Listo",
     "saving": "Guardando...",
     "saveFailed": "Reintentar",
-    "burnFailed": "No se pudieron aplanar las capas."
+    "burnFailed": "No se pudieron aplanar las capas.",
+    "cutout": {
+      "title": "¿Recortar el fondo?",
+      "body": "Esta plantilla coloca el sujeto con el fondo eliminado — un paso de IA que cuesta {{count}} créditos.",
+      "confirm": "Recortar y aplicar",
+      "cancel": "Cancelar"
+    }
   },
   "mirage": {
     "header": "Mirage · Artesano de imagen",
