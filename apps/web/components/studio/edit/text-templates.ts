@@ -8,7 +8,7 @@ import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import {
   typeWrap, duotoneWash, offsetStack, ruleGrid, hardEdge, priceSlab, negativeSpace,
-  findUnbackedText, analyzeText, type FamilyId,
+  findUnbackedText, analyzeText, isWashMode, washFor, type FamilyId,
 } from "./families";
 
 /** A reusable design composition: optional background, shape objects, and text.
@@ -308,39 +308,6 @@ export function templateFingerprint(t: TextTemplate): string {
   return JSON.stringify({ background: t.background ?? null, layers });
 }
 
-/**
- * Dev-only gate on the readability rule.
- *
- * The families make it hard to author unbacked text; this makes it impossible
- * to ship. A template that spreads a family's output and appends its own text
- * def, or that hand-writes layers entirely, bypasses `panel()` — this catches
- * it at module load, before anything renders, and names the offending copy.
- *
- * `process.env.NODE_ENV` is inlined by the bundler, so this whole block is
- * dead code in a production build and costs nothing there.
- */
-export function assertTemplatesReadable(templates: TextTemplate[]): void {
-  const bad: string[] = [];
-  for (const t of templates) {
-    for (const issue of findUnbackedText(t.layers)) {
-      bad.push(`  ${t.id}: "${issue.text}" — ${issue.reason}`);
-    }
-  }
-  if (bad.length === 0) return;
-  const message =
-    `${bad.length} template text run(s) are not on a scrim, band or solid field.\n` +
-    `Text over a bare photo is unreadable on light images. Build the layers with\n` +
-    `panel() from families.ts, which cannot emit text without its backing field.\n` +
-    bad.join("\n");
-  // eslint-disable-next-line no-console
-  console.error(`[text-templates] ${message}`);
-  throw new Error(`[text-templates] ${message}`);
-}
-
-if (process.env.NODE_ENV === "development") {
-  assertTemplatesReadable(TEXT_TEMPLATES);
-}
-
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
 
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -489,7 +456,21 @@ export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): Resolve
       if (def.lockColor || colors.length === 0) return def;
       // Decorative white shapes (soft accents) keep their colour; solid shapes rebrand
       if (def.color === "#ffffff" && (def.opacity ?? 1) < 0.5) return def;
-      return { ...def, color: colors[badge++ % colors.length] };
+      const color = colors[badge++ % colors.length];
+      // A wash's direction is a function of its colour and its ink, not a
+      // style the layer carries around. Recolouring one without re-deriving
+      // the direction is how brand mode produced near-black type on a
+      // multiply wash of a pale brand colour — 1.11:1 against a dark
+      // photograph, because multiply can only take that field darker still.
+      // The ink below is chosen by `bestTextOn` against this same colour, so
+      // deriving the direction from that exact value here is what keeps the
+      // two agreeing, and the monotone floor is re-established against the
+      // brand palette instead of inherited from the palette the template was
+      // authored in.
+      if (isWashMode(def.blend)) {
+        return { ...def, color, blend: washFor(color, bestTextOn(color)) };
+      }
+      return { ...def, color };
     }
     // Photos aren't recoloured by the brand kit — pass through unchanged.
     if (def.kind === "image") return def;
@@ -513,16 +494,107 @@ export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): Resolve
   // through those fields — so re-derive each run's colour from whatever it
   // actually ends up sitting on. Runs with their own pill, or with lockColor,
   // are already handled above and left alone.
+  //
+  // Order matters, and it is the order it is for a reason. Every field this
+  // function touches — colour AND wash direction — is already final in
+  // `layers`, so `analyzeText` here reads the rebranded fields and only the ink
+  // is still open. That is the one thing this loop writes, so nothing it
+  // decides is invalidated by a later step.
   const rebranded = [...layers];
   if (colors.length > 0) {
     for (const backing of analyzeText(rebranded)) {
-      if (!backing.fieldColor) continue;
       const layer = rebranded[backing.index];
       if (layer.kind === "shape" || layer.kind === "image") continue;
       if (layer.lockColor || layer.bgColor) continue;
+      // No field at all, so there is no colour to contrast against and no
+      // recolouring that would help. `assertTemplatesReadable` is what catches
+      // this; it is not silently acceptable, it is simply not fixable here.
+      if (!backing.fieldColor) continue;
+      // `backing.fieldColor` is a wash's own colour rather than what it
+      // composites to, which is exactly what makes this correct on a wash:
+      // monotonicity puts the true worst case at that colour, and the field's
+      // direction was derived from `bestTextOn` of it above.
       rebranded[backing.index] = { ...layer, color: bestTextOn(backing.fieldColor) };
     }
   }
 
   return { background, layers: rebranded };
+}
+
+// ── The readability gate ──────────────────────────────────────────────────────
+
+/** Helper so a kit is one line of colours rather than six fields of nulls. */
+function readabilityKit(colors: string[]): BrandKit {
+  return { logo_url: null, colors, primary_font: null, secondary_font: null, style_rules: null, tone: null };
+}
+
+/**
+ * Brand kits the gate below re-checks every template through.
+ *
+ * Deliberately adversarial rather than pretty. Each one broke something real:
+ * a pale primary and a near-white primary put light-seeking ink on a light
+ * field, a near-black primary does the mirror, mid grey has no good ink at all,
+ * and stock Tailwind sky/green is the most likely accidental kit there is. The
+ * dev sweep has its own overlapping list for visual review; this one exists so
+ * the check runs at module load with no page open, because a defect that only
+ * a browser can see is a defect that ships.
+ */
+const READABILITY_KITS: { label: string; kit: BrandKit }[] = [
+  { label: "pale", kit: readabilityKit(["#f3d9a4", "#123a6b", "#7f1d3f"]) },
+  { label: "sky/green", kit: readabilityKit(["#0ea5e9", "#22c55e"]) },
+  { label: "sage/steel", kit: readabilityKit(["#7a9a5a", "#6b8fa8"]) },
+  { label: "mid grey", kit: readabilityKit(["#969696", "#8a8a8a"]) },
+  { label: "near-black", kit: readabilityKit(["#101820", "#1e293b"]) },
+  { label: "near-white", kit: readabilityKit(["#f8fafc", "#e2e8f0"]) },
+  { label: "single colour", kit: readabilityKit(["#7f1d3f"]) },
+];
+
+/**
+ * Dev-only gate on the readability rule.
+ *
+ * The families make it hard to author unbacked text; this makes it impossible
+ * to ship. A template that spreads a family's output and appends its own text
+ * def, or that hand-writes layers entirely, bypasses `panel()` — this catches
+ * it at module load, before anything renders, and names the offending copy.
+ *
+ * It checks the BRANDED form as well as the authored one, and that half is not
+ * optional. `brandTemplate` defaults to on in the editor, so branded is the
+ * normal path, not an edge case — and it is the path that re-colours fields
+ * out from under type that was contrast-checked against different colours.
+ * Checking only `TEXT_TEMPLATES` is precisely how a wash whose direction no
+ * longer matched its ink — 1.11:1 at the worst photograph — passed this gate
+ * while being wrong in every brand kit.
+ *
+ * `process.env.NODE_ENV` is inlined by the bundler, so this whole block is
+ * dead code in a production build and costs nothing there.
+ */
+export function assertTemplatesReadable(templates: TextTemplate[]): void {
+  const bad: string[] = [];
+  for (const t of templates) {
+    for (const issue of findUnbackedText(t.layers)) {
+      bad.push(`  ${t.id}: "${issue.text}" — ${issue.reason}`);
+    }
+    for (const { label, kit } of READABILITY_KITS) {
+      for (const issue of findUnbackedText(brandTemplate(t, kit).layers)) {
+        bad.push(`  ${t.id} [${label}]: "${issue.text}" — ${issue.reason}`);
+      }
+    }
+  }
+  if (bad.length === 0) return;
+  const message =
+    `${bad.length} template text run(s) are not on a scrim, band or solid field.\n` +
+    `Text over a bare photo is unreadable on light images. Build the layers with\n` +
+    `panel() from families.ts, which cannot emit text without its backing field.\n` +
+    `A "[kit]" tag means the authored template is fine and the brand-kit mapping\n` +
+    `broke it, so the fix belongs in brandTemplate rather than in the template.\n` +
+    bad.join("\n");
+  // eslint-disable-next-line no-console
+  console.error(`[text-templates] ${message}`);
+  throw new Error(`[text-templates] ${message}`);
+}
+
+// Runs last in the module on purpose: it calls `brandTemplate`, which reads
+// module-level constants declared above it.
+if (process.env.NODE_ENV === "development") {
+  assertTemplatesReadable(TEXT_TEMPLATES);
 }

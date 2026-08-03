@@ -177,6 +177,30 @@ const WASH_DIRECTION: Partial<Record<BlendMode, "lighter" | "darker">> = {
   screen: "darker",
 };
 
+/** True when a blend has a monotone luminance bound, so a field using it can
+ *  carry type at all. */
+export function isWashMode(blend?: BlendMode): boolean {
+  return !!blend && !!WASH_DIRECTION[blend];
+}
+
+/**
+ * The only wash direction that bounds `ink` on a field of `fieldColor`.
+ *
+ * Not a choice a caller gets to make, and that is the point. `multiply` can
+ * only drive the field darker, so it bounds a lighter ink; `screen` can only
+ * drive it lighter, so it bounds a darker one. Given the ink, exactly one
+ * direction has a contrast floor and the other has none, so this returns the
+ * one that does rather than accepting a preference.
+ *
+ * Anything that re-colours a wash must re-derive its direction through here
+ * against the NEW colour and the NEW ink. Keeping the old direction while
+ * changing either is how a wash ends up with an ink nothing bounds —
+ * `brandTemplate` does exactly this re-derivation for that reason.
+ */
+export function washFor(fieldColor: string, ink: string): BlendMode {
+  return relativeLuminance(ink) > relativeLuminance(fieldColor) ? "multiply" : "screen";
+}
+
 /** Whether `ink` is on the side of `fieldColor` that the wash's bound protects.
  *  Returns null when the field does not wash at all. */
 function washPairing(field: TemplateShapeDef): ((ink: string) => boolean) | null {
@@ -529,18 +553,6 @@ export function typeWrap(
  *  frame; `stagger` steps it diagonally from top-left to bottom-right. */
 export type WashLayout = "centre" | "stagger";
 
-/** The wash direction the palette can carry.
- *
- *  Not a parameter. `multiply` is channel-wise non-increasing, so the wash is
- *  never lighter than the accent and only the LIGHTER of the two ink candidates
- *  keeps a contrast floor; `screen` is the mirror and demands the darker one.
- *  `onAccent` is already whichever of those two the palette resolved, so the
- *  palette has effectively chosen the direction, and letting a template
- *  override it would only let it choose the unbounded pairing. */
-function washFor(p: Palette): BlendMode {
-  return relativeLuminance(p.onAccent) > relativeLuminance(p.accent) ? "multiply" : "screen";
-}
-
 /** Duotone Wash: one photograph, flooded edge to edge with the accent through a
  *  blend mode, with the type set straight into the wash. No block, no band, no
  *  panel — the colour cast is the whole composition.
@@ -550,9 +562,11 @@ function washFor(p: Palette): BlendMode {
  *  darker and `screen` can only drive it lighter, so with the ink on the right
  *  side of it, contrast against the wash is at least contrast against the raw
  *  accent — which is the `onAccent`/`accent` pair `resolvePalette` already
- *  guarantees at 4.5:1. `washFor` picks the direction the palette can carry,
- *  `panel()` warns on the wrong pairing and `analyzeText` reports it unbacked,
- *  so the unbounded combination cannot ship.
+ *  guarantees at 4.5:1. The direction is not a parameter: `washFor` derives it
+ *  from the ink the palette already resolved, because only one of the two
+ *  directions bounds that ink and the other bounds nothing. `panel()` warns on
+ *  the wrong pairing and `analyzeText` reports it unbacked, so the unbounded
+ *  combination cannot ship.
  *
  *  Budgets: headline 14, subhead 37, support 63. */
 export function duotoneWash(
@@ -565,7 +579,7 @@ export function duotoneWash(
     photo(),
     ...panel(
       p,
-      { shape: "rect", role: "accent", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100, blend: washFor(p) },
+      { shape: "rect", role: "accent", xPct: 0, yPct: 0, widthPct: 100, heightPct: 100, blend: washFor(p.accent, p.onAccent) },
       centre
         ? [
           { text: copy.subhead, step: "subhead", font: "mono", xPct: 0, yPct: 32, center: true, uppercase: true },
