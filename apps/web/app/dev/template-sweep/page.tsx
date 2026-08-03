@@ -29,11 +29,11 @@ import {
   type TextTemplate, type ResolvedTemplate, type TemplateLayerDef,
 } from "@/components/studio/edit/text-templates";
 import { analyzeText } from "@/components/studio/edit/families";
-import { worstCaseContrast, MIN_CONTRAST } from "@/components/studio/edit/palette";
+import { worstCaseContrast, contrastRatio, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
 import { measureTextLayer } from "@/components/studio/edit/scene/measure";
-import type { Scene } from "@/components/studio/edit/scene/types";
+import type { BlendMode, Scene } from "@/components/studio/edit/scene/types";
 import type { TextLayer } from "@/components/studio/edit/EditCanvas";
 import type { BrandKit } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -237,6 +237,62 @@ function textLayers(scene: Scene): TextLayer[] {
   return scene.layers.filter((l): l is TextLayer => l.type === "text");
 }
 
+/** The composited extreme a blend can drive a field to, whatever photograph is
+ *  underneath. `multiply(a, b) = a*b/255` is channel-wise non-increasing, so a
+ *  black photograph takes the field to black and nothing takes it lighter;
+ *  `screen` is the exact mirror. Any other mode is unbounded in both
+ *  directions, so both extremes are reachable — `analyzeText` already reports a
+ *  run on one as unbacked, and listing both here keeps the number honest for
+ *  anyone who reads it anyway. */
+const WASH_EXTREMES: Partial<Record<BlendMode, string[]>> = {
+  multiply: ["#000000"],
+  screen: ["#ffffff"],
+};
+
+/** Which field colours in a layer list belong to a blended field.
+ *
+ *  `analyzeText` reports the field's own colour rather than what it composites
+ *  to — deliberately, because monotonicity makes that colour the FLOOR — but it
+ *  does not report the blend, so the contrast metric below has to recover it.
+ *  A colour painted both blended and unblended in the same template is
+ *  ambiguous and is treated as unblended; no family does that today (only
+ *  `duotoneWash` blends, and it emits exactly one shape), and the "text on a
+ *  field" check is what actually gates a mispairing either way. */
+function washBlendByColor(layers: TemplateLayerDef[]): Map<string, BlendMode> {
+  const blended = new Map<string, BlendMode>();
+  const plain = new Set<string>();
+  for (const l of layers) {
+    if (l.kind !== "shape") continue;
+    if (l.blend && l.blend !== "normal") blended.set(l.color, l.blend);
+    else plain.add(l.color);
+  }
+  for (const c of plain) blended.delete(c);
+  return blended;
+}
+
+/**
+ * Worst-case contrast of a run against its field, accounting for the field's
+ * blend.
+ *
+ * `worstCaseContrast` alone measures against the field's authored colour, which
+ * is right for an opaque field and right for a CORRECTLY paired wash — the
+ * monotone bound puts the worst case exactly there. It is badly wrong for a
+ * mispaired one: a multiply wash carrying dark ink was reported at 8.14:1 when
+ * a black photograph takes the field to black and the true ratio is 1.01:1.
+ * Taking the worse of the authored colour and the blend's reachable extreme
+ * gives the correct number in both cases, and leaves the opaque-field number
+ * untouched.
+ *
+ * This changes only the metric. The threshold is still `MIN_CONTRAST` and the
+ * check still tests the same thing.
+ */
+function fieldContrast(text: string, fieldColor: string, opacity: number, blend?: BlendMode): number {
+  const base = worstCaseContrast(text, fieldColor, opacity);
+  if (!blend || blend === "normal") return base;
+  const extremes = WASH_EXTREMES[blend] ?? ["#000000", "#ffffff"];
+  return Math.min(base, ...extremes.map((e) => contrastRatio(text, e)));
+}
+
 async function checkVariant(
   tpl: TextTemplate,
   variant: string,
@@ -289,7 +345,8 @@ async function checkVariant(
   //    band or solid field that nothing painted since has covered, measured
   //    with real font metrics rather than the authoring estimate, so this is
   //    stricter than the check families.ts applies at build time. Contrast: the
-  //    run must clear WCAG AA against that field. The second is what catches
+  //    run must clear WCAG AA against that field, measured through the field's
+  //    blend where it has one (see `fieldContrast`). The second is what catches
   //    brand-aware mode, which recolours fields but not the text on them.
   const backings = analyzeText(resolved.layers, {
     widthPct: (def) => {
@@ -305,11 +362,17 @@ async function checkVariant(
     detail: unbacked.map((b) => `${b.text} (${b.reason})`).join("; ") || "every run backed",
   });
 
+  const washes = washBlendByColor(resolved.layers);
   const contrasts = backings
     .filter((b) => b.fieldColor)
     .map((b) => ({
       text: b.text,
-      ratio: worstCaseContrast(b.color, b.fieldColor as string, b.fieldOpacity),
+      ratio: fieldContrast(
+        b.color,
+        b.fieldColor as string,
+        b.fieldOpacity,
+        washes.get(b.fieldColor as string),
+      ),
     }));
   const poor = contrasts.filter((c) => c.ratio < MIN_CONTRAST);
   checks.push({

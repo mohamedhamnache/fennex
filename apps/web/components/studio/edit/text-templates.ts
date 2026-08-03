@@ -169,7 +169,9 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     layers: priceSlab(resolvePalette("blog"), {
       headline: "Trail Runner 3",
       subhead: "$89",
-      support: "Last season's colourway, same outsole and the same fit",
+      // Dollars, so US spelling. Register is picked per template rather than
+      // per set: "colourway" beside "$89" is nobody's storefront.
+      support: "Last season's color, same outsole and the same fit",
     }),
   },
   {
@@ -228,14 +230,18 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     }),
   },
   {
-    id: "ec_wrap_arrival",
-    name: "Arrivals Wrap",
+    id: "ec_wrap_bespoke",
+    // A made-to-order voice, not a second seasonal-drop one. This and
+    // `so_wrap_season` are both typeWrap and sit next to each other under the
+    // All tab; "New Arrivals / Autumn Drop 02" beside "New Season / Spring 26"
+    // read as one template written twice even though the geometry differs.
+    name: "Made to Order Wrap",
     category: "ecommerce",
     family: "typeWrap",
     layers: typeWrap(resolvePalette("ecommerce"), {
-      headline: "New Arrivals",
-      subhead: "Autumn Drop 02",
-      support: "In store and online from Friday",
+      headline: "Cut to Order",
+      subhead: "Six-Week Lead Time",
+      support: "Choose your cloth, we cut on Monday",
     }),
   },
 
@@ -275,10 +281,16 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
   },
   {
     id: "so_wash_release",
+    // Blog palette, in the Social tab, on purpose. This and `so_wash_golden`
+    // are the same family at the same variant in the same tab, so the palette
+    // is the ONLY thing separating them and it has to do real work: on the
+    // promo palette it did not, because promo and social are both dark and
+    // their washes measured 47/441 apart in RGB — two amber-washed photos with
+    // the same centred stack. Blue on near-white puts 311/441 between them.
     name: "Release Wash",
     category: "social",
     family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("promo"), {
+    layers: duotoneWash(resolvePalette("blog"), {
       headline: "Night Shift",
       subhead: "Twelve tracks for the late commute",
       support: "Out now wherever you stream",
@@ -297,10 +309,23 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
   },
   {
     id: "so_stack_market",
+    // Same reasoning as `so_wash_release`, and the same tab: this and
+    // `so_stack_build` are offsetStack/wide side by side, so the palette is
+    // their only separation. It takes the blog palette and `bl_stack_retro`
+    // takes promo, which is the swap rather than a straight move — every
+    // (family, palette, variant) triple stays used at most once.
+    //
+    // Blog specifically, not ecommerce. `offsetStack` paints a full-bleed
+    // surface field and spends the accent only on a subhead, so what separates
+    // two instances is almost entirely their SURFACE. Three of the four
+    // palettes are dark and their surfaces sit close together — ecommerce vs
+    // social measures 36/441, closer than the promo pairing this replaces —
+    // whereas blog is the one light surface, at 358/441. Picking on accent
+    // distance alone would have made this pair worse while appearing to fix it.
     name: "Market Recap Stack",
     category: "social",
     family: "offsetStack",
-    layers: offsetStack(resolvePalette("promo"), {
+    layers: offsetStack(resolvePalette("blog"), {
       headline: "Market Day Recap",
       subhead: "Stall 12",
       support: "Same spot again next Saturday",
@@ -334,9 +359,9 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     category: "social",
     family: "negativeSpace",
     layers: negativeSpace(resolvePalette("social"), {
-      headline: "Make It Obvious",
-      subhead: "Habits beat motivation",
-      support: "From this month's letter, now in your inbox",
+      headline: "Finish One Thing",
+      subhead: "On the tyranny of the open tab",
+      support: "This week's letter, three minutes end to end",
     }, "low"),
   },
 
@@ -409,10 +434,13 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
   },
   {
     id: "bl_stack_retro",
+    // Promo palette, the other half of the `so_stack_market` swap. It shares
+    // the Blog tab with `bl_stack_notes`, which is the same family at the
+    // OTHER variant, so palette is not carrying the separation here.
     name: "Retro Stack",
     category: "blog",
     family: "offsetStack",
-    layers: offsetStack(resolvePalette("blog"), {
+    layers: offsetStack(resolvePalette("promo"), {
       headline: "The Q3 Retro",
       subhead: "Team of nine",
       support: "What we would not do again",
@@ -425,7 +453,9 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     family: "negativeSpace",
     layers: negativeSpace(resolvePalette("blog"), {
       headline: "In Conversation",
-      subhead: "With ceramicist Nadia Berger",
+      // No invented interviewee. Sample copy naming a person who does not
+      // exist is copy a customer can publish unedited and be wrong.
+      subhead: "With the maker who threw this",
       support: "Craft series, part three of six",
     }),
   },
@@ -450,7 +480,9 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     layers: typeWrap(resolvePalette("promo"), {
       headline: "Doors Open",
       subhead: "Thursday, 7pm",
-      support: "24 Rue de la Paix, second floor",
+      // Not a real street. The address a customer has to replace should be
+      // obviously theirs to fill in, not someone else's shopfront.
+      support: "Second floor, above the bakery",
     }),
   },
   {
@@ -483,7 +515,7 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     layers: hardEdge(resolvePalette("promo"), {
       headline: "Last Call",
       subhead: "The sale ends at midnight",
-      support: "Anything still in your basket at midnight goes back.",
+      support: "Anything left in a basket goes back on the shelf.",
     }, "bottom"),
   },
   {
@@ -503,9 +535,9 @@ export const TEXT_TEMPLATES: TextTemplate[] = [
     category: "promo",
     family: "priceSlab",
     layers: priceSlab(resolvePalette("promo"), {
-      headline: "Every Mug in Store",
+      headline: "Every Candle in Store",
       subhead: "3 for 2",
-      support: "The cheapest one comes off at the checkout, no code.",
+      support: "Mix the scents however you like, cheapest comes off.",
     }, "centre"),
   },
   {
