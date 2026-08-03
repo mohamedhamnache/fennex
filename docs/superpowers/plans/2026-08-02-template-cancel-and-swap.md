@@ -12,7 +12,23 @@
 
 ## Sequencing
 
-**This plan must run after Task 4 of `docs/superpowers/plans/2026-08-02-template-redesign-2026.md`.** That task converts `applyTemplate` to an async, consent-gated path for cutout templates. Both plans modify the same function, and landing this one first would force a rewrite. Do not start until the redesign's Task 4 is merged.
+The redesign's Task 4 has landed (commit `27e6261`), so this is unblocked. It
+restructured the apply path, and this plan is written against the result rather
+than against the shape that existed when the spec was approved:
+
+```
+applyTemplate(t)                     EditControlsPanel.tsx:510
+  -> needsCutout(resolved)?          :466
+       yes -> setPendingCutout(...)  -> dialog -> cutoutMutation
+                                        onSuccess -> insertTemplateLayers(...)  :536
+       no  -> insertTemplateLayers(resolved, subjectImageUrl ?? "", disp)        :524
+```
+
+**`insertTemplateLayers` (`:473`) is the single insertion point**, and it is
+where this work belongs. Both the direct path and the post-consent path funnel
+through it, so putting the swap logic there covers both without touching the
+dialog flow. Putting it in `applyTemplate` instead would miss every cutout
+template.
 
 ## Global Constraints
 
@@ -71,17 +87,33 @@ interface AppliedTemplate {
 
 held as `useState<AppliedTemplate | null>(null)`.
 
-- [ ] **Step 4: Make apply replace rather than stack**
+- [ ] **Step 4: Make insertion replace rather than stack**
 
-In `applyTemplate`, generate a key (`crypto.randomUUID()`), pass it to `templateToLayers`, and then:
+All of this goes in `insertTemplateLayers` (`EditControlsPanel.tsx:473`), **not**
+in `applyTemplate`. Both the direct path (`:524`) and the post-consent cutout
+path (`:536`) call it, so this is the only place that covers both.
 
-1. If the built layer list is empty, return without changes — the existing guard.
+Generate a key (`crypto.randomUUID()`), pass it to `templateToLayers`, then:
+
+1. Keep the existing empty-list guard exactly as it is — `if (newLayers.length === 0) return;`. A subject-only template with no subject URL must still change nothing.
 2. Drop every existing layer whose `templateKey` equals the currently applied key.
-3. Append the new layers to what remains.
+3. Append the new layers to what remains, replacing the current
+   `onSetLayers([...layers, ...newLayers])`.
 4. Record the new `AppliedTemplate`, **carrying `hideBaseBefore` forward from the previous record when one exists**.
-5. Keep the existing selection, tool switch and `onHideBaseImage` behaviour.
+5. Leave the selection line, `onRequestTool?.("text")` and the `placesSubject` /
+   `onHideBaseImage?.(true)` call untouched.
 
-Step 4 is the subtle one and the spec's verification case 4 exists for it. If template A hides the photo and B replaces A, the value to restore on a later removal is what was true before **A** — not the `true` that A set. Capturing the current flag on every apply would make removal after a swap leave the canvas blank.
+Point 4 is the subtle one, and the spec's verification case 4 exists for it. If
+template A hides the photo and B replaces A, the value to restore on a later
+removal is what was true before **A** — not the `true` that A set. Capturing the
+current flag on every insertion would make removal after a swap leave a blank
+canvas.
+
+Note the ordering consequence of doing this inside `insertTemplateLayers`: for a
+cutout template, the previous template's layers are stripped only **after** the
+cutout resolves. A cancelled or failed consent dialog therefore leaves the
+existing template intact, which is the correct behaviour — nothing is spent and
+nothing is lost.
 
 - [ ] **Step 5: Add the remove control**
 
@@ -108,7 +140,8 @@ Expected: PASS, zero errors.
 3. Apply a subject-placing template, then remove it. The photo reappears.
 4. Apply a subject-placing template, swap to another subject-placing one, then remove. The photo still reappears.
 5. With no template applied, the remove control is not shown.
-6. Open an image whose layers were saved before this change, apply a template, and confirm no pre-existing layer is removed and nothing errors.
+6. Apply a cutout template, then apply a second template and CANCEL its consent dialog. The first template stays fully intact and no credits are spent.
+7. Open an image whose layers were saved before this change, apply a template, and confirm no pre-existing layer is removed and nothing errors.
 
 Case 4 is the one that fails if `hideBaseBefore` is captured per-apply rather than carried forward. Do not skip it.
 
@@ -127,4 +160,14 @@ git commit -m "feat(editor): swap or remove an applied template"
 
 **Why one task.** The pieces are not independently testable: stamping without the swap logic changes nothing observable, and the swap logic cannot work without the stamp. A reviewer could not meaningfully accept one and reject the other, which is the test for drawing a task boundary.
 
-**Known interaction, stated rather than assumed.** The redesign plan's Task 4 makes `applyTemplate` async for cutout templates. When that lands, Step 4 here operates on the post-consent path — the layer-stripping happens after the cutout resolves, not before, so a cancelled consent dialog leaves the previous template intact.
+**Written against the landed code, not the code the spec assumed.** The redesign's
+Task 4 (`27e6261`) split the apply path into `applyTemplate` plus
+`insertTemplateLayers`, with a consent-gated async branch between them. Step 4
+targets `insertTemplateLayers` because it is the single point both branches pass
+through; an earlier draft of this plan targeted `applyTemplate`, which would have
+silently skipped every cutout template.
+
+**One case the spec's verification list does not cover**, added here because the
+async path created it: apply a cutout template, then apply a second template and
+cancel its consent dialog. The first template must remain fully intact — no
+layers stripped, no credits spent. Add it to the browser checks in Step 7.
