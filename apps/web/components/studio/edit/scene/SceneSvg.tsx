@@ -161,7 +161,16 @@ function ImageNode({ layer, scene }: { layer: ImageLayer; scene: Scene }) {
   );
 }
 
-export function SceneSvg({ scene }: { scene: Scene }) {
+/** `fontCss` is `@font-face` rules with base64 `src:`, supplied only by the
+ *  rasteriser. The live preview needs nothing here: it renders inside the app's
+ *  document and inherits its webfonts. The export does not — an SVG in a
+ *  Blob-backed `<img>` is an isolated document with no access to them — so
+ *  rasterize.ts resolves the faces and passes them in. See inlineFonts.ts.
+ *
+ *  Written raw rather than as a text child because React escapes text children
+ *  as HTML entities; inlineFonts.ts sanitises the family names, and base64 and
+ *  the rest of the CSS grammar contain no `<` or `&` to break the XML. */
+export function SceneSvg({ scene, fontCss }: { scene: Scene; fontCss?: string }) {
   const visible = scene.layers.filter((l) => l.visible !== false);
 
   return (
@@ -171,6 +180,7 @@ export function SceneSvg({ scene }: { scene: Scene }) {
       viewBox={`0 0 ${scene.width} ${scene.height}`}
       xmlns="http://www.w3.org/2000/svg"
     >
+      {fontCss ? <style dangerouslySetInnerHTML={{ __html: fontCss }} /> : null}
       <ClipDefs scene={scene} />
       {scene.baseImageUrl ? (
         <image
