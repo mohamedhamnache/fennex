@@ -785,7 +785,9 @@ def _text_color(rgb, x0: int, y0: int, x1: int, y1: int) -> str:
     picked = flat[dist > max(40.0, float(np.percentile(dist, 80)))]
     if picked.size == 0:
         picked = flat
-    r, g, b = (int(v) for v in picked.mean(axis=0))
+    # Median, not mean: the picked set still holds anti-aliased edge pixels
+    # part-way to the background, and averaging drags the result toward it.
+    r, g, b = (int(v) for v in np.median(picked, axis=0))
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
