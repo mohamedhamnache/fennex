@@ -16,7 +16,7 @@ import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
 import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
 import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId, type ShapeStyle } from "./shapes";
-import { pctFromReferencePx, referencePxFromPct } from "./scene/measure";
+import { pctFromReferencePx, referencePxFromPct, REFERENCE_CANVAS_WIDTH } from "./scene/measure";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
 import { TemplatePicker } from "./TemplatePicker";
 import { LayersPanel } from "./LayersPanel";
@@ -1882,10 +1882,15 @@ export function EditControlsPanel({
                         text: el.text,
                         xPct: el.x_pct,
                         yPct: el.y_pct,
-                        // The model returns a size in px against the source
-                        // image; clamped and converted to the same reference-px
-                        // space the size slider edits in.
-                        fontSizePct: pctFromReferencePx(Math.max(10, Math.min(200, el.font_size))),
+                        // The model returns a size in px against a 1080px-TALL
+                        // reference canvas (images.py: font_size = round((y1-y0)/ih*1080)),
+                        // not the 800px-WIDE reference pctFromReferencePx expects. Convert
+                        // through the canvas aspect ratio (bgAr = width/height) so a
+                        // height-referenced px becomes a width-referenced one before
+                        // handing it to the same reference-px space the size slider edits in.
+                        fontSizePct: pctFromReferencePx(
+                          (Math.max(10, Math.min(200, el.font_size)) / 1080) * (REFERENCE_CANVAS_WIDTH / bgAr),
+                        ),
                         color: el.color,
                         bold: el.bold,
                         italic: el.italic,
