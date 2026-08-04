@@ -380,18 +380,31 @@ async def remove_background(image_url: str) -> dict:
     for weeks, so it must surface as a failure with nothing stored rather than
     a soft error the caller can shrug off.
 
+    Everything else -- a Replicate failure, a slow CDN, an S3 5xx during
+    finalize's download-then-upload -- keeps the ordinary {"ok": False} dict.
+    Only the mismatch is loud; an upload timeout is not a resolution defect and
+    must not 500 the /edit route.
+
     Takes no `source_size` parameter on purpose -- the /edit router hands one
     to any operation that declares it, read off the database row, and that row
     can disagree with its own file (see _birefnet_run).
+
+    Metering fires inside _replicate_run's success branch, BEFORE the PRESERVE
+    check, so a mismatch bills ~10 credits for a request that stores nothing.
+    That is inherent to metering at the supplier chokepoint and is the right
+    trade -- the supplier spend genuinely happened -- but it is now a path
+    reachable by design rather than by accident, so it is recorded here.
 
     `_removebg_cutout` is untouched: mask_service still derives product-tier
     masks from Remove.bg's alpha, and that path is not what this fixes.
     """
     try:
         out, src = await _birefnet_run(image_url)
+        stored = await finalize(out, source_size=src, policy=ResolutionPolicy.PRESERVE)
+    except ResolutionMismatch:
+        raise
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
-    stored = await finalize(out, source_size=src, policy=ResolutionPolicy.PRESERVE)
     return {"ok": True, "image_url": stored.url,
             "width": stored.width, "height": stored.height}
 

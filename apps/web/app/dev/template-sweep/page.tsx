@@ -32,7 +32,7 @@ import { analyzeText } from "@/components/studio/edit/families";
 import { worstCaseContrast, contrastRatio, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
-import { measureTextLayer, textMetrics } from "@/components/studio/edit/scene/measure";
+import { measureTextLayer } from "@/components/studio/edit/scene/measure";
 import type { BlendMode, Scene } from "@/components/studio/edit/scene/types";
 import type { Layer, TextLayer } from "@/components/studio/edit/EditCanvas";
 import type { BrandKit } from "@/lib/api";
@@ -481,7 +481,7 @@ async function checkVariant(
 
   // 2. Fonts. Every face the scene uses must be declared AND loadable, or the
   //    export silently renders in a fallback with no error anywhere.
-  const faces = [...new Set(texts.map((l) => `${textMetrics(l, W).fontSize}px ${l.fontFamily}`))];
+  const faces = [...new Set(texts.map((l) => `${l.fontSize}px ${l.fontFamily}`))];
   const declared = declaredFamilies();
   const undeclared = [...new Set(texts.map((l) => primaryFamily(l.fontFamily)))]
     .filter((f) => !declared.has(f));
@@ -500,7 +500,7 @@ async function checkVariant(
   });
 
   // 3. Overflow. No text run may extend past the canvas.
-  const over = texts.filter((l) => (l.xPct / 100) * W + measureTextLayer(l, W) > W);
+  const over = texts.filter((l) => (l.xPct / 100) * W + measureTextLayer(l, l.fontSize) > W);
   checks.push({
     name: "text in bounds",
     pass: over.length === 0,
@@ -517,7 +517,7 @@ async function checkVariant(
   const backings = analyzeText(resolved.layers, {
     widthPct: (def) => {
       const match = texts.find((l) => l.text === def.text);
-      const px = match ? measureTextLayer(match, W) : def.fontSize * def.text.length * 0.6;
+      const px = match ? measureTextLayer(match, def.fontSize) : def.fontSize * def.text.length * 0.6;
       return (px / W) * 100;
     },
   });

@@ -51,15 +51,9 @@ import type { Palette } from "./palette";
 import { FONT_ROLES, TYPE_SCALE, relativeLuminance } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import { shapeAspect } from "./shapes";
-import { REFERENCE_CANVAS_WIDTH } from "./scene/measure";
 
-/** The reference canvas template geometry is authored against.
- *
- *  Aliased rather than re-declared: `templateToLayers` divides the authored px
- *  by this same number to reach the layer model's percentages, so an authoring
- *  guard measuring against a different 800 than the converter uses would pass
- *  templates that ship overflowing. */
-export const REFERENCE_WIDTH = REFERENCE_CANVAS_WIDTH;
+/** The reference canvas template geometry is authored against. */
+export const REFERENCE_WIDTH = 800;
 
 export interface FamilyCopy {
   headline: string;

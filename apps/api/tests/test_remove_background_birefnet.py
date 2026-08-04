@@ -110,6 +110,24 @@ async def test_a_resolution_mismatch_raises_instead_of_storing():
 
 
 @pytest.mark.asyncio
+async def test_a_storage_failure_is_still_a_soft_error():
+    """finalize does two network operations -- it downloads the Replicate
+    output and uploads to storage -- so a slow CDN or an S3 5xx runs through
+    it. Only ResolutionMismatch is loud: everything else keeps the
+    {"ok": False} contract the /edit router turns into EditOut(ok=False),
+    rather than an unhandled 500."""
+    with patch("app.services.editing_service._replicate_run",
+               AsyncMock(return_value="https://replicate/out.png")), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=_png())), \
+         patch("app.services.editing_service.finalize",
+               AsyncMock(side_effect=RuntimeError("S3 503 Service Unavailable"))):
+        result = await editing_service.remove_background("https://cdn/in.png")
+
+    assert result["ok"] is False
+    assert "503" in result["error"]
+
+
+@pytest.mark.asyncio
 async def test_removebg_cutout_still_uses_removebg_for_masks():
     """mask_service's product tier derives its mask from this alpha. Only the
     user-facing button switched supplier; this path is deliberately unchanged."""

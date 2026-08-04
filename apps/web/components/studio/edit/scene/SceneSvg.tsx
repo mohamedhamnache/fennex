@@ -1,6 +1,6 @@
 import type { ImageLayer, TextLayer } from "../EditCanvas";
 import type { Scene } from "./types";
-import { layerText, textBox, textMetrics } from "./measure";
+import { layerText, textBox } from "./measure";
 
 function clipPathId(layerId: string): string {
   return `clip-${layerId}`;
@@ -22,14 +22,10 @@ function layerRect(layer: ImageLayer, scene: Scene): { x: number; y: number; w: 
 
 function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
   const text = layerText(layer);
-  // Type metrics are percentages of canvas width, resolved here against the
-  // width this scene is actually being painted at. That is the whole reason the
-  // preview at display size and the export at natural size are the same
-  // picture: nothing in the layer carries a resolution with it.
-  const { fontSize, letterSpacing, outlineWidth } = textMetrics(layer, scene.width);
+  const fontSize = layer.fontSize;
   const x = (layer.xPct / 100) * scene.width;
   const y = (layer.yPct / 100) * scene.height;
-  const box = textBox(layer, scene.width, x, y);
+  const box = textBox(layer, fontSize, x, y);
 
   return (
     <g
@@ -54,10 +50,10 @@ function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
         fontSize={fontSize}
         fontWeight={layer.bold ? 700 : 400}
         fontStyle={layer.italic ? "italic" : undefined}
-        letterSpacing={letterSpacing ? `${letterSpacing}px` : undefined}
+        letterSpacing={layer.letterSpacing ? `${layer.letterSpacing}px` : undefined}
         fill={layer.color}
-        stroke={outlineWidth ? layer.outlineColor ?? "#000000" : undefined}
-        strokeWidth={outlineWidth || undefined}
+        stroke={layer.outlineWidth ? layer.outlineColor ?? "#000000" : undefined}
+        strokeWidth={layer.outlineWidth || undefined}
         // paint-order is essential: without it the stroke is painted over the
         // fill and a 4px outline eats half the glyph.
         paintOrder="stroke fill"
@@ -161,16 +157,7 @@ function ImageNode({ layer, scene }: { layer: ImageLayer; scene: Scene }) {
   );
 }
 
-/** `fontCss` is `@font-face` rules with base64 `src:`, supplied only by the
- *  rasteriser. The live preview needs nothing here: it renders inside the app's
- *  document and inherits its webfonts. The export does not — an SVG in a
- *  Blob-backed `<img>` is an isolated document with no access to them — so
- *  rasterize.ts resolves the faces and passes them in. See inlineFonts.ts.
- *
- *  Written raw rather than as a text child because React escapes text children
- *  as HTML entities; inlineFonts.ts sanitises the family names, and base64 and
- *  the rest of the CSS grammar contain no `<` or `&` to break the XML. */
-export function SceneSvg({ scene, fontCss }: { scene: Scene; fontCss?: string }) {
+export function SceneSvg({ scene }: { scene: Scene }) {
   const visible = scene.layers.filter((l) => l.visible !== false);
 
   return (
@@ -180,7 +167,6 @@ export function SceneSvg({ scene, fontCss }: { scene: Scene; fontCss?: string })
       viewBox={`0 0 ${scene.width} ${scene.height}`}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {fontCss ? <style dangerouslySetInnerHTML={{ __html: fontCss }} /> : null}
       <ClipDefs scene={scene} />
       {scene.baseImageUrl ? (
         <image
