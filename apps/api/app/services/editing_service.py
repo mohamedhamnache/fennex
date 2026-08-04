@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # app.services.image_output._download instead.
 from app.services.image_output import (
     StoredImage,  # noqa: E402
+    ResolutionMismatch,
     ResolutionPolicy,
     _TRANSIENT_ERRORS,
     _download,
@@ -306,15 +307,93 @@ async def _removebg_cutout(image_url: str, *, feature: str = "background_removal
     return PILImage.open(io.BytesIO(resp.content)).convert("RGBA")
 
 
+# ── BiRefNet (the quality cutout path) ────────────────────────────────────────
+#
+# Verified live against the Replicate API on 2026-08-04: 6,990,037 runs, input
+# schema {image, resolution}, output a single URL. Community model, so it bills
+# per GPU-second (A100 80GB, $0.001400/s) and a run lands on
+# MIN_REPLICATE_CREDITS. Do not "correct" this version from memory -- a
+# nonexistent model has reached production in this codebase before by being
+# recalled rather than resolved.
+_MODEL_BIREFNET = "men1scus/birefnet"
+_BIREFNET_VERSION = "f74986db0355b58403ed20963af156525e2891ea3c2d499bfbfb2a28cd87c5d7"
+
+
+async def _birefnet_run(image_url: str) -> tuple[str, tuple[int, int]]:
+    """Run BiRefNet at the SOURCE image's own frame.
+
+    Returns (output_url, source_size). The size is measured from the source
+    bytes, never taken from a caller or a database row: two of the four
+    production rows measured while diagnosing the Remove BG defect record a
+    width/height that does not match their own stored file (a row saying
+    1792x1024 whose file is 2080x1664), so a row-derived figure would assert
+    against a frame that never existed.
+
+    `resolution` is passed explicitly rather than left to the model's default
+    for the same reason remove.bg's `size: "auto"` was the bug: a supplier-side
+    default is free to resolve to a preview tier, and did.
+    """
+    src = dimensions(await _download(image_url))
+    out = await _replicate_run(
+        _MODEL_BIREFNET,
+        {"image": image_url, "resolution": f"{src[0]}x{src[1]}"},
+        version=_BIREFNET_VERSION,
+    )
+    return out, src
+
+
+async def birefnet_cutout(image_url: str) -> PILImage.Image:
+    """The BiRefNet cutout as an RGBA image, at the source frame.
+
+    The alpha channel IS a foreground segmentation, which is what the canvas
+    decomposition splits into object layers. Raises rather than returning an
+    error dict -- callers wanting the dict contract wrap it.
+    """
+    out, src = await _birefnet_run(image_url)
+    img = PILImage.open(io.BytesIO(await _download(out))).convert("RGBA")
+    if img.size != src:
+        raise ResolutionMismatch(
+            f"{_MODEL_BIREFNET} returned {img.width}x{img.height} for a "
+            f"{src[0]}x{src[1]} input"
+        )
+    return img
+
+
 async def remove_background(image_url: str) -> dict:
-    """Background removal via Remove.bg API."""
+    """Background removal via BiRefNet.
+
+    WAS Remove.bg with `size: "auto"`. Measured against production on
+    2026-08-03, every result came back at exactly 0.25 megapixels -- the
+    preview tier -- while the customer was charged 191 AI credits ($0.20 flat)
+    for it:
+
+        2160x2160 -> 500x500      1024x1024 -> 500x500
+        1080x1920 -> 408x612      1792x1024 -> 559x447
+
+    Nothing noticed because this function uploaded its result directly, with
+    no finalize() and no ResolutionPolicy. BiRefNet is more accurate on fine
+    edges, returns the frame it is asked for, and bills per GPU-second, so a
+    run lands on MIN_REPLICATE_CREDITS (10) instead of 191.
+
+    PRESERVE, and a ResolutionMismatch is deliberately NOT swallowed into an
+    ok:False dict: a silent resolution change is exactly what hid this defect
+    for weeks, so it must surface as a failure with nothing stored rather than
+    a soft error the caller can shrug off.
+
+    Takes no `source_size` parameter on purpose -- the /edit router hands one
+    to any operation that declares it, read off the database row, and that row
+    can disagree with its own file (see _birefnet_run).
+
+    `_removebg_cutout` is untouched: mask_service still derives product-tier
+    masks from Remove.bg's alpha, and that path is not what this fixes.
+    """
     try:
-        img = await _removebg_cutout(image_url)
-        stored = await _upload_result(img)
-        return {"ok": True, "image_url": stored.url,
-                "width": stored.width, "height": stored.height}
-    except Exception as e:
+        out, src = await _birefnet_run(image_url)
+    except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
+    stored = await finalize(out, source_size=src, policy=ResolutionPolicy.PRESERVE)
+    return {"ok": True, "image_url": stored.url,
+            "width": stored.width, "height": stored.height}
 
 
 _MODEL_REMBG = "851-labs/background-remover"

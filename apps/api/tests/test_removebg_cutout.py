@@ -8,13 +8,6 @@ from PIL import Image as PILImage
 from app.services import editing_service
 
 
-def _stored(url, width=64, height=48):
-    """finalize/_upload_result now report the size they stored, not just a URL."""
-    from app.services.image_output import StoredImage
-    return StoredImage(url, width, height)
-
-
-
 def _rgba_png(size=(8, 8)) -> bytes:
     """An RGBA PNG whose left half is opaque and right half transparent."""
     img = PILImage.new("RGBA", size, (255, 0, 0, 255))
@@ -50,27 +43,27 @@ async def test_removebg_cutout_raises_on_http_error():
 
 
 @pytest.mark.asyncio
-async def test_remove_background_still_returns_an_uploaded_url():
-    """The public wrapper keeps its dict contract after the extraction."""
+async def test_removebg_cutout_keeps_its_own_dict_free_contract():
+    """The cutout returns an image and raises on failure; mask_service depends
+    on that. remove_background no longer wraps it -- the user-facing button
+    moved to BiRefNet (see tests/test_remove_background_birefnet.py) because
+    remove.bg's `size: "auto"` was resolving to a 0.25 MP preview -- so this
+    file now covers the cutout alone."""
     resp = httpx.Response(200, content=_rgba_png(),
                           request=httpx.Request("POST", "https://api.remove.bg/v1.0/removebg"))
     with patch("app.services.editing_service._download", AsyncMock(return_value=b"src")), \
-         patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)), \
-         patch("app.services.editing_service._upload_result",
-               AsyncMock(return_value=_stored("https://cdn/out.png"))):
-        result = await editing_service.remove_background("https://cdn/x.png")
+         patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)):
+        img = await editing_service._removebg_cutout("https://cdn/x.png")
 
-    # width/height are additive: ops now report the size they actually stored.
-    assert result["ok"] is True
-    assert result["image_url"] == "https://cdn/out.png"
-    assert (result["width"], result["height"]) == (64, 48)
+    assert (img.width, img.height) == (8, 8)
 
 
 @pytest.mark.asyncio
-async def test_the_remove_background_button_is_metered():
-    """It was not. record_removebg was called only from auto-masking, so every
-    click of the user-facing button made a PAID Remove.bg call billed to nobody.
-    Metering now sits at the supplier chokepoint so every caller is covered."""
+async def test_every_removebg_call_is_metered_at_the_chokepoint():
+    """The user-facing button used not to be metered at all: record_removebg
+    was called only from auto-masking, so every click made a PAID supplier
+    call billed to nobody. Metering now sits at the supplier chokepoint, so
+    every caller is covered -- including the default feature label."""
     import uuid as _uuid
 
     org = _uuid.uuid4()
@@ -85,12 +78,9 @@ async def test_the_remove_background_button_is_metered():
     with patch("app.services.editing_service._download", AsyncMock(return_value=b"src")), \
          patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)), \
          patch("app.core.metering_context.get_metering_org", lambda: org), \
-         patch("app.services.metering.meter.record_removebg", _fake_record), \
-         patch("app.services.editing_service._upload_result",
-               AsyncMock(return_value=_stored("https://cdn/out.png"))):
-        result = await editing_service.remove_background("https://cdn/x.png")
+         patch("app.services.metering.meter.record_removebg", _fake_record):
+        await editing_service._removebg_cutout("https://cdn/x.png")
 
-    assert result["ok"] is True
     assert recorded["org_id"] == org
     assert recorded["feature"] == "background_removal"
 
@@ -125,8 +115,6 @@ async def test_a_metering_failure_never_breaks_the_edit():
     with patch("app.services.editing_service._download", AsyncMock(return_value=b"src")), \
          patch("httpx.AsyncClient.post", AsyncMock(return_value=resp)), \
          patch("app.core.metering_context.get_metering_org",
-               lambda: (_ for _ in ()).throw(RuntimeError("boom"))), \
-         patch("app.services.editing_service._upload_result",
-               AsyncMock(return_value=_stored("https://cdn/out.png"))):
-        result = await editing_service.remove_background("https://cdn/x.png")
-    assert result["ok"] is True
+               lambda: (_ for _ in ()).throw(RuntimeError("boom"))):
+        img = await editing_service._removebg_cutout("https://cdn/x.png")
+    assert img.mode == "RGBA"
