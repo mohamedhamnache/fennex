@@ -32,9 +32,9 @@ import { analyzeText } from "@/components/studio/edit/families";
 import { worstCaseContrast, contrastRatio, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
-import { measureTextLayer } from "@/components/studio/edit/scene/measure";
+import { measureTextLayer, textMetrics } from "@/components/studio/edit/scene/measure";
 import type { BlendMode, Scene } from "@/components/studio/edit/scene/types";
-import type { TextLayer } from "@/components/studio/edit/EditCanvas";
+import type { Layer, TextLayer } from "@/components/studio/edit/EditCanvas";
 import type { BrandKit } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
@@ -203,6 +203,172 @@ function SweepSetChecks({ templates }: { templates: TextTemplate[] }) {
   );
 }
 
+// ── Resolution independence ───────────────────────────────────────────────────
+//
+// Every other check on this page builds its layers at W and rasterises them at
+// W. A 1:1 build/export ratio is the one ratio at which a display-pixel unit
+// and a natural-pixel unit are the same number, so it cannot see a unit that
+// was baked at one resolution and rendered at another -- which is exactly what
+// the editor does: layers are built against the DISPLAYED canvas (a few hundred
+// px) and the burn rasterises them into a scene the size of the NATURAL image
+// (1024, 2048, whatever the generator produced).
+//
+// This section is the missing ratio. It builds one real template's headline at
+// a display-like width and rasterises it at natural-like widths, then measures
+// how wide the painted glyphs actually are as a fraction of the canvas. A
+// resolution-independent renderer paints the same fraction at every size; a
+// renderer that treats a display-pixel font size as an absolute user unit
+// shrinks it by exactly displayWidth / naturalWidth.
+//
+// The measurement is pixels out of `rasterizeScene`, not the layer model, so it
+// is taken on the far side of the Blob -> img -> canvas boundary -- the side no
+// static check and no Node harness can reach.
+
+/** Display-like build width: the editor canvas sits in this range. */
+const RESO_BUILD_W = 620;
+/** Natural-like export widths: what `handleBurnLayers` actually rasterises at. */
+const RESO_EXPORT_W = [1024, 2048];
+/** Relative agreement required between the preview fraction and each export
+ *  fraction. 2% absorbs glyph rounding at different raster sizes; the defect
+ *  this catches is a 40-70% error, so the threshold is not the delicate part. */
+const RESO_TOLERANCE = 0.02;
+
+async function decodePng(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("PNG did not decode"));
+    el.src = src;
+  });
+}
+
+/** Horizontal extent of painted pixels in a rasterised scene, as a fraction of
+ *  its width. The probe scene has no background, so any pixel with alpha is
+ *  glyph ink and the extent is the rendered width of the run. */
+async function inkFraction(scene: Scene): Promise<number> {
+  const img = await decodePng(await rasterizeScene(scene));
+  const c = document.createElement("canvas");
+  c.width = scene.width;
+  c.height = scene.height;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, c.width, c.height).data;
+  let min = c.width;
+  let max = -1;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      if (data[(y * c.width + x) * 4 + 3] > 8) {
+        if (x < min) min = x;
+        if (x > max) max = x;
+      }
+    }
+  }
+  return max < 0 ? 0 : (max - min + 1) / c.width;
+}
+
+/** The first text layer the template set produces, built through the real
+ *  `templateToLayers` at `buildW`, stripped to bare ink: no pill, no shadow, no
+ *  blend, no rotation, opaque black. Everything removed is decoration that
+ *  would blur or offset the alpha extent; the type itself -- face, size, letter
+ *  spacing, outline -- is untouched, and it is the type this measures. */
+function resoProbeLayer(buildW: number): TextLayer | null {
+  for (const tpl of TEXT_TEMPLATES) {
+    const built: Layer[] = templateToLayers(
+      { background: tpl.background ?? null, layers: tpl.layers },
+      TEST_PHOTO,
+      buildW,
+      buildW,
+    );
+    const text = built.find((l): l is TextLayer => l.type === "text");
+    if (!text) continue;
+    return {
+      ...text,
+      xPct: 4,
+      yPct: 20,
+      color: "#000000",
+      bgColor: null,
+      shadow: false,
+      opacity: 1,
+      rotation: undefined,
+      blend: "normal",
+    };
+  }
+  return null;
+}
+
+async function checkResolutionIndependence(): Promise<Check[]> {
+  const probe = resoProbeLayer(RESO_BUILD_W);
+  if (!probe) {
+    return [{ name: "resolution independence", pass: false, detail: "no text layer to probe" }];
+  }
+
+  const at = (width: number, layer: TextLayer) =>
+    inkFraction({ width, height: width, baseImageUrl: null, layers: [layer] });
+
+  // The reference a human judges: built and rendered at the same 800 the rest
+  // of this page uses. Reported, not asserted -- it is here so the numbers below
+  // can be read against the picture above them.
+  const reference = await at(800, resoProbeLayer(800)!);
+  const preview = await at(RESO_BUILD_W, probe);
+
+  const checks: Check[] = [{
+    name: `ink at ${RESO_BUILD_W} (preview)`,
+    pass: true,
+    detail: `${(preview * 100).toFixed(1)}% of canvas width; 800->800 reference ${(reference * 100).toFixed(1)}%`,
+  }];
+
+  for (const exportW of RESO_EXPORT_W) {
+    const exported = await at(exportW, probe);
+    const drift = preview > 0 ? Math.abs(exported - preview) / preview : 1;
+    checks.push({
+      name: `built at ${RESO_BUILD_W}, exported at ${exportW}`,
+      pass: drift <= RESO_TOLERANCE,
+      detail: `${(exported * 100).toFixed(1)}% of canvas width vs ${(preview * 100).toFixed(1)}% in preview (${(drift * 100).toFixed(1)}% drift)`,
+    });
+  }
+
+  return checks;
+}
+
+function ResolutionChecks() {
+  const [checks, setChecks] = useState<Check[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await document.fonts.ready;
+      const result = await checkResolutionIndependence().catch(
+        (e): Check[] => [{ name: "resolution independence", pass: false, detail: String(e) }],
+      );
+      if (!cancelled) setChecks(result);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <section className="mb-8 space-y-2 rounded-lg border border-border bg-card p-4">
+      <h2 className="font-semibold">Resolution independence</h2>
+      <p className="text-sm text-muted-foreground">
+        One headline built at a display-like {RESO_BUILD_W}px canvas and rasterised at natural-like
+        export sizes. Painted-glyph width as a fraction of canvas width must not change with the
+        export size — the editor always builds at the displayed size and burns at the natural one.
+      </p>
+      {checks === null ? (
+        <p className="text-sm text-muted-foreground">Measuring…</p>
+      ) : (
+        <ul className="space-y-1 text-sm">
+          {checks.map((c) => (
+            <li key={c.name} className={c.pass ? "text-green-600" : "text-red-600"}>
+              <span className="font-mono">{c.pass ? "PASS" : "FAIL"}</span> {c.name}
+              <span className="text-muted-foreground"> — {c.detail}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 interface Row {
   key: string;
   id: string;
@@ -315,7 +481,7 @@ async function checkVariant(
 
   // 2. Fonts. Every face the scene uses must be declared AND loadable, or the
   //    export silently renders in a fallback with no error anywhere.
-  const faces = [...new Set(texts.map((l) => `${l.fontSize}px ${l.fontFamily}`))];
+  const faces = [...new Set(texts.map((l) => `${textMetrics(l, W).fontSize}px ${l.fontFamily}`))];
   const declared = declaredFamilies();
   const undeclared = [...new Set(texts.map((l) => primaryFamily(l.fontFamily)))]
     .filter((f) => !declared.has(f));
@@ -334,7 +500,7 @@ async function checkVariant(
   });
 
   // 3. Overflow. No text run may extend past the canvas.
-  const over = texts.filter((l) => (l.xPct / 100) * W + measureTextLayer(l, l.fontSize) > W);
+  const over = texts.filter((l) => (l.xPct / 100) * W + measureTextLayer(l, W) > W);
   checks.push({
     name: "text in bounds",
     pass: over.length === 0,
@@ -351,7 +517,7 @@ async function checkVariant(
   const backings = analyzeText(resolved.layers, {
     widthPct: (def) => {
       const match = texts.find((l) => l.text === def.text);
-      const px = match ? measureTextLayer(match, def.fontSize) : def.fontSize * def.text.length * 0.6;
+      const px = match ? measureTextLayer(match, W) : def.fontSize * def.text.length * 0.6;
       return (px / W) * 100;
     },
   });
@@ -531,6 +697,8 @@ export default function TemplateSweepPage() {
       </header>
 
       <SweepSetChecks templates={TEXT_TEMPLATES} />
+
+      <ResolutionChecks />
 
       <SweepList rows={rows} />
     </div>
