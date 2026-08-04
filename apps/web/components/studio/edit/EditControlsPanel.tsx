@@ -16,6 +16,7 @@ import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
 import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
 import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId, type ShapeStyle } from "./shapes";
+import { pctFromReferencePx, referencePxFromPct } from "./scene/measure";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
 import { TemplatePicker } from "./TemplatePicker";
 import { LayersPanel } from "./LayersPanel";
@@ -443,7 +444,10 @@ export function EditControlsPanel({
       text: newText.trim(),
       xPct: 10,
       yPct: 10,
-      fontSize: textFontSize,
+      // Every px-denominated control in this panel reads and writes reference
+      // px (px on an 800-wide canvas) and stores a canvas-width percentage, so
+      // the number the user picked survives the export at any resolution.
+      fontSizePct: pctFromReferencePx(textFontSize),
       color: textColor,
       bold: textBold,
       italic: textItalic,
@@ -1271,11 +1275,11 @@ export function EditControlsPanel({
                       </div>
                       <Slider
                         label="Size"
-                        value={selectedLayer.fontSize}
+                        value={referencePxFromPct(selectedLayer.fontSizePct)}
                         min={12}
                         max={120}
                         step={2}
-                        onChange={(v) => onUpdateLayer(selectedLayer.id, { fontSize: v })}
+                        onChange={(v) => onUpdateLayer(selectedLayer.id, { fontSizePct: pctFromReferencePx(v) })}
                       />
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1.5">
@@ -1367,21 +1371,21 @@ export function EditControlsPanel({
                       />
                       <Slider
                         label="Letter spacing"
-                        value={selectedLayer.letterSpacing ?? 0}
+                        value={referencePxFromPct(selectedLayer.letterSpacingPct ?? 0)}
                         min={0}
                         max={20}
                         step={1}
-                        onChange={(v) => onUpdateLayer(selectedLayer.id, { letterSpacing: v })}
+                        onChange={(v) => onUpdateLayer(selectedLayer.id, { letterSpacingPct: pctFromReferencePx(v) })}
                       />
                       <Slider
                         label="Outline"
-                        value={selectedLayer.outlineWidth ?? 0}
+                        value={referencePxFromPct(selectedLayer.outlineWidthPct ?? 0)}
                         min={0}
                         max={10}
                         step={1}
-                        onChange={(v) => onUpdateLayer(selectedLayer.id, { outlineWidth: v })}
+                        onChange={(v) => onUpdateLayer(selectedLayer.id, { outlineWidthPct: pctFromReferencePx(v) })}
                       />
-                      {(selectedLayer.outlineWidth ?? 0) > 0 && (
+                      {(selectedLayer.outlineWidthPct ?? 0) > 0 && (
                         <div className="flex items-center gap-1.5">
                           <label className="text-xs font-medium text-foreground">Outline colour</label>
                           <input
@@ -1878,7 +1882,10 @@ export function EditControlsPanel({
                         text: el.text,
                         xPct: el.x_pct,
                         yPct: el.y_pct,
-                        fontSize: Math.max(10, Math.min(200, el.font_size)),
+                        // The model returns a size in px against the source
+                        // image; clamped and converted to the same reference-px
+                        // space the size slider edits in.
+                        fontSizePct: pctFromReferencePx(Math.max(10, Math.min(200, el.font_size))),
                         color: el.color,
                         bold: el.bold,
                         italic: el.italic,
@@ -1995,11 +2002,11 @@ export function EditControlsPanel({
                           </div>
                           <Slider
                             label="Size"
-                            value={(selectedLayer as TextLayer).fontSize}
+                            value={referencePxFromPct((selectedLayer as TextLayer).fontSizePct)}
                             min={12}
                             max={120}
                             step={2}
-                            onChange={(v) => onUpdateLayer(selectedLayer.id, { fontSize: v })}
+                            onChange={(v) => onUpdateLayer(selectedLayer.id, { fontSizePct: pctFromReferencePx(v) })}
                           />
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1.5">
