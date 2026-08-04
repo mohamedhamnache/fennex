@@ -1,13 +1,14 @@
 import uuid
+import ast
 import json
 import re
 import os
 import base64
 import io
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Annotated, Optional, Literal
 
-import anthropic as anthropic_sdk
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, Form, UploadFile
 from sqlalchemy import or_
 from pydantic import BaseModel, ConfigDict
@@ -702,50 +703,146 @@ class DecomposeRequest(BaseModel):
     inpaint_method: Literal["diffusion", "lama"] = "diffusion"
 
 
-_DECOMPOSE_PROMPT = """Analyze this image and identify every visual element. Return ONLY a valid JSON object — no markdown, no explanation:
+# ── Detection (Florence-2) ────────────────────────────────────────────────────
+#
+# This replaced a Claude/GPT-4o call that was asked to return, as JSON, the
+# pixel coordinates of every text element and object in the image. Vision-
+# language models are weak at precise localisation -- that is what detection
+# models exist for -- so both halves of the result were approximations, and the
+# whole path was unmetered.
+#
+# Verified live against the Replicate API on 2026-08-04: 2,157,981 runs, input
+# schema {image, task_input, text_input}, output {img, text}. `task_input` is
+# an enum and the two members below are exact strings from it. Do not "correct"
+# this version from memory -- a nonexistent model has reached production in
+# this codebase before by being recalled rather than resolved.
+_FLORENCE_MODEL = "lucataco/florence-2-large"
+_FLORENCE_VERSION = "da53547e17d45b9cfb48174b2f18af8b83ca020fa76db62136bf9c6616762595"
+_FLORENCE_TASK_OCR = "OCR with Region"
+_FLORENCE_TASK_OBJECTS = "Object Detection"
 
-{
-  "text_elements": [
-    {
-      "text": "exact text as it appears",
-      "x_pct": 0,
-      "y_pct": 0,
-      "width_pct": 50,
-      "height_pct": 10,
-      "font_size": 32,
-      "color": "#ffffff",
-      "bold": false,
-      "italic": false
-    }
-  ],
-  "objects": [
-    {
-      "description": "what the object is (e.g. red sports car, company logo, person)",
-      "x_pct": 0,
-      "y_pct": 0,
-      "width_pct": 50,
-      "height_pct": 40
-    }
-  ],
-  "background": {
-    "description": "describe the background (e.g. dark blue gradient, white studio, outdoor park)",
-    "dominant_color": "#000000",
-    "x_pct": 0,
-    "y_pct": 0,
-    "width_pct": 100,
-    "height_pct": 100
-  }
-}
+# The sentinel HuggingFace's OCR post-processing leaves on every label.
+_FLORENCE_LABEL_SENTINEL = "</s>"
 
-Rules:
-- x_pct, y_pct: top-left corner of the element as percentage of image width/height (0-100)
-- width_pct, height_pct: bounding box size as percentage of image width/height (0-100)
-- font_size: approximate in pixels assuming a 1080px tall image (range 10-200)
-- color: hex color of the text
-- Extract ALL visible text, including small labels, captions, watermarks
-- List every distinct foreground object separately with accurate bounding boxes
-- dominant_color: hex of the most prominent background color
-- background x_pct/y_pct/width_pct/height_pct: the region of the image that is purely background (typically 0,0,100,100 unless background is partial)"""
+
+async def _florence(image_url: str, task: str) -> dict:
+    """One Florence-2 run, returning that task's parsed result payload.
+
+    The model returns {"img": <annotated preview>, "text": <str>}, where the
+    text is a Python-literal repr of HuggingFace's post-processed output keyed
+    by the task token, e.g.
+
+        "{'<OD>': {'bboxes': [[x0, y0, x1, y1]], 'labels': ['car']}}"
+
+    Boxes are already in the source image's pixel space. ast.literal_eval and
+    not json.loads: the repr uses single quotes and is not JSON. Not eval
+    either -- literal_eval cannot execute anything, which matters because this
+    string arrives over the network.
+
+    Goes through editing_service._replicate_run, the single supplier
+    chokepoint, which is where Replicate calls are metered; no per-caller
+    metering is added here.
+    """
+    out = await editing_service._replicate_run(
+        _FLORENCE_MODEL,
+        {"image": image_url, "task_input": task},
+        version=_FLORENCE_VERSION,
+    )
+    text = out.get("text") if isinstance(out, Mapping) else out
+    try:
+        parsed = ast.literal_eval(text)
+    except (ValueError, SyntaxError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Detection returned unreadable output for '{task}'",
+        ) from exc
+    # One key, the task token; its value is the payload.
+    if isinstance(parsed, dict) and len(parsed) == 1:
+        parsed = next(iter(parsed.values()))
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _clean_label(label: str) -> str:
+    return str(label).replace(_FLORENCE_LABEL_SENTINEL, "").strip()
+
+
+def _text_color(rgb, x0: int, y0: int, x1: int, y1: int) -> str:
+    """Hex colour of the glyphs inside a detected text box.
+
+    Florence gives the box but not the colour. The box's own median colour is
+    its local background, so the glyphs are the pixels furthest from it --
+    averaging those is far closer than the language model's guess, and unlike
+    that guess it degrades to the box's average rather than to a default.
+    """
+    import numpy as np
+
+    region = rgb[y0:y1, x0:x1]
+    if region.size == 0:
+        return "#ffffff"
+    flat = region.reshape(-1, 3).astype(np.float32)
+    median = np.median(flat, axis=0)
+    dist = np.sqrt(((flat - median) ** 2).sum(axis=1))
+    picked = flat[dist > max(40.0, float(np.percentile(dist, 80)))]
+    if picked.size == 0:
+        picked = flat
+    r, g, b = (int(v) for v in picked.mean(axis=0))
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _elements_from_detections(raw: bytes, ocr: dict, detection: dict) -> tuple[list, list[dict]]:
+    """Turn two Florence-2 payloads into the canvas contract's shapes.
+
+    Returns (text_elements, raw_objects). raw_objects keeps the loose dict
+    shape _build_layers and _match_description already consume, so only the
+    source of the numbers changed, not the plumbing.
+
+    Sync, and called through asyncio.to_thread: it decodes the image.
+    """
+    from PIL import Image
+    import numpy as np
+
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    iw, ih = img.size
+    rgb = np.asarray(img)
+
+    text_elements: list[CanvasTextElement] = []
+    quads = ocr.get("quad_boxes") or []
+    for quad, label in zip(quads, ocr.get("labels") or []):
+        text = _clean_label(label)
+        if not text:
+            continue
+        xs, ys = list(quad[0::2]), list(quad[1::2])
+        x0, x1 = max(0, min(xs)), min(iw, max(xs))
+        y0, y1 = max(0, min(ys)), min(ih, max(ys))
+        if x1 <= x0 or y1 <= y0:
+            continue
+        # font_size keeps the contract's convention: pixels on a 1080px-tall
+        # frame. A tight OCR box's height is close to the cap height.
+        font_size = max(10, min(200, int(round((y1 - y0) / ih * 1080))))
+        text_elements.append(CanvasTextElement(
+            text=text,
+            x_pct=x0 / iw * 100,
+            y_pct=y0 / ih * 100,
+            width_pct=(x1 - x0) / iw * 100,
+            height_pct=(y1 - y0) / ih * 100,
+            font_size=font_size,
+            color=_text_color(rgb, int(x0), int(y0), int(x1), int(y1)),
+        ))
+
+    raw_objects: list[dict] = []
+    for box, label in zip(detection.get("bboxes") or [], detection.get("labels") or []):
+        x0, y0, x1, y1 = box
+        if x1 <= x0 or y1 <= y0:
+            continue
+        raw_objects.append({
+            "description": _clean_label(label) or "Object",
+            "x_pct": max(0.0, x0) / iw * 100,
+            "y_pct": max(0.0, y0) / ih * 100,
+            "width_pct": (min(iw, x1) - max(0.0, x0)) / iw * 100,
+            "height_pct": (min(ih, y1) - max(0.0, y0)) / ih * 100,
+        })
+
+    return text_elements, raw_objects
 
 
 def _load_image_bytes(image_url: str) -> bytes:
@@ -908,7 +1005,10 @@ def _inpaint_diffusion(rgb, hole, ndimage, np, Image):
 
 
 def _match_description(cx: float, cy: float, raw_objects: list[dict], iw: int, ih: int) -> str:
-    """Name a segmented blob by the nearest Claude-detected object (centroid distance)."""
+    """Name a segmented blob by the nearest detected object (centroid distance).
+
+    The boxes come from Florence-2's `Object Detection`, so the names are the
+    model's own detection labels."""
     best_name = "Object"
     best_dist = float("inf")
     for ob in raw_objects:
@@ -929,37 +1029,40 @@ async def _build_layers(
     raw_objects: list[dict],
     text_elements: list,
     inpaint_method: str = "diffusion",
-) -> tuple[str, int, int, list[dict]]:
+    raw: Optional[bytes] = None,
+) -> tuple[str, int, int, list[dict], str]:
     """
-    Sophisticated decomposition driven by rembg's pixel-accurate segmentation:
+    Decomposition driven by BiRefNet's pixel-accurate segmentation:
 
-    - Objects come from CONNECTED COMPONENTS of the rembg foreground mask, not from
-      Claude's bounding boxes. Each blob is extracted at its FULL extent (never cropped),
-      with rembg's anti-aliased alpha for clean edges. Claude's boxes only supply names.
-    - Background is the original image with all foreground pixels + text regions removed,
-      then INPAINTED. inpaint_method="lama" uses the LaMa ONNX model (SOTA, slower);
-      "diffusion" uses fast scipy harmonic diffusion. LaMa falls back to diffusion on error.
+    - Objects come from CONNECTED COMPONENTS of the BiRefNet foreground mask, not
+      from the detected bounding boxes. Each blob is extracted at its FULL extent
+      (never cropped), with the model's anti-aliased alpha for clean edges. The
+      detected boxes only supply names.
+    - Background is the original image with all foreground pixels + text regions
+      removed, then INPAINTED. inpaint_method="lama" uses the LaMa ONNX model
+      (local, SOTA, slower); "diffusion" uses fast scipy harmonic diffusion. LaMa
+      falls back to diffusion on error. Neither is a Replicate call.
+
+    The mask source WAS a local rembg (u2net), which loses roughly 40% of fine
+    strands on hair and struggles with transparency. Only the mask source
+    changed; the connected-component splitting below is untouched.
 
     All layers share the source W×H; object position is encoded in the alpha channel.
-    Returns: (bg_data_uri, width, height, [{image_data, description, x/y/width/height_pct}])
+    Returns: (bg_data_uri, width, height, [{image_data, description, x/y/width/height_pct}],
+              dominant_background_hex)
     """
     import asyncio
     import numpy as np
     from scipy import ndimage
     from PIL import Image
 
+    # The one Replicate call in this function. It asserts its own output frame,
+    # so a silently downscaled mask cannot reach the compositing below.
+    cut = await editing_service.birefnet_cutout(image_url)
+    raw_bytes = raw if raw is not None else await asyncio.to_thread(_load_image_bytes, image_url)
+
     def _process():
-        try:
-            from rembg import remove as rembg_remove
-        except ImportError:
-            return ("", 0, 0, [])
-
-        try:
-            raw = _load_image_bytes(image_url)
-        except Exception:
-            return ("", 0, 0, [])
-
-        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
         iw, ih = img.size
         rgb = np.asarray(img)  # (H, W, 3) uint8
 
@@ -977,12 +1080,9 @@ async def _build_layers(
         for (tx, ty, tw, th) in text_boxes:
             text_mask[ty:ty + th, tx:tx + tw] = True
 
-        # ── rembg foreground mask (pixel-accurate, anti-aliased) ────────────────
-        try:
-            cut = rembg_remove(img.convert("RGBA"))
-            alpha = np.asarray(cut.split()[3])  # (H, W) uint8
-        except Exception:
-            alpha = np.zeros((ih, iw), dtype=np.uint8)
+        # ── BiRefNet foreground mask (pixel-accurate, anti-aliased) ─────────────
+        mask = cut if cut.size == (iw, ih) else cut.resize((iw, ih), Image.LANCZOS)
+        alpha = np.asarray(mask.split()[3])  # (H, W) uint8
 
         fg_bin = alpha > 100  # solid-foreground binary mask
 
@@ -1010,7 +1110,7 @@ async def _build_layers(
                 x0, x1 = int(xs.min()), int(xs.max())
                 y0, y1 = int(ys.min()), int(ys.max())
 
-                # Full-canvas RGBA: original RGB, alpha = rembg alpha within this blob
+                # Full-canvas RGBA: original RGB, alpha = BiRefNet alpha in this blob
                 obj_alpha = np.where(comp, alpha, 0).astype(np.uint8)
                 obj_rgba = np.dstack([rgb, obj_alpha])
                 obj_img = Image.fromarray(obj_rgba, "RGBA")
@@ -1033,18 +1133,19 @@ async def _build_layers(
         remove_mask = ndimage.binary_dilation(
             soft_fg, structure=np.ones((3, 3), dtype=bool), iterations=margin
         )
-        # Remove text robustly. Claude's boxes are imprecise, so for each detected
-        # box we (a) mask a padded rectangle and (b) additionally capture the actual
-        # glyph pixels by local colour contrast inside a generous search region —
-        # this catches text that extends beyond Claude's box regardless of engine.
+        # Remove text robustly. Even a detected box can clip an ascender or a
+        # drop shadow, so for each box we (a) mask a padded rectangle and (b)
+        # additionally capture the actual glyph pixels by local colour contrast
+        # inside a generous search region — this catches text that extends
+        # beyond the box regardless of engine.
         for (tx, ty, tw, th) in text_boxes:
             pad_x = max(10, int(tw * 0.20))
             pad_y = max(10, int(th * 0.45))
             remove_mask[max(0, ty - pad_y):min(ih, ty + th + pad_y),
                         max(0, tx - pad_x):min(iw, tx + tw + pad_x)] = True
 
-            # Text lines run horizontally and Claude's box often undersizes them,
-            # so search a generously wide band (safe because only pixels that
+            # Text lines run horizontally and a per-word box undersizes the
+            # line, so search a generously wide band (safe because only pixels that
             # contrast with the local background — the glyphs — are removed).
             ex = max(tw, int(0.10 * iw))
             ey = max(int(th * 0.7), 6)
@@ -1110,42 +1211,16 @@ async def _build_layers(
             bg_img = _inpaint_diffusion(rgb, remove_mask, ndimage, np, Image)
         bg_data = _to_b64_png(bg_img)
 
-        return bg_data, iw, ih, objects_out
+        # dominant_color was the language model's guess; it is now measured off
+        # the reconstructed background, which is the surface it describes.
+        small = bg_img.convert("RGB").resize((64, 64), Image.BILINEAR)
+        counts = small.quantize(colors=8, method=Image.MEDIANCUT).convert("RGB").getcolors(64 * 64)
+        r, g, b = max(counts)[1] if counts else (30, 41, 59)
+        dominant = f"#{r:02x}{g:02x}{b:02x}"
+
+        return bg_data, iw, ih, objects_out, dominant
 
     return await asyncio.to_thread(_process)
-
-
-async def _decompose_with_anthropic(api_key: str, image_url: str) -> dict:
-    client = anthropic_sdk.AsyncAnthropic(api_key=api_key)
-    response = await client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=4096,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image", "source": {"type": "url", "url": image_url}},
-                {"type": "text", "text": _DECOMPOSE_PROMPT},
-            ],
-        }],
-    )
-    return response.content[0].text
-
-
-async def _decompose_with_openai(api_key: str, image_url: str) -> dict:
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=api_key)
-    response = await client.chat.completions.create(
-        model="gpt-4o",
-        max_tokens=4096,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": image_url}},
-                {"type": "text", "text": _DECOMPOSE_PROMPT},
-            ],
-        }],
-    )
-    return response.choices[0].message.content
 
 
 @router.post("/{image_id}/decompose", response_model=DecomposeResult)
@@ -1153,59 +1228,67 @@ async def decompose_image_to_canvas(
     image_id: uuid.UUID,
     current_user: CurrentUser,
     db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
     body: DecomposeRequest = DecomposeRequest(),
 ):
+    """Split an image into editable canvas layers: text, objects, background.
+
+    Three Replicate calls, each landing on MIN_REPLICATE_CREDITS -- about 30
+    AI credits per conversion:
+
+      1. Florence-2, `OCR with Region`   -> text and its real boxes
+      2. Florence-2, `Object Detection`  -> object boxes and labels
+      3. BiRefNet                        -> the foreground alpha the layers
+                                            are cut from
+
+    Inpainting (LaMa ONNX or scipy diffusion) runs locally and costs nothing.
+
+    This used to ask Claude or GPT-4o for the pixel coordinates as JSON and
+    cut the masks with a local rembg, and had no `meter`, no `record_*` and no
+    `require_credits` anywhere -- so it was both inaccurate and unbilled
+    supplier spend. Metering now happens inside `_replicate_run`, the single
+    supplier chokepoint, so no per-call metering appears here; the credit gate
+    matches every sibling image operation.
+
+    The DecomposeResult contract is unchanged -- only how its fields are
+    produced.
+    """
+    import asyncio
+
     image = await _get_image_or_404(image_id, current_user.org_id, db)
     if not image.image_url:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image has no URL")
 
-    keys = await get_org_llm_keys(current_user.org_id, db)
-
-    providers = []
-    if keys.get("anthropic"):
-        providers.append(("anthropic", keys["anthropic"]))
-    if keys.get("openai"):
-        providers.append(("openai", keys["openai"]))
-
-    if not providers:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="No AI API key configured. Add an Anthropic or OpenAI key in Settings → API Keys.",
-        )
-
-    raw: str | None = None
-    last_error: str = "Unknown error"
-    for provider, api_key in providers:
-        try:
-            if provider == "anthropic":
-                raw = await _decompose_with_anthropic(api_key, image.image_url)
-            else:
-                raw = await _decompose_with_openai(api_key, image.image_url)
-            break
-        except Exception as exc:
-            last_error = str(exc)
-            continue
-
-    if raw is None:
-        raise HTTPException(status_code=500, detail=f"All AI providers failed: {last_error}")
-
-    raw = raw.strip()
-    raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
     try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="AI returned invalid JSON — try again")
+        raw_bytes = await asyncio.to_thread(_load_image_bytes, image.image_url)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Could not load source image")
 
-    raw_texts = [CanvasTextElement(**el) for el in data.get("text_elements", [])]
-    raw_objects = data.get("objects", [])
-    raw_bg = data.get("background", {})
+    # Sequential, not gathered. Below $5 of Replicate account credit prediction
+    # creation is throttled to a burst of one, so firing both at once reliably
+    # earns a 429 that _create_prediction then has to sleep through -- slower
+    # than just running them in turn.
+    ocr = await _florence(image.image_url, _FLORENCE_TASK_OCR)
+    detection = await _florence(image.image_url, _FLORENCE_TASK_OBJECTS)
 
-    bg_data, img_w, img_h, segmented_objects = await _build_layers(
-        image.image_url, raw_objects, raw_texts, inpaint_method=body.inpaint_method
+    raw_texts, raw_objects = await asyncio.to_thread(
+        _elements_from_detections, raw_bytes, ocr, detection
     )
 
-    # Objects come from rembg connected-component segmentation, not Claude's boxes
+    try:
+        bg_data, img_w, img_h, segmented_objects, dominant = await _build_layers(
+            image.image_url, raw_objects, raw_texts,
+            inpaint_method=body.inpaint_method, raw=raw_bytes,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail=f"Layer segmentation failed: {exc}")
+
+    # Objects come from BiRefNet connected-component segmentation; the detected
+    # boxes only supply the names.
     object_elements = [
         CanvasObjectElement(
             description=o["description"],
@@ -1222,8 +1305,8 @@ async def decompose_image_to_canvas(
         text_elements=raw_texts,
         objects=object_elements,
         background=CanvasBackground(
-            description=raw_bg.get("description", "Background"),
-            dominant_color=raw_bg.get("dominant_color", "#1e293b"),
+            description="Background",
+            dominant_color=dominant,
             image_data=bg_data,
             image_width=img_w,
             image_height=img_h,
