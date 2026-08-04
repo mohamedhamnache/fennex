@@ -16,6 +16,7 @@ import { SeoPanel } from "@/components/studio/edit/SeoPanel";
 import { ScorePanel } from "@/components/studio/edit/ScorePanel";
 import { ExportModal } from "@/components/studio/edit/ExportModal";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
+import { measureTextLayer, textMetrics } from "@/components/studio/edit/scene/measure";
 
 export default function EditPage({
   params,
@@ -168,17 +169,13 @@ export default function EditPage({
       const hpx = layer.aspectRatio > 0 ? wpx / layer.aspectRatio : wpx;
       hPct = (hpx / disp.height) * 100;
     } else {
-      // Measure the rendered text so centring is accurate
-      const c = document.createElement("canvas");
-      const ctx = c.getContext("2d");
-      if (ctx) {
-        const text = layer.uppercase ? layer.text.toUpperCase() : layer.text;
-        ctx.font = `${layer.italic ? "italic " : ""}${layer.bold ? "bold " : ""}${layer.fontSize}px ${layer.fontFamily}`;
-        const spacing = (layer.letterSpacing ?? 0) * Math.max(0, text.length - 1);
-        const padX = layer.bgColor ? layer.fontSize * 0.6 : 12;
-        wPct = ((ctx.measureText(text).width + spacing + padX) / disp.width) * 100;
-        hPct = ((layer.fontSize * 1.2 + (layer.bgColor ? layer.fontSize * 0.36 : 4)) / disp.height) * 100;
-      }
+      // Measure the rendered text so centring is accurate. Both the metrics and
+      // the measurement resolve against the DISPLAYED width, because that is
+      // the canvas the user is aligning against.
+      const { fontSize } = textMetrics(layer, disp.width);
+      const padX = layer.bgColor ? fontSize * 0.6 : 12;
+      wPct = ((measureTextLayer(layer, disp.width) + padX) / disp.width) * 100;
+      hPct = ((fontSize * 1.2 + (layer.bgColor ? fontSize * 0.36 : 4)) / disp.height) * 100;
     }
 
     const patch: { xPct?: number; yPct?: number } = {};
@@ -383,9 +380,15 @@ export default function EditPage({
       const width = baseImg?.naturalWidth ?? 1024;
       const height = baseImg?.naturalHeight ?? 1024;
 
-      // Layer geometry is in canvas percentages, so it is resolution
-      // independent: the same scene renders at display size for preview and at
-      // natural size here. No scale factors.
+      // The preview renders this same layer list at the DISPLAYED size; this
+      // renders it at the image's NATURAL size. That only produces the same
+      // picture because every field a layer carries is a percentage of the
+      // canvas -- position, size, and (since the export was found shrinking
+      // type by displayWidth / naturalWidth) font size, letter spacing and
+      // outline width too. Resolving those percentages against `width` is
+      // SceneSvg's job, via textMetrics(). Nothing is scaled here, and nothing
+      // may be: a scale factor at this call site would be a second opinion
+      // about resolution, and the preview would stop being the export.
       const dataUrl = await rasterizeScene({
         width,
         height,

@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { SceneSvg } from "./SceneSvg";
 import { inlineSceneImages } from "./inlineImages";
-import { fontString } from "./measure";
+import { fontString, textMetrics } from "./measure";
 import type { Scene } from "./types";
 import type { TextLayer } from "../EditCanvas";
 
@@ -18,7 +18,7 @@ async function waitForFonts(scene: Scene): Promise<void> {
   for (const layer of scene.layers) {
     if (layer.type === "text") {
       const t = layer as TextLayer;
-      families.add(fontString(t, t.fontSize));
+      families.add(fontString(t, textMetrics(t, scene.width).fontSize));
     }
   }
   await Promise.all([...families].map((f) => document.fonts.load(f)));

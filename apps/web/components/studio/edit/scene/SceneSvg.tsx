@@ -1,6 +1,6 @@
 import type { ImageLayer, TextLayer } from "../EditCanvas";
 import type { Scene } from "./types";
-import { layerText, textBox } from "./measure";
+import { layerText, textBox, textMetrics } from "./measure";
 
 function clipPathId(layerId: string): string {
   return `clip-${layerId}`;
@@ -22,10 +22,14 @@ function layerRect(layer: ImageLayer, scene: Scene): { x: number; y: number; w: 
 
 function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
   const text = layerText(layer);
-  const fontSize = layer.fontSize;
+  // Type metrics are percentages of canvas width, resolved here against the
+  // width this scene is actually being painted at. That is the whole reason the
+  // preview at display size and the export at natural size are the same
+  // picture: nothing in the layer carries a resolution with it.
+  const { fontSize, letterSpacing, outlineWidth } = textMetrics(layer, scene.width);
   const x = (layer.xPct / 100) * scene.width;
   const y = (layer.yPct / 100) * scene.height;
-  const box = textBox(layer, fontSize, x, y);
+  const box = textBox(layer, scene.width, x, y);
 
   return (
     <g
@@ -50,10 +54,10 @@ function TextNode({ layer, scene }: { layer: TextLayer; scene: Scene }) {
         fontSize={fontSize}
         fontWeight={layer.bold ? 700 : 400}
         fontStyle={layer.italic ? "italic" : undefined}
-        letterSpacing={layer.letterSpacing ? `${layer.letterSpacing}px` : undefined}
+        letterSpacing={letterSpacing ? `${letterSpacing}px` : undefined}
         fill={layer.color}
-        stroke={layer.outlineWidth ? layer.outlineColor ?? "#000000" : undefined}
-        strokeWidth={layer.outlineWidth || undefined}
+        stroke={outlineWidth ? layer.outlineColor ?? "#000000" : undefined}
+        strokeWidth={outlineWidth || undefined}
         // paint-order is essential: without it the stroke is painted over the
         // fill and a 4px outline eats half the glyph.
         paintOrder="stroke fill"

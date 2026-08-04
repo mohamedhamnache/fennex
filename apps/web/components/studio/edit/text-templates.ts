@@ -6,6 +6,7 @@ import {
 } from "./shapes";
 import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
+import { pctFromReferencePx } from "./scene/measure";
 import {
   typeWrap, duotoneWash, offsetStack, ruleGrid, hardEdge, priceSlab, negativeSpace,
   findUnbackedText, analyzeText, isWashMode, washFor, type FamilyId,
@@ -16,8 +17,24 @@ import {
  *  and are scaled to the real canvas on apply. */
 export { bestTextOn, type TemplateCategory };
 
-export interface TemplateTextDef extends Omit<TextLayer, "id"> {
+/** A text run as an author writes it.
+ *
+ *  The type metrics are deliberately NOT the layer model's percentages. Authors
+ *  and the families that generate them work in px on the `REFERENCE_WIDTH`
+ *  canvas — `fontSize: 80` is legible as a headline in a way `fontSizePct: 10`
+ *  is not, and the authoring fit guard in families.ts measures in the same
+ *  units. `templateToLayers` is the boundary: it converts these px to
+ *  percentages exactly once, and past that point nothing in the editor or the
+ *  renderer carries an absolute pixel size. */
+export interface TemplateTextDef
+  extends Omit<TextLayer, "id" | "fontSizePct" | "letterSpacingPct" | "outlineWidthPct"> {
   kind?: "text";
+  /** px on the REFERENCE_WIDTH canvas. */
+  fontSize: number;
+  /** px on the REFERENCE_WIDTH canvas; may be negative. */
+  letterSpacing?: number;
+  /** px on the REFERENCE_WIDTH canvas. */
+  outlineWidth?: number;
   /** Which brand font substitutes this layer's font in brand-aware mode. */
   fontRole?: "heading" | "body";
   /** Keep the authored colours even in brand-aware mode (e.g. urgency red). */
@@ -585,12 +602,22 @@ export interface ResolvedTemplate {
  * layers through exactly the same code — a template that renders in one and not
  * the other is the failure mode this function exists to prevent.
  *
- * `width`/`height` are the pixel size the layers will be laid out at: font
- * sizes are authored against an ~800px reference canvas and are scaled to it,
- * and shapes without an explicit height take their height from the canvas
- * aspect. A subject image layer resolves to `subjectUrl`; when that is empty
- * the layer is skipped rather than rendered as an empty box, so the caller must
- * handle an empty result.
+ * `width`/`height` are the pixel size the layers will be laid out at, and they
+ * are used ONLY for the canvas aspect ratio, which shapes without an explicit
+ * height need. Nothing else here depends on them: positions are already
+ * percentages and the type metrics become percentages below. That is what makes
+ * the result resolution independent — the layers this returns render the same
+ * composition whether the scene is 620px or 2048px wide.
+ *
+ * This function used to multiply the authored font sizes by `width / 800`,
+ * baking the DISPLAY resolution into the layer. The burn then rasterised those
+ * same layers at the image's NATURAL size, where SceneSvg read them as absolute
+ * user units, and every exported headline came out at displayWidth /
+ * naturalWidth of the size the user approved.
+ *
+ * A subject image layer resolves to `subjectUrl`; when that is empty the layer
+ * is skipped rather than rendered as an empty box, so the caller must handle an
+ * empty result.
  */
 export function templateToLayers(
   t: ResolvedTemplate,
@@ -598,7 +625,6 @@ export function templateToLayers(
   width: number,
   height: number,
 ): Layer[] {
-  const scale = width ? Math.max(0.5, Math.min(2.5, width / 800)) : 1;
   const canvasAspect = width && height ? width / height : 1;
   const now = Date.now();
   const out: Layer[] = [];
@@ -665,12 +691,17 @@ export function templateToLayers(
       });
       return;
     }
-    const { kind, fontRole, lockColor, ...l } = def as TemplateTextDef; // strip template-only fields
+    // Strip template-only fields, and convert the three authoring-space px
+    // metrics into the layer model's canvas-width percentages.
+    const {
+      kind, fontRole, lockColor, fontSize, letterSpacing, outlineWidth, ...l
+    } = def as TemplateTextDef;
     void kind; void fontRole; void lockColor;
     out.push({
       ...l,
-      fontSize: Math.round(l.fontSize * scale),
-      letterSpacing: l.letterSpacing !== undefined ? Math.round(l.letterSpacing * scale) : undefined,
+      fontSizePct: pctFromReferencePx(fontSize),
+      letterSpacingPct: letterSpacing !== undefined ? pctFromReferencePx(letterSpacing) : undefined,
+      outlineWidthPct: outlineWidth !== undefined ? pctFromReferencePx(outlineWidth) : undefined,
       id: `tpl-${now}-${i}`,
     });
   });

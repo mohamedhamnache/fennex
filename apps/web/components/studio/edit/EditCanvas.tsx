@@ -10,7 +10,7 @@ import {
 } from "react";
 import { RotateCw, Sparkles, Plus, Minus, Maximize2 } from "lucide-react";
 import { SceneSvg } from "./scene/SceneSvg";
-import { layerText, textBox } from "./scene/measure";
+import { layerText, textBox, textMetrics } from "./scene/measure";
 
 const MASK_TOOLS = new Set([
   "replace_background",
@@ -27,13 +27,29 @@ const MASK_RGB: [number, number, number] = [255, 80, 80];
 const MASK_ALPHA = Math.round(0.45 * 255);
 const MIN_CROP = 0.02;
 
+/** A text layer.
+ *
+ *  EVERY geometric field is a percentage of the canvas, including the three
+ *  type metrics. That is not decoration: the same layer list is rendered at the
+ *  DISPLAYED size for the live preview and at the image's NATURAL size for the
+ *  export, and anything carried in absolute pixels is a number baked at one
+ *  resolution and spent at the other. `fontSize`, `letterSpacing` and
+ *  `outlineWidth` used to be absolute px, and the export shrank the type by
+ *  exactly displayWidth / naturalWidth — a 2048px burn rendered a headline at a
+ *  third of the size the user had just approved on screen.
+ *
+ *  All three are percentages of canvas WIDTH (not height, and not the diagonal)
+ *  so a layer's type scales with the same dimension its x/width percentages do.
+ *  `textMetrics()` in scene/measure.ts is the only place they are resolved to
+ *  pixels; nothing should divide by 100 by hand. */
 export interface TextLayer {
   id: string;
   type: "text";
   text: string;
   xPct: number;
   yPct: number;
-  fontSize: number;
+  /** Font size as a % of canvas width. 10 on an 800px canvas is 80px. */
+  fontSizePct: number;
   color: string;
   bold: boolean;
   italic: boolean;
@@ -43,8 +59,10 @@ export interface TextLayer {
   rotation?: number;
   // Text effects (all optional — defaults preserve legacy layers)
   opacity?: number;          // 0-1, default 1
-  letterSpacing?: number;    // px at the layer's fontSize, default 0
-  outlineWidth?: number;     // px, 0 = off
+  /** Tracking as a % of canvas width, applied between glyphs. May be negative. */
+  letterSpacingPct?: number;
+  /** Stroke width as a % of canvas width. 0 or absent = off. */
+  outlineWidthPct?: number;
   outlineColor?: string;
   bgColor?: string | null;   // background pill colour, null/undefined = off
   shadow?: boolean;          // drop shadow, default true (legacy behaviour)
@@ -779,7 +797,10 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                     position: "absolute",
                     left: x,
                     top: y,
-                    fontSize: layer.fontSize,
+                    // Resolved against the DISPLAYED canvas, which is what this
+                    // overlay input sits on. SceneSvg resolves the same
+                    // percentage against whatever it is painting at.
+                    fontSize: textMetrics(layer, canvasRect.width).fontSize,
                     color: layer.color,
                     fontFamily: layer.fontFamily,
                     fontWeight: layer.bold ? "bold" : "normal",
@@ -799,7 +820,7 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
                 />
               );
             }
-            const box = textBox(layer, layer.fontSize, x, y);
+            const box = textBox(layer, canvasRect.width, x, y);
             return (
               <div
                 key={layer.id}
