@@ -32,9 +32,9 @@ import { analyzeText } from "@/components/studio/edit/families";
 import {
   PROBE_TEMPLATES, HEADLINE_REFERENCE, headlinePct, LAYOUTS, buildProbe, colourwaysForLayout,
   type ProbeTemplate,
-} from "@/components/studio/edit/probe/templates";
-import { COLOURWAYS, colourway } from "@/components/studio/edit/probe/colourways";
-import { runReports, verifyFieldClaims, type RunReport } from "@/components/studio/edit/probe/type";
+} from "@/components/studio/edit/design/templates";
+import { COLOURWAYS, colourway } from "@/components/studio/edit/design/colourways";
+import { runReports, verifyFieldClaims, type RunReport } from "@/components/studio/edit/design/type";
 import { worstCaseContrast, contrastRatio, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
