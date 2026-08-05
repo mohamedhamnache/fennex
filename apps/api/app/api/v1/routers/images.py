@@ -89,6 +89,16 @@ class ImprovePromptRequest(BaseModel):
     prompt: str
     usage: Optional[str] = None
     style: Optional[str] = None
+    # Which KIND of prompt is being improved. "generate" (the default, and the
+    # only behaviour before Mirage's rephrase control existed) rewrites a
+    # text-to-image brief. "edit_instruction" rewrites an instruction aimed at
+    # an image that ALREADY exists, which is a different job entirely: asked to
+    # improve "remove the mint", the generate-mode system prompt happily
+    # returns a full scene description with lighting and mood, and the editor
+    # would then be told to generate a new picture instead of removing
+    # anything. One endpoint, one metered call path, two system prompts --
+    # there is deliberately no second improve endpoint.
+    mode: Optional[str] = None
 
 
 class ImprovePromptResponse(BaseModel):
@@ -179,10 +189,34 @@ _IMPROVE_SYSTEM = (
     "Keep it under 200 words."
 )
 
+# Mirage's rephrase control. The input is an EDIT instruction against a picture
+# that already exists, so the job is precision, not evocation: name the target,
+# state the change, and say nothing about anything the user did not ask to
+# touch. Length is a failure mode here rather than a goal -- a rephrase that
+# merely lengthens is worse than none, because every extra clause is another
+# thing the instruction model may decide to re-render.
+_IMPROVE_EDIT_SYSTEM = (
+    "You rewrite image EDITING instructions for an AI photo editor. "
+    "The picture already exists; the user wants it changed, not replaced. "
+    "Rewrite the instruction so it names exactly what to change and how, in one "
+    "or two plain sentences. Keep the user's intent, language and every "
+    "constraint they stated. Never invent a new subject, scene, style, lighting "
+    "or mood they did not ask for, and never describe parts of the image they "
+    "did not mention. Shorter and more specific beats longer. "
+    "Reply with the rewritten instruction only -- no markdown, no explanation."
+)
+
 _IMPROVE_PROVIDERS = [
     ("anthropic", "claude-haiku-4-5-20251001"),
     ("openai", "gpt-4o-mini"),
 ]
+
+# The metering key for this endpoint's usage events. The call is already
+# attributed to the org ambiently (get_org_llm_keys -> set_metering_org, read
+# back by call_llm's else-branch), but without a feature name the resulting
+# UsageEvent.feature is NULL and the spend cannot be told apart from every
+# other unnamed LLM call in the org's ledger.
+_IMPROVE_FEATURE = "improve_prompt"
 
 
 @router.post("/improve-prompt", response_model=ImprovePromptResponse)
@@ -192,19 +226,24 @@ async def improve_prompt(body: ImprovePromptRequest, current_user: CurrentUser, 
 
     keys = await get_org_llm_keys(current_user.org_id, db)
 
-    context_parts = []
-    if body.usage:
-        context_parts.append(f"Usage: {body.usage.replace('_', ' ')}")
-    if body.style:
-        context_parts.append(f"Style: {body.style.replace('_', ' ')}")
-    context = f" [{', '.join(context_parts)}]" if context_parts else ""
-
-    user_prompt = f"Improve this image prompt{context}:\n\n{body.prompt.strip()}"
+    if body.mode == "edit_instruction":
+        system = _IMPROVE_EDIT_SYSTEM
+        user_prompt = f"Rewrite this editing instruction:\n\n{body.prompt.strip()}"
+    else:
+        system = _IMPROVE_SYSTEM
+        context_parts = []
+        if body.usage:
+            context_parts.append(f"Usage: {body.usage.replace('_', ' ')}")
+        if body.style:
+            context_parts.append(f"Style: {body.style.replace('_', ' ')}")
+        context = f" [{', '.join(context_parts)}]" if context_parts else ""
+        user_prompt = f"Improve this image prompt{context}:\n\n{body.prompt.strip()}"
 
     for provider, model in _IMPROVE_PROVIDERS:
         if provider in keys:
             try:
-                improved = await call_llm(provider, model, keys[provider], _IMPROVE_SYSTEM, user_prompt)
+                improved = await call_llm(provider, model, keys[provider], system, user_prompt,
+                                          feature=_IMPROVE_FEATURE)
                 return ImprovePromptResponse(improved_prompt=improved.strip())
             except Exception:
                 continue

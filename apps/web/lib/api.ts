@@ -956,6 +956,13 @@ export async function improvePrompt(data: {
   prompt: string;
   usage?: ImageUsage;
   style?: ImageStyle;
+  /** Which KIND of prompt this is. Omit (the default) for a text-to-image
+   *  brief, as the Image Studio's PromptToolbar does. Pass
+   *  "edit_instruction" for an instruction aimed at a picture that already
+   *  exists, as Mirage's rephrase control does -- the default mode would
+   *  answer "remove the mint" with a full scene description, which tells the
+   *  editor to generate rather than to remove. */
+  mode?: "edit_instruction";
 }): Promise<{ improved_prompt: string }> {
   return apiClient.post<{ improved_prompt: string }>("/images/improve-prompt", data);
 }

@@ -1567,7 +1567,14 @@
     "maskApply": "Apply",
     "applying": "Applying...",
     "maskConfirmDefault": "Confirm the highlighted area before applying.",
-    "maskTargetDefault": "Which area did you mean?"
+    "maskTargetDefault": "Which area did you mean?",
+    "rephrase": "Rephrase",
+    "rephrasing": "Rephrasing...",
+    "rephraseTitle": "Rewrite your instruction to be clearer before sending it",
+    "rephraseUndo": "Undo",
+    "rephraseFailed": "Couldn't rephrase that — your text is unchanged.",
+    "rephraseCost_one": "about {{count}} credit",
+    "rephraseCost_other": "about {{count}} credits"
   },
   "articleStudio": {
     "write": "Write",

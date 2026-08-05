@@ -1470,7 +1470,14 @@
     "maskApply": "Aplicar",
     "applying": "Aplicando...",
     "maskConfirmDefault": "Confirma el área resaltada antes de aplicarla.",
-    "maskTargetDefault": "¿Qué área quieres decir?"
+    "maskTargetDefault": "¿Qué área quieres decir?",
+    "rephrase": "Reformular",
+    "rephrasing": "Reformulando...",
+    "rephraseTitle": "Reescribe tu instrucción con más claridad antes de enviarla",
+    "rephraseUndo": "Deshacer",
+    "rephraseFailed": "No se pudo reformular — tu texto no ha cambiado.",
+    "rephraseCost_one": "aproximadamente {{count}} crédito",
+    "rephraseCost_other": "unos {{count}} créditos"
   },
   "articleStudio": {
     "dock": {

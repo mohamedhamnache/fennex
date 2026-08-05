@@ -1470,7 +1470,18 @@
     "maskApply": "تطبيق",
     "applying": "جارٍ التطبيق...",
     "maskConfirmDefault": "أكّد المنطقة المميزة قبل التطبيق.",
-    "maskTargetDefault": "ما المنطقة التي تقصدها؟"
+    "maskTargetDefault": "ما المنطقة التي تقصدها؟",
+    "rephrase": "إعادة الصياغة",
+    "rephrasing": "جارٍ إعادة الصياغة...",
+    "rephraseTitle": "أعد صياغة تعليمتك بوضوح أكبر قبل إرسالها",
+    "rephraseUndo": "تراجع",
+    "rephraseFailed": "تعذّرت إعادة الصياغة — نصّك لم يتغيّر.",
+    "rephraseCost_zero": "بدون تكلفة",
+    "rephraseCost_one": "نحو رصيد واحد",
+    "rephraseCost_two": "نحو رصيدين",
+    "rephraseCost_few": "نحو {{count}} أرصدة",
+    "rephraseCost_many": "نحو {{count}} رصيدًا",
+    "rephraseCost_other": "نحو {{count}} رصيد"
   },
   "articleStudio": {
     "dock": {

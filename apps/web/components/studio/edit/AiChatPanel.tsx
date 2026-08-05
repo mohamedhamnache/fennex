@@ -3,9 +3,13 @@
 import { useState, useRef, useEffect, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { Send, Bot, User, Sparkles, Wand2, Undo2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { sendAiCommand, ApiError, type GeneratedImage, type AiCommandMessage } from "@/lib/api";
+import {
+  sendAiCommand, improvePrompt, ApiError,
+  type GeneratedImage, type AiCommandMessage,
+} from "@/lib/api";
+import { PROMPT_REPHRASE_CREDIT_COST } from "@/lib/creditCosts";
 import type { EditCanvasRef } from "./EditCanvas";
 
 const SUGGESTION_GROUPS = ["oneGo", "enhance", "retouch", "style", "transform"] as const;
@@ -78,6 +82,17 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   // working note about one image, not shared state.
   const historyKey = `fennex.mirage.chat.${conversationId}`;
   const [pendingConfirm, setPendingConfirm] = useState<PendingMaskConfirm | null>(null);
+
+  // Rephrase. NEVER automatic -- it runs only from the button below, because a
+  // rewrite the user did not ask for silently changes what they are about to
+  // spend on. `rephraseOriginal` holds the text as it was immediately before
+  // the rewrite so Undo can restore it in ONE click: an improvement that loses
+  // what the user actually meant, with no way back, is worse than none. It is
+  // kept through subsequent typing (the user may still want the original back)
+  // and cleared only by Undo itself or by actually sending.
+  const [rephrasing, setRephrasing] = useState(false);
+  const [rephraseOriginal, setRephraseOriginal] = useState<string | null>(null);
+  const [rephraseError, setRephraseError] = useState(false);
   // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
   // area never rendered, so Apply must be disabled: approving a mask the
   // user never actually saw would defeat the confirmation gate entirely.
@@ -225,7 +240,42 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
     const priorHistory = history;
     setHistory((prev) => [...prev, { role: "user", content: trimmed }]);
     setInput("");
+    // The message is gone; there is no longer an "original" to go back to.
+    setRephraseOriginal(null);
+    setRephraseError(false);
     mutation.mutate({ command: trimmed, priorHistory });
+  }
+
+  async function handleRephrase() {
+    const original = input.trim();
+    if (!original || rephrasing || mutation.isPending || pendingConfirm) return;
+    setRephraseError(false);
+    setRephrasing(true);
+    try {
+      // mode: "edit_instruction" -- this is an instruction against a picture
+      // that already exists, not a brief for generating a new one.
+      const { improved_prompt } = await improvePrompt({ prompt: original, mode: "edit_instruction" });
+      const improved = improved_prompt.trim();
+      if (!improved) {
+        setRephraseError(true);
+        return;
+      }
+      setRephraseOriginal(original);
+      setInput(improved);
+      textareaRef.current?.focus();
+    } catch {
+      setRephraseError(true);
+    } finally {
+      setRephrasing(false);
+    }
+  }
+
+  function handleUndoRephrase() {
+    if (rephraseOriginal === null) return;
+    setInput(rephraseOriginal);
+    setRephraseOriginal(null);
+    setRephraseError(false);
+    textareaRef.current?.focus();
   }
 
   function handleApplyMaskConfirm() {
@@ -388,6 +438,45 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
 
       {/* Input area */}
       <div className="border-t border-border p-3 shrink-0">
+        {/* Composer toolbar. The rephrase button carries its own price so the
+            cost is on screen BEFORE the click that spends it, never only in
+            the balance afterwards. */}
+        <div className="flex items-center gap-2 pb-2">
+          <button
+            type="button"
+            onClick={handleRephrase}
+            disabled={!input.trim() || rephrasing || mutation.isPending || !!pendingConfirm}
+            title={t("mirage.rephraseTitle")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors",
+              "bg-primary/10 text-primary hover:bg-primary/20",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+            )}
+          >
+            {rephrasing
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <Wand2 className="h-3 w-3" strokeWidth={1.8} />}
+            {rephrasing ? t("mirage.rephrasing") : t("mirage.rephrase")}
+          </button>
+          <span className="text-[10px] text-muted-foreground">
+            {t("mirage.rephraseCost", { count: PROMPT_REPHRASE_CREDIT_COST })}
+          </span>
+          {rephraseOriginal !== null && (
+            <button
+              type="button"
+              onClick={handleUndoRephrase}
+              className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <Undo2 className="h-3 w-3" strokeWidth={1.8} />
+              {t("mirage.rephraseUndo")}
+            </button>
+          )}
+        </div>
+
+        {rephraseError && (
+          <p className="text-[10px] text-destructive pb-2 px-1">{t("mirage.rephraseFailed")}</p>
+        )}
+
         <div className="flex gap-2 items-end rounded-xl border border-border bg-input focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15 transition-all overflow-hidden">
           <textarea
             ref={textareaRef}

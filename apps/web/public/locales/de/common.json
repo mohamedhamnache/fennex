@@ -1470,7 +1470,14 @@
     "maskApply": "Anwenden",
     "applying": "Wird angewendet...",
     "maskConfirmDefault": "Bestätige den hervorgehobenen Bereich, bevor er angewendet wird.",
-    "maskTargetDefault": "Welchen Bereich meinst du?"
+    "maskTargetDefault": "Welchen Bereich meinst du?",
+    "rephrase": "Umformulieren",
+    "rephrasing": "Wird umformuliert...",
+    "rephraseTitle": "Formuliere deine Anweisung klarer, bevor du sie sendest",
+    "rephraseUndo": "Rückgängig",
+    "rephraseFailed": "Umformulieren nicht möglich — dein Text bleibt unverändert.",
+    "rephraseCost_one": "etwa {{count}} Credit",
+    "rephraseCost_other": "etwa {{count}} Credits"
   },
   "articleStudio": {
     "dock": {

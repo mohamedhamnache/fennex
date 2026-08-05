@@ -1470,7 +1470,14 @@
     "maskApply": "Appliquer",
     "applying": "Application...",
     "maskConfirmDefault": "Confirmez la zone mise en évidence avant de l'appliquer.",
-    "maskTargetDefault": "Quelle zone voulez-vous dire ?"
+    "maskTargetDefault": "Quelle zone voulez-vous dire ?",
+    "rephrase": "Reformuler",
+    "rephrasing": "Reformulation...",
+    "rephraseTitle": "Reformulez votre consigne plus clairement avant de l'envoyer",
+    "rephraseUndo": "Annuler",
+    "rephraseFailed": "Reformulation impossible — votre texte est inchangé.",
+    "rephraseCost_one": "environ {{count}} crédit",
+    "rephraseCost_other": "environ {{count}} crédits"
   },
   "articleStudio": {
     "dock": {
