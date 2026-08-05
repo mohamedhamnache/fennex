@@ -125,8 +125,74 @@ function smallBatch(): ProbeTemplate {
   };
 }
 
+// ── 2. Culvert — editorial, quiet ────────────────────────────────────────────
+//
+// The opposite arrangement to Small Batch: the type owns the frame and the
+// photograph is pushed to a plate that bleeds off two edges, so it reads as a
+// window rather than as a picture that has been placed. A single accent
+// hairline holds the column against it, and a folio runs vertically down the
+// outer margin.
+//
+// Headline 4.25% — the bottom of the editorial range — set over three lines,
+// which is what makes it read as a headline rather than a slogan. The
+// standfirst is the same face at half the size and 78% ink, and the hierarchy
+// between them is weight (700 against 400) and colour, not scale: 2:1, where
+// the rejected set's ladder could only express 5:1.
+
+function culvert(): ProbeTemplate {
+  const p = resolvePalette("blog");
+  const c = compose();
+  const onField = { kind: "field", color: p.surface } as const;
+  const head = { sizePct: 4.25, font: "modern", weight: 700, trackingPct: -0.075, color: p.ink } as const;
+  const stand = { sizePct: 2.15, font: "support", opacity: 0.78, color: p.ink } as const;
+
+  c.add(
+    field({ color: p.surface, xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }),
+    photo({ xPct: 58, yPct: 12, widthPct: 46, heightPct: 92 }),
+    field({ color: p.accent, xPct: 53, yPct: 12, widthPct: 0.28, heightPct: 74 }),
+  );
+
+  c.type(
+    {
+      text: "Reporting / Water",
+      sizePct: 1.15, font: "mono", uppercase: true, trackingPct: 0.2,
+      color: p.accentInk, xPct: 8, yPct: 14, on: onField,
+    },
+    { ...head, text: "The River That", xPct: 8, yPct: 18.5, on: onField },
+    { ...head, text: "Runs Under the", xPct: 8, yPct: 23.3, on: onField },
+    { ...head, text: "Ring Road", xPct: 8, yPct: 28.1, on: onField },
+    { ...stand, text: "Forty years after it was culverted, a", xPct: 8, yPct: 35, on: onField },
+    { ...stand, text: "city is digging its river back up. What", xPct: 8, yPct: 38, on: onField },
+    { ...stand, text: "that costs, and who pays for it.", xPct: 8, yPct: 41, on: onField },
+    {
+      text: "By the water desk / 12 min read",
+      sizePct: 1.15, font: "mono", trackingPct: 0.1,
+      color: p.accentInk, xPct: 8, yPct: 47.5, on: onField,
+    },
+    {
+      // Down the outer margin, reading bottom to top. The fit guard measures
+      // the rotated footprint, so this still has to sit inside the frame.
+      text: "No 214",
+      sizePct: 1.15, font: "mono", uppercase: true, trackingPct: 0.2, rotation: -90,
+      color: p.ink, opacity: 0.72, xPct: 3.4, yPct: 86, on: onField,
+    },
+  );
+
+  return {
+    id: "pb_editorial_culvert",
+    name: "Culvert",
+    subject: "editorial",
+    intent: "quiet",
+    headline: "The River That",
+    note: "Type owns the frame; the photograph is a plate bleeding off two edges, held by one hairline. Folio set vertically in the margin.",
+    layers: c.layers,
+    runs: c.runs,
+  };
+}
+
 export const PROBE_TEMPLATES: ProbeTemplate[] = [
   smallBatch(),
+  culvert(),
 ];
 
 /** Reference points for reading the headline sizes above. */
