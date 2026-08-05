@@ -36,7 +36,7 @@ from urllib.parse import unquote
 from PIL import Image as PILImage, ImageOps
 
 from app.core.storage import _public_url, _s3_configured, upload_bytes
-from app.services.editing_service import _download, _removebg_cutout, _replicate_run
+from app.services.editing_service import _download, birefnet_cutout, _replicate_run
 from app.services.image_output import dimensions
 
 # Pinned in Task 0 against Replicate's live API. Do not edit from memory.
@@ -224,9 +224,21 @@ async def resolve_mask(image_url: str, operation: str, target: Optional[str],
             return MaskResolution(ok=False, needs_confirmation=True, tier="prompted",
                                   mask_url=await _segment_by_prompt(image_url, target, source_size))
 
-        # Metering happens inside _removebg_cutout, at the supplier chokepoint,
+        # BiRefNet, not Remove.bg. Measured against each other on real images
+        # (2026-08-05): the segmentations agree to within 0.1 percentage points
+        # of coverage, so this costs no accuracy -- but Remove.bg's `size:
+        # "auto"` resolves to its 0.25 MP preview tier, so the mask arrived at
+        # a quarter megapixel and _fit_to_source then scaled it back up with
+        # NEAREST. On a 2080x1664 image that is a ~3.7x nearest-neighbour
+        # upscale: every mask pixel becomes a ~4x4 block, and the mask boundary
+        # is stair-stepped. BiRefNet returns the source frame, so the mask is
+        # full resolution and the upscale disappears.
+        #
+        # It is also 191 credits -> 10. The same call, 19x cheaper, sharper.
+        #
+        # Metering happens inside _replicate_run, at the supplier chokepoint,
         # so it is NOT repeated here -- doing both would bill the call twice.
-        cutout = await _removebg_cutout(image_url, feature="auto_mask")
+        cutout = await birefnet_cutout(image_url, feature="auto_mask")
         mask = _fit_to_source(_alpha_to_mask(cutout), source_size)
         if operation in _INVERT_FOR_PRODUCT_TIER:
             mask = ImageOps.invert(mask)

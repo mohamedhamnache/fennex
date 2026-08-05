@@ -96,7 +96,7 @@ OD_TEXT = (
 
 def _replicate_stub():
     """Stands in for the single supplier chokepoint, dispatching on the model."""
-    async def run(model, params, version=None):
+    async def run(model, params, version=None, feature="image_edit"):
         if model == images_router._FLORENCE_MODEL:
             task = params["task_input"]
             if task == images_router._FLORENCE_TASK_OCR:

@@ -264,49 +264,6 @@ async def sharpen_image(image_url: str, strength: float = 0.5) -> dict:
 # ── Remove.bg ─────────────────────────────────────────────────────────────────
 
 
-async def _removebg_cutout(image_url: str, *, feature: str = "background_removal") -> PILImage.Image:
-    """Fetch the Remove.bg cutout as an RGBA image.
-
-    The alpha channel IS a foreground segmentation, which is what
-    app.services.mask_service derives the product-tier mask from. Kept separate
-    from remove_background() so that caller does not have to re-download its own
-    uploaded result to recover the alpha. Raises rather than returning an error
-    dict -- callers that want the dict contract wrap it.
-    """
-    data = await _download(image_url)
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(
-            "https://api.remove.bg/v1.0/removebg",
-            data={"size": "auto"},
-            files={"image_file": ("image.png", data, "image/png")},
-            headers={"X-Api-Key": settings.REMOVE_BG_API_KEY},
-        )
-        resp.raise_for_status()
-
-    # Metered HERE, at the single point the supplier is actually called, for the
-    # same reason _replicate_run meters Replicate: every caller is covered and
-    # none can be counted twice. Metering at the call sites instead left the
-    # user-facing "remove background" button charging NOTHING while the
-    # identical call made by auto-masking was charged -- a paid supplier call
-    # billed to no one.
-    #
-    # Best-effort, attributed to the ambient org set at the auth boundary, and
-    # never allowed to break the edit itself.
-    try:
-        from app.core.metering_context import get_metering_org
-        _org = get_metering_org()
-        if _org is not None:
-            from app.core.database import async_session_factory
-            from app.services.metering import meter as _meter
-            async with async_session_factory() as _db:
-                await _meter.record_removebg(_db, org_id=_org, project_id=None,
-                                             feature=feature)
-    except Exception:  # noqa: BLE001
-        logger.warning("remove.bg usage metering failed", exc_info=True)
-
-    return PILImage.open(io.BytesIO(resp.content)).convert("RGBA")
-
-
 # ── BiRefNet (the quality cutout path) ────────────────────────────────────────
 #
 # Verified live against the Replicate API on 2026-08-04: 6,990,037 runs, input
@@ -319,7 +276,8 @@ _MODEL_BIREFNET = "men1scus/birefnet"
 _BIREFNET_VERSION = "f74986db0355b58403ed20963af156525e2891ea3c2d499bfbfb2a28cd87c5d7"
 
 
-async def _birefnet_run(image_url: str) -> tuple[str, tuple[int, int]]:
+async def _birefnet_run(image_url: str, *, feature: str = "image_edit"
+                        ) -> tuple[str, tuple[int, int]]:
     """Run BiRefNet at the SOURCE image's own frame.
 
     Returns (output_url, source_size). The size is measured from the source
@@ -338,18 +296,19 @@ async def _birefnet_run(image_url: str) -> tuple[str, tuple[int, int]]:
         _MODEL_BIREFNET,
         {"image": image_url, "resolution": f"{src[0]}x{src[1]}"},
         version=_BIREFNET_VERSION,
+        feature=feature,
     )
     return out, src
 
 
-async def birefnet_cutout(image_url: str) -> PILImage.Image:
+async def birefnet_cutout(image_url: str, *, feature: str = "image_edit") -> PILImage.Image:
     """The BiRefNet cutout as an RGBA image, at the source frame.
 
     The alpha channel IS a foreground segmentation, which is what the canvas
     decomposition splits into object layers. Raises rather than returning an
     error dict -- callers wanting the dict contract wrap it.
     """
-    out, src = await _birefnet_run(image_url)
+    out, src = await _birefnet_run(image_url, feature=feature)
     img = PILImage.open(io.BytesIO(await _download(out))).convert("RGBA")
     if img.size != src:
         raise ResolutionMismatch(
@@ -395,8 +354,9 @@ async def remove_background(image_url: str) -> dict:
     trade -- the supplier spend genuinely happened -- but it is now a path
     reachable by design rather than by accident, so it is recorded here.
 
-    `_removebg_cutout` is untouched: mask_service still derives product-tier
-    masks from Remove.bg's alpha, and that path is not what this fixes.
+    Remove.bg is now gone from the product entirely. mask_service was its last
+    caller, deriving product-tier masks from its alpha; it takes BiRefNet's
+    instead, so no code path reaches the supplier any more.
     """
     try:
         out, src = await _birefnet_run(image_url)
@@ -447,7 +407,8 @@ _POLL_INTERVAL = 3
 _POLL_TIMEOUT = 300
 
 
-async def _replicate_run(model: str, input_params: dict, version: Optional[str] = None) -> str | dict:
+async def _replicate_run(model: str, input_params: dict, version: Optional[str] = None,
+                         feature: str = "image_edit") -> str | dict:
     """Create a Replicate prediction and poll until succeeded. Returns output URL.
 
     Without `version`: uses /v1/models/{owner}/{name}/predictions (works for models with
@@ -507,7 +468,11 @@ async def _replicate_run(model: str, input_params: dict, version: Optional[str] 
                                 org_id=_org,
                                 project_id=None,
                                 model=model,
-                                feature="image_edit",
+                                # Tagged by the CALLER where it knows better
+                                # than "an edit happened": an auto-derived mask
+                                # is a different product action from a user
+                                # edit, and cost analysis must tell them apart.
+                                feature=feature,
                                 # Replicate bills by GPU-second and reports the
                                 # real duration, so cost tracks the actual run
                                 # rather than a flat per-run guess.
