@@ -68,6 +68,15 @@ export interface TextLayer {
   shadow?: boolean;          // drop shadow, default true (legacy behaviour)
   uppercase?: boolean;
   blend?: import("./scene/types").BlendMode;
+  /** Set only on layers created by applying a template, so applying another
+   *  template or removing this one can find them again. Absent on layers the
+   *  user added, which neither action may touch.
+   *
+   *  Deliberately NOT derived from the `tpl-<timestamp>-<i>` id prefix: those
+   *  ids already carry a load-bearing job (layer uniqueness), and inferring a
+   *  second meaning from a formatted string couples the two silently — a format
+   *  change would break template removal with no compile-time signal. */
+  templateKey?: string;
 }
 
 export interface ImageLayer {
@@ -95,6 +104,8 @@ export interface ImageLayer {
    *    flat vector artwork authored against its box — template shape layers —
    *    never for a photograph. `templateToLayers` is the only producer. */
   fit?: "cover" | "contain" | "fill";
+  /** See `TextLayer.templateKey`. Same meaning, same guarantee. */
+  templateKey?: string;
 }
 
 export type Layer = TextLayer | ImageLayer;

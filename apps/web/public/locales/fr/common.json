@@ -1381,7 +1381,13 @@
       "hintRequired": "Nous ne savons pas où intervenir sans un nom ici ou un masque peint."
     },
     "templates": {
-      "search": "Rechercher des modèles"
+      "search": "Rechercher des modèles",
+      "appliedNamed": "Modèle appliqué : {{name}}",
+      "remove": "Retirer le modèle",
+      "palette": "Palette",
+      "morePalettes": "Tout afficher",
+      "fewerPalettes": "Afficher moins",
+      "brandColours": "Le kit de marque fournit les couleurs de ce modèle."
     },
     "score": {
       "title": "Score",

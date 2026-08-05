@@ -16,7 +16,7 @@ interface CutoutConsentDialogProps {
 }
 
 /**
- * Consent gate for a template's "subject-cutout" layer (families.ts / text
+ * Consent gate for a template's "subject-cutout" layer (design/layers.ts / text
  * -templates.ts): removing the background is a paid Replicate call
  * (editing_service.remove_background_cheap), and applying a template must
  * never silently spend a customer's credits. Cancel applies nothing; Confirm

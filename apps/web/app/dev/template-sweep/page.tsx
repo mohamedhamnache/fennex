@@ -28,7 +28,13 @@ import {
   TEXT_TEMPLATES, templateToLayers, brandTemplate, templateFingerprint, BRAND_KIT_FIXTURES,
   type TextTemplate, type ResolvedTemplate, type TemplateLayerDef,
 } from "@/components/studio/edit/text-templates";
-import { analyzeText } from "@/components/studio/edit/families";
+import { analyzeText } from "@/components/studio/edit/design/layers";
+import {
+  APPROVED_SIX, HEADLINE_REFERENCE, headlinePct, LAYOUTS, buildTemplate, colourwaysForLayout,
+  PLACEHOLDER_COPY, type BuiltTemplate, type Layout,
+} from "@/components/studio/edit/design/templates";
+import { COLOURWAYS, colourway } from "@/components/studio/edit/design/colourways";
+import { runReports, verifyFieldClaims, type RunReport } from "@/components/studio/edit/design/type";
 import { worstCaseContrast, contrastRatio, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
@@ -42,6 +48,11 @@ const TEST_PHOTO = "/dev/sweep-test-photo.jpg";
 const W = 800;
 const H = 800;
 const PREVIEW = 320;
+
+/** Sizes the probe six may be viewed at. A composition cannot be judged from a
+ *  thumbnail — the whole reason the last two sets were rejected is design, and
+ *  320px is a swatch, not a design. */
+const PROBE_SIZES = [480, 620, 800];
 
 /** The brand kits every template may be swept through, beyond "as authored".
  *
@@ -67,21 +78,55 @@ const SWEEP_BRANDS: { label: string; kit: BrandKit }[] = BRAND_KIT_FIXTURES.map(
 /** The always-on baseline variant: the template as its author wrote it. */
 const AS_AUTHORED: { label: string; kit: BrandKit | null } = { label: "as authored", kit: null };
 
-interface Check { name: string; pass: boolean; detail: string }
+/** A check's outcome.
+ *
+ *  Three levels, not two, and the third one is the point of this branch. Type is
+ *  now allowed to sit in a region a template prepared rather than on an opaque
+ *  box, and the accepted consequence is that some templates will measure below
+ *  4.5:1 on some photographs. Those rows are amber and are NOT defects. A red
+ *  row still is. If the two ever render the same the sweep stops being a signal
+ *  and starts being a wall of colour nobody reads. */
+type Level = "pass" | "warn" | "fail";
+
+interface Check { name: string; pass: boolean; detail: string; level?: Level }
+
+function levelOf(c: Check): Level {
+  return c.level ?? (c.pass ? "pass" : "fail");
+}
+
+const LEVEL_STYLE: Record<Level, { className: string; tag: string }> = {
+  pass: { className: "text-green-600", tag: "PASS" },
+  warn: { className: "text-amber-600 dark:text-amber-500", tag: "WARN" },
+  fail: { className: "text-red-600 font-medium", tag: "FAIL" },
+};
+
+function CheckList({ checks }: { checks: Check[] }) {
+  return (
+    <ul className="space-y-1 text-sm">
+      {checks.map((c) => {
+        const style = LEVEL_STYLE[levelOf(c)];
+        return (
+          <li key={c.name} className={style.className}>
+            <span className="font-mono">{style.tag}</span> {c.name}
+            <span className="text-muted-foreground"> — {c.detail}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 /**
  * Set-level checks -- these judge `TEXT_TEMPLATES` as a whole rather than one
  * render at a time, so they run once, synchronously, over the static import,
  * not per row and not per brand variant.
  *
- * They exist because the previous 34-template set shipped three defects
- * nothing mechanical caught: seven pairs that were the same composition with
- * different words, nine templates advertising fennex.studio to the customer's
- * own audience, and families that only looked varied because their unused
- * capability branches were never exercised by a shipped template. Each check
- * below is built to fail on exactly one of those, and each was proven to fail
- * against a deliberate violation before being left in this state (see the
- * task report).
+ * They exist because a previous 34-template set shipped three defects nothing
+ * mechanical caught: seven pairs that were the same composition with different
+ * words, nine templates advertising a product of ours to the customer's own
+ * audience, and layouts that only looked varied because their unused capability
+ * branches were never exercised by a shipped template. Each check below is built
+ * to fail on exactly one of those.
  */
 
 /** Every fingerprint collision, as a human-readable line naming both ids. A
@@ -159,16 +204,16 @@ function earnsCapability(l: TemplateLayerDef): boolean {
   return false;
 }
 
-/** Groups the shipped templates by the family that produced them and checks
- *  the UNION of each family's emitted layers -- across every instance of that
- *  family actually in `TEXT_TEMPLATES` -- for at least one earned capability.
- *  Grouping by the real, shipped output (not by calling a family function
- *  with parameters nothing currently ships) is the point: a capability sitting
- *  behind a parameter no template reaches has not been earned. */
+/** Groups the shipped templates by the LAYOUT that produced them and checks the
+ *  UNION of each layout's emitted layers -- across every instance of that layout
+ *  actually in `TEXT_TEMPLATES` -- for at least one earned capability. Grouping
+ *  by the real, shipped output (not by calling a layout builder with parameters
+ *  nothing currently ships) is the point: a capability sitting behind a
+ *  parameter no template reaches has not been earned. */
 function checkCapabilityCoverage(templates: TextTemplate[]): Check {
   const layersByFamily = new Map<string, TemplateLayerDef[]>();
   for (const t of templates) {
-    layersByFamily.set(t.family, [...(layersByFamily.get(t.family) ?? []), ...t.layers]);
+    layersByFamily.set(t.layout, [...(layersByFamily.get(t.layout) ?? []), ...t.layers]);
   }
   const barren = [...layersByFamily.entries()]
     .filter(([, layers]) => !layers.some(earnsCapability))
@@ -178,7 +223,7 @@ function checkCapabilityCoverage(templates: TextTemplate[]): Check {
     pass: barren.length === 0,
     detail: barren.length
       ? `${barren.join(", ")} earn(s) no blend, rotation, non-rounded clip or cutout across the shipped set`
-      : `${layersByFamily.size} families, each earning a capability`,
+      : `${layersByFamily.size} layouts, each earning a capability`,
   };
 }
 
@@ -191,14 +236,7 @@ function SweepSetChecks({ templates }: { templates: TextTemplate[] }) {
   return (
     <section className="mb-8 space-y-2 rounded-lg border border-border bg-card p-4">
       <h2 className="font-semibold">Template-set checks</h2>
-      <ul className="space-y-1 text-sm">
-        {checks.map((c) => (
-          <li key={c.name} className={c.pass ? "text-green-600" : "text-red-600"}>
-            <span className="font-mono">{c.pass ? "PASS" : "FAIL"}</span> {c.name}
-            <span className="text-muted-foreground"> — {c.detail}</span>
-          </li>
-        ))}
-      </ul>
+      <CheckList checks={checks} />
     </section>
   );
 }
@@ -356,14 +394,7 @@ function ResolutionChecks() {
       {checks === null ? (
         <p className="text-sm text-muted-foreground">Measuring…</p>
       ) : (
-        <ul className="space-y-1 text-sm">
-          {checks.map((c) => (
-            <li key={c.name} className={c.pass ? "text-green-600" : "text-red-600"}>
-              <span className="font-mono">{c.pass ? "PASS" : "FAIL"}</span> {c.name}
-              <span className="text-muted-foreground"> — {c.detail}</span>
-            </li>
-          ))}
-        </ul>
+        <CheckList checks={checks} />
       )}
     </section>
   );
@@ -422,8 +453,8 @@ const WASH_EXTREMES: Partial<Record<BlendMode, string[]>> = {
  *  does not report the blend, so the contrast metric below has to recover it.
  *  A colour painted both blended and unblended in the same template is
  *  ambiguous and is treated as unblended; no family does that today (only
- *  `duotoneWash` blends, and it emits exactly one shape), and the "text on a
- *  field" check is what actually gates a mispairing either way. */
+ *  only the duotone ground blends, and it emits exactly two shapes), and
+ *  `analyzeText` is what actually reports a mispairing either way. */
 function washBlendByColor(layers: TemplateLayerDef[]): Map<string, BlendMode> {
   const blended = new Map<string, BlendMode>();
   const plain = new Set<string>();
@@ -459,11 +490,32 @@ function fieldContrast(text: string, fieldColor: string, opacity: number, blend?
   return Math.min(base, ...extremes.map((e) => contrastRatio(text, e)));
 }
 
+/**
+ * `strict` decides whether "text on a field" and "contrast" are failures.
+ *
+ * It is FALSE for everything this page sweeps now, and that is the change the
+ * branch exists to make. The shipped set used to be built by `panel()`, which
+ * could not emit type without an opaque field behind it at 4.5:1, so an unbacked
+ * run there really was a defect. That rule is what the product owner rejected
+ * the output of: every composition ended up as a box behind every word.
+ *
+ * Type now sits in regions a template darkened itself, and each run DECLARES
+ * what it sits on, so contrast is measured against the declared backdrop and
+ * reported. These two checks are amber here; the authoritative measurement is
+ * `runReports` over the declared backdrops, printed in the run table, and the
+ * hard half — a claim that is false about the geometry, or a run on the bare
+ * photograph — is gated at module load and in scripts/verify-templates.ts.
+ *
+ * Everything else — the photo is placed, the fonts load, the type stays in
+ * frame, the PNG comes out the right size — stays a hard failure.
+ */
 async function checkVariant(
-  tpl: TextTemplate,
+  tpl: { id: string; name: string },
   variant: string,
   resolved: ResolvedTemplate,
+  strict = true,
 ): Promise<Row> {
+  const soft = (pass: boolean): Level => (pass ? "pass" : strict ? "fail" : "warn");
   const layers = templateToLayers(resolved, TEST_PHOTO, W, H);
   const scene: Scene = { width: W, height: H, baseImageUrl: null, layers };
   const checks: Check[] = [];
@@ -510,7 +562,7 @@ async function checkVariant(
   // 4 and 5. Readability, in two parts. Geometry: every run sits on a scrim,
   //    band or solid field that nothing painted since has covered, measured
   //    with real font metrics rather than the authoring estimate, so this is
-  //    stricter than the check families.ts applies at build time. Contrast: the
+  //    stricter than the authoring estimate. Contrast: the
   //    run must clear WCAG AA against that field, measured through the field's
   //    blend where it has one (see `fieldContrast`). The second is what catches
   //    brand-aware mode, which recolours fields but not the text on them.
@@ -525,6 +577,7 @@ async function checkVariant(
   checks.push({
     name: "text on a field",
     pass: unbacked.length === 0,
+    level: soft(unbacked.length === 0),
     detail: unbacked.map((b) => `${b.text} (${b.reason})`).join("; ") || "every run backed",
   });
 
@@ -544,6 +597,7 @@ async function checkVariant(
   checks.push({
     name: "contrast",
     pass: poor.length === 0,
+    level: soft(poor.length === 0),
     detail: poor.length
       ? poor.map((c) => `${c.text} ${c.ratio.toFixed(2)}:1`).join("; ")
       : contrasts.length
@@ -595,11 +649,266 @@ async function sweep(
       const resolved: ResolvedTemplate = variant.kit
         ? brandTemplate(tpl, variant.kit)
         : { background: tpl.background ?? null, layers: tpl.layers };
-      const row = await checkVariant(tpl, variant.label, resolved);
+      const row = await checkVariant(tpl, variant.label, resolved, false);
       if (isCancelled()) return;
       onRow(row);
     }
   }
+}
+
+// ── The probe six ─────────────────────────────────────────────────────────────
+//
+// `docs/superpowers/specs/2026-08-04-template-design-freedom-design.md`: build
+// six templates spanning the range and get them judged before scaling back to
+// ~34. This section is what they are judged in, so it renders them large and
+// prints the type sizes as percentages of canvas width — the number the "the
+// text looks very big" rejection is actually about.
+
+/** Set-level checks over the approved six. Distinctness and brand neutrality
+ *  are the same rules the shipped set is held to; capability coverage is stated
+ *  per capability rather than per layout, because the requirement is that the
+ *  six between them exercise blend, rotation, a non-rounded-rect clip and a
+ *  cutout. */
+function probeSetChecks(templates: BuiltTemplate[]): Check[] {
+  const seen = new Map<string, string>();
+  const collisions: string[] = [];
+  for (const t of templates) {
+    const fp = JSON.stringify(t.layers.map((l) => (l.kind === "text" ? { ...l, text: "" } : l)));
+    const earlier = seen.get(fp);
+    if (earlier) collisions.push(`${earlier} and ${t.id} are geometrically identical`);
+    else seen.set(fp, t.id);
+  }
+
+  const brandHits: string[] = [];
+  for (const t of templates) {
+    const strings: string[] = [];
+    collectStrings(t, strings);
+    for (const s of strings) if (s.toLowerCase().includes("fennex")) brandHits.push(`${t.id}: "${s}"`);
+  }
+
+  const all = templates.flatMap((t) => t.layers);
+  const capability: [string, boolean][] = [
+    ["blend", all.some((l) => !!l.blend && l.blend !== "normal")],
+    ["rotation", all.some((l) => !!l.rotation)],
+    ["non-rounded clip", all.some((l) => l.kind === "image" && !!l.clip && !("roundedPct" in l.clip))],
+    ["cutout", all.some((l) => l.kind === "image" && l.source === "subject-cutout")],
+  ];
+  const missing = capability.filter(([, ok]) => !ok).map(([name]) => name);
+
+  const byIntent = (intent: BuiltTemplate["intent"]) =>
+    templates.filter((t) => t.intent === intent).length;
+  const byRegister = (register: string) =>
+    templates.filter((t) => t.colourway.register === register).length;
+  const groundCounts = new Map<string, number>();
+  for (const t of templates) groundCounts.set(t.ground, (groundCounts.get(t.ground) ?? 0) + 1);
+  const overused = [...groundCounts.entries()].filter(([, n]) => n > 2).map(([g]) => g);
+
+  return [
+    {
+      name: "distinctness",
+      pass: collisions.length === 0,
+      detail: collisions.length ? collisions.join("; ") : `${templates.length} templates, ${seen.size} distinct fingerprints`,
+    },
+    {
+      name: "brand neutrality",
+      pass: brandHits.length === 0,
+      detail: brandHits.length ? brandHits.join("; ") : `${templates.length} templates scanned, no "fennex" found`,
+    },
+    {
+      name: "capability coverage",
+      pass: missing.length === 0,
+      detail: missing.length ? `no template uses ${missing.join(", ")}` : capability.map(([n]) => n).join(", "),
+    },
+    {
+      name: "range",
+      pass: byIntent("quiet") >= 2 && byIntent("mid") >= 2 && byIntent("loud") >= 2,
+      detail: `${byIntent("quiet")} quiet, ${byIntent("mid")} mid, ${byIntent("loud")} loud`,
+    },
+    {
+      // Both approved directions have to be represented. There is no third
+      // register: the two we invented were rejected.
+      name: "reference registers",
+      pass: byRegister("vibrant") >= 2 && byRegister("soft") >= 2,
+      detail: `${byRegister("vibrant")} vibrant (reference 1), ${byRegister("soft")} soft (reference 2)`,
+    },
+    {
+      // One treatment dominating is the same failure as one layout dominating,
+      // on a different axis.
+      name: "ground variety",
+      pass: overused.length === 0,
+      detail: overused.length
+        ? `${overused.join(", ")} used more than twice`
+        : [...groundCounts.entries()].map(([g, n]) => `${g} x${n}`).join(", "),
+    },
+  ];
+}
+
+/** Per-template checks that only exist for the probe: how big the headline is,
+ *  what the type actually does, and whether the backdrop each run claims is the
+ *  backdrop it has. */
+function probeChecks(t: BuiltTemplate): Check[] {
+  const out: Check[] = [];
+
+  const hp = headlinePct(t);
+  out.push({
+    name: "headline size",
+    pass: hp !== null,
+    detail: hp === null
+      ? `"${t.headline}" matches no run in this template`
+      : `${hp.toFixed(2)}% of canvas width (${((hp / 100) * W).toFixed(0)}px at ${W}) — ` +
+        `rejected set ${HEADLINE_REFERENCE.rejectedHeadline.toFixed(2)}%, ` +
+        `approved band ${HEADLINE_REFERENCE.approved[0]}-${HEADLINE_REFERENCE.approved[1]}%, intent ${t.intent}`,
+  });
+
+  const reports = runReports(t.runs);
+  const sizes = reports.map((r) => r.sizePct);
+  const weights = [...new Set(reports.map((r) => r.weight))].sort();
+  const fonts = [...new Set(reports.map((r) => r.font))];
+  out.push({
+    name: "type",
+    pass: true,
+    detail: `${reports.length} runs, ${Math.min(...sizes).toFixed(2)}%-${Math.max(...sizes).toFixed(2)}% ` +
+      `(ratio ${(Math.max(...sizes) / Math.min(...sizes)).toFixed(1)}:1), weights ${weights.join("/")}, ${fonts.join(" + ")}`,
+  });
+
+  const warned = reports.filter((r) => r.level === "warn");
+  out.push({
+    name: "declared contrast",
+    pass: warned.length === 0,
+    level: warned.length === 0 ? "pass" : "warn",
+    detail: warned.length
+      ? warned.map((r) => `"${r.text}" ${r.ratio === null ? "unbounded" : `${r.ratio.toFixed(2)}:1`} on ${r.backdrop}`).join("; ")
+      : `worst ${Math.min(...reports.filter((r) => r.ratio !== null).map((r) => r.ratio as number)).toFixed(2)}:1`,
+  });
+
+  const claims = verifyFieldClaims(t.layers, t.runs);
+  out.push({
+    name: "field claims",
+    pass: claims.length === 0,
+    detail: claims.length ? claims.join("; ") : "every field claim matches the geometry",
+  });
+
+  return out;
+}
+
+function RunTable({ runs }: { runs: RunReport[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[40rem] text-left text-xs">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="py-1 pr-3 font-normal">run</th>
+            <th className="py-1 pr-3 font-normal">% width</th>
+            <th className="py-1 pr-3 font-normal">px @800</th>
+            <th className="py-1 pr-3 font-normal">face</th>
+            <th className="py-1 pr-3 font-normal">wt</th>
+            <th className="py-1 pr-3 font-normal">track</th>
+            <th className="py-1 pr-3 font-normal">sits on</th>
+            <th className="py-1 font-normal">contrast</th>
+          </tr>
+        </thead>
+        <tbody className="font-mono">
+          {runs.map((r) => (
+            <tr key={`${r.text}-${r.sizePct}`} className={r.level === "warn" ? "text-amber-600 dark:text-amber-500" : ""}>
+              <td className="max-w-[16rem] truncate py-0.5 pr-3">{r.text}</td>
+              <td className="py-0.5 pr-3">{r.sizePct.toFixed(2)}</td>
+              <td className="py-0.5 pr-3">{r.sizePx.toFixed(0)}</td>
+              <td className="py-0.5 pr-3">{r.font}</td>
+              <td className="py-0.5 pr-3">{r.weight}</td>
+              <td className="py-0.5 pr-3">{r.trackingPct ? r.trackingPct.toFixed(2) : "—"}</td>
+              <td className="py-0.5 pr-3">{r.backdrop}</td>
+              <td className="py-0.5">{r.ratio === null ? (r.ornament ? "—" : "unbounded") : `${r.ratio.toFixed(2)}:1`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+interface ProbeRow { t: BuiltTemplate; row: Row }
+
+function ProbeSweep({ size, cwId }: { size: number; cwId: string | null }) {
+  const [rows, setRows] = useState<ProbeRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRows([]);
+    (async () => {
+      await document.fonts.ready;
+      // "as shipped" builds each layout in its own colourway; picking one
+      // rebuilds every layout that accepts it, which is the whole point of the
+      // colour axis and the fastest way to see a layout carrying an assumption
+      // it should not.
+      const chosen = cwId ? colourway(cwId) : null;
+      const built = LAYOUTS.map((l: Layout) => {
+        const ok = chosen && colourwaysForLayout(l).some((c) => c.id === chosen.id);
+        const cw = ok ? chosen : colourway(l.defaultColourway);
+        return buildTemplate(l, { cw, ground: l.defaultGround, copy: PLACEHOLDER_COPY });
+      });
+      for (const t of built) {
+        if (cancelled) return;
+        const row = await checkVariant(t, "probe", { background: null, layers: t.layers }, false);
+        if (cancelled) return;
+        setRows((prev) => [...prev, { t, row }]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [cwId]);
+
+  return (
+    <div className="space-y-14">
+      {rows.map(({ t, row }) => (
+        <section key={t.id} className="space-y-3">
+          <header className="space-y-1">
+            <h2 className="text-lg font-semibold">
+              {t.name}{" "}
+              <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.subject}</span>{" "}
+              <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.intent}</span>{" "}
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
+                {t.colourway.register}
+              </span>{" "}
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
+                {t.ground} / {t.colourway.name}
+              </span>{" "}
+              <span className="font-mono text-xs text-muted-foreground">{t.id}</span>
+            </h2>
+            <p className="max-w-3xl text-sm text-muted-foreground">{t.note}</p>
+          </header>
+          <div className="flex flex-wrap items-start gap-6">
+            <figure>
+              <figcaption className="mb-1 text-xs text-muted-foreground">Live preview</figcaption>
+              <div
+                className="overflow-hidden rounded-lg border border-border"
+                style={{ width: size, height: size }}
+              >
+                <div style={{ transform: `scale(${size / W})`, transformOrigin: "top left" }}>
+                  <SceneSvg scene={row.scene} />
+                </div>
+              </div>
+            </figure>
+            <figure>
+              <figcaption className="mb-1 text-xs text-muted-foreground">PNG export</figcaption>
+              <div
+                className="overflow-hidden rounded-lg border border-border"
+                style={{ width: size, height: size }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {row.png ? <img src={row.png} alt="" style={{ width: size }} /> : null}
+              </div>
+            </figure>
+            <div className="min-w-[22rem] flex-1 space-y-3">
+              <CheckList checks={[...probeChecks(t), ...row.checks]} />
+              <RunTable runs={runReports(t.runs)} />
+            </div>
+          </div>
+        </section>
+      ))}
+      {rows.length < APPROVED_SIX.length ? (
+        <p className="text-sm text-muted-foreground">Rendering {rows.length} / {APPROVED_SIX.length}…</p>
+      ) : null}
+    </div>
+  );
 }
 
 export default function TemplateSweepPage() {
@@ -607,6 +916,11 @@ export default function TemplateSweepPage() {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(true);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  // The probe is the default view because it is what is currently being judged.
+  // The full set is one click away and unchanged.
+  const [mode, setMode] = useState<"probe" | "set">("probe");
+  const [probeSize, setProbeSize] = useState(PROBE_SIZES[1]);
+  const [probeCw, setProbeCw] = useState<string | null>(null);
 
   const variants = [
     AS_AUTHORED,
@@ -614,6 +928,7 @@ export default function TemplateSweepPage() {
   ];
 
   useEffect(() => {
+    if (mode !== "set") return;
     let cancelled = false;
     setRows([]);
     setBusy(true);
@@ -637,9 +952,10 @@ export default function TemplateSweepPage() {
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBrands]);
+  }, [selectedBrands, mode]);
 
-  const failures = rows.reduce((n, r) => n + r.checks.filter((c) => !c.pass).length, 0);
+  const failures = rows.reduce((n, r) => n + r.checks.filter((c) => levelOf(c) === "fail").length, 0);
+  const warnings = rows.reduce((n, r) => n + r.checks.filter((c) => levelOf(c) === "warn").length, 0);
   const allBrandsSelected = selectedBrands.size === SWEEP_BRANDS.length;
 
   function toggleBrand(label: string) {
@@ -658,49 +974,145 @@ export default function TemplateSweepPage() {
     <div className="min-h-screen bg-background p-8 text-foreground">
       <header className="mb-8 space-y-3">
         <h1 className="text-2xl font-bold">Template sweep</h1>
-        <p className="text-sm text-muted-foreground">
-          {busy
-            ? `Rendering ${rows.length} / ${total}…`
-            : `${rows.length} renders, ${failures} failing check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
-        </p>
 
-        <div
-          className="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-muted"
-          role="progressbar"
-          aria-valuenow={rows.length}
-          aria-valuemin={0}
-          aria-valuemax={total}
-        >
-          <div
-            className={cn("h-full bg-primary", !busy && "opacity-50")}
-            style={{ width: total ? `${(rows.length / total) * 100}%` : "0%" }}
-          />
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {([["probe", `the probe six`], ["set", `the full set (${TEXT_TEMPLATES.length})`]] as const).map(
+            ([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMode(id)}
+                className={cn(
+                  "rounded-md border px-3 py-1",
+                  mode === id ? "border-primary bg-primary/10 font-medium" : "border-border",
+                )}
+              >
+                {label}
+              </button>
+            ),
+          )}
+          {mode === "probe" ? (
+            <span className="ml-4 flex items-center gap-2">
+              <span className="text-muted-foreground">render at</span>
+              {PROBE_SIZES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setProbeSize(s)}
+                  className={cn(
+                    "rounded-md border px-2 py-1 font-mono text-xs",
+                    probeSize === s ? "border-primary bg-primary/10" : "border-border",
+                  )}
+                >
+                  {s}px
+                </button>
+              ))}
+            </span>
+          ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-sm">
-          <span className="text-muted-foreground">Brand kit sweep (correctness guard, opt-in):</span>
-          <label className="flex items-center gap-1.5">
-            <input type="checkbox" checked={allBrandsSelected} onChange={toggleAllBrands} />
-            all kits
-          </label>
-          {SWEEP_BRANDS.map((b) => (
-            <label key={b.label} className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={selectedBrands.has(b.label)}
-                onChange={() => toggleBrand(b.label)}
+        {mode === "probe" ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">colourway</span>
+            <button
+              type="button"
+              onClick={() => setProbeCw(null)}
+              className={cn(
+                "rounded-md border px-2 py-1 text-xs",
+                probeCw === null ? "border-primary bg-primary/10" : "border-border",
+              )}
+            >
+              as shipped
+            </button>
+            {COLOURWAYS.map((cw) => (
+              <button
+                key={cw.id}
+                type="button"
+                onClick={() => setProbeCw(cw.id)}
+                className={cn(
+                  "rounded-md border px-2 py-1 text-xs",
+                  probeCw === cw.id ? "border-primary bg-primary/10" : "border-border",
+                )}
+                title={`${cw.register}: ${cw.stops.join(" ")}`}
+              >
+                <span
+                  className="mr-1.5 inline-block h-2.5 w-2.5 translate-y-px rounded-full"
+                  style={{ background: `linear-gradient(135deg, ${cw.stops.join(", ")})` }}
+                />
+                {cw.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {mode === "probe" ? (
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            Six compositions — two quiet, two mid, two loud — built before the set is scaled back to
+            ~34. Type sizes are percentages of canvas width, chosen per composition: the rejected set
+            put every headline at {HEADLINE_REFERENCE.rejectedHeadline.toFixed(1)}% and every display
+            at {HEADLINE_REFERENCE.rejectedDisplay.toFixed(1)}%, where the approved band is
+            {HEADLINE_REFERENCE.approved[0]}-{HEADLINE_REFERENCE.approved[1]}%. Amber rows are
+            warnings, not defects: contrast is measured and reported here, and no longer forces every
+            run onto an opaque box.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              {busy
+                ? `Rendering ${rows.length} / ${total}…`
+                : `${rows.length} renders, ${failures} failing and ${warnings} warning check(s). Left is the live SceneSvg preview, right is the rasterised PNG export — they must look identical.`}
+            </p>
+
+            <div
+              className="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={rows.length}
+              aria-valuemin={0}
+              aria-valuemax={total}
+            >
+              <div
+                className={cn("h-full bg-primary", !busy && "opacity-50")}
+                style={{ width: total ? `${(rows.length / total) * 100}%` : "0%" }}
               />
-              {b.label}
-            </label>
-          ))}
-        </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-sm">
+              <span className="text-muted-foreground">Brand kit sweep (correctness guard, opt-in):</span>
+              <label className="flex items-center gap-1.5">
+                <input type="checkbox" checked={allBrandsSelected} onChange={toggleAllBrands} />
+                all kits
+              </label>
+              {SWEEP_BRANDS.map((b) => (
+                <label key={b.label} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedBrands.has(b.label)}
+                    onChange={() => toggleBrand(b.label)}
+                  />
+                  {b.label}
+                </label>
+              ))}
+            </div>
+          </>
+        )}
       </header>
 
-      <SweepSetChecks templates={TEXT_TEMPLATES} />
-
-      <ResolutionChecks />
-
-      <SweepList rows={rows} />
+      {mode === "probe" ? (
+        <>
+          <section className="mb-8 space-y-2 rounded-lg border border-border bg-card p-4">
+            <h2 className="font-semibold">Probe-set checks</h2>
+            <CheckList checks={probeSetChecks(APPROVED_SIX)} />
+          </section>
+          <ResolutionChecks />
+          <ProbeSweep size={probeSize} cwId={probeCw} />
+        </>
+      ) : (
+        <>
+          <SweepSetChecks templates={TEXT_TEMPLATES} />
+          <ResolutionChecks />
+          <SweepList rows={rows} />
+        </>
+      )}
     </div>
   );
 }
@@ -737,14 +1149,7 @@ function SweepList({ rows }: { rows: Row[] }) {
                 {r.png ? <img src={r.png} alt="" style={{ width: PREVIEW }} /> : null}
               </div>
             </figure>
-            <ul className="space-y-1 text-sm">
-              {r.checks.map((c) => (
-                <li key={c.name} className={c.pass ? "text-green-600" : "text-red-600"}>
-                  <span className="font-mono">{c.pass ? "PASS" : "FAIL"}</span> {c.name}
-                  <span className="text-muted-foreground"> — {c.detail}</span>
-                </li>
-              ))}
-            </ul>
+            <CheckList checks={r.checks} />
           </div>
         </section>
       ))}

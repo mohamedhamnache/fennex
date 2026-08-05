@@ -14,7 +14,11 @@ import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandK
 import { CUTOUT_CREDIT_COST } from "@/lib/creditCosts";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
-import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
+import {
+  brandTemplate, templateToLayers, placesSubject, recolourTemplate, suggestedColourways,
+  type TextTemplate, type ResolvedTemplate,
+} from "./text-templates";
+import { ColourwayPicker } from "./ColourwayPicker";
 import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId, type ShapeStyle } from "./shapes";
 import { pctFromReferencePx, referencePxFromPct, REFERENCE_CANVAS_WIDTH } from "./scene/measure";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
@@ -64,6 +68,16 @@ interface EditControlsPanelProps {
   burnError?: string | null;
   onProcessingChange?: (pending: boolean) => void;
   onHideBaseImage?: (hide: boolean) => void;
+  /** Whether the backdrop copy of the photo is currently hidden. Read — not just
+   *  written — because removing a template has to put the flag back the way it
+   *  was BEFORE the template was applied, and only the shell holds that value. */
+  hideBaseImage?: boolean;
+  /** The template currently on the canvas. Owned by the page — see the type. */
+  appliedTemplate: AppliedTemplate | null;
+  onAppliedTemplateChange: (applied: AppliedTemplate | null) => void;
+  /** The cutout already paid for on this image, if any. Owned by the page. */
+  resolvedCutout: ResolvedCutout | null;
+  onResolvedCutoutChange: (cutout: ResolvedCutout) => void;
   cropAspect?: number | null;
   onCropAspectChange?: (aspect: number | null) => void;
   onDuplicateLayer?: (id: string) => void;
@@ -98,6 +112,76 @@ function AlignRow({ layerId, onAlign }: { layerId: string; onAlign?: (id: string
       ))}
     </div>
   );
+}
+
+/** What the editor remembers about the template currently on the canvas.
+ *
+ *  The editor's undo is no help here: `historyIdx` walks SAVED image versions,
+ *  while layers are unsaved editor state, so nothing else can put a template
+ *  back the way it was.
+ *
+ *  HELD BY THE PAGE, NOT BY THIS PANEL, and that is a correctness requirement
+ *  rather than tidiness. The right-hand column renders the assistant OR this
+ *  panel conditionally, so switching to the assistant tab UNMOUNTS the panel and
+ *  destroys any state it owns — while `layers` and `hideBaseImage`, which this
+ *  record describes, live in the page and survive. Owning it here meant one tab
+ *  click silently orphaned a template: no remove control to bring the hidden
+ *  photograph back, and a re-apply that stacked a second copy on top of the
+ *  first. It travels with its siblings for exactly that reason. */
+export interface AppliedTemplate {
+  /** Stamped on every layer this template created. */
+  key: string;
+  /** `hideBaseImage` as it was BEFORE this template was applied — carried
+   *  forward unchanged across a swap, so removal restores the value that was
+   *  true before the FIRST template, not the one a previous template set. */
+  hideBaseBefore: boolean;
+  /** The template as applied, in the colourway it was applied in. Kept so a
+   *  colourway change can rebuild the same layout, ground and words in
+   *  different hues without the picker having to be open. */
+  template: TextTemplate;
+  /** Its colourway id — `template.spec.colourway`, held separately only so the
+   *  swatch row has one obvious thing to compare against. */
+  colourwayId: string;
+}
+
+/** The background-free copy of an image, once it has been paid for.
+ *
+ *  THIS IS THE DOUBLE-BILLING GUARD, and it is deliberately NOT a field on
+ *  `AppliedTemplate`. `removeBackgroundCheap(imageId)` is keyed on the IMAGE:
+ *  the result is a property of the photograph and has nothing to do with which
+ *  template, colourway or layout asked for it. So it outlives the template that
+ *  paid for it — a swap, a colourway change and a remove-then-reapply all reuse
+ *  it, and none of them bills a second time for a byte-identical asset.
+ *
+ *  Keyed by `imageId` because burning layers creates a NEW version and moves
+ *  `editTargetId`: a cutout of the previous version is a cutout of the wrong
+ *  subject, and reusing it would be worse than paying again. Held by the page,
+ *  for the same unmount reason as `AppliedTemplate`. */
+export interface ResolvedCutout {
+  imageId: string;
+  url: string;
+}
+
+/** What an insertion needs to remember about the template it is inserting.
+ *  Passed rather than derived so both the direct path and the post-consent path
+ *  record the same thing. */
+interface InsertMeta {
+  template: TextTemplate;
+  colourwayId: string;
+  /** Land the user in the Add Text tool. True for a fresh apply, where the point
+   *  is to start editing the copy; false for a colourway change, which is a
+   *  one-click re-render and must not move the panel out from under the click. */
+  landInTextTool: boolean;
+}
+
+/** A key with no other job. `crypto.randomUUID` needs a secure context, which
+ *  localhost and production both are, but the fallback keeps a plain-http
+ *  preview host from throwing in the middle of applying a template. */
+function newTemplateKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `tplkey-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 const CSS_PREVIEW: Record<string, string> = {
@@ -235,6 +319,11 @@ export function EditControlsPanel({
   burnError,
   onProcessingChange,
   onHideBaseImage,
+  hideBaseImage = false,
+  appliedTemplate,
+  onAppliedTemplateChange: setAppliedTemplate,
+  resolvedCutout,
+  onResolvedCutoutChange,
   cropAspect = null,
   onCropAspectChange,
   onDuplicateLayer,
@@ -464,6 +553,13 @@ export function EditControlsPanel({
       : { background: t.background ?? null, layers: t.layers };
   }
 
+  /** The cutout already paid for on the image being edited, or undefined.
+   *
+   *  Guarded on the id rather than trusted: burning layers uploads a new version
+   *  and `imageId` moves with it, and a cutout of the previous version is a
+   *  cutout of the wrong subject. */
+  const paidCutoutUrl = resolvedCutout?.imageId === imageId ? resolvedCutout.url : undefined;
+
   /** True when a resolved template needs the paid Replicate cutout (a
    *  "subject-cutout" image layer) before it can be applied. Gates
    *  applyTemplate behind CutoutConsentDialog -- see its docstring. */
@@ -473,32 +569,80 @@ export function EditControlsPanel({
 
   /** Turns a resolved template into canvas layers and lands the user in the
    *  Add Text tool, ready to edit them. Shared by the plain apply path and
-   *  the cutout-confirm path so both build layers identically. */
+   *  the cutout-confirm path so both build layers identically — which is also
+   *  why the swap logic lives here rather than in `applyTemplate`: putting it
+   *  there would silently skip every cutout template. */
   function insertTemplateLayers(
     resolved: ResolvedTemplate,
     subjectUrl: string,
-    disp?: { width: number; height: number } | null,
+    disp: { width: number; height: number } | null | undefined,
+    meta: InsertMeta,
   ) {
+    const key = newTemplateKey();
     const newLayers = templateToLayers(
       resolved,
       subjectUrl,
       disp?.width ?? 0,
       disp?.height ?? 0,
+      key,
     );
 
     // A subject-only template can skip every def (no subjectImageUrl yet),
-    // leaving nothing to append or select.
+    // leaving nothing to append or select. Nothing is stripped in that case
+    // either: an apply that produces no layers must change nothing at all.
     if (newLayers.length === 0) return;
 
-    onSetLayers([...layers, ...newLayers]);
+    // Replace rather than stack. Only layers stamped with the CURRENTLY applied
+    // key go; anything the user added carries no key and keeps its position.
+    const kept = appliedTemplate
+      ? layers.filter((l) => l.templateKey !== appliedTemplate.key)
+      : layers;
+
+    // Go back in AT THE OLD DEPTH, not on top. `SceneSvg` paints array order, so
+    // appending would repaint the new template's full-bleed ground over anything
+    // the user added after the previous one — a logo dropped onto a template
+    // vanishes on the next swatch click, and clicking back does not bring it
+    // back. The anchor is where the previous template's FIRST layer sat, counted
+    // among the layers that survive, so user layers keep both their order and
+    // their side of the template. With nothing applied this is `kept.length`,
+    // which is the plain append this started as.
+    const firstIdx = appliedTemplate
+      ? layers.findIndex((l) => l.templateKey === appliedTemplate.key)
+      : -1;
+    const at = firstIdx < 0
+      ? kept.length
+      : layers.slice(0, firstIdx).filter((l) => l.templateKey !== appliedTemplate?.key).length;
+    onSetLayers([...kept.slice(0, at), ...newLayers, ...kept.slice(at)]);
     // Select the first foreground layer, not the background
     onSelectLayer((newLayers[resolved.background ? 1 : 0] ?? newLayers[0]).id);
     // Land the user in the Add Text tool so the layers are instantly editable
-    onRequestTool?.("text");
+    if (meta.landInTextTool) onRequestTool?.("text");
+
+    setAppliedTemplate({
+      key,
+      // Carried FORWARD across a swap, never recaptured. If template A hides the
+      // photo and B replaces A, the value to restore on a later removal is what
+      // was true before A — recapturing here would store the `true` A set and
+      // leave a blank canvas on removal.
+      hideBaseBefore: appliedTemplate ? appliedTemplate.hideBaseBefore : hideBaseImage,
+      template: meta.template,
+      colourwayId: meta.colourwayId,
+    });
 
     // A template that places the photo as a layer must not also show it as
     // the backdrop underneath — that would double-render the subject.
     if (placesSubject(resolved.layers)) onHideBaseImage?.(true);
+  }
+
+  /** Take the applied template away: its layers go, the backdrop photo comes
+   *  back exactly as it was before the FIRST template in this run was applied,
+   *  and layers the user added are left untouched in their existing order. */
+  function removeAppliedTemplate() {
+    if (!appliedTemplate) return;
+    onSetLayers(layers.filter((l) => l.templateKey !== appliedTemplate.key));
+    onSelectLayer(null);
+    onHideBaseImage?.(appliedTemplate.hideBaseBefore);
+    setAppliedTemplate(null);
   }
 
   // Template pending the user's sign-off on CutoutConsentDialog -- set only
@@ -508,6 +652,8 @@ export function EditControlsPanel({
   const [pendingCutout, setPendingCutout] = useState<{
     resolved: ResolvedTemplate;
     disp?: { width: number; height: number } | null;
+    template: TextTemplate;
+    colourwayId: string;
   } | null>(null);
   const [cutoutError, setCutoutError] = useState<string | null>(null);
 
@@ -520,12 +666,67 @@ export function EditControlsPanel({
     if (needsCutout(resolved)) {
       // Applying a template must never silently spend a customer's credits —
       // ask first. Nothing is built or appended until the user confirms.
-      setCutoutError(null);
-      setPendingCutout({ resolved, disp });
+      //
+      // Unless this image's cutout has already been paid for, in which case
+      // there is nothing to consent TO. `removeBackgroundCheap(imageId)` is
+      // keyed on the image, so the second template gets a byte-identical asset
+      // for free; prompting would be asking the user to approve a charge that
+      // will not happen, and confirming it would make one. 28 of the 34
+      // templates carry a cutout, so cutout-to-cutout is the common path.
+      if (!paidCutoutUrl) {
+        setCutoutError(null);
+        setPendingCutout({ resolved, disp, template: t, colourwayId: t.spec.colourway });
+        return;
+      }
+      insertTemplateLayers(resolved, paidCutoutUrl, disp, {
+        template: t, colourwayId: t.spec.colourway, landInTextTool: true,
+      });
       return;
     }
 
-    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp);
+    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp, {
+      template: t, colourwayId: t.spec.colourway, landInTextTool: true,
+    });
+  }
+
+  /** Re-render the applied template in another colourway — the same layout, the
+   *  same ground and the same words in different hues.
+   *
+   *  This is the swap mechanism, not a second one: `recolourTemplate` rebuilds
+   *  the template and `insertTemplateLayers` replaces the previous layers, so a
+   *  colourway change strips exactly what a template swap would and leaves every
+   *  layer the user added alone.
+   *
+   *  NO DIALOG, AND NO SECOND CHARGE. Where the applied template places a
+   *  cutout, the URL already resolved for it is reused verbatim — the palette
+   *  does not change the photograph, so there is nothing to fetch and nothing to
+   *  bill. Only the case where no cutout has been resolved at all can reach the
+   *  consent dialog, and that cannot arise from a colourway change on a template
+   *  that was applied through it. */
+  function applyColourway(colourwayId: string) {
+    const applied = appliedTemplate;
+    if (!applied || colourwayId === applied.colourwayId) return;
+
+    const next = recolourTemplate(applied.template, colourwayId);
+    const resolved = resolveTemplate(next);
+    const disp = canvasRef.current?.getDisplayedSize();
+
+    if (needsCutout(resolved)) {
+      if (!paidCutoutUrl) {
+        // Defensive: nothing that reaches this row was applied without one.
+        setCutoutError(null);
+        setPendingCutout({ resolved, disp, template: next, colourwayId });
+        return;
+      }
+      insertTemplateLayers(resolved, paidCutoutUrl, disp, {
+        template: next, colourwayId, landInTextTool: false,
+      });
+      return;
+    }
+
+    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp, {
+      template: next, colourwayId, landInTextTool: false,
+    });
   }
 
   // Runs the paid cutout and, on success, builds the template's layers from
@@ -537,7 +738,17 @@ export function EditControlsPanel({
       return result.image_url;
     },
     onSuccess: (cutoutUrl) => {
-      if (pendingCutout) insertTemplateLayers(pendingCutout.resolved, cutoutUrl, pendingCutout.disp);
+      // Recorded against the image FIRST, so no later swap, colourway change or
+      // remove-then-reapply pays for it again even if the insertion below is a
+      // no-op (a subject-only template with nothing to place).
+      onResolvedCutoutChange({ imageId, url: cutoutUrl });
+      if (pendingCutout) {
+        insertTemplateLayers(pendingCutout.resolved, cutoutUrl, pendingCutout.disp, {
+          template: pendingCutout.template,
+          colourwayId: pendingCutout.colourwayId,
+          landInTextTool: true,
+        });
+      }
       setPendingCutout(null);
       setCutoutError(null);
     },
@@ -726,6 +937,50 @@ export function EditControlsPanel({
             {toolLabel}
           </p>
         </div>
+
+        {/* ── Applied template ────────────────────────────────────────────────
+            Outside the tool sections on purpose: applying a template lands the
+            user in the text tool, so a control that only existed inside the
+            template picker would be unreachable the moment it became useful. */}
+        {appliedTemplate && (
+          <div className="flex flex-col gap-2 border-b border-border bg-muted/20 px-4 py-2">
+            <div className="flex items-center gap-2">
+              {/* One interpolated string rather than a label plus a hard-coded
+                  separator: an em dash concatenated outside t() lands on the
+                  wrong side of the name in Arabic, and each locale needs its own
+                  punctuation anyway (French spaces its colon, Arabic does not
+                  want a dash at all). */}
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {t("imageEdit.templates.appliedNamed", "Applied template: {{name}}", {
+                  name: appliedTemplate.template.name,
+                })}
+              </span>
+              <button
+                type="button"
+                onClick={removeAppliedTemplate}
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Trash2 className="h-3 w-3" strokeWidth={1.8} />
+                {t("imageEdit.templates.remove", "Remove template")}
+              </button>
+            </div>
+
+            {/* The brand kit rebuilds the template in the org's own colours, so
+                while it is on a colourway would have no visible effect. Saying
+                so beats a row of swatches that does nothing when clicked. */}
+            {brandTemplates && brandUsable ? (
+              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                {t("imageEdit.templates.brandColours", "The brand kit is supplying this template's colours.")}
+              </p>
+            ) : (
+              <ColourwayPicker
+                colourways={suggestedColourways(appliedTemplate.template)}
+                currentId={appliedTemplate.colourwayId}
+                onPick={applyColourway}
+              />
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 p-4 flex-1 overflow-y-auto">
 
@@ -1901,6 +2156,12 @@ export function EditControlsPanel({
                       // Hide static base image — canvas is now entirely layers
                       onHideBaseImage?.(true);
                       onSetLayers([bgLayer, ...objectLayers, ...textLayers]);
+                      // Decompose replaces the whole layer list, so any applied
+                      // template's layers are gone. Leaving the record set would
+                      // leave the strip offering a remove and a palette for
+                      // layers that no longer exist — and a swatch click would
+                      // strip nothing and insert a fresh copy.
+                      setAppliedTemplate(null);
                     } catch (e) {
                       setDecomposeError(e instanceof Error ? e.message : "Analysis failed");
                     } finally {
@@ -1943,7 +2204,15 @@ export function EditControlsPanel({
                   )}
                   <button
                     type="button"
-                    onClick={() => { setDecomposeResult(null); setDecomposeError(null); onSetLayers([]); onHideBaseImage?.(false); }}
+                    onClick={() => {
+                      setDecomposeResult(null);
+                      setDecomposeError(null);
+                      onSetLayers([]);
+                      onHideBaseImage?.(false);
+                      // Same reconciliation as above: the layer list is emptied,
+                      // so nothing is applied any more.
+                      setAppliedTemplate(null);
+                    }}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
                   >
                     Re-analyze

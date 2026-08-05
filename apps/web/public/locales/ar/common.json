@@ -1381,7 +1381,13 @@
       "hintRequired": "لا نعرف أين نعمل بدون اسم هنا أو قناع مرسوم."
     },
     "templates": {
-      "search": "ابحث عن القوالب"
+      "search": "ابحث عن القوالب",
+      "appliedNamed": "القالب المُطبَّق: {{name}}",
+      "remove": "إزالة القالب",
+      "palette": "لوحة الألوان",
+      "morePalettes": "عرض الكل",
+      "fewerPalettes": "عرض أقل",
+      "brandColours": "تُوفّر حزمة العلامة ألوان هذا القالب."
     },
     "score": {
       "title": "التقييم",

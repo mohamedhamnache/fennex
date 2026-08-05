@@ -1478,7 +1478,13 @@
       "hintRequired": "We don't know where to work without a name here or a painted mask."
     },
     "templates": {
-      "search": "Search templates"
+      "search": "Search templates",
+      "appliedNamed": "Applied template: {{name}}",
+      "remove": "Remove template",
+      "palette": "Palette",
+      "morePalettes": "Show all",
+      "fewerPalettes": "Show fewer",
+      "brandColours": "The brand kit is supplying this template's colours."
     },
     "score": {
       "title": "Score",

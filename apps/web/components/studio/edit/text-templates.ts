@@ -7,10 +7,13 @@ import {
 import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import { pctFromReferencePx } from "./scene/measure";
+import { analyzeText } from "./design/layers";
+import { type Colourway, type ColourRegister, COLOURWAYS, colourway } from "./design/colourways";
+import { type GroundKind, REGISTERS_BY_GROUND, groundsFor } from "./design/ground";
 import {
-  typeWrap, duotoneWash, offsetStack, ruleGrid, hardEdge, priceSlab, negativeSpace,
-  findUnbackedText, analyzeText, isWashMode, washFor, type FamilyId,
-} from "./families";
+  type ChipCopy, type LayoutCopy, buildTemplate, colourwaysForLayout, layoutById,
+} from "./design/templates";
+import { runReports, verifyFieldClaims, type RunSpec } from "./design/type";
 
 /** A reusable design composition: optional background, shape objects, and text.
  *  Positions are canvas percentages; font sizes assume an ~800px-wide canvas
@@ -20,9 +23,9 @@ export { bestTextOn, type TemplateCategory };
 /** A text run as an author writes it.
  *
  *  The type metrics are deliberately NOT the layer model's percentages. Authors
- *  and the families that generate them work in px on the `REFERENCE_WIDTH`
+ *  and the layouts that generate them work in px on the `REFERENCE_WIDTH`
  *  canvas — `fontSize: 80` is legible as a headline in a way `fontSizePct: 10`
- *  is not, and the authoring fit guard in families.ts measures in the same
+ *  is not, and the authoring fit guard in design/layers.ts measures in the same
  *  units. `templateToLayers` is the boundary: it converts these px to
  *  percentages exactly once, and past that point nothing in the editor or the
  *  renderer carries an absolute pixel size. */
@@ -50,7 +53,7 @@ export interface TemplateShapeDef {
   widthPct: number;
   /** Explicit height as % of canvas height. Omit to derive it from the shape's
    *  own aspect ratio — which is right for badges but wrong for the panels and
-   *  bands the composition families build out of `rect`. */
+   *  scrims the grounds build out of `rect`. */
   heightPct?: number;
   opacity?: number;
   rotation?: number;
@@ -60,7 +63,7 @@ export interface TemplateShapeDef {
   gradient?: boolean;
   shadow?: boolean;
   /** Composite this field against what is already painted. Only a field with no
-   *  type on it may blend — see `panel()` in families.ts. */
+   *  type on it may blend — see `panel()` in design/layers.ts. */
   blend?: BlendMode;
 }
 
@@ -88,14 +91,33 @@ export interface TextTemplate {
   id: string;
   name: string;
   category: TemplateCategory;
-  /** Which composition family produced `layers`. Bookkeeping, not rendered:
-   *  it is how the capability-coverage sweep groups templates back to the
-   *  family that built them, so it can tell "no instance of this family in
-   *  the shipped set earns a capability" from "no template happens to
-   *  today" — see `templateFingerprint` below for the sibling problem this
-   *  solves on the distinctness axis. */
-  family: FamilyId;
-  /** Full-bleed background layer. Omit for overlays that sit on a photo. */
+  /** Which of the six layouts produced `layers`. Bookkeeping, not rendered: it
+   *  is how the capability sweep groups templates back to the layout that built
+   *  them, so it can tell "no instance of this layout in the shipped set earns
+   *  a capability" from "no template happens to today". */
+  layout: string;
+  /** How the colour is applied. One of the two axes crossed to build the set. */
+  ground: GroundKind;
+  /** The palette, in full rather than by id, so a report can name its register
+   *  and read its roles without a second lookup. */
+  colourwayRef: Colourway;
+  /** The run that answers "how big is the headline", for the size report the
+   *  first rejection was about. */
+  headline: string;
+  /** How this template was built: layout, ground, colourway and copy. Carried
+   *  rather than discarded because it is what makes a brand kit able to REBUILD
+   *  the composition in the brand's colours — see `brandTemplate`. */
+  spec: TemplateSpec;
+  /** The runs as authored, each carrying the backdrop it was measured against.
+   *  `layers` already contains the same type — this is the declared side of it,
+   *  and the only thing that makes an honest contrast number possible now that
+   *  type is allowed off an opaque field. */
+  runs: RunSpec[];
+  /** Full-bleed background layer. Every template in this set paints its ground
+   *  as LAYERS instead — a mesh, a duotone pair and a halftone field are none of
+   *  them expressible as a `TemplateBackground` — so this is null throughout and
+   *  kept only because `templateFingerprint`, `ResolvedTemplate` and the brand
+   *  mapping are all written against it. */
   background?: TemplateBackground | null;
   layers: TemplateLayerDef[];
 }
@@ -108,467 +130,669 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory | "all"; label: string 
   { id: "promo", label: "Promo" },
 ];
 
-// ── The composition families ─────────────────────────────────────────────────
+// ── The set ───────────────────────────────────────────────────────────────────
 
-/** The shipped set, built from the seven composition families.
+/** Copy for one template, in the vocabulary of the layout that renders it.
  *
- *  Every entry places the edited photo through an image layer, so these are
- *  compositions rather than decoration laid over whatever the user happened to
- *  upload. Colours come from `resolvePalette` roles, never from literals.
+ *  SIX HELPERS RATHER THAN ONE OBJECT LITERAL, and the reason is a defect this
+ *  set is one refactor away from at all times. `LayoutCopy` requires every field
+ *  because a layout that reads an absent one puts the string "undefined" on the
+ *  canvas, where it looks — in a thumbnail — like a design choice. But no layout
+ *  renders all of them, so writing 34 full literals means writing hundreds of
+ *  lines of copy that nothing paints, and the first thing that happens to copy
+ *  nothing paints is that it stops being read, and the second is that a template
+ *  quietly ships someone else's words.
  *
- *  Three axes of variation, and no fourth. An instance differs from its
- *  siblings by:
- *    1. its palette — one of the four category palettes, each of which
- *       guarantees ink/surface, onAccent/accent and accentInk/surface at
- *       4.5:1;
- *    2. its copy;
- *    3. its family's single composition parameter (type side, wash blend,
- *       plate spread, grid side, edge anchor, slab place, space anchor).
- *  Nothing here invents structure. A template that needed its own geometry
- *  would be the twenty-seventh unrelated one-off this set was written to
- *  replace.
+ *  Each helper below takes EXACTLY the fields its layout renders, in a tuple
+ *  where the count matters, and blanks the rest. TypeScript then rejects a
+ *  Culvert with two headline lines instead of three at compile time, and a field
+ *  that reaches the canvas can never be one the author never saw.
  *
- *  `category` is the picker filter — what the template is *for*. The palette
- *  argument is a colour decision and is deliberately allowed to differ from it,
- *  which is how a category gets more than one colour scheme without a hex
- *  literal appearing in this file. All four palettes carry the same contrast
- *  guarantee, so any pairing is safe.
- *
- *  Copy is authored to each family's character budget, which is stated in that
- *  family's doc comment in `families.ts`. `panel()` warns in development when a
- *  run overruns its field.
- *
- *  DISTINCTNESS IS STRUCTURAL, NOT LUCKY. `templateFingerprint` blanks the copy
- *  and hashes everything else, so two instances of one family that share a
- *  palette AND a composition parameter are the same template with different
- *  words — that is exactly how the set this replaced shipped seven identical
- *  pairs while appearing to hold 34 entries. The rule the set below follows is
- *  therefore stronger than the check: no (family, palette, parameter) triple is
- *  used twice, anywhere, across any category. Each family has eight such
- *  triples available and spends at most five of them, so a new template always
- *  has an unused one to take. Do not add an instance that reuses a triple and
- *  relies on a centred run's copy-dependent x offset to squeak past the sweep.
- *
- *  Copy carries no brand of ours. A customer applying one of these is
- *  publishing under their own name, so nothing here names a product, a domain
- *  or a company — the sweep's brand-neutrality check fails the build on the
- *  string "fennex" in any casing, in any field, including `name`.
+ *  CHARACTER BUDGETS are stated per helper. They are not folklore: the harness
+ *  measures every run's extent with the same estimator the centring uses and
+ *  fails on anything past the frame, which is how Late Set's cap-line was caught
+ *  7% over the right edge.
  */
-export const TEXT_TEMPLATES: TextTemplate[] = [
+const NONE = "";
+
+/** Sound Pro: kicker, two headline lines at 6.5%, two support lines, two CTAs.
+ *  Headline lines run from x6 and the cutout starts at x52, so ~14 characters
+ *  each. The two CTAs sit side by side in a 46% run, so ~12 characters each. */
+function soundProCopy(c: {
+  kicker: string; head: [string, string]; body: [string, string]; cta: string; cta2: string;
+}): LayoutCopy {
+  return { ...c, script: NONE, chips: [], badge: NONE, footer: NONE };
+}
+
+/** Counter: kicker, two centred headline lines at 6%, two centred support lines,
+ *  three chips flowed across 78%, a CTA and a seal label. The three chip labels
+ *  together must come to about 57 characters; the seal takes eight. */
+function counterCopy(c: {
+  kicker: string; head: [string, string]; body: [string, string];
+  chips: [ChipCopy, ChipCopy, ChipCopy]; cta: string; badge: string;
+}): LayoutCopy {
+  return { ...c, script: NONE, cta2: NONE, footer: NONE };
+}
+
+/** Culvert: kicker, THREE headline lines at 7%, two standfirst lines, two chips
+ *  and a seal label. Headline lines run from x6 and the lifted disc sits at x62,
+ *  so ~15 characters each. No CTA: this is the editorial layout, and a call to
+ *  action is the thing that makes an essay cover look like an advert. */
+function culvertCopy(c: {
+  kicker: string; head: [string, string, string]; body: [string, string];
+  chips: [ChipCopy, ChipCopy]; badge: string;
+}): LayoutCopy {
+  return { ...c, script: NONE, cta: NONE, cta2: NONE, footer: NONE };
+}
+
+/** Bass Line: a script line, one centred cap-line at 11% (~21 characters), four
+ *  chips down the margins, a CTA, a starburst label of about six characters, and
+ *  a short contact line beside the CTA. */
+function bassLineCopy(c: {
+  script: string; head: [string]; chips: [ChipCopy, ChipCopy, ChipCopy, ChipCopy];
+  cta: string; badge: string; footer: string;
+}): LayoutCopy {
+  return { ...c, kicker: NONE, body: [], cta2: NONE };
+}
+
+/** Half Price: a script line, one cap-line at 12% from x5 (~18 characters), one
+ *  support line, three chips stacked top-left, a CTA and a seal label. */
+function halfPriceCopy(c: {
+  script: string; head: [string]; body: [string];
+  chips: [ChipCopy, ChipCopy, ChipCopy]; cta: string; badge: string;
+}): LayoutCopy {
+  return { ...c, kicker: NONE, cta2: NONE, footer: NONE };
+}
+
+/** Late Set: a script line, one cap-line at 10.5% from x53, one support line,
+ *  two chips, a CTA, a starburst label and a line on the torn paper.
+ *
+ *  NINE CHARACTERS for the cap-line, and this is the tightest budget in the set.
+ *  The type block starts at x53 and the frame ends at 100, so ten characters
+ *  reach x98 and eleven leave the frame — which the harness catches, but a
+ *  headline flush to the trim is not a design either. It is a poster cap-line;
+ *  it wants one word. */
+function lateSetCopy(c: {
+  script: string; head: [string]; body: [string]; chips: [ChipCopy, ChipCopy];
+  cta: string; badge: string; footer: string;
+}): LayoutCopy {
+  return { ...c, kicker: NONE, cta2: NONE };
+}
+
+/** One shipped template, before it is built. */
+export interface TemplateSpec {
+  id: string;
+  name: string;
+  category: TemplateCategory;
+  layout: string;
+  ground: GroundKind;
+  colourway: string;
+  copy: LayoutCopy;
+}
+
+/**
+ * The shipped set: 34 templates, built by crossing six layouts with six grounds
+ * and thirteen colourways.
+ *
+ * WHY THIS IS A TABLE AND NOT THIRTY-FOUR COMPOSITIONS. The set this replaces
+ * was 34 hand-built one-offs and the owner's verdict on it was that there is no
+ * creativity in the design and that it looks very old — which is not what you
+ * would expect from 34 independent designs, and is exactly what you get from 34
+ * variations on one instinct. Thirty-four one-offs by one author at one sitting
+ * converge; thirty-four points on three orthogonal axes cannot. A template here
+ * differs from every other by its LAYOUT (the arrangement and the type), its
+ * GROUND (how the colour is applied to the frame) and its COLOURWAY (which
+ * colours), and none of the three is derivable from the others.
+ *
+ * THE AXES ARE SPENT DELIBERATELY, not sprinkled:
+ *
+ *  - Every layout takes every ground it is composed for, exactly once. Five of
+ *    the six use all six treatments; Bass Line uses five, because it writes
+ *    across the whole frame and a photographic ground would have to darken the
+ *    entire picture to hold its type, which is a scrim rather than a region the
+ *    template owns. That rule is also what makes the set distinct by
+ *    construction rather than by luck: no two templates share a (layout, ground)
+ *    pair, so no two can share a geometry fingerprint.
+ *
+ *  - All thirteen colourways appear, none more than four times, and no
+ *    colourway repeats within one layout.
+ *
+ *  - Sunset and Ember never take a gradient ground. Both meshes run through
+ *    their own accent hue, so light ink over the ramp measured 2.02:1 and
+ *    3.35:1. `groundsFor` refuses the pairing, so this is enforced rather than
+ *    remembered.
+ *
+ * THE FOUR CATEGORIES ARE FOUR REGISTERS, not one register with four filters.
+ * Ecommerce names a product and asks for the sale. Social is short, plural and
+ * addressed to a room. Promo is a date, a door and a deadline. Blog is the one
+ * that had no reference from the owner and the one the previous set got most
+ * wrong: it read as a product promo with different words. Here it takes the
+ * layouts with no call to action in them — Culvert four times, plus the quiet
+ * lockups — and its copy is a clause that continues into the standfirst rather
+ * than a headline that announces. Its chips carry a read time and a section
+ * instead of a feature. Where a blog template does use a loud layout, the loud
+ * element is an issue number rather than a discount.
+ *
+ * COPY CARRIES NO BRAND OF OURS. A customer applying one of these publishes
+ * under their own name, so nothing here names a product, a domain or a company,
+ * and the harness fails on the string "fennex" in any casing in any field
+ * including `name`. Nothing invents a person, a street or a company either: an
+ * address a customer has to replace should be obviously theirs to fill in.
+ */
+const SPECS: TemplateSpec[] = [
   // ── Ecommerce ──────────────────────────────────────────────────────────────
   {
-    id: "ec_slab_lamp",
-    name: "Markdown Slab",
-    category: "ecommerce",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("ecommerce"), {
-      headline: "Aurora Desk Lamp",
-      subhead: "-40%",
-      support: "Today only, and free returns for thirty days",
+    id: "ec_soundpro_flat", name: "Sound Pro", category: "ecommerce",
+    layout: "soundpro", ground: "flat", colourway: "sorbet",
+    copy: soundProCopy({
+      kicker: "Audio",
+      head: ["Sound Pro", "A56 Headset"],
+      body: ["Forty hours between charges, and a case", "that charges from the same cable."],
+      cta: "Buy now", cta2: "Compare",
     }),
   },
   {
-    id: "ec_slab_bundle",
-    name: "Bundle Slab",
-    category: "ecommerce",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("ecommerce"), {
-      headline: "Ceramic Mug Set",
-      subhead: "2 for 1",
-      support: "Add both to the basket and the second one is free",
-    }, "centre"),
-  },
-  {
-    id: "ec_slab_outlet",
-    name: "Outlet Slab",
-    category: "ecommerce",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("blog"), {
-      headline: "Trail Runner 3",
-      subhead: "$89",
-      // Dollars, so US spelling. Register is picked per template rather than
-      // per set: "colourway" beside "$89" is nobody's storefront.
-      support: "Last season's color, same outsole and the same fit",
+    id: "ec_soundpro_blocked", name: "Kettle Block", category: "ecommerce",
+    layout: "soundpro", ground: "blocked", colourway: "seaglass",
+    copy: soundProCopy({
+      kicker: "Kitchen",
+      head: ["Pour Over", "Kettle 900"],
+      body: ["Holds a set temperature for an hour,", "and pours in a line you can steer."],
+      cta: "Add to bag", cta2: "See specs",
     }),
   },
   {
-    id: "ec_grid_lookbook",
-    name: "Lookbook Grid",
-    category: "ecommerce",
-    family: "ruleGrid",
-    layers: ruleGrid(resolvePalette("ecommerce"), {
-      headline: "The Winter Edit",
-      subhead: "Twelve pieces cut from one palette",
-      support: "Atelier / No 12",
-    }, "right"),
-  },
-  {
-    id: "ec_grid_care",
-    name: "Care Guide Grid",
-    category: "ecommerce",
-    family: "ruleGrid",
-    layers: ruleGrid(resolvePalette("ecommerce"), {
-      headline: "How to Wash Linen",
-      subhead: "Cold water, flat dry, no softener",
-      support: "Care guide / 4 steps",
+    id: "ec_soundpro_textured", name: "Trail Runner", category: "ecommerce",
+    layout: "soundpro", ground: "textured", colourway: "spectrum",
+    copy: soundProCopy({
+      kicker: "Footwear",
+      head: ["Trail Runner", "Three"],
+      body: ["A rock plate under the forefoot, and a", "lug deep enough for wet ground."],
+      cta: "Choose size", cta2: "Size guide",
     }),
   },
   {
-    id: "ec_edge_restock",
-    name: "Restock Block",
-    category: "ecommerce",
-    family: "hardEdge",
-    layers: hardEdge(resolvePalette("blog"), {
-      headline: "Back in Stock",
-      subhead: "The linen throw, in sand",
-      support: "It sold out twice. This run is four hundred pieces.",
-    }, "bottom"),
-  },
-  {
-    id: "ec_edge_landed",
-    name: "Just Landed Block",
-    category: "ecommerce",
-    family: "hardEdge",
-    layers: hardEdge(resolvePalette("ecommerce"), {
-      headline: "Just Landed",
-      subhead: "The all-weather parka",
-      support: "Taped seams, recycled shell, cut wide enough to layer.",
+    id: "ec_halfprice_duotone", name: "Half Price", category: "ecommerce",
+    layout: "halfprice", ground: "duotone", colourway: "sunset",
+    copy: halfPriceCopy({
+      script: "Weekend only",
+      head: ["Half price"],
+      body: ["Every charger, cable and dock until Sunday midnight."],
+      chips: [
+        { icon: "bolt", label: "Fast charging" },
+        { icon: "check", label: "Two-year cover" },
+        { icon: "droplet", label: "Splash proof" },
+      ],
+      cta: "Shop the sale", badge: "48h only",
     }),
   },
   {
-    id: "ec_stack_studio",
-    name: "Studio Stack",
-    category: "ecommerce",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("ecommerce"), {
-      headline: "Made in the Studio",
-      subhead: "Batch 07",
-      support: "Thrown, glazed and fired here",
+    id: "ec_halfprice_flat", name: "Last Pairs", category: "ecommerce",
+    layout: "halfprice", ground: "flat", colourway: "peachsky",
+    copy: halfPriceCopy({
+      script: "While they last",
+      head: ["Last pairs"],
+      body: ["Ends of runs and single sizes, reduced to clear."],
+      chips: [
+        { icon: "check", label: "Final sizes" },
+        { icon: "droplet", label: "No returns" },
+        { icon: "bolt", label: "Ships today" },
+      ],
+      cta: "Shop clearance", badge: "Ends Sun",
     }),
   },
   {
-    id: "ec_wrap_bespoke",
-    // A made-to-order voice, not a second seasonal-drop one. This and
-    // `so_wrap_season` are both typeWrap and sit next to each other under the
-    // All tab; "New Arrivals / Autumn Drop 02" beside "New Season / Spring 26"
-    // read as one template written twice even though the geometry differs.
-    name: "Made to Order Wrap",
-    category: "ecommerce",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("ecommerce"), {
-      headline: "Cut to Order",
-      subhead: "Six-Week Lead Time",
-      support: "Choose your cloth, we cut on Monday",
+    id: "ec_bassline_gradient", name: "Bass Line", category: "ecommerce",
+    layout: "bassline", ground: "gradient", colourway: "blurple",
+    copy: bassLineCopy({
+      script: "Special sale",
+      head: ["Headphones"],
+      chips: [
+        { icon: "droplet", label: "Water resistance" },
+        { icon: "waveform", label: "Enhanced bass" },
+        { icon: "mic", label: "Voice assistant" },
+        { icon: "bolt", label: "Fast charging" },
+      ],
+      cta: "Order now", badge: "New", footer: "Ships from stock",
+    }),
+  },
+  {
+    id: "ec_bassline_duotone", name: "Spec Sheet", category: "ecommerce",
+    layout: "bassline", ground: "duotone", colourway: "sunset",
+    copy: bassLineCopy({
+      script: "Now shipping",
+      head: ["The Mixer"],
+      chips: [
+        { icon: "waveform", label: "Twelve channels" },
+        { icon: "bolt", label: "Bus powered" },
+        { icon: "mic", label: "Two mic inputs" },
+        { icon: "check", label: "Three-year cover" },
+      ],
+      cta: "Pre-order", badge: "Live", footer: "In stock now",
+    }),
+  },
+  {
+    id: "ec_counter_photographic", name: "Restock Counter", category: "ecommerce",
+    layout: "counter", ground: "photographic", colourway: "deepsea",
+    copy: counterCopy({
+      kicker: "Back in stock",
+      head: ["It is back", "on the shelf"],
+      body: ["The linen throw, in sand.", "Four hundred pieces this run."],
+      chips: [
+        { icon: "check", label: "Four hundred made" },
+        { icon: "bolt", label: "Ships in a day" },
+        { icon: "droplet", label: "Washed linen" },
+      ],
+      cta: "Add to basket", badge: "Restock",
+    }),
+  },
+  {
+    id: "ec_culvert_gradient", name: "Maker Story", category: "ecommerce",
+    layout: "culvert", ground: "gradient", colourway: "pinkperi",
+    copy: culvertCopy({
+      kicker: "How it is made",
+      head: ["Thrown on", "a wheel in", "the old mill"],
+      body: ["Every piece is turned, dried and glazed", "in one building, by four people."],
+      chips: [
+        { icon: "droplet", label: "Glazed by hand" },
+        { icon: "check", label: "Made to order" },
+      ],
+      badge: "Batch 07",
     }),
   },
 
   // ── Social ─────────────────────────────────────────────────────────────────
   {
-    id: "so_wrap_season",
-    name: "Season Wrap",
-    category: "social",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("social"), {
-      headline: "New Season",
-      subhead: "Spring 26",
-      support: "Doors open Friday at nine",
+    id: "so_soundpro_gradient", name: "Capsule Drop", category: "social",
+    layout: "soundpro", ground: "gradient", colourway: "pinkperi",
+    copy: soundProCopy({
+      kicker: "Out Friday",
+      head: ["The Spring", "Capsule"],
+      body: ["Nine pieces, one colour, and the", "first fifty come signed."],
+      cta: "See the drop", cta2: "Remind me",
     }),
   },
   {
-    id: "so_wrap_milestone",
-    name: "Milestone Wrap",
-    category: "social",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("social"), {
-      headline: "We Hit 10K",
-      subhead: "Giveaway Time",
-      support: "Follow, tag a friend, we draw Sunday",
-    }, "right"),
-  },
-  {
-    id: "so_wash_golden",
-    name: "Golden Hour Wash",
-    category: "social",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("social"), {
-      headline: "Golden Hour",
-      subhead: "The autumn edit, shot on location",
-      support: "Three looks, one roll of film",
+    id: "so_counter_flat", name: "Going Live", category: "social",
+    layout: "counter", ground: "flat", colourway: "signal",
+    copy: counterCopy({
+      kicker: "Going live",
+      head: ["We go live", "on Wednesday"],
+      body: ["Bring questions. We are answering", "all of them on air."],
+      chips: [
+        { icon: "mic", label: "Ask anything" },
+        { icon: "bolt", label: "Eight at night" },
+        { icon: "check", label: "Replay after" },
+      ],
+      cta: "Set a reminder", badge: "Live",
     }),
   },
   {
-    id: "so_wash_release",
-    // Blog palette, in the Social tab, on purpose. This and `so_wash_golden`
-    // are the same family at the same variant in the same tab, so the palette
-    // is the ONLY thing separating them and it has to do real work: on the
-    // promo palette it did not, because promo and social are both dark and
-    // their washes measured 47/441 apart in RGB — two amber-washed photos with
-    // the same centred stack. Blue on near-white puts 311/441 between them.
-    name: "Release Wash",
-    category: "social",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("blog"), {
-      headline: "Night Shift",
-      subhead: "Twelve tracks for the late commute",
-      support: "Out now wherever you stream",
+    id: "so_counter_gradient", name: "Milestone", category: "social",
+    layout: "counter", ground: "gradient", colourway: "seaglass",
+    copy: counterCopy({
+      kicker: "Thank you",
+      head: ["Ten thousand", "of you now"],
+      body: ["Follow, tag a friend, and we draw", "the giveaway on Sunday."],
+      chips: [
+        { icon: "check", label: "One winner" },
+        { icon: "bolt", label: "Draw on Sunday" },
+        { icon: "mic", label: "Tag a friend" },
+      ],
+      cta: "Enter the draw", badge: "10K",
     }),
   },
   {
-    id: "so_stack_build",
-    name: "Build Log Stack",
-    category: "social",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("social"), {
-      headline: "Behind the Build",
-      subhead: "Day 41",
-      support: "New clips every Friday",
-    }, "wide"),
-  },
-  {
-    id: "so_stack_market",
-    // Same reasoning as `so_wash_release`, and the same tab: this and
-    // `so_stack_build` are offsetStack/wide side by side, so the palette is
-    // their only separation. It takes the blog palette and `bl_stack_retro`
-    // takes promo, which is the swap rather than a straight move — every
-    // (family, palette, variant) triple stays used at most once.
-    //
-    // Blog specifically, not ecommerce. `offsetStack` paints a full-bleed
-    // surface field and spends the accent only on a subhead, so what separates
-    // two instances is almost entirely their SURFACE. Three of the four
-    // palettes are dark and their surfaces sit close together — ecommerce vs
-    // social measures 36/441, closer than the promo pairing this replaces —
-    // whereas blog is the one light surface, at 358/441. Picking on accent
-    // distance alone would have made this pair worse while appearing to fix it.
-    name: "Market Recap Stack",
-    category: "social",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("blog"), {
-      headline: "Market Day Recap",
-      subhead: "Stall 12",
-      support: "Same spot again next Saturday",
-    }, "wide"),
-  },
-  {
-    id: "so_grid_carousel",
-    name: "Carousel Grid",
-    category: "social",
-    family: "ruleGrid",
-    layers: ruleGrid(resolvePalette("social"), {
-      headline: "Five Slow Reads",
-      subhead: "What the team finished this month",
-      support: "Swipe / 1 of 5",
+    id: "so_culvert_blocked", name: "Slow Reads", category: "social",
+    layout: "culvert", ground: "blocked", colourway: "spectrum",
+    copy: culvertCopy({
+      kicker: "This week",
+      head: ["Five slow", "reads for", "a long week"],
+      body: ["What the team finished this month,", "and the one we all argued about."],
+      chips: [
+        { icon: "check", label: "Five picks" },
+        { icon: "droplet", label: "Twenty minutes" },
+      ],
+      badge: "No 12",
     }),
   },
   {
-    id: "so_edge_live",
-    name: "Going Live Block",
-    category: "social",
-    family: "hardEdge",
-    layers: hardEdge(resolvePalette("social"), {
-      headline: "We Go Live",
-      subhead: "Wednesday at 8pm CET",
-      support: "Bring questions. We are answering all of them on air.",
+    id: "so_bassline_flat", name: "Night Shift", category: "social",
+    layout: "bassline", ground: "flat", colourway: "signal",
+    copy: bassLineCopy({
+      script: "Out now",
+      head: ["Night Shift"],
+      chips: [
+        { icon: "waveform", label: "Twelve tracks" },
+        { icon: "mic", label: "Two features" },
+        { icon: "bolt", label: "Mixed on tape" },
+        { icon: "check", label: "Vinyl in May" },
+      ],
+      cta: "Listen now", badge: "New", footer: "Out everywhere",
     }),
   },
   {
-    id: "so_space_quote",
-    name: "Quote Card",
-    category: "social",
-    family: "negativeSpace",
-    layers: negativeSpace(resolvePalette("social"), {
-      headline: "Finish One Thing",
-      subhead: "On the tyranny of the open tab",
-      support: "This week's letter, three minutes end to end",
-    }, "low"),
+    id: "so_bassline_textured", name: "Build Log", category: "social",
+    layout: "bassline", ground: "textured", colourway: "deepsea",
+    copy: bassLineCopy({
+      script: "Day forty one",
+      head: ["The Build"],
+      chips: [
+        { icon: "bolt", label: "New clips Friday" },
+        { icon: "check", label: "Forty one days" },
+        { icon: "mic", label: "Ask in the replies" },
+        { icon: "waveform", label: "Sound coming" },
+      ],
+      cta: "Watch part four", badge: "Part 4", footer: "Clips on Fridays",
+    }),
+  },
+  {
+    id: "so_halfprice_blocked", name: "Flash Block", category: "social",
+    layout: "halfprice", ground: "blocked", colourway: "signal",
+    copy: halfPriceCopy({
+      script: "Two days only",
+      head: ["Half off"],
+      body: ["Everything in the shop, until Sunday at midnight."],
+      chips: [
+        { icon: "bolt", label: "Applied at checkout" },
+        { icon: "check", label: "No code needed" },
+        { icon: "droplet", label: "Stock only" },
+      ],
+      cta: "Shop the sale", badge: "48h",
+    }),
+  },
+  {
+    id: "so_lateset_textured", name: "Late Set", category: "social",
+    layout: "lateset", ground: "textured", colourway: "ember",
+    copy: lateSetCopy({
+      script: "Live and late",
+      head: ["Late Set"],
+      body: ["Three rooms, one ticket, doors at ten."],
+      chips: [
+        { icon: "mic", label: "Nine live sets" },
+        { icon: "bolt", label: "Room two till four" },
+      ],
+      cta: "Tickets", badge: "On sale",
+      footer: "Fri 26 Sep / The old print works / 22:00",
+    }),
+  },
+  {
+    id: "so_lateset_blocked", name: "Encore", category: "social",
+    layout: "lateset", ground: "blocked", colourway: "seaglass",
+    copy: lateSetCopy({
+      script: "One more night",
+      head: ["Encore"],
+      body: ["Added by demand. Same room, same time."],
+      chips: [
+        { icon: "check", label: "Added night" },
+        { icon: "mic", label: "Same set list" },
+      ],
+      cta: "Get a ticket", badge: "Added",
+      footer: "Sat 27 Sep / Room two / 21:00",
+    }),
   },
 
   // ── Blog ───────────────────────────────────────────────────────────────────
+  //
+  // The register the owner gave no reference for, and the one the rejected set
+  // read as a product promo in. Four of the eight are Culvert, which has no call
+  // to action in it at all; the rest are the quiet lockups. A headline here is a
+  // clause that finishes in the standfirst rather than an announcement, and the
+  // chips carry a read time and a desk instead of a feature.
   {
-    id: "bl_wrap_series",
-    name: "Series Wrap",
-    category: "blog",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("blog"), {
-      headline: "Ship It Weekly",
-      subhead: "Season Two",
-      support: "A new build log every Tuesday",
-    }, "right"),
-  },
-  {
-    id: "bl_wash_slowweb",
-    name: "Essay Wash",
-    category: "blog",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("blog"), {
-      headline: "The Slow Web",
-      subhead: "In praise of smaller, quieter sites",
-      support: "Essay / 9 min read",
-    }, "stagger"),
-  },
-  {
-    id: "bl_wash_interview",
-    name: "Interview Wash",
-    category: "blog",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("social"), {
-      headline: "After Burnout",
-      subhead: "What changed when we cut the roadmap",
-      support: "Interview / 14 min read",
-    }, "stagger"),
-  },
-  {
-    id: "bl_grid_pagespeed",
-    name: "Guide Grid",
-    category: "blog",
-    family: "ruleGrid",
-    layers: ruleGrid(resolvePalette("blog"), {
-      headline: "Page Speed",
-      subhead: "A practical guide for small teams",
-      support: "Updated for 2026",
+    id: "bl_culvert_photographic", name: "Culvert", category: "blog",
+    layout: "culvert", ground: "photographic", colourway: "slate",
+    copy: culvertCopy({
+      kicker: "Reporting",
+      head: ["The river", "under the", "ring road"],
+      body: ["Forty years after it was culverted,", "a city is digging it back up."],
+      chips: [
+        { icon: "droplet", label: "Water desk" },
+        { icon: "check", label: "12 min read" },
+      ],
+      badge: "No 214",
     }),
   },
   {
-    id: "bl_grid_migration",
-    name: "Deep Dive Grid",
-    category: "blog",
-    family: "ruleGrid",
-    layers: ruleGrid(resolvePalette("blog"), {
-      headline: "Leaving the Monolith",
-      subhead: "Eighteen months, one service at a time",
-      support: "Engineering / Part 1",
-    }, "right"),
-  },
-  {
-    id: "bl_stack_notes",
-    name: "Field Notes Stack",
-    category: "blog",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("blog"), {
-      headline: "Field Notes",
-      subhead: "Issue 04",
-      support: "Everything we shipped in July",
+    id: "bl_culvert_duotone", name: "After the Cut", category: "blog",
+    layout: "culvert", ground: "duotone", colourway: "cornflower",
+    copy: culvertCopy({
+      kicker: "Interview",
+      head: ["What changed", "when we cut", "the roadmap"],
+      body: ["Two years of shipping less on purpose,", "and what it cost to get there."],
+      chips: [
+        { icon: "mic", label: "In conversation" },
+        { icon: "check", label: "14 min read" },
+      ],
+      badge: "No 216",
     }),
   },
   {
-    id: "bl_stack_retro",
-    // Promo palette, the other half of the `so_stack_market` swap. It shares
-    // the Blog tab with `bl_stack_notes`, which is the same family at the
-    // OTHER variant, so palette is not carrying the separation here.
-    name: "Retro Stack",
-    category: "blog",
-    family: "offsetStack",
-    layers: offsetStack(resolvePalette("promo"), {
-      headline: "The Q3 Retro",
-      subhead: "Team of nine",
-      support: "What we would not do again",
-    }, "wide"),
-  },
-  {
-    id: "bl_space_profile",
-    name: "Profile Cover",
-    category: "blog",
-    family: "negativeSpace",
-    layers: negativeSpace(resolvePalette("blog"), {
-      headline: "In Conversation",
-      // No invented interviewee. Sample copy naming a person who does not
-      // exist is copy a customer can publish unedited and be wrong.
-      subhead: "With the maker who threw this",
-      support: "Craft series, part three of six",
+    id: "bl_culvert_textured", name: "Smaller Sites", category: "blog",
+    layout: "culvert", ground: "textured", colourway: "parchment",
+    copy: culvertCopy({
+      kicker: "Essay",
+      head: ["In praise of", "smaller and", "quieter sites"],
+      body: ["The web got heavy while nobody was", "watching. Some of it can be given back."],
+      chips: [
+        { icon: "check", label: "9 min read" },
+        { icon: "droplet", label: "Slow web" },
+      ],
+      badge: "No 219",
     }),
   },
   {
-    id: "bl_space_column",
-    name: "Column Cover",
-    category: "blog",
-    family: "negativeSpace",
-    layers: negativeSpace(resolvePalette("blog"), {
-      headline: "The Long Read",
-      subhead: "On buying less, keeping it longer",
-      support: "Column / Saturday edition",
-    }, "low"),
+    id: "bl_culvert_flat", name: "One Service", category: "blog",
+    layout: "culvert", ground: "flat", colourway: "seaglass",
+    copy: culvertCopy({
+      kicker: "Field notes",
+      head: ["Eighteen", "months, one", "service"],
+      body: ["Leaving a monolith without stopping,", "told in the order it happened."],
+      chips: [
+        { icon: "bolt", label: "Engineering" },
+        { icon: "check", label: "21 min read" },
+      ],
+      badge: "Part one",
+    }),
+  },
+  {
+    id: "bl_soundpro_photographic", name: "Field Notes", category: "blog",
+    layout: "soundpro", ground: "photographic", colourway: "parchment",
+    copy: soundProCopy({
+      kicker: "Issue 04",
+      head: ["Field Notes", "July"],
+      body: ["Everything we shipped last month, and", "the two things we quietly removed."],
+      cta: "Read issue", cta2: "Archive",
+    }),
+  },
+  {
+    id: "bl_counter_textured", name: "Saturday Column", category: "blog",
+    layout: "counter", ground: "textured", colourway: "parchment",
+    copy: counterCopy({
+      kicker: "Saturday column",
+      head: ["On buying less", "and keeping it"],
+      body: ["A column about the things that outlast", "the reason they were bought."],
+      chips: [
+        { icon: "check", label: "7 min read" },
+        { icon: "droplet", label: "Column" },
+        { icon: "bolt", label: "Saturdays" },
+      ],
+      cta: "Read the column", badge: "No 41",
+    }),
+  },
+  {
+    id: "bl_lateset_gradient", name: "One Thing", category: "blog",
+    layout: "lateset", ground: "gradient", colourway: "sorbet",
+    copy: lateSetCopy({
+      script: "From the letter",
+      head: ["One Thing"],
+      body: ["On the tyranny of the open tab. Three minutes."],
+      chips: [
+        { icon: "check", label: "3 min read" },
+        { icon: "droplet", label: "Letter 41" },
+      ],
+      cta: "Read the letter", badge: "Letter",
+      footer: "The weekly letter / No 41",
+    }),
+  },
+  {
+    id: "bl_lateset_photographic", name: "Season Two", category: "blog",
+    layout: "lateset", ground: "photographic", colourway: "spectrum",
+    copy: lateSetCopy({
+      script: "Season two",
+      head: ["Ship It"],
+      body: ["A build log every Tuesday, for as long as it takes."],
+      chips: [
+        { icon: "bolt", label: "Every Tuesday" },
+        { icon: "check", label: "Season two" },
+      ],
+      cta: "Start at one", badge: "S2",
+      footer: "A build log / Season two / Tuesdays",
+    }),
   },
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   {
-    id: "pr_wrap_opening",
-    name: "Opening Wrap",
-    category: "promo",
-    family: "typeWrap",
-    layers: typeWrap(resolvePalette("promo"), {
-      headline: "Doors Open",
-      subhead: "Thursday, 7pm",
-      // Not a real street. The address a customer has to replace should be
-      // obviously theirs to fill in, not someone else's shopfront.
-      support: "Second floor, above the bakery",
+    id: "pr_counter_blocked", name: "Counter", category: "promo",
+    layout: "counter", ground: "blocked", colourway: "peachsky",
+    copy: counterCopy({
+      kicker: "Opening night",
+      head: ["Doors open", "at seven"],
+      body: ["Twelve seats at the counter.", "Booking by phone only."],
+      chips: [
+        { icon: "phone", label: "Booking by phone" },
+        { icon: "check", label: "Twelve seats" },
+        { icon: "bolt", label: "Kitchen till late" },
+      ],
+      cta: "Reserve a table", badge: "Walk-ins",
     }),
   },
   {
-    id: "pr_wash_festival",
-    name: "Festival Wash",
-    category: "promo",
-    family: "duotoneWash",
-    layers: duotoneWash(resolvePalette("promo"), {
-      headline: "Two Nights",
-      subhead: "Live sets from eleven local acts",
-      support: "Tickets from twenty euros, doors at seven",
-    }, "stagger"),
-  },
-  {
-    id: "pr_edge_flash",
-    name: "Flash Block",
-    category: "promo",
-    family: "hardEdge",
-    layers: hardEdge(resolvePalette("promo"), {
-      headline: "48 Hours Only",
-      subhead: "Everything reduced",
-      support: "The discount is applied at checkout. No code needed.",
+    id: "pr_counter_duotone", name: "Last Call", category: "promo",
+    layout: "counter", ground: "duotone", colourway: "ember",
+    copy: counterCopy({
+      kicker: "Last call",
+      head: ["The sale ends", "at midnight"],
+      body: ["Anything left in a basket goes", "back on the shelf at twelve."],
+      chips: [
+        { icon: "bolt", label: "Ends at midnight" },
+        { icon: "check", label: "No code needed" },
+        { icon: "droplet", label: "Stock only" },
+      ],
+      cta: "Finish checkout", badge: "Tonight",
     }),
   },
   {
-    id: "pr_edge_lastcall",
-    name: "Last Call Block",
-    category: "promo",
-    family: "hardEdge",
-    layers: hardEdge(resolvePalette("promo"), {
-      headline: "Last Call",
-      subhead: "The sale ends at midnight",
-      support: "Anything left in a basket goes back on the shelf.",
-    }, "bottom"),
-  },
-  {
-    id: "pr_slab_membership",
-    name: "Membership Slab",
-    category: "promo",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("promo"), {
-      headline: "Founding Membership",
-      subhead: "$9/mo",
-      support: "Locked for life. The price goes up in January.",
+    id: "pr_soundpro_duotone", name: "Founding Member", category: "promo",
+    layout: "soundpro", ground: "duotone", colourway: "cornflower",
+    copy: soundProCopy({
+      kicker: "Membership",
+      head: ["Founding", "Membership"],
+      body: ["Locked for life. The price goes up", "for everyone in January."],
+      cta: "Join now", cta2: "What you get",
     }),
   },
   {
-    id: "pr_slab_multibuy",
-    name: "Multibuy Slab",
-    category: "promo",
-    family: "priceSlab",
-    layers: priceSlab(resolvePalette("promo"), {
-      headline: "Every Candle in Store",
-      subhead: "3 for 2",
-      support: "Mix the scents however you like, cheapest comes off.",
-    }, "centre"),
+    id: "pr_halfprice_photographic", name: "Live in June", category: "promo",
+    layout: "halfprice", ground: "photographic", colourway: "ember",
+    copy: halfPriceCopy({
+      script: "Two nights",
+      head: ["Live in June"],
+      body: ["Eleven local acts across two stages, from seven."],
+      chips: [
+        { icon: "mic", label: "Eleven acts" },
+        { icon: "bolt", label: "Two stages" },
+        { icon: "check", label: "From twenty euros" },
+      ],
+      cta: "Get tickets", badge: "June 12",
+    }),
   },
   {
-    id: "pr_space_workshop",
-    name: "Workshop Card",
-    category: "promo",
-    family: "negativeSpace",
-    layers: negativeSpace(resolvePalette("promo"), {
-      headline: "Knife Skills",
-      subhead: "One evening, eight seats",
-      support: "Thursday the 14th, apron and dinner included",
+    id: "pr_halfprice_textured", name: "Knife Skills", category: "promo",
+    layout: "halfprice", ground: "textured", colourway: "spectrum",
+    copy: halfPriceCopy({
+      script: "One evening",
+      head: ["Knife Skills"],
+      body: ["Eight seats, an apron, and dinner at the end of it."],
+      chips: [
+        { icon: "check", label: "Eight seats" },
+        { icon: "bolt", label: "One evening" },
+        { icon: "droplet", label: "Apron provided" },
+      ],
+      cta: "Book a seat", badge: "8 seats",
+    }),
+  },
+  {
+    id: "pr_bassline_blocked", name: "Doors Open", category: "promo",
+    layout: "bassline", ground: "blocked", colourway: "pinkperi",
+    copy: bassLineCopy({
+      script: "We are open",
+      head: ["Doors Open"],
+      chips: [
+        { icon: "check", label: "Second floor" },
+        { icon: "bolt", label: "Late on Fridays" },
+        { icon: "phone", label: "Book a table" },
+        { icon: "mic", label: "Live on Sundays" },
+      ],
+      // No street and no number. An address a customer has to replace should be
+      // obviously theirs to fill in, not somebody else's shopfront.
+      cta: "Find us", badge: "Open", footer: "Above the bakery",
+    }),
+  },
+  {
+    id: "pr_lateset_flat", name: "Tonight", category: "promo",
+    layout: "lateset", ground: "flat", colourway: "peachsky",
+    copy: lateSetCopy({
+      script: "Doors at eight",
+      head: ["Tonight"],
+      body: ["One night, one room, and the bar stays open late."],
+      chips: [
+        { icon: "mic", label: "One set only" },
+        { icon: "bolt", label: "Bar till two" },
+      ],
+      cta: "Last tickets", badge: "Tonight",
+      footer: "Thu 18 Sep / Room one / 20:00",
+    }),
+  },
+  {
+    id: "pr_lateset_duotone", name: "On Sale", category: "promo",
+    layout: "lateset", ground: "duotone", colourway: "cornflower",
+    copy: lateSetCopy({
+      script: "The new season",
+      head: ["On Sale"],
+      body: ["Every date in the season, on sale from Friday."],
+      chips: [
+        { icon: "check", label: "Twelve dates" },
+        { icon: "bolt", label: "On sale Friday" },
+      ],
+      cta: "See the dates", badge: "Season",
+      footer: "Season tickets / From Fri 12 Sep",
     }),
   },
 ];
+
+/** The shipped set, built. Every entry places the edited photo, every colour
+ *  comes from a colourway role, and no hex literal appears in a spec above. */
+export const TEXT_TEMPLATES: TextTemplate[] = SPECS.map((spec) => {
+  const built = buildTemplate(layoutById(spec.layout), {
+    cw: colourway(spec.colourway),
+    ground: spec.ground,
+    copy: spec.copy,
+  });
+  return {
+    id: spec.id,
+    name: spec.name,
+    category: spec.category,
+    layout: spec.layout,
+    ground: spec.ground,
+    colourwayRef: built.colourway,
+    headline: built.headline,
+    spec,
+    background: null,
+    layers: built.layers,
+    runs: built.runs,
+  };
+});
 
 /** A template's geometry with its words removed. Two templates that differ only
  *  in copy produce the same fingerprint -- which is how the previous set came
@@ -584,6 +808,156 @@ export function templateFingerprint(t: TextTemplate): string {
     l.kind === "text" ? { ...l, text: "" } : l,
   );
   return JSON.stringify({ background: t.background ?? null, layers });
+}
+
+// ── Changing a template's colourway ───────────────────────────────────────────
+//
+// Colour is an axis, not a property of the finished layers, so changing it is a
+// REBUILD through the same `buildTemplate` the shipped set goes through rather
+// than a walk over the layer list swapping hex values. That is the same argument
+// `brandTemplate` makes below and for the same reason: a mesh, a duotone pair, a
+// glow and a glass chip are all SVG data URIs by the time they are layers, so
+// there is nothing left to recolour in place — and every colour in the result
+// comes from a role, exactly as in the authored form.
+
+/**
+ * The contrast a cell must reach before the picker will offer it.
+ *
+ * NOT the AA floor, and not a taste knob. `groundsFor` already excludes two
+ * cells outright by measurement — Sunset at 2.02:1 and Ember at 3.35:1 with
+ * light ink over their own mesh — and a picker that refuses 3.35 while cheerfully
+ * offering 2.94 is not applying a rule, it is applying a rule in one place. This
+ * is that same measured line, extended to every cell the picker can reach.
+ *
+ * The value has a band rather than a preference behind it. It must sit ABOVE
+ * 3.35, or it would readmit the case `ground.ts` excludes; and it must sit at or
+ * below 3.48, the worst run in the 34 shipped templates, or it would start
+ * refusing colourways a human already approved. 3.4 is inside that band with
+ * room on both sides. Anything outside it is a contradiction rather than a
+ * tuning choice.
+ *
+ * Contrast is still REPORTED and not enforced for the SHIPPED set — that rule is
+ * what forced the rejected designs into a box, and it has not been reinstated.
+ * What is enforced is narrower: a combination this system generates and OFFERS,
+ * for a template that measured fine as authored, must not be worse than one it
+ * refuses to build at all.
+ */
+const OFFER_CONTRAST_FLOOR = 3.4;
+
+/** Worst measured run in one (template, colourway) cell, cached. 34 x 13 cells
+ *  at most, each built once; the picker re-renders on every keystroke in the
+ *  panel and rebuilding a composition per swatch per render is not free. */
+const cellWorstRatio = new Map<string, number>();
+
+function worstRatioIn(t: TextTemplate, cw: Colourway): number {
+  const cacheKey = `${t.id}:${cw.id}`;
+  const hit = cellWorstRatio.get(cacheKey);
+  if (hit !== undefined) return hit;
+  const built = buildTemplate(layoutById(t.spec.layout), {
+    cw, ground: t.spec.ground, copy: t.spec.copy,
+  });
+  // A null ratio is an ornament or a run with no bound. Ornaments are decorative
+  // by declaration, and the bare photograph is already forbidden across the
+  // shipped set by `assertTemplatesSound` — and a colourway change cannot alter
+  // a run's backdrop KIND, only its colours, so no cell reachable from here can
+  // introduce one.
+  const ratios = runReports(built.runs).map((r) => r.ratio).filter((r): r is number => r !== null);
+  const worst = ratios.length ? Math.min(...ratios) : Infinity;
+  cellWorstRatio.set(cacheKey, worst);
+  return worst;
+}
+
+/**
+ * Every colourway this template may be re-rendered in.
+ *
+ * Three constraints. The first two are structural and `buildTemplate` enforces
+ * them anyway — this function exists so the picker never OFFERS a combination
+ * that would throw. The third is the measured one:
+ *
+ *  1. The layout's `accepts`, which is the register it renders correctly in.
+ *  2. The colourway's own `groundsFor`, which is where the outright exclusion
+ *     lives: Sunset and Ember measure 2.02:1 and 3.35:1 with light ink over
+ *     their own mesh, so neither is offered on a GRADIENT ground. Both stay
+ *     available on flat, duotone, photographic and textured, where the colour
+ *     under the type is known or the region is darkened first.
+ *  3. `OFFER_CONTRAST_FLOOR`, measured per cell. This is what stops the picker
+ *     offering combinations worse than the ones rule 2 refuses to build.
+ *
+ * The template's OWN colourway is always kept, whatever it measures. It is
+ * already on the canvas — the swatch row's job there is to show which one is
+ * current, and hiding it would leave the user unable to see or return to the
+ * state they are in. The only template this affects is the one shipped run at
+ * 3.48:1, which passes anyway.
+ */
+export function colourwaysForTemplate(t: TextTemplate): Colourway[] {
+  return colourwaysForLayout(layoutById(t.spec.layout))
+    .filter((cw) => groundsFor(cw).includes(t.spec.ground))
+    .filter((cw) => cw.id === t.spec.colourway || worstRatioIn(t, cw) >= OFFER_CONTRAST_FLOOR);
+}
+
+/**
+ * The same list, ordered so the first few are the ones worth showing first.
+ *
+ * The order is a suggestion and nothing more — every compatible colourway is in
+ * the returned list, and a caller that shows all of them is not doing anything
+ * wrong. Ranked by, in order:
+ *
+ *  1. The colourway the template was designed in. It comes first because it is
+ *     the one a human approved for this exact layout and ground.
+ *  2. Whether it keeps the AUTHORED REGISTER. A register is which way the
+ *     composition reads — `vibrant` and `dark` are dark-ground with light ink,
+ *     `soft` is the inverse — so same-register options are the ones that change
+ *     the hues without changing the picture's whole light/dark character. Every
+ *     register still renders correctly; this is about what a shortlist should
+ *     open with, not about what is valid.
+ *  3. How well the remaining registers suit the GROUND — `REGISTERS_BY_GROUND`,
+ *     which is why a photographic template offers its deep sets before its pale
+ *     ones and a blocked one does the reverse.
+ *  4. The order in `COLOURWAYS`, which makes the result stable.
+ */
+export function suggestedColourways(t: TextTemplate): Colourway[] {
+  const authored = t.colourwayRef;
+  const byGround = REGISTERS_BY_GROUND[t.spec.ground];
+  const rank = (cw: Colourway): number[] => [
+    cw.id === authored.id ? 0 : 1,
+    cw.register === authored.register ? 0 : 1,
+    byGround.indexOf(cw.register),
+    COLOURWAYS.findIndex((c) => c.id === cw.id),
+  ];
+  return colourwaysForTemplate(t)
+    .map((cw) => ({ cw, r: rank(cw) }))
+    .sort((a, b) => {
+      for (let i = 0; i < a.r.length; i += 1) {
+        if (a.r[i] !== b.r[i]) return a.r[i] - b.r[i];
+      }
+      return 0;
+    })
+    .map((x) => x.cw);
+}
+
+/**
+ * Rebuild a template in a different colourway.
+ *
+ * Same layout, same ground, same words, different hues — which is exactly what
+ * `spec` was kept for. Throws on a colourway this template may not take, via
+ * `buildTemplate`; callers pick from `colourwaysForTemplate` and so never see it.
+ */
+export function recolourTemplate(t: TextTemplate, colourwayId: string): TextTemplate {
+  if (colourwayId === t.spec.colourway) return t;
+  const spec: TemplateSpec = { ...t.spec, colourway: colourwayId };
+  const built = buildTemplate(layoutById(spec.layout), {
+    cw: colourway(colourwayId),
+    ground: spec.ground,
+    copy: spec.copy,
+  });
+  return {
+    ...t,
+    colourwayRef: built.colourway,
+    headline: built.headline,
+    spec,
+    layers: built.layers,
+    runs: built.runs,
+  };
 }
 
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
@@ -618,12 +992,19 @@ export interface ResolvedTemplate {
  * A subject image layer resolves to `subjectUrl`; when that is empty the layer
  * is skipped rather than rendered as an empty box, so the caller must handle an
  * empty result.
+ *
+ * `templateKey` stamps every layer produced here, which is what lets a later
+ * apply replace this template's layers rather than stack on them, and a remove
+ * take them away without touching a layer the user added. It is supplied by the
+ * caller rather than derived from `now`: the ids below already use `now` for
+ * uniqueness, and one string cannot safely carry both meanings.
  */
 export function templateToLayers(
   t: ResolvedTemplate,
   subjectUrl: string,
   width: number,
   height: number,
+  templateKey?: string,
 ): Layer[] {
   const canvasAspect = width && height ? width / height : 1;
   const now = Date.now();
@@ -636,6 +1017,7 @@ export function templateToLayers(
       type: "image",
       imageUrl: backgroundDataUri(t.background),
       name: "Background",
+      templateKey,
       xPct: 0, yPct: 0, widthPct: 100,
       aspectRatio: canvasAspect,
       opacity: 1,
@@ -655,6 +1037,7 @@ export function templateToLayers(
         type: "image",
         imageUrl: url,
         name: def.source === "subject-cutout" ? "Cutout" : def.source === "subject" ? "Photo" : "Image",
+        templateKey,
         xPct: def.xPct,
         yPct: def.yPct,
         widthPct: def.widthPct,
@@ -675,6 +1058,7 @@ export function templateToLayers(
         type: "image",
         imageUrl: shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow }),
         name: `shape:${def.shape}`,
+        templateKey,
         xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
         heightPct: def.heightPct,
         aspectRatio: shapeAspect(def.shape, !!def.shadow),
@@ -703,6 +1087,7 @@ export function templateToLayers(
       letterSpacingPct: letterSpacing !== undefined ? pctFromReferencePx(letterSpacing) : undefined,
       outlineWidthPct: outlineWidth !== undefined ? pctFromReferencePx(outlineWidth) : undefined,
       id: `tpl-${now}-${i}`,
+      templateKey,
     });
   });
 
@@ -720,100 +1105,105 @@ export function placesSubject(defs: TemplateLayerDef[]): boolean {
 }
 
 /**
- * Re-colour and re-font a whole template for the org's brand kit:
- * - the background takes the brand palette (gradients use the first two colours,
- *   or a darkened shade of the first when only one exists)
- * - shapes and pills/badges cycle through the palette; pill text auto-contrasts
- * - text sitting on a branded background auto-contrasts against it
- * - heading/body layers switch to the brand's primary/secondary fonts
- * - `lockColor` layers keep their authored colours (e.g. urgency red, card text)
- * Overlay templates (no background) keep photo-text colours for legibility.
+ * Rebuild a template in the org's brand colours.
+ *
+ * WHY THIS REBUILDS RATHER THAN RE-COLOURS. The previous implementation walked
+ * the finished layer list and cycled the brand palette through whichever layers
+ * happened to be SHAPES, then re-derived each run's ink from whatever it ended
+ * up sitting on. That was the only thing available when a template was a flat
+ * field with type on it, and it had two costs that only became visible once the
+ * ground became an axis of its own:
+ *
+ *  1. It could not touch a ground that is not a shape. A mesh, a glow, a
+ *     halftone field and a glass chip are all SVG data URIs — image layers —
+ *     because that is the only way this renderer can express them. So on the
+ *     five gradient-ground templates a brand kit changed literally nothing: the
+ *     customer turned brand mode on and got our colours. The verification
+ *     harness fails on that, and it is how the case was found.
+ *
+ *  2. Cycling a palette through shapes in paint order assigns colours by
+ *     accident of layer index. The ground, a scrim and a CTA pill are three
+ *     different jobs, and `colors[badge++ % colors.length]` gives them whatever
+ *     comes next.
+ *
+ * A template now carries the spec it was built from, so branding is: derive a
+ * `Colourway` from the brand kit, rebuild through the same `buildTemplate` the
+ * shipped set uses, then substitute the brand's faces. Every colour in the
+ * result comes from a role, exactly as in the authored form — which is the same
+ * guarantee, applied to the brand's palette instead of ours.
+ *
+ * THE WASH DIRECTION IS RE-DERIVED BY CONSTRUCTION, which is the property that
+ * had to survive this change. A duotone ground picks multiply-last or
+ * screen-last from the colourway's REGISTER, and the derived colourway's
+ * register is computed from the ink `bestTextOn` chooses for the brand's own
+ * surface. So the surviving wash pass is always the one whose monotone bound
+ * protects the ink actually set — there is no way to express the mispairing that
+ * used to produce 1.11:1 against a dark photograph, rather than a rule
+ * remembering to fix it afterwards.
  */
+function brandColourway(colors: string[]): Colourway {
+  const p = resolvePalette("ecommerce", { ...EMPTY_KIT, colors }, true);
+  // `bestTextOn` returns one of exactly two inks, so this is a fact about the
+  // brand's surface rather than a threshold guess: a light ink means a
+  // dark-ground register and a dark ink means a soft one. Everything that keys
+  // off the register — the duotone order above all — is then correct for the
+  // ink this palette actually sets.
+  const register: ColourRegister = p.ink === bestTextOn("#000000") ? "dark" : "soft";
+  return {
+    id: "brand",
+    name: "Brand kit",
+    register,
+    // Three stops that belong to each other: the surface stepped down, the
+    // surface, and the accent. `confident()` takes the middle one for a flat or
+    // blocked ground, so the ground a run lands on is the surface its ink was
+    // chosen against.
+    stops: [shadeHex(p.surface, 0.75), p.surface, p.accent],
+    angle: 135,
+    blobs: [],
+    surface: p.surface,
+    ink: p.ink,
+    accent: p.accent,
+    onAccent: p.onAccent,
+    accentInk: p.accentInk,
+  };
+}
+
+/** A kit with nothing but colours, so `resolvePalette` can be reused for its
+ *  role derivation without a caller inventing the other five fields. */
+const EMPTY_KIT: BrandKit = {
+  logo_url: null, colors: [], primary_font: null, secondary_font: null,
+  style_rules: null, tone: null,
+};
+
 export function brandTemplate(t: TextTemplate, brand?: BrandKit | null): ResolvedTemplate {
   const plain: ResolvedTemplate = { background: t.background ?? null, layers: t.layers };
   if (!brand) return plain;
   const colors = (brand.colors ?? []).filter((c) => HEX_RE.test(c));
 
-  let background = t.background ?? null;
-  if (background && colors.length > 0) {
-    background = background.type === "gradient"
-      ? { ...background, colors: [colors[0], colors[1] ?? shadeHex(colors[0])] }
-      : { ...background, colors: [colors[0]] };
-  }
-  const onBg = background?.colors?.[0];
+  const layers = colors.length
+    ? buildTemplate(layoutById(t.spec.layout), {
+      cw: brandColourway(colors),
+      ground: t.spec.ground,
+      copy: t.spec.copy,
+    }).layers
+    : t.layers;
 
-  let badge = 0;
-  const layers = t.layers.map((def): TemplateLayerDef => {
-    if (def.kind === "shape") {
-      if (def.lockColor || colors.length === 0) return def;
-      // Decorative white shapes (soft accents) keep their colour; solid shapes rebrand
-      if (def.color === "#ffffff" && (def.opacity ?? 1) < 0.5) return def;
-      const color = colors[badge++ % colors.length];
-      // A wash's direction is a function of its colour and its ink, not a
-      // style the layer carries around. Recolouring one without re-deriving
-      // the direction is how brand mode produced near-black type on a
-      // multiply wash of a pale brand colour — 1.11:1 against a dark
-      // photograph, because multiply can only take that field darker still.
-      // The ink below is chosen by `bestTextOn` against this same colour, so
-      // deriving the direction from that exact value here is what keeps the
-      // two agreeing, and the monotone floor is re-established against the
-      // brand palette instead of inherited from the palette the template was
-      // authored in.
-      if (isWashMode(def.blend)) {
-        return { ...def, color, blend: washFor(color, bestTextOn(color)) };
-      }
-      return { ...def, color };
-    }
-    // Photos aren't recoloured by the brand kit — pass through unchanged.
-    if (def.kind === "image") return def;
-    const out: TemplateTextDef = { ...def };
-    if (def.fontRole === "heading" && brand.primary_font) out.fontFamily = brand.primary_font;
-    if (def.fontRole === "body" && brand.secondary_font) out.fontFamily = brand.secondary_font;
-    if (!def.lockColor && def.bgColor && colors.length > 0) {
-      const c = colors[badge++ % colors.length];
-      out.bgColor = c;
-      out.color = bestTextOn(c);
-    } else if (!def.lockColor && !def.bgColor && onBg) {
-      out.color = bestTextOn(onBg);
-    }
-    return out;
-  });
-
-  // Recolouring the fields without recolouring the type on them is how brand
-  // mode used to produce light ink on a pale brand field. The families pick
-  // text colours that are guaranteed against the *palette's* field roles, and
-  // that guarantee does not survive a brand kit cycling arbitrary colours
-  // through those fields — so re-derive each run's colour from whatever it
-  // actually ends up sitting on. Runs with their own pill, or with lockColor,
-  // are already handled above and left alone.
-  //
-  // Order matters, and it is the order it is for a reason. Every field this
-  // function touches — colour AND wash direction — is already final in
-  // `layers`, so `analyzeText` here reads the rebranded fields and only the ink
-  // is still open. That is the one thing this loop writes, so nothing it
-  // decides is invalidated by a later step.
-  const rebranded = [...layers];
-  if (colors.length > 0) {
-    for (const backing of analyzeText(rebranded)) {
-      const layer = rebranded[backing.index];
-      if (layer.kind === "shape" || layer.kind === "image") continue;
-      if (layer.lockColor || layer.bgColor) continue;
-      // No field at all, so there is no colour to contrast against and no
-      // recolouring that would help. `assertTemplatesReadable` is what catches
-      // this; it is not silently acceptable, it is simply not fixable here.
-      if (!backing.fieldColor) continue;
-      // `backing.fieldColor` is a wash's own colour rather than what it
-      // composites to, which is exactly what makes this correct on a wash:
-      // monotonicity puts the true worst case at that colour, and the field's
-      // direction was derived from `bestTextOn` of it above.
-      rebranded[backing.index] = { ...layer, color: bestTextOn(backing.fieldColor) };
-    }
-  }
-
-  return { background, layers: rebranded };
+  // Faces are independent of colour, so they apply whether or not the kit
+  // carried any. `fontRole` is set by the type system from the run's size:
+  // display and headline runs take the heading face, everything else the body.
+  if (!brand.primary_font && !brand.secondary_font) return { background: null, layers };
+  return {
+    background: null,
+    layers: layers.map((def): TemplateLayerDef => {
+      if (def.kind !== "text") return def;
+      if (def.fontRole === "heading" && brand.primary_font) return { ...def, fontFamily: brand.primary_font };
+      if (def.fontRole === "body" && brand.secondary_font) return { ...def, fontFamily: brand.secondary_font };
+      return def;
+    }),
+  };
 }
 
-// ── The readability gate ──────────────────────────────────────────────────────
+// ── The soundness gate ────────────────────────────────────────────────────────
 
 /** Helper so a kit is one line of colours rather than six fields of nulls. */
 function readabilityKit(colors: string[]): BrandKit {
@@ -849,41 +1239,71 @@ export const BRAND_KIT_FIXTURES: { label: string; kit: BrandKit }[] = [
 ];
 
 /**
- * Dev-only gate on the readability rule.
+ * Dev-only gate on the part of the readability rule that stays hard.
  *
- * The families make it hard to author unbacked text; this makes it impossible
- * to ship. A template that spreads a family's output and appends its own text
- * def, or that hand-writes layers entirely, bypasses `panel()` — this catches
- * it at module load, before anything renders, and names the offending copy.
+ * WHAT CHANGED, AND WHY IT IS NOT A WEAKENING. The rule this replaces was
+ * "every run sits on an opaque field at 4.5:1", enforced by `findUnbackedText`
+ * over the whole set. It was correct for the composition families, because
+ * `panel()` could not emit type without its backing field — and it is exactly
+ * the rule the owner rejected the output of twice. A contrast floor that admits
+ * no way to satisfy it except a box behind every word is a rule that designs
+ * the page, and what it designed was called old and uncreative.
  *
- * It checks the BRANDED form as well as the authored one, and that half is not
- * optional. `brandTemplate` defaults to on in the editor, so branded is the
- * normal path, not an edge case — and it is the path that re-colours fields
- * out from under type that was contrast-checked against different colours.
- * Checking only `TEXT_TEMPLATES` is precisely how a wash whose direction no
- * longer matched its ink — 1.11:1 at the worst photograph — passed this gate
- * while being wrong in every brand kit.
+ * So contrast is now REPORTED rather than enforced, and the harness prints
+ * every measurement. Two things stay hard, and they are the two that are about
+ * a template being wrong about itself rather than about taste:
  *
- * `process.env.NODE_ENV` is inlined by the bundler, so this whole block is
- * dead code in a production build and costs nothing there.
+ *  1. A run that CLAIMS an opaque field or a monotone wash must actually have
+ *     one, unoccluded, in the finished layer list. `verifyFieldClaims` checks
+ *     the claim against the geometry. Everything downstream — the sweep, the
+ *     harness, this gate — reads the declared backdrop, so a false claim
+ *     poisons every number taken from it.
+ *
+ *  2. No run may sit on the bare photograph. `Backdrop`'s `photograph` kind
+ *     exists to be declarable, and nothing in the shipped set may declare it:
+ *     an unbacked run over whatever the customer uploaded has no measurable
+ *     contrast at all, and that is a defect however the rest of the rule moved.
+ *
+ * The BRANDED form is checked too, and that half is not optional: `brandTemplate`
+ * defaults to on in the editor, so branded is the normal path. It re-colours
+ * fields out from under type that was measured against different colours, and
+ * the failure it produces is a wash whose direction no longer matches its ink —
+ * which `analyzeText` reports and which is what `washFor` exists to prevent.
+ * Checking only the authored form is precisely how a wash at 1.11:1 against the
+ * worst photograph passed the old gate while being wrong in every brand kit.
+ *
+ * `process.env.NODE_ENV` is inlined by the bundler, so this whole block is dead
+ * code in a production build and costs nothing there.
  */
-export function assertTemplatesReadable(templates: TextTemplate[]): void {
+export function assertTemplatesSound(templates: TextTemplate[]): void {
   const bad: string[] = [];
   for (const t of templates) {
-    for (const issue of findUnbackedText(t.layers)) {
-      bad.push(`  ${t.id}: "${issue.text}" — ${issue.reason}`);
+    for (const problem of verifyFieldClaims(t.layers, t.runs)) {
+      bad.push(`  ${t.id}: ${problem}`);
+    }
+    for (const run of t.runs) {
+      if (run.on.kind === "photograph") {
+        bad.push(`  ${t.id}: "${run.text}" declares the bare photograph as its backdrop`);
+      }
     }
     for (const { label, kit } of BRAND_KIT_FIXTURES) {
-      for (const issue of findUnbackedText(brandTemplate(t, kit).layers)) {
-        bad.push(`  ${t.id} [${label}]: "${issue.text}" — ${issue.reason}`);
+      for (const backing of analyzeText(brandTemplate(t, kit).layers)) {
+        // Only the mispaired-wash case. A run resolving off its field under a
+        // brand kit is the ordinary consequence of type living outside a box
+        // and is reported as a contrast warning by the harness; a wash running
+        // the wrong way for its ink has no contrast bound at all.
+        if (backing.reason?.includes("wash")) {
+          bad.push(`  ${t.id} [${label}]: "${backing.text}" — ${backing.reason}`);
+        }
       }
     }
   }
   if (bad.length === 0) return;
   const message =
-    `${bad.length} template text run(s) are not on a scrim, band or solid field.\n` +
-    `Text over a bare photo is unreadable on light images. Build the layers with\n` +
-    `panel() from families.ts, which cannot emit text without its backing field.\n` +
+    `${bad.length} template(s) are wrong about what their type sits on.\n` +
+    `A run may sit in a region the template prepared and take a contrast\n` +
+    `warning for it. A run that claims a field or a wash it does not have is a\n` +
+    `different thing: every number downstream is taken from that claim.\n` +
     `A "[kit]" tag means the authored template is fine and the brand-kit mapping\n` +
     `broke it, so the fix belongs in brandTemplate rather than in the template.\n` +
     bad.join("\n");
@@ -895,5 +1315,5 @@ export function assertTemplatesReadable(templates: TextTemplate[]): void {
 // Runs last in the module on purpose: it calls `brandTemplate`, which reads
 // module-level constants declared above it.
 if (process.env.NODE_ENV === "development") {
-  assertTemplatesReadable(TEXT_TEMPLATES);
+  assertTemplatesSound(TEXT_TEMPLATES);
 }

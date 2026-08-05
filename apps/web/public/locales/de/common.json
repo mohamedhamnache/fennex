@@ -1381,7 +1381,13 @@
       "hintRequired": "Ohne einen Namen hier oder eine gemalte Maske wissen wir nicht, wo wir arbeiten sollen."
     },
     "templates": {
-      "search": "Vorlagen durchsuchen"
+      "search": "Vorlagen durchsuchen",
+      "appliedNamed": "Angewendete Vorlage: {{name}}",
+      "remove": "Vorlage entfernen",
+      "palette": "Palette",
+      "morePalettes": "Alle anzeigen",
+      "fewerPalettes": "Weniger anzeigen",
+      "brandColours": "Das Marken-Kit liefert die Farben dieser Vorlage."
     },
     "score": {
       "title": "Score",

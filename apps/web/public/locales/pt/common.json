@@ -1381,7 +1381,13 @@
       "hintRequired": "Não sabemos onde atuar sem um nome aqui ou uma máscara pintada."
     },
     "templates": {
-      "search": "Pesquisar modelos"
+      "search": "Pesquisar modelos",
+      "appliedNamed": "Modelo aplicado: {{name}}",
+      "remove": "Remover o modelo",
+      "palette": "Paleta",
+      "morePalettes": "Ver todas",
+      "fewerPalettes": "Ver menos",
+      "brandColours": "O kit de marca fornece as cores deste modelo."
     },
     "score": {
       "title": "Pontuação",

@@ -1381,7 +1381,13 @@
       "hintRequired": "No sabemos dónde actuar sin un nombre aquí o una máscara pintada."
     },
     "templates": {
-      "search": "Buscar plantillas"
+      "search": "Buscar plantillas",
+      "appliedNamed": "Plantilla aplicada: {{name}}",
+      "remove": "Quitar la plantilla",
+      "palette": "Paleta",
+      "morePalettes": "Ver todas",
+      "fewerPalettes": "Ver menos",
+      "brandColours": "El kit de marca aporta los colores de esta plantilla."
     },
     "score": {
       "title": "Puntuación",
