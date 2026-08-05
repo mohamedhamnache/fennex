@@ -39,7 +39,7 @@ import type { TemplateLayerDef, TemplateShapeDef, TemplateTextDef } from "../tex
 import type { BlendMode } from "../scene/types";
 import type { ShapeId } from "../shapes";
 import {
-  FONT_ROLES, MIN_CONTRAST, compositeOver, contrastRatio, worstCaseContrast,
+  FONT_ROLES, MIN_CONTRAST, compositeOver, contrastRatio, mixHex, worstCaseContrast,
 } from "../palette";
 import { REFERENCE_WIDTH, analyzeText } from "../families";
 
@@ -76,17 +76,68 @@ export function lead(sizePct: number, factor: number): number {
  *    field darker and `screen` only lighter, so contrast against the field's
  *    own colour is a floor for the correctly-paired ink; the extreme is
  *    included so a mispairing reports the truth instead of a flattering number.
+ *  - `owned` — a gradient or mesh the template painted itself, so the type is
+ *    over artwork rather than over a photograph and every colour it can meet is
+ *    known. Contrast is the WORST of them, which is the only honest number: a
+ *    run that clears the light end of a mesh and fails the dark end has failed.
  *  - `photograph` — nothing prepared at all. Unmeasurable, always a warning.
  */
 export type Backdrop =
   | { kind: "field"; color: string }
   | { kind: "prepared"; color: string; alpha: number }
   | { kind: "wash"; color: string; blend: BlendMode }
+  | { kind: "owned"; colors: string[] }
   | { kind: "photograph" };
 
 /** The two extremes a photograph can drive a monotone wash to. */
 const BLACKEST = "#000000";
 const WHITEST = "#ffffff";
+
+// ── Deriving colours a palette does not carry ────────────────────────────────
+//
+// A palette is five roles, and a mesh wants four or five COLOURS that belong to
+// each other. The rule that colours come from roles is about not writing hex
+// literals into templates, not about never computing one: everything below is a
+// function of a role, so a brand kit still moves the whole composition.
+
+/** `hex` mixed toward white. A pastel derived from an accent, for the soft
+ *  register — mint, cream and blush are all somebody's accent at 88% tint. */
+export function tint(hex: string, amount: number): string {
+  return mixHex(hex, "#ffffff", amount);
+}
+
+/** `hex` rotated around the colour wheel, keeping its saturation and lightness.
+ *  This is what makes a two-role palette produce a three-hue mesh that still
+ *  reads as one brand: the neighbours are the accent's own hue, moved. */
+export function hueShift(hex: string, degrees: number): string {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6);
+  const [r, g, b] = [0, 2, 4].map((i) => (parseInt(full.slice(i, i + 2), 16) || 0) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let hue = 0;
+  if (d !== 0) {
+    if (max === r) hue = ((g - b) / d) % 6;
+    else if (max === g) hue = (b - r) / d + 2;
+    else hue = (r - g) / d + 4;
+  }
+  hue = (((hue * 60 + degrees) % 360) + 360) % 360;
+
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = l - c / 2;
+  const seg = Math.floor(hue / 60) % 6;
+  const rgbs: [number, number, number][] = [
+    [c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x],
+  ];
+  const [rr, gg, bb] = rgbs[seg];
+  const to = (v: number) => Math.round(Math.min(255, Math.max(0, (v + m) * 255)))
+    .toString(16).padStart(2, "0");
+  return `#${to(rr)}${to(gg)}${to(bb)}`;
+}
 
 // ── Type ──────────────────────────────────────────────────────────────────────
 
@@ -316,6 +367,7 @@ function backdropLabel(b: Backdrop): string {
     case "field": return `opaque field ${b.color}`;
     case "prepared": return `prepared region ${b.color} at ${(b.alpha * 100).toFixed(0)}%`;
     case "wash": return `${b.blend} wash of ${b.color}`;
+    case "owned": return `own gradient (${b.colors.length} stops, worst ${b.colors.join(" ")})`;
     case "photograph": return "the photograph";
   }
 }
@@ -328,6 +380,12 @@ function backdropLabel(b: Backdrop): string {
 function runRatio(s: RunSpec): number | null {
   const b = s.on;
   if (b.kind === "photograph") return null;
+  if (b.kind === "owned") {
+    const alpha = s.opacity ?? 1;
+    return Math.min(
+      ...b.colors.map((c) => contrastRatio(alpha < 1 ? compositeOver(s.color, c, alpha) : s.color, c)),
+    );
+  }
   const alpha = s.opacity ?? 1;
   const ink = alpha < 1 ? compositeOver(s.color, b.color, alpha) : s.color;
   if (b.kind === "field") return contrastRatio(ink, b.color);

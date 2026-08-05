@@ -168,6 +168,13 @@ export const FONT_ROLES = {
   modern: "'Inter', sans-serif",
   support: "'Source Sans 3', sans-serif",
   mono: "'JetBrains Mono', monospace",
+  /** A handwritten accent, for the one line above a cap-line that a script face
+   *  is actually for. Used sparingly by design: a script set at length is
+   *  unreadable, and a script used twice in one composition is a costume.
+   *  Loaded through the same globals.css @import as the others, so the
+   *  registered family stays the literal "Caveat" that `document.fonts.check`
+   *  and `ctx.font` look up. */
+  script: "'Caveat', cursive",
 } as const;
 
 export type FontRole = keyof typeof FONT_ROLES;

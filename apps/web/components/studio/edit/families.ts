@@ -88,7 +88,13 @@ export type FontKey = keyof typeof FONT_ROLES;
  *  `mono` is the exception: JetBrains Mono is monospaced, so every glyph has
  *  the same 0.6em advance width. That is not an estimate, so do not "correct"
  *  it upward the way the others are padded. */
-const WIDTH_FACTOR: Record<FontKey, number> = { impact: 0.46, modern: 0.56, support: 0.52, mono: 0.6 };
+const WIDTH_FACTOR: Record<FontKey, number> = {
+  impact: 0.46, modern: 0.56, support: 0.52, mono: 0.6,
+  // Caveat is a narrow, slanted script: its glyphs advance well under half an
+  // em. Padded upward like the others, because over-estimating costs a warning
+  // and under-estimating ships a run past the edge of its field.
+  script: 0.45,
+};
 
 function factorFor(fontFamily: string): number {
   for (const key of Object.keys(FONT_ROLES) as FontKey[]) {
