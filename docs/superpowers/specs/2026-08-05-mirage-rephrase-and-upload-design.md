@@ -99,8 +99,12 @@ What the proximity grep claimed, and what was actually true:
 
 - `batch/client.py:31` — **not a bypass.** `run_batched` is called from inside
   `call_llm_usage`, on `call_llm`'s own batch path. Already metered.
-- `product.py:143` — **does not exist.** The file is `product_service.py`, and
-  it makes no LLM calls at all.
+- `product.py:143` — **real, and I wrongly dismissed it once.** The first
+  correction claimed the file did not exist, because it searched
+  `app/services/` and the file is `app/api/v1/routers/product.py`. It is a
+  gpt-4o-mini vision call over raw httpx, reaching neither `call_llm`'s
+  chokepoint nor `_replicate_run`'s. The endpoint's `require_credits("ai")`
+  only CHECKS the balance; it deducts nothing.
 - `knowledge_service.py:105` — **real.** OpenAI embeddings, called directly, and
   `text-embedding-3-small` had no `cost_rate` row either, so metering it alone
   would still have priced to zero.
@@ -120,5 +124,16 @@ the stream fix is real: an abandoned stream still bills what it consumed, since
 metering only complete streams would leave exactly the interrupted ones free.
 
 The durable fix remains the same and is still not built: a startup assertion
-that every supplier call path is metered. Greps find call sites; they do not
-find entry points nobody thought to check.
+that every supplier call path is metered.
+
+Three greps produced three different answers, and each was wrong in a different
+direction — a false positive, a false negative from searching the wrong
+directory, and a miss on the largest leak of all. The lesson is not "grep more
+carefully". It is that the property wanted here — every paid call is metered —
+is not something a text search can establish, and it needs an assertion that
+fails loudly at startup instead.
+
+The check has to key on the OUTBOUND CALL, not on the module. Every leak found
+here was a paid HTTP request to a supplier that no chokepoint saw:
+`stream_llm`'s SDK stream, an httpx POST in a router, an SDK embeddings call in
+a service.

@@ -270,3 +270,51 @@ async def test_knowledge_embeddings_are_metered(monkeypatch, metered):
     assert metered[0]["feature"] == "knowledge_embed"
     assert metered[0]["usage"].input_tokens == 4321
     assert metered[0]["usage"].model == knowledge_service.EMBED_MODEL
+
+
+async def test_product_image_analysis_is_metered(monkeypatch, metered):
+    """The Product studio's vision call goes out over raw httpx, reaching
+    neither call_llm's chokepoint nor _replicate_run's.
+
+    require_credits on the endpoint only CHECKS the balance; it deducts
+    nothing, so this was unbilled supplier spend on every product scene.
+    """
+    import httpx as _httpx
+    from app.api.v1.routers import product as product_router
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "choices": [{"message": {"content": " a red bottle "}}],
+                "usage": {"prompt_tokens": 900, "completion_tokens": 40,
+                          "prompt_tokens_details": {"cached_tokens": 100}},
+            }
+
+    class _Client:
+        def __init__(self, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **kw):
+            return _Resp()
+
+    monkeypatch.setattr(_httpx, "AsyncClient", _Client)
+    org = uuid.uuid4()
+    metering_context.set_metering_org(org)
+
+    out = await product_router._analyze_product_image("http://x/y.png", "key")
+
+    assert out == "a red bottle"
+    assert len(metered) == 1, "the product vision call must produce a usage event"
+    assert metered[0]["org_id"] == org
+    assert metered[0]["feature"] == "product_image_analysis"
+    u = metered[0]["usage"]
+    assert (u.input_tokens, u.output_tokens, u.cache_read_tokens) == (900, 40, 100)

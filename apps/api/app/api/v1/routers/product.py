@@ -1,3 +1,4 @@
+import logging
 import uuid
 import io
 import base64
@@ -23,6 +24,8 @@ from app.services.prompting import vocab as prompt_vocab
 from app.api.v1.routers.images import ImageOut
 from app.core.billing import check_project_not_locked, increment_usage, require_credits
 from app.core.security import decrypt_api_key
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -145,7 +148,26 @@ async def _analyze_product_image(image_url: str, openai_key: str) -> str:
                 json=payload,
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+            body = resp.json()
+            # A paid OpenAI vision call made over raw httpx, so it reaches
+            # neither call_llm's chokepoint nor _replicate_run's. require_credits
+            # on the endpoint only CHECKS the balance; nothing here deducted
+            # from it, so every product analysis was unbilled supplier spend.
+            try:
+                from app.services.llm_service import LLMUsage, _meter_ambient
+                u = body.get("usage") or {}
+                await _meter_ambient(
+                    LLMUsage("openai", "gpt-4o-mini",
+                             input_tokens=u.get("prompt_tokens", 0) or 0,
+                             output_tokens=u.get("completion_tokens", 0) or 0,
+                             cache_read_tokens=(
+                                 (u.get("prompt_tokens_details") or {}).get("cached_tokens", 0) or 0
+                             )),
+                    "product_image_analysis",
+                )
+            except Exception:
+                logger.exception("product analysis metering failed (non-fatal)")
+            return body["choices"][0]["message"]["content"].strip()
     except Exception:
         return ""
 
