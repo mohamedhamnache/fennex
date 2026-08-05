@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { commitImageVersion, getImage, uploadImage, type GeneratedImage } from "@/lib/api";
 import { EditToolsSidebar } from "@/components/studio/edit/EditToolsSidebar";
 import { EditCanvas, type EditCanvasRef, type Layer, type TextLayer, type ImageLayer } from "@/components/studio/edit/EditCanvas";
-import { EditControlsPanel } from "@/components/studio/edit/EditControlsPanel";
+import { EditControlsPanel, type AppliedTemplate, type ResolvedCutout } from "@/components/studio/edit/EditControlsPanel";
 import { AiChatPanel } from "@/components/studio/edit/AiChatPanel";
 import { VersionStrip } from "@/components/studio/edit/VersionStrip";
 import { SeoPanel } from "@/components/studio/edit/SeoPanel";
@@ -48,6 +48,14 @@ export default function EditPage({
   const [burnError, setBurnError] = useState<string | null>(null);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [hideBaseImage, setHideBaseImage] = useState(false);
+  // Both of these describe `layers` and `hideBaseImage` above, and both must
+  // outlive the right-hand column: it renders the assistant OR the controls
+  // panel conditionally, so a tab click unmounts the panel and would take any
+  // state it owned with it. See AppliedTemplate and ResolvedCutout for what
+  // each one going missing costs — a stranded hidden photograph and a second
+  // charge for the same cutout, respectively.
+  const [appliedTemplate, setAppliedTemplate] = useState<AppliedTemplate | null>(null);
+  const [resolvedCutout, setResolvedCutout] = useState<ResolvedCutout | null>(null);
 
   // Picking a tool must reveal the panel that configures it. Without this,
   // choosing a tool while the Mirage tab is open changed the selection behind
@@ -367,6 +375,11 @@ export default function EditPage({
     setLayers([]);
     setSelectedLayerId(null);
     setHideBaseImage(false);
+    // The layers are in the pixels now, so nothing is applied any more. Left
+    // set, the strip would offer a palette for layers that no longer exist and
+    // a swatch click would paint a second copy of the template over the
+    // flattened image that already contains it.
+    setAppliedTemplate(null);
   }
 
   async function handleBurnLayers() {
@@ -658,6 +671,10 @@ export default function EditPage({
                 onProcessingChange={setIsAiProcessing}
                 onHideBaseImage={setHideBaseImage}
                 hideBaseImage={hideBaseImage}
+                appliedTemplate={appliedTemplate}
+                onAppliedTemplateChange={setAppliedTemplate}
+                resolvedCutout={resolvedCutout}
+                onResolvedCutoutChange={setResolvedCutout}
                 cropAspect={cropAspect}
                 onCropAspectChange={setCropAspect}
                 onDuplicateLayer={handleDuplicateLayer}
