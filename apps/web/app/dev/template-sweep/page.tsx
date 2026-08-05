@@ -215,7 +215,7 @@ function earnsCapability(l: TemplateLayerDef): boolean {
 function checkCapabilityCoverage(templates: TextTemplate[]): Check {
   const layersByFamily = new Map<string, TemplateLayerDef[]>();
   for (const t of templates) {
-    layersByFamily.set(t.family, [...(layersByFamily.get(t.family) ?? []), ...t.layers]);
+    layersByFamily.set(t.layout, [...(layersByFamily.get(t.layout) ?? []), ...t.layers]);
   }
   const barren = [...layersByFamily.entries()]
     .filter(([, layers]) => !layers.some(earnsCapability))
