@@ -7,7 +7,7 @@ import {
 import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import { pctFromReferencePx } from "./scene/measure";
-import { analyzeText } from "./families";
+import { analyzeText } from "./design/layers";
 import { type Colourway, type ColourRegister, colourway } from "./design/colourways";
 import type { GroundKind } from "./design/ground";
 import {
@@ -23,9 +23,9 @@ export { bestTextOn, type TemplateCategory };
 /** A text run as an author writes it.
  *
  *  The type metrics are deliberately NOT the layer model's percentages. Authors
- *  and the families that generate them work in px on the `REFERENCE_WIDTH`
+ *  and the layouts that generate them work in px on the `REFERENCE_WIDTH`
  *  canvas — `fontSize: 80` is legible as a headline in a way `fontSizePct: 10`
- *  is not, and the authoring fit guard in families.ts measures in the same
+ *  is not, and the authoring fit guard in design/layers.ts measures in the same
  *  units. `templateToLayers` is the boundary: it converts these px to
  *  percentages exactly once, and past that point nothing in the editor or the
  *  renderer carries an absolute pixel size. */
@@ -53,7 +53,7 @@ export interface TemplateShapeDef {
   widthPct: number;
   /** Explicit height as % of canvas height. Omit to derive it from the shape's
    *  own aspect ratio — which is right for badges but wrong for the panels and
-   *  bands the composition families build out of `rect`. */
+   *  scrims the grounds build out of `rect`. */
   heightPct?: number;
   opacity?: number;
   rotation?: number;
@@ -63,7 +63,7 @@ export interface TemplateShapeDef {
   gradient?: boolean;
   shadow?: boolean;
   /** Composite this field against what is already painted. Only a field with no
-   *  type on it may blend — see `panel()` in families.ts. */
+   *  type on it may blend — see `panel()` in design/layers.ts. */
   blend?: BlendMode;
 }
 

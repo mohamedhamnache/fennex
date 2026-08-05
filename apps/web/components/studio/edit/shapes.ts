@@ -105,13 +105,6 @@ export function shapeAspect(shape: ShapeId, shadow = false): number {
   return (w + p) / (h + p);
 }
 
-/** Tight (no-shadow) aspect ratios, kept for convenience. */
-export const SHAPE_ASPECT: Record<ShapeId, number> = Object.fromEntries(
-  (Object.entries(SHAPE_VB) as [ShapeId, [number, number, number, number]][]).map(
-    ([id, [, , w, h]]) => [id, w / h],
-  ),
-) as Record<ShapeId, number>;
-
 /** Shape geometry: F is the paint (solid colour or gradient url). */
 function body(shape: ShapeId, F: string): string {
   switch (shape) {

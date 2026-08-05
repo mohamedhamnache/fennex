@@ -29,7 +29,7 @@ import {
   TEXT_TEMPLATES, templateFingerprint, brandTemplate, BRAND_KIT_FIXTURES,
   type TextTemplate, type TemplateLayerDef,
 } from "../components/studio/edit/text-templates";
-import { analyzeText } from "../components/studio/edit/families";
+import { analyzeText } from "../components/studio/edit/design/layers";
 import { MIN_CONTRAST } from "../components/studio/edit/palette";
 import {
   LAYOUTS, matrixFor, buildTemplate, PLACEHOLDER_COPY, headlinePct,

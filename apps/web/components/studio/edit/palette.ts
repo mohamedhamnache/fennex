@@ -192,11 +192,15 @@ export const FONT_ROLES = {
 
 export type FontRole = keyof typeof FONT_ROLES;
 
-/** Sizes at the ~800px reference canvas. The 5:1 headline-to-support ratio is
- *  enforced here rather than per-template: flat hierarchy is the single most
- *  common reason a composition reads as amateur. */
-export const TYPE_SCALE = {
-  headline: 80,
-  subhead: 34,
-  support: 16,
-} as const;
+/* There was a TYPE_SCALE here: headline 80px, subhead 34px, support 16px on
+ * the reference canvas, with a 5:1 headline-to-support ratio enforced centrally
+ * so no template could flatten its own hierarchy. Only the type ladder in the
+ * deleted composition families read it.
+ *
+ * It is gone rather than kept because fixing the ratio also fixes the absolute
+ * scale: with support at a readable 16px, 5:1 forces every headline to 80px,
+ * which is 10% of canvas width. That is the number the product owner was
+ * looking at when the set was rejected as having no creativity in it — the
+ * hierarchy was identical in all 34 because it was not theirs to choose.
+ * `design/type.ts` sets size per composition and takes hierarchy from contrast
+ * between elements instead. */

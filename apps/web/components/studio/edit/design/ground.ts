@@ -45,7 +45,7 @@
  */
 
 import type { TemplateLayerDef } from "../text-templates";
-import { photo } from "../families";
+import { photo } from "./layers";
 import type { Backdrop } from "./type";
 import { field, zoneScrim } from "./type";
 import type { Colourway } from "./colourways";

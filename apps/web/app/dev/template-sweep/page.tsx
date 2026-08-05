@@ -28,7 +28,7 @@ import {
   TEXT_TEMPLATES, templateToLayers, brandTemplate, templateFingerprint, BRAND_KIT_FIXTURES,
   type TextTemplate, type ResolvedTemplate, type TemplateLayerDef,
 } from "@/components/studio/edit/text-templates";
-import { analyzeText } from "@/components/studio/edit/families";
+import { analyzeText } from "@/components/studio/edit/design/layers";
 import {
   APPROVED_SIX, HEADLINE_REFERENCE, headlinePct, LAYOUTS, buildTemplate, colourwaysForLayout,
   PLACEHOLDER_COPY, type BuiltTemplate, type Layout,
@@ -121,14 +121,12 @@ function CheckList({ checks }: { checks: Check[] }) {
  * render at a time, so they run once, synchronously, over the static import,
  * not per row and not per brand variant.
  *
- * They exist because the previous 34-template set shipped three defects
- * nothing mechanical caught: seven pairs that were the same composition with
- * different words, nine templates advertising fennex.studio to the customer's
- * own audience, and families that only looked varied because their unused
- * capability branches were never exercised by a shipped template. Each check
- * below is built to fail on exactly one of those, and each was proven to fail
- * against a deliberate violation before being left in this state (see the
- * task report).
+ * They exist because a previous 34-template set shipped three defects nothing
+ * mechanical caught: seven pairs that were the same composition with different
+ * words, nine templates advertising a product of ours to the customer's own
+ * audience, and layouts that only looked varied because their unused capability
+ * branches were never exercised by a shipped template. Each check below is built
+ * to fail on exactly one of those.
  */
 
 /** Every fingerprint collision, as a human-readable line naming both ids. A
@@ -206,12 +204,12 @@ function earnsCapability(l: TemplateLayerDef): boolean {
   return false;
 }
 
-/** Groups the shipped templates by the family that produced them and checks
- *  the UNION of each family's emitted layers -- across every instance of that
- *  family actually in `TEXT_TEMPLATES` -- for at least one earned capability.
- *  Grouping by the real, shipped output (not by calling a family function
- *  with parameters nothing currently ships) is the point: a capability sitting
- *  behind a parameter no template reaches has not been earned. */
+/** Groups the shipped templates by the LAYOUT that produced them and checks the
+ *  UNION of each layout's emitted layers -- across every instance of that layout
+ *  actually in `TEXT_TEMPLATES` -- for at least one earned capability. Grouping
+ *  by the real, shipped output (not by calling a layout builder with parameters
+ *  nothing currently ships) is the point: a capability sitting behind a
+ *  parameter no template reaches has not been earned. */
 function checkCapabilityCoverage(templates: TextTemplate[]): Check {
   const layersByFamily = new Map<string, TemplateLayerDef[]>();
   for (const t of templates) {
@@ -225,7 +223,7 @@ function checkCapabilityCoverage(templates: TextTemplate[]): Check {
     pass: barren.length === 0,
     detail: barren.length
       ? `${barren.join(", ")} earn(s) no blend, rotation, non-rounded clip or cutout across the shipped set`
-      : `${layersByFamily.size} families, each earning a capability`,
+      : `${layersByFamily.size} layouts, each earning a capability`,
   };
 }
 
@@ -455,8 +453,8 @@ const WASH_EXTREMES: Partial<Record<BlendMode, string[]>> = {
  *  does not report the blend, so the contrast metric below has to recover it.
  *  A colour painted both blended and unblended in the same template is
  *  ambiguous and is treated as unblended; no family does that today (only
- *  `duotoneWash` blends, and it emits exactly one shape), and the "text on a
- *  field" check is what actually gates a mispairing either way. */
+ *  only the duotone ground blends, and it emits exactly two shapes), and
+ *  `analyzeText` is what actually reports a mispairing either way. */
 function washBlendByColor(layers: TemplateLayerDef[]): Map<string, BlendMode> {
   const blended = new Map<string, BlendMode>();
   const plain = new Set<string>();
@@ -493,18 +491,23 @@ function fieldContrast(text: string, fieldColor: string, opacity: number, blend?
 }
 
 /**
- * `strict` is what separates the shipped set from the probe.
+ * `strict` decides whether "text on a field" and "contrast" are failures.
  *
- * For `TEXT_TEMPLATES` every run is produced by `panel()` and must sit on an
- * opaque field at 4.5:1 — an unbacked run there is a defect, and the module-load
- * gate in text-templates.ts already refuses to let one ship.
+ * It is FALSE for everything this page sweeps now, and that is the change the
+ * branch exists to make. The shipped set used to be built by `panel()`, which
+ * could not emit type without an opaque field behind it at 4.5:1, so an unbacked
+ * run there really was a defect. That rule is what the product owner rejected
+ * the output of: every composition ended up as a box behind every word.
  *
- * The probe six deliberately put type into regions they prepared themselves, so
- * the same two checks measure something the branch has decided to allow. They
- * are reported at WARN, with the ratio, exactly as the design spec requires:
- * "contrast is reported, not enforced". Everything else — the photo is placed,
- * the fonts load, the type stays in frame, the PNG comes out the right size —
- * stays a hard failure for both.
+ * Type now sits in regions a template darkened itself, and each run DECLARES
+ * what it sits on, so contrast is measured against the declared backdrop and
+ * reported. These two checks are amber here; the authoritative measurement is
+ * `runReports` over the declared backdrops, printed in the run table, and the
+ * hard half — a claim that is false about the geometry, or a run on the bare
+ * photograph — is gated at module load and in scripts/verify-templates.ts.
+ *
+ * Everything else — the photo is placed, the fonts load, the type stays in
+ * frame, the PNG comes out the right size — stays a hard failure.
  */
 async function checkVariant(
   tpl: { id: string; name: string },
@@ -559,7 +562,7 @@ async function checkVariant(
   // 4 and 5. Readability, in two parts. Geometry: every run sits on a scrim,
   //    band or solid field that nothing painted since has covered, measured
   //    with real font metrics rather than the authoring estimate, so this is
-  //    stricter than the check families.ts applies at build time. Contrast: the
+  //    stricter than the authoring estimate. Contrast: the
   //    run must clear WCAG AA against that field, measured through the field's
   //    blend where it has one (see `fieldContrast`). The second is what catches
   //    brand-aware mode, which recolours fields but not the text on them.
@@ -646,7 +649,7 @@ async function sweep(
       const resolved: ResolvedTemplate = variant.kit
         ? brandTemplate(tpl, variant.kit)
         : { background: tpl.background ?? null, layers: tpl.layers };
-      const row = await checkVariant(tpl, variant.label, resolved);
+      const row = await checkVariant(tpl, variant.label, resolved, false);
       if (isCancelled()) return;
       onRow(row);
     }
@@ -661,11 +664,11 @@ async function sweep(
 // prints the type sizes as percentages of canvas width — the number the "the
 // text looks very big" rejection is actually about.
 
-/** Set-level checks over the six. Distinctness and brand neutrality are the
- *  same rules the shipped set is held to; capability coverage is stated per
- *  capability rather than per family, because six templates are not seven
- *  families and the requirement is that the six between them exercise blend,
- *  rotation, a non-rounded-rect clip and a cutout. */
+/** Set-level checks over the approved six. Distinctness and brand neutrality
+ *  are the same rules the shipped set is held to; capability coverage is stated
+ *  per capability rather than per layout, because the requirement is that the
+ *  six between them exercise blend, rotation, a non-rounded-rect clip and a
+ *  cutout. */
 function probeSetChecks(templates: BuiltTemplate[]): Check[] {
   const seen = new Map<string, string>();
   const collisions: string[] = [];

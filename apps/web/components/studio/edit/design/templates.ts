@@ -63,7 +63,7 @@
  */
 
 import type { TemplateLayerDef } from "../text-templates";
-import { REFERENCE_WIDTH, cutout, photo } from "../families";
+import { REFERENCE_WIDTH, cutout, photo } from "./layers";
 import { type Colourway, colourway, colourwaysFor, type ColourRegister } from "./colourways";
 import { type GroundKind, type Zone, BLOCK_SPLIT_PCT, ground, groundsFor } from "./ground";
 import {

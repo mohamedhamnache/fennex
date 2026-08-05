@@ -42,7 +42,7 @@ import type { ShapeId } from "../shapes";
 import {
   FONT_ROLES, MIN_CONTRAST, compositeOver, contrastRatio, mixHex, screenHex, worstCaseContrast,
 } from "../palette";
-import { REFERENCE_WIDTH, analyzeText } from "../families";
+import { REFERENCE_WIDTH, analyzeText } from "./layers";
 
 export type FontKey = keyof typeof FONT_ROLES;
 
@@ -202,7 +202,7 @@ function toTextDef(s: RunSpec): TemplateTextDef {
 // ── Measuring, for placement ──────────────────────────────────────────────────
 
 /** Approximate advance width per glyph as a fraction of type size, matching the
- *  table `families.ts` uses. Generous on purpose: over-estimating costs a
+ *  table `design/layers.ts` uses. Generous on purpose: over-estimating costs a
  *  centred run half a percent of asymmetry, under-estimating ships a run past
  *  the edge of the frame. `mono` is exact — JetBrains Mono advances 0.6em for
  *  every glyph, so do not "correct" it upward the way the others are padded. */

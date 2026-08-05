@@ -42,11 +42,11 @@
  *  reference canvas the rest of the template system assumes.
  */
 
-import type { TemplateLayerDef, TemplateShapeDef, TemplateTextDef } from "./text-templates";
-import { FONT_ROLES, relativeLuminance } from "./palette";
-import type { BlendMode, ClipSpec } from "./scene/types";
-import { shapeAspect } from "./shapes";
-import { REFERENCE_CANVAS_WIDTH } from "./scene/measure";
+import type { TemplateLayerDef, TemplateShapeDef, TemplateTextDef } from "../text-templates";
+import { FONT_ROLES, relativeLuminance } from "../palette";
+import type { BlendMode, ClipSpec } from "../scene/types";
+import { shapeAspect } from "../shapes";
+import { REFERENCE_CANVAS_WIDTH } from "../scene/measure";
 
 /** The reference canvas template geometry is authored against.
  *
