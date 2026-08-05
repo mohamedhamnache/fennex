@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum as PyEnum
-from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, JSON, Float, Boolean
+from sqlalchemy import String, ForeignKey, Text, Enum as SAEnum, Integer, JSON, Float, Boolean, event
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
@@ -83,3 +83,53 @@ class GeneratedImage(Base, TimestampMixin):
     )
     tags: Mapped[list] = mapped_column(JSON, default=list, nullable=False, server_default="[]")
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+
+
+# ---------------------------------------------------------------------------
+# Recorded dimensions must be MEASURED, never requested
+# ---------------------------------------------------------------------------
+#
+# 21.4% of stored images (36 of 168, measured 2026-08-05) had width/height that
+# did not match their own bytes. Two ways it happened, in every case a value
+# nobody checked against the file:
+#
+#   * the REQUESTED size was recorded rather than what the model returned --
+#     gpt-image-1 answers a 1080x1920 request with 1024x1536, and a 1536x1024
+#     request with 1440x960;
+#   * a hardcoded literal was used when the result reported no size, so
+#     remove.bg cutouts that are really 500x500 were all stored as 1024x1024.
+#
+# This cost real debugging time: it made remove.bg look like it was CROPPING
+# (a cutout's aspect disagreed with its parent's *recorded* aspect, while
+# agreeing exactly with its parent's real one) and sent an investigation after
+# a supplier bug that did not exist.
+#
+# Fixing the ~8 call sites would fix today's bugs and not tomorrow's. This is a
+# chokepoint instead, for the same reason the metering leak argued for one: a
+# rule that depends on every future caller remembering it is a rule that gets
+# broken. Anything that can measure its own bytes now does, whatever code path
+# created it.
+#
+# Deliberately narrow: it only reads a base64 data URI, which is already in
+# memory. It never fetches a remote URL -- an ORM flush hook is no place for
+# network I/O -- so externally-hosted images keep whatever the caller supplied.
+def _measure_stored_dimensions(_mapper, _connection, target: "GeneratedImage") -> None:
+    url = target.image_url
+    if not url or not url.startswith("data:"):
+        return
+    try:
+        import base64
+        import io
+        from PIL import Image as _PILImage
+
+        raw = base64.b64decode(url.split(",", 1)[1])
+        # PIL parses only the header here; it never decodes pixel data.
+        width, height = _PILImage.open(io.BytesIO(raw)).size
+    except Exception:
+        return  # Unreadable bytes are not this hook's problem to report.
+    if width > 0 and height > 0:
+        target.width, target.height = width, height
+
+
+event.listen(GeneratedImage, "before_insert", _measure_stored_dimensions)
+event.listen(GeneratedImage, "before_update", _measure_stored_dimensions)
