@@ -692,6 +692,8 @@ function probeSetChecks(templates: ProbeTemplate[]): Check[] {
 
   const byIntent = (intent: ProbeTemplate["intent"]) =>
     templates.filter((t) => t.intent === intent).length;
+  const byRegister = (register: ProbeTemplate["register"]) =>
+    templates.filter((t) => t.register === register).length;
 
   return [
     {
@@ -713,6 +715,13 @@ function probeSetChecks(templates: ProbeTemplate[]): Check[] {
       name: "range",
       pass: byIntent("quiet") >= 2 && byIntent("mid") >= 2 && byIntent("loud") >= 2,
       detail: `${byIntent("quiet")} quiet, ${byIntent("mid")} mid, ${byIntent("loud")} loud`,
+    },
+    {
+      // The owner supplied two reference designs, so the set has to answer both
+      // and then say something of its own. Two of each is the brief.
+      name: "reference registers",
+      pass: byRegister("vibrant") >= 2 && byRegister("soft") >= 2 && byRegister("own") >= 2,
+      detail: `${byRegister("vibrant")} vibrant (reference 1), ${byRegister("soft")} soft (reference 2), ${byRegister("own")} extending`,
     },
   ];
 }
@@ -829,6 +838,9 @@ function ProbeSweep({ size }: { size: number }) {
               {t.name}{" "}
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.subject}</span>{" "}
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.intent}</span>{" "}
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
+                {t.register === "own" ? "extends" : `reference: ${t.register}`}
+              </span>{" "}
               <span className="font-mono text-xs text-muted-foreground">{t.id}</span>
             </h2>
             <p className="max-w-3xl text-sm text-muted-foreground">{t.note}</p>

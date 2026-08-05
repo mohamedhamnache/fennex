@@ -86,7 +86,7 @@ export type Backdrop =
   | { kind: "field"; color: string }
   | { kind: "prepared"; color: string; alpha: number }
   | { kind: "wash"; color: string; blend: BlendMode }
-  | { kind: "owned"; colors: string[] }
+  | { kind: "owned"; colors: readonly string[] }
   | { kind: "photograph" };
 
 /** The two extremes a photograph can drive a monotone wash to. */
@@ -196,6 +196,42 @@ function toTextDef(s: RunSpec): TemplateTextDef {
     shadow: s.shadow ?? false,
     fontRole: s.sizePct >= 2.5 ? "heading" : "body",
   };
+}
+
+// ── Measuring, for placement ──────────────────────────────────────────────────
+
+/** Approximate advance width per glyph as a fraction of type size, matching the
+ *  table `families.ts` uses. Generous on purpose: over-estimating costs a
+ *  centred run half a percent of asymmetry, under-estimating ships a run past
+ *  the edge of the frame. `mono` is exact — JetBrains Mono advances 0.6em for
+ *  every glyph, so do not "correct" it upward the way the others are padded. */
+const WIDTH_FACTOR: Record<FontKey, number> = {
+  impact: 0.46, modern: 0.56, support: 0.52, mono: 0.6, script: 0.45,
+};
+
+export interface Measurable {
+  text: string;
+  sizePct: number;
+  font: FontKey;
+  uppercase?: boolean;
+  trackingPct?: number;
+}
+
+/** Estimated width of a run as a percentage of canvas width. */
+export function estWidthPct(s: Measurable): number {
+  const n = (s.uppercase ? s.text.toUpperCase() : s.text).length;
+  return n * s.sizePct * WIDTH_FACTOR[s.font] + Math.max(0, n - 1) * (s.trackingPct ?? 0);
+}
+
+/** The `xPct` that centres a run inside `[x0, x0 + width]`.
+ *
+ *  `SceneSvg` anchors text at `x` with the default `text-anchor: start`, so
+ *  centring is arithmetic done here rather than a property set on the layer.
+ *  Doing it at authoring time also means the centred position is visible in the
+ *  emitted layer, which is what lets the sweep's distinctness fingerprint tell
+ *  two centred templates apart. */
+export function centerOn(x0: number, width: number, s: Measurable): number {
+  return Number((x0 + (width - estWidthPct(s)) / 2).toFixed(2));
 }
 
 // ── Fields, rules and prepared regions ────────────────────────────────────────

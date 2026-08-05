@@ -26,16 +26,28 @@
 
 import type { TemplateLayerDef } from "../text-templates";
 import { resolvePalette } from "../palette";
-import { REFERENCE_WIDTH, photo } from "../families";
+import { REFERENCE_WIDTH, cutout, photo } from "../families";
 import {
-  type RunSpec, compose, cornerScrim, edgeScrim, field, rule,
+  type RunSpec, centerOn, compose, field, hueShift, rule, tint,
 } from "./type";
+import {
+  type IconName, dotCluster, cross, ghostPill, glassPill, glow, halftone, icon, mesh, solidPill,
+} from "./vector";
 
 export interface ProbeTemplate {
   id: string;
   name: string;
   /** What it is for. The six span a deliberate range of jobs. */
   subject: "product" | "editorial" | "event" | "quote" | "sale" | "portrait";
+  /** Which of the owner's two reference designs this one answers to.
+   *
+   *  `vibrant` is reference 1: a mesh background, a script line over a heavy
+   *  cap-line, a cutout hero with a glow, scattered glass feature chips with
+   *  icons, dot clusters and a solid CTA. `soft` is reference 2: pastel mesh,
+   *  a two-line headline separated by WEIGHT at a constant size, two CTAs
+   *  (one solid, one ghost), a cutout bleeding past the edge, and a great deal
+   *  of air. `own` extends the language rather than copying either. */
+  register: "vibrant" | "soft" | "own";
   /** How loud it is meant to be, so the sizes below can be read against intent
    *  rather than against each other. */
   intent: "quiet" | "mid" | "loud";
@@ -117,6 +129,7 @@ function smallBatch(): ProbeTemplate {
     id: "pb_product_smallbatch",
     name: "Small Batch",
     subject: "product",
+    register: "own",
     intent: "quiet",
     headline: "Sea Salt and Cedar",
     note: "Photo trimmed off-centre with an inset clip; type demoted to a shelf caption under it.",
@@ -182,6 +195,7 @@ function culvert(): ProbeTemplate {
     id: "pb_editorial_culvert",
     name: "Culvert",
     subject: "editorial",
+    register: "own",
     intent: "quiet",
     headline: "The River That",
     note: "Type owns the frame; the photograph is a plate bleeding off two edges, held by one hairline. Folio set vertically in the margin.",
@@ -190,195 +204,361 @@ function culvert(): ProbeTemplate {
   };
 }
 
-// ── 3. Night Market — event, mid ─────────────────────────────────────────────
+// ── 3. Sound Pro — product, soft register, mid ───────────────────────────────
 //
-// The first of the six with no box in it at all. The photograph runs full
-// bleed and the type sits in the top-left corner, on a region the template
-// darkened itself: two nested gradient squares, each fading corner to corner,
-// compounding to roughly 0.84-0.97 alpha where the type lands and dissolving
-// into the photograph on the way out. The declared 0.82 below is deliberately
-// under the worst point of that range, so the contrast reported is a floor
-// rather than a flattering average.
+// Reference 2, answered directly. Its headline is two lines AT THE SAME SIZE
+// separated by weight alone, which is the one hierarchy the old system could
+// not express at all: `TYPE_STEPS` had four sizes and every template used a
+// single weight, so "same size, different weight" had no vocabulary. Here it is
+// 6.5% at 400 over 6.5% at 700 — and the 700 is a real Inter 700, which the
+// document only started loading in the commit before this one.
 //
-// This is the composition the previous system could not express. A template
-// that must stay legible over ANY photograph can only be a box; a designer
-// prepares the region the type needs and picks a photograph that suits it.
-//
-// Headline 6.5% over two lines — mid, and the loudest thing in the frame by a
-// factor of five over the date beneath it.
+// Everything else follows the reference: a pastel mesh the template owns rather
+// than an opaque field, a mark-plus-label lockup top left, a primary and a
+// secondary CTA side by side, the product cut out and bleeding past the right
+// edge over its own soft glow, and more air than type.
 
-function nightMarket(): ProbeTemplate {
-  const p = resolvePalette("promo");
+function soundPro(): ProbeTemplate {
+  const p = resolvePalette("blog");
   const c = compose();
-  const corner = { kind: "prepared", color: p.surface, alpha: 0.82 } as const;
-  const display = { sizePct: 6.5, font: "impact", uppercase: true, trackingPct: -0.25, color: p.ink } as const;
+  // Mint, cream and blush, all derived from the one accent the palette carries:
+  // a brand kit moves the whole field rather than breaking it.
+  const mint = tint(hueShift(p.accent, -67), 0.82);
+  const cream = tint(hueShift(p.accent, -150), 0.9);
+  const blush = tint(hueShift(p.accent, 120), 0.85);
+  const on = { kind: "owned", colors: [mint, cream, blush] } as const;
+  const onAccentPill = { kind: "owned", colors: [p.accent] } as const;
+  const line = { sizePct: 6.5, font: "modern", trackingPct: -0.1, color: p.ink } as const;
+  const quiet = { sizePct: 1.65, font: "support", opacity: 0.8, color: p.ink } as const;
+  const cta = { sizePct: 1.3, font: "mono", uppercase: true, trackingPct: 0.2 } as const;
 
-  c.add(photo(), ...cornerScrim(p.surface, [78, 46]));
+  const buy = { ...cta, text: "Buy now", color: p.onAccent };
+  const compare = { ...cta, text: "Compare", color: p.ink };
+
+  c.add(
+    mesh(
+      { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+      [mint, cream, blush],
+      [
+        { color: mint, x: 0.15, y: 0.2, r: 0.5, alpha: 0.75 },
+        { color: blush, x: 0.85, y: 0.75, r: 0.55, alpha: 0.7 },
+      ],
+      100,
+    ),
+    solidPill({ xPct: 6, yPct: 7, widthPct: 3, heightPct: 3 }, p.accent),
+    glow({ xPct: 52, yPct: 72, widthPct: 46, heightPct: 13 }, p.accent, { alpha: 0.4 }),
+    cutout({ xPct: 52, yPct: 16, widthPct: 56, heightPct: 72, fit: "contain" }),
+    solidPill({ xPct: 6, yPct: 57, widthPct: 20, heightPct: 7 }, p.accent),
+    ghostPill({ xPct: 29, yPct: 57, widthPct: 22, heightPct: 7 }, p.ink, { weight: 0.05 }),
+  );
 
   c.type(
     {
-      text: "Two nights only",
-      sizePct: 1.3, font: "mono", uppercase: true, trackingPct: 0.2,
-      color: p.accentInk, xPct: 5, yPct: 6.5, on: corner,
+      text: "Audio",
+      sizePct: 1.2, font: "mono", uppercase: true, trackingPct: 0.25,
+      color: p.ink, xPct: 10.5, yPct: 7.9, on,
     },
-    { ...display, text: "Night Market", xPct: 5, yPct: 10.5, on: corner },
-    { ...display, text: "After Dark", xPct: 5, yPct: 17.8, on: corner },
-    {
-      text: "Fri 12 + Sat 13 Sep, from 18:00",
-      sizePct: 1.5, font: "mono", color: p.ink, xPct: 5, yPct: 26.5, on: corner,
-    },
-    {
-      text: "Twenty-two kitchens in the old car park.",
-      sizePct: 1.5, font: "support", opacity: 0.85, color: p.ink, xPct: 5, yPct: 29.7, on: corner,
-    },
-    {
-      // A stub, knocked off square. Its own pill is its own field, so this run
-      // is guaranteed wherever it lands and does not depend on the corner.
-      text: "Free entry",
-      sizePct: 1.4, font: "mono", uppercase: true, trackingPct: 0.18, rotation: -4,
-      color: p.onAccent, bg: p.accent, xPct: 64, yPct: 8,
-      on: { kind: "field", color: p.accent },
-    },
+    { ...line, weight: 400, text: "Sound Pro", xPct: 6, yPct: 26, on },
+    { ...line, weight: 700, text: "A56 Headset", xPct: 6, yPct: 34.2, on },
+    { ...quiet, text: "Forty hours between charges, and a case", xPct: 6, yPct: 45, on },
+    { ...quiet, text: "that charges from the same cable.", xPct: 6, yPct: 47.6, on },
+    { ...buy, xPct: centerOn(6, 20, buy), yPct: 59.4, on: onAccentPill },
+    { ...compare, xPct: centerOn(29, 22, compare), yPct: 59.4, on },
   );
 
   return {
-    id: "pb_event_nightmarket",
-    name: "Night Market",
-    subject: "event",
+    id: "pb_product_soundpro",
+    name: "Sound Pro",
+    subject: "product",
+    register: "soft",
     intent: "mid",
-    headline: "Night Market",
-    note: "No box anywhere: full-bleed photo with the title in a corner the template darkened with its own compounded gradient, plus one stub knocked off square.",
+    headline: "Sound Pro",
+    note: "Reference 2: two headline lines at one size separated by weight alone, on a pastel mesh, with a primary and a ghost CTA and the cutout bleeding past the right edge.",
     layers: c.layers,
     runs: c.runs,
   };
 }
 
-// ── 4. Margin — quote, mid ───────────────────────────────────────────────────
+// ── 4. Counter — event, soft register, mid ───────────────────────────────────
 //
-// The quote is set at 5.4% in Inter at 400 — reading weight, at display size.
-// That is the type treatment none of the other five use, and it is the whole
-// argument of this one: a pull quote is speech, and speech set in a condensed
-// display face at 700 stops sounding like anyone. Everything that would
-// normally carry emphasis is spent elsewhere — an oversized quote mark in the
-// accent as pure ornament, and a hairline separating the attribution.
+// The soft register again, arranged the other way: symmetrical rather than
+// ranged left, the cutout dropped off the BOTTOM edge instead of the right, and
+// the feature chips promoted from decoration to the middle of the composition.
+// Same two-line weight hierarchy, one size smaller, so the two soft templates
+// are the same language and not the same layout.
 //
-// The photograph is a circle bleeding off the right edge. The type block is
-// ranged against it and stops short of its box, so the two never negotiate.
+// The chips are the reference-1 vocabulary item — an icon paired with a short
+// label on a translucent pill — used in the soft register, which is the test of
+// whether the vocabulary travels.
 
-function margin(): ProbeTemplate {
+function counter(): ProbeTemplate {
+  const p = resolvePalette("promo");
+  const cmp = compose();
+  const cream = tint(p.accent, 0.86);
+  const sage = tint(hueShift(p.accent, 75), 0.84);
+  const peach = tint(hueShift(p.accent, -40), 0.82);
+  const on = { kind: "owned", colors: [cream, sage, peach] } as const;
+  const onPill = { kind: "owned", colors: [p.accent] } as const;
+  const line = { sizePct: 6, font: "modern", trackingPct: -0.08, color: p.surface } as const;
+  const quiet = { sizePct: 1.55, font: "support", opacity: 0.82, color: p.surface } as const;
+  const chip = { sizePct: 1.15, font: "mono", uppercase: true, trackingPct: 0.12, color: p.surface } as const;
+
+  const kicker = {
+    text: "Opening night", sizePct: 1.25, font: "mono", uppercase: true,
+    trackingPct: 0.3, color: p.surface,
+  } as const;
+  const one = { ...line, weight: 400 as const, text: "Doors open" };
+  const two = { ...line, weight: 700 as const, text: "at seven" };
+  const s1 = { ...quiet, text: "Twelve seats at the counter." };
+  const s2 = { ...quiet, text: "Booking by phone only." };
+  const book = {
+    text: "Reserve a table", sizePct: 1.2, font: "mono", uppercase: true,
+    trackingPct: 0.2, color: p.onAccent,
+  } as const;
+
+  const chips: { icon: IconName; label: string; xPct: number; widthPct: number }[] = [
+    { icon: "phone", label: "Booking by phone", xPct: 9, widthPct: 25 },
+    { icon: "check", label: "Twelve seats", xPct: 37.5, widthPct: 21 },
+    { icon: "bolt", label: "Kitchen till late", xPct: 62, widthPct: 25 },
+  ];
+
+  cmp.add(
+    mesh(
+      { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+      [sage, cream, peach],
+      [
+        { color: peach, x: 0.5, y: 0.9, r: 0.6, alpha: 0.7 },
+        { color: sage, x: 0.1, y: 0.1, r: 0.45, alpha: 0.6 },
+      ],
+      30,
+    ),
+    solidPill({ xPct: 37, yPct: 46, widthPct: 26, heightPct: 6.4 }, p.accent),
+    ...chips.flatMap((ch) => [
+      glassPill({ xPct: ch.xPct, yPct: 57, widthPct: ch.widthPct, heightPct: 6 }, p.surface, p.surface, {
+        fillAlpha: 0.1, borderAlpha: 0.3,
+      }),
+      icon({ name: ch.icon, xPct: ch.xPct + 1.8, yPct: 58.3, sizePct: 3.4 }, p.surface, { weight: 1.9 }),
+    ]),
+    glow({ xPct: 24, yPct: 68, widthPct: 52, heightPct: 14 }, p.accent, { alpha: 0.45 }),
+    cutout({ xPct: 22, yPct: 64, widthPct: 56, heightPct: 44, fit: "contain" }),
+  );
+
+  cmp.type(
+    { ...kicker, xPct: centerOn(0, 100, kicker), yPct: 13, on },
+    { ...one, xPct: centerOn(0, 100, one), yPct: 19, on },
+    { ...two, xPct: centerOn(0, 100, two), yPct: 27.2, on },
+    { ...s1, xPct: centerOn(0, 100, s1), yPct: 37, on },
+    { ...s2, xPct: centerOn(0, 100, s2), yPct: 39.6, on },
+    { ...book, xPct: centerOn(37, 26, book), yPct: 48.2, on: onPill },
+    ...chips.map((ch) => ({
+      ...chip, text: ch.label, xPct: ch.xPct + 6.4, yPct: 59.3, on,
+    })),
+  );
+
+  return {
+    id: "pb_event_counter",
+    name: "Counter",
+    subject: "event",
+    register: "soft",
+    intent: "mid",
+    headline: "Doors open",
+    note: "Soft register, symmetrical: the weight-split headline centred, a row of icon chips through the middle, and the cutout dropped off the bottom edge over a glow.",
+    layers: cmp.layers,
+    runs: cmp.runs,
+  };
+}
+
+// ── 5. Bass Line — product, vibrant register, loud ───────────────────────────
+//
+// Reference 1, answered directly and deliberately loudly. The cap-line is 11%
+// of canvas width — above the rejected set's 10% headline — and that is the
+// argument, not an accident: ONE element in six is allowed to be this size, so
+// it reads as a decision. The other five sit between 3.4% and 6.5%.
+//
+// The two-part headline is the reference's: a script line at roughly a third
+// the size, set to overlap the cap-line optically. Caveat is loaded for exactly
+// this and used exactly once in the six.
+//
+// Behind the cutout, a halftone disc in screen blend — printed texture over a
+// mesh, which is the one blend mode that can only lighten and therefore cannot
+// swallow the type sitting near it. Four glass chips are scattered around the
+// product, aligned to the frame rather than tilted: in the reference they are
+// square to the edge, and rotating them would have been our idea, not theirs.
+
+function bassLine(): ProbeTemplate {
   const p = resolvePalette("social");
   const c = compose();
-  const onField = { kind: "field", color: p.surface } as const;
-  const say = { sizePct: 5.4, font: "modern", trackingPct: -0.06, color: p.ink } as const;
+  const violet = hueShift(p.surface, -25);
+  const magenta = hueShift(p.surface, 55);
+  const on = { kind: "owned", colors: [violet, p.surface, magenta] } as const;
+  const onPill = { kind: "owned", colors: [p.accent] } as const;
+  const chip = { sizePct: 1.15, font: "mono", uppercase: true, trackingPct: 0.12, color: p.ink } as const;
+
+  const script = {
+    text: "Special sale", sizePct: 5, font: "script", color: p.accentInk,
+  } as const;
+  const caps = {
+    text: "Headphones", sizePct: 11, font: "impact", uppercase: true,
+    trackingPct: -0.4, color: p.ink,
+  } as const;
+  const order = {
+    text: "Order now", sizePct: 1.35, font: "mono", uppercase: true,
+    trackingPct: 0.25, color: p.onAccent,
+  } as const;
+
+  const chips: { icon: IconName; label: string; xPct: number; yPct: number; widthPct: number }[] = [
+    { icon: "droplet", label: "Water resistance", xPct: 2, yPct: 31, widthPct: 27 },
+    { icon: "waveform", label: "Enhanced bass", xPct: 5, yPct: 47, widthPct: 24 },
+    { icon: "mic", label: "Voice assistant", xPct: 68, yPct: 35, widthPct: 26 },
+    { icon: "bolt", label: "Fast charging", xPct: 70, yPct: 51, widthPct: 24 },
+  ];
 
   c.add(
-    field({ color: p.surface, xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }),
-    photo({ xPct: 62, yPct: 18, widthPct: 56, heightPct: 56, clip: { shape: "circle" } }),
-    rule(p.accent, 6, 60.8, 8, 0.3),
+    mesh(
+      { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+      [violet, p.surface, magenta],
+      [
+        { color: magenta, x: 0.78, y: 0.24, r: 0.55, alpha: 0.55 },
+        { color: violet, x: 0.2, y: 0.78, r: 0.6, alpha: 0.5 },
+      ],
+      150,
+    ),
+    halftone({ xPct: 22, yPct: 26, widthPct: 56, heightPct: 56 }, p.ink, {
+      opacity: 0.22, blend: "screen", rings: 8,
+    }),
+    dotCluster({ xPct: 4, yPct: 7, widthPct: 8, heightPct: 11 }, p.ink, 3, 4, { opacity: 0.5 }),
+    dotCluster({ xPct: 88, yPct: 80, widthPct: 8, heightPct: 11 }, p.ink, 3, 4, { opacity: 0.5 }),
+    cross({ xPct: 84, yPct: 15, widthPct: 3.6, heightPct: 3.6 }, p.accentInk, { opacity: 0.9 }),
+    cross({ xPct: 9, yPct: 74, widthPct: 3, heightPct: 3 }, p.accentInk, { opacity: 0.75 }),
+    glow({ xPct: 26, yPct: 64, widthPct: 48, heightPct: 15 }, p.accent, { alpha: 0.5 }),
+    cutout({ xPct: 24, yPct: 22, widthPct: 52, heightPct: 54, fit: "contain" }),
+    ...chips.flatMap((ch) => [
+      glassPill({ xPct: ch.xPct, yPct: ch.yPct, widthPct: ch.widthPct, heightPct: 6.6 }, p.ink, p.ink, {
+        fillAlpha: 0.16, borderAlpha: 0.4,
+      }),
+      icon({ name: ch.icon, xPct: ch.xPct + 2, yPct: ch.yPct + 1.4, sizePct: 3.8 }, p.ink, { weight: 1.9 }),
+    ]),
+    solidPill({ xPct: 66, yPct: 88.5, widthPct: 28, heightPct: 7 }, p.accent),
+    icon({ name: "phone", xPct: 5, yPct: 89.8, sizePct: 3.4 }, p.ink, { weight: 1.9 }),
   );
 
   c.type(
+    { ...script, xPct: centerOn(0, 100, script), yPct: 8.5, on },
+    { ...caps, xPct: centerOn(0, 100, caps), yPct: 13.5, on },
+    ...chips.map((ch) => ({
+      ...chip, text: ch.label, xPct: ch.xPct + 6.6, yPct: ch.yPct + 2.3, on,
+    })),
     {
-      // Ornament, not a word: it is here to open the paragraph optically and is
-      // reported as decorative rather than measured for contrast.
-      text: "“",
-      sizePct: 11, font: "modern", weight: 700, color: p.accentInk,
-      xPct: 5.5, yPct: 14, ornament: true, on: onField,
+      text: "+32 9 000 00 00", sizePct: 1.3, font: "mono", color: p.ink,
+      xPct: 9.6, yPct: 90.6, on,
     },
-    { ...say, text: "We stopped asking", xPct: 6, yPct: 30, on: onField },
-    { ...say, text: "what the tool did", xPct: 6, yPct: 36, on: onField },
-    { ...say, text: "and started asking", xPct: 6, yPct: 42, on: onField },
-    { ...say, text: "what the night", xPct: 6, yPct: 48, on: onField },
-    { ...say, text: "shift felt like.", xPct: 6, yPct: 54, on: onField },
-    {
-      text: "Charge nurse, night team",
-      sizePct: 1.3, font: "mono", uppercase: true, trackingPct: 0.2,
-      color: p.accentInk, xPct: 6, yPct: 63.5, on: onField,
-    },
-    {
-      text: "From the ward review, published in full online.",
-      sizePct: 1.5, font: "support", opacity: 0.75, color: p.ink, xPct: 6, yPct: 66.8, on: onField,
-    },
+    { ...order, xPct: centerOn(66, 28, order), yPct: 90.8, on: onPill },
   );
 
   return {
-    id: "pb_quote_margin",
-    name: "Margin",
-    subject: "quote",
-    intent: "mid",
-    headline: "We stopped asking",
-    note: "Speech set at reading weight and display size, ranged against a circle that bleeds off the right edge; emphasis spent on an ornament instead.",
+    id: "pb_product_bassline",
+    name: "Bass Line",
+    subject: "product",
+    register: "vibrant",
+    intent: "loud",
+    headline: "Headphones",
+    note: "Reference 1: script over a heavy cap-line at 11%, a cutout hero on a halftone disc and its own glow, four glass chips scattered around it, dot clusters and a solid CTA.",
     layers: c.layers,
     runs: c.runs,
   };
 }
 
-// ── 5. Half Off — sale, loud ─────────────────────────────────────────────────
+// ── 6. Half Price — sale, vibrant register, loud ─────────────────────────────
 //
-// Loud on purpose, and the reason the other four are allowed to be quiet: when
-// every template shouts, nothing is emphasis. The numeral is 13.75% of canvas
-// width — bigger than anything else in the six, and still under the 14% the
-// rejected set used for a blog cover.
+// The vibrant register arranged against itself: the lockup falls to the bottom
+// left instead of centring at the top, the cutout takes the right half and
+// bleeds off the edge, and the chips stack in a column rather than scattering.
+// Same vocabulary, no shared geometry — which is the thing the previous set
+// failed at when it shipped seven pairs that were one composition with
+// different words.
 //
-// Two owned regions, no box. A band bleeding off both edges is multiplied over
-// the photograph, which can only drive the accent darker, so white type on it
-// inherits the palette's own onAccent/accent floor whatever the customer
-// uploads. The terms sit at the bottom in a ramp the template built out of
-// eight overlapping steps, and the alpha each run is measured against is read
-// back off the ramp rather than guessed.
-//
-// The numeral is set a hair past the left edge so its sidebearing is cropped
-// and the glyph optically aligns with the frame, which is what ranging display
-// type to an edge actually means.
+// The cap-line is 12%, the loudest thing in the six, on a sale, where being the
+// loudest thing is the job.
 
-function halfOff(): ProbeTemplate {
+function halfPrice(): ProbeTemplate {
   const p = resolvePalette("ecommerce");
   const c = compose();
-  const ramp = edgeScrim(p.surface, { yPct: 68, heightPct: 32, steps: 8, stepAlpha: 0.26 });
-  const onRamp = (yPct: number) => ({ kind: "prepared", color: p.surface, alpha: ramp.alphaAt(yPct) } as const);
-  const onBand = { kind: "wash", color: p.accent, blend: "multiply" } as const;
+  const indigo = hueShift(p.surface, -20);
+  const rose = hueShift(p.accent, -12);
+  // The base gradient runs bottom-left to top-right (see the angle below), so
+  // the rose end sits under the cutout and the type never meets it. A run only
+  // names the stops it can actually reach: measuring every run against every
+  // stop in the mesh would report a warning for a colour that is nowhere near
+  // it, and a warning nobody can act on is how a warning column stops being
+  // read at all.
+  const on = { kind: "owned", colors: [indigo, p.surface] } as const;
+  const onPill = { kind: "owned", colors: [p.accent] } as const;
+  const chip = { sizePct: 1.15, font: "mono", uppercase: true, trackingPct: 0.12, color: p.ink } as const;
+
+  const script = { text: "Weekend only", sizePct: 4.5, font: "script", color: p.accentInk } as const;
+  const caps = {
+    text: "Half price", sizePct: 12, font: "impact", uppercase: true,
+    trackingPct: -0.45, color: p.ink,
+  } as const;
+  const shop = {
+    text: "Shop the sale", sizePct: 1.3, font: "mono", uppercase: true,
+    trackingPct: 0.22, color: p.onAccent,
+  } as const;
+
+  const chips: { icon: IconName; label: string; yPct: number; widthPct: number }[] = [
+    { icon: "bolt", label: "Fast charging", yPct: 20, widthPct: 24 },
+    { icon: "check", label: "Two-year cover", yPct: 29, widthPct: 25 },
+    { icon: "droplet", label: "Splash proof", yPct: 38, widthPct: 22 },
+  ];
 
   c.add(
-    photo(),
-    field({ color: p.accent, xPct: -6, yPct: 34, widthPct: 112, heightPct: 19, blend: "multiply" }),
-    ...ramp.layers,
+    mesh(
+      { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 },
+      [indigo, p.surface, rose],
+      [
+        { color: rose, x: 0.82, y: 0.7, r: 0.6, alpha: 0.5 },
+        { color: indigo, x: 0.1, y: 0.15, r: 0.5, alpha: 0.55 },
+      ],
+      45,
+    ),
+    halftone({ xPct: 46, yPct: 6, widthPct: 52, heightPct: 52 }, p.ink, {
+      opacity: 0.2, blend: "screen", rings: 7,
+    }),
+    glow({ xPct: 50, yPct: 60, widthPct: 46, heightPct: 14 }, p.accent, { alpha: 0.45 }),
+    cutout({ xPct: 44, yPct: 10, widthPct: 62, heightPct: 62, fit: "contain" }),
+    ...chips.flatMap((ch) => [
+      glassPill({ xPct: 5, yPct: ch.yPct, widthPct: ch.widthPct, heightPct: 6.4 }, p.ink, p.ink, {
+        fillAlpha: 0.16, borderAlpha: 0.4,
+      }),
+      icon({ name: ch.icon, xPct: 6.9, yPct: ch.yPct + 1.3, sizePct: 3.7 }, p.ink, { weight: 1.9 }),
+    ]),
+    dotCluster({ xPct: 5, yPct: 6, widthPct: 8, heightPct: 11 }, p.ink, 3, 4, { opacity: 0.5 }),
+    cross({ xPct: 37, yPct: 51, widthPct: 3.2, heightPct: 3.2 }, p.accentInk, { opacity: 0.85 }),
+    solidPill({ xPct: 6, yPct: 87, widthPct: 26, heightPct: 7 }, p.accent),
   );
 
   c.type(
+    ...chips.map((ch) => ({
+      ...chip, text: ch.label, xPct: 11.5, yPct: ch.yPct + 2.2, on,
+    })),
+    { ...script, xPct: 6, yPct: 57, on },
+    { ...caps, xPct: 5, yPct: 62.5, on },
     {
-      text: "50%",
-      sizePct: 13.75, font: "impact", trackingPct: -0.5,
-      color: p.onAccent, xPct: -1.2, yPct: 36.2, on: onBand,
+      text: "Every charger, cable and dock until Sunday midnight.",
+      sizePct: 1.6, font: "support", opacity: 0.85, color: p.ink,
+      xPct: 6, yPct: 79, on,
     },
-    {
-      text: "Outerwear / Final weekend",
-      sizePct: 1.6, font: "mono", uppercase: true, trackingPct: 0.35,
-      color: p.onAccent, xPct: 20, yPct: 44.6, on: onBand,
-    },
-    {
-      text: "Half off every coat",
-      sizePct: 4, font: "modern", weight: 700, trackingPct: -0.06,
-      color: p.ink, xPct: 6, yPct: 79.5, on: onRamp(79.5),
-    },
-    {
-      text: "Ends Sunday at midnight. Marked at the till, no code needed.",
-      sizePct: 1.55, font: "support", opacity: 0.9,
-      color: p.ink, xPct: 6, yPct: 85.5, on: onRamp(85.5),
-    },
-    {
-      text: "In store and online",
-      sizePct: 1.25, font: "mono", uppercase: true, trackingPct: 0.25,
-      color: p.accentInk, xPct: 6, yPct: 89.8, on: onRamp(89.8),
-    },
+    { ...shop, xPct: centerOn(6, 26, shop), yPct: 89.3, on: onPill },
   );
 
   return {
-    id: "pb_sale_halfoff",
-    name: "Half Off",
+    id: "pb_sale_halfprice",
+    name: "Half Price",
     subject: "sale",
+    register: "vibrant",
     intent: "loud",
-    headline: "50%",
-    note: "A multiply band bleeding off both edges carries the numeral; the terms sit in an eight-step ramp the template built down the bottom edge.",
+    headline: "Half price",
+    note: "Vibrant register turned on its side: lockup bottom left at 12%, cutout bleeding off the right over a halftone disc, chips stacked in a column.",
     layers: c.layers,
     runs: c.runs,
   };
@@ -387,9 +567,10 @@ function halfOff(): ProbeTemplate {
 export const PROBE_TEMPLATES: ProbeTemplate[] = [
   smallBatch(),
   culvert(),
-  nightMarket(),
-  margin(),
-  halfOff(),
+  soundPro(),
+  counter(),
+  bassLine(),
+  halfPrice(),
 ];
 
 /** Reference points for reading the headline sizes above. */
