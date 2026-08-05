@@ -1480,7 +1480,11 @@
     "templates": {
       "search": "Search templates",
       "applied": "Template applied",
-      "remove": "Remove template"
+      "remove": "Remove template",
+      "palette": "Palette",
+      "morePalettes": "Show all",
+      "fewerPalettes": "Show fewer",
+      "brandColours": "The brand kit is supplying this template's colours."
     },
     "score": {
       "title": "Score",

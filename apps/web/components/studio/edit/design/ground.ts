@@ -48,7 +48,7 @@ import type { TemplateLayerDef } from "../text-templates";
 import { photo } from "./layers";
 import type { Backdrop } from "./type";
 import { field, zoneScrim } from "./type";
-import type { Colourway } from "./colourways";
+import type { Colourway, ColourRegister } from "./colourways";
 import { grain, halftone, mesh } from "./vector";
 
 export type GroundKind =
@@ -238,3 +238,39 @@ export function groundsFor(cw: Colourway): GroundKind[] {
 export function allowsGround(cw: Colourway, kind: GroundKind): boolean {
   return groundsFor(cw).includes(kind);
 }
+
+/**
+ * Which registers each treatment flatters, best first.
+ *
+ * TASTE, AND SAID SO — unlike `groundsFor` above, which encodes a measured
+ * exclusion. Nothing here forbids anything: it is the order a shortlist of
+ * palettes is offered in, so the first few a user sees are the ones that suit
+ * the treatment their template is built on. Every register remains reachable on
+ * every ground.
+ *
+ * The reasoning per treatment:
+ *
+ *  - `gradient` is a mesh running through three stops, and it earns its keep
+ *    when those stops are saturated. Sunset and Ember are excluded from it
+ *    outright above, so the vibrant options here are the ones that measured.
+ *  - `flat` is one confident colour; a vibrant set gives it the confidence, and
+ *    a soft one gives the pale-ground editorial look that is the other half of
+ *    what flat is for.
+ *  - `photographic` darkens a region of the customer's own photo to write in.
+ *    A deep surface disappears into the picture; a pale one reads as a box
+ *    stuck on top, which is the safety-box look this system exists to avoid.
+ *  - `duotone` maps the photograph between two hues, so it wants hues with
+ *    somewhere to travel: dark first, then vibrant.
+ *  - `blocked` is two flat areas meeting at an edge. Soft sets keep that edge
+ *    from reading as a banner; vibrant sets make it a poster.
+ *  - `textured` is a halftone field lit by the accent, which needs an accent
+ *    bright enough to see through the dots.
+ */
+export const REGISTERS_BY_GROUND: Record<GroundKind, ColourRegister[]> = {
+  gradient: ["vibrant", "dark", "soft"],
+  flat: ["vibrant", "soft", "dark"],
+  photographic: ["dark", "vibrant", "soft"],
+  duotone: ["dark", "vibrant", "soft"],
+  blocked: ["soft", "vibrant", "dark"],
+  textured: ["vibrant", "dark", "soft"],
+};

@@ -1383,7 +1383,11 @@
     "templates": {
       "search": "Pesquisar modelos",
       "applied": "Modelo aplicado",
-      "remove": "Remover o modelo"
+      "remove": "Remover o modelo",
+      "palette": "Paleta",
+      "morePalettes": "Ver todas",
+      "fewerPalettes": "Ver menos",
+      "brandColours": "O kit de marca fornece as cores deste modelo."
     },
     "score": {
       "title": "Pontuação",

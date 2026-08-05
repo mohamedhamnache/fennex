@@ -1383,7 +1383,11 @@
     "templates": {
       "search": "Rechercher des modèles",
       "applied": "Modèle appliqué",
-      "remove": "Retirer le modèle"
+      "remove": "Retirer le modèle",
+      "palette": "Palette",
+      "morePalettes": "Tout afficher",
+      "fewerPalettes": "Afficher moins",
+      "brandColours": "Le kit de marque fournit les couleurs de ce modèle."
     },
     "score": {
       "title": "Score",

@@ -1383,7 +1383,11 @@
     "templates": {
       "search": "ابحث عن القوالب",
       "applied": "تم تطبيق القالب",
-      "remove": "إزالة القالب"
+      "remove": "إزالة القالب",
+      "palette": "لوحة الألوان",
+      "morePalettes": "عرض الكل",
+      "fewerPalettes": "عرض أقل",
+      "brandColours": "تُوفّر حزمة العلامة ألوان هذا القالب."
     },
     "score": {
       "title": "التقييم",

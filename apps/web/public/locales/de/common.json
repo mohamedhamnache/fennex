@@ -1383,7 +1383,11 @@
     "templates": {
       "search": "Vorlagen durchsuchen",
       "applied": "Vorlage angewendet",
-      "remove": "Vorlage entfernen"
+      "remove": "Vorlage entfernen",
+      "palette": "Palette",
+      "morePalettes": "Alle anzeigen",
+      "fewerPalettes": "Weniger anzeigen",
+      "brandColours": "Das Marken-Kit liefert die Farben dieser Vorlage."
     },
     "score": {
       "title": "Score",

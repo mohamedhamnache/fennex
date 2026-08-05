@@ -14,7 +14,11 @@ import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandK
 import { CUTOUT_CREDIT_COST } from "@/lib/creditCosts";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
-import { brandTemplate, templateToLayers, placesSubject, type TextTemplate, type ResolvedTemplate } from "./text-templates";
+import {
+  brandTemplate, templateToLayers, placesSubject, recolourTemplate, suggestedColourways,
+  type TextTemplate, type ResolvedTemplate,
+} from "./text-templates";
+import { ColourwayPicker } from "./ColourwayPicker";
 import { SHAPE_GROUPS, shapeAspect, shapeDataUri, parseShapeStyle, type ShapeId, type ShapeStyle } from "./shapes";
 import { pctFromReferencePx, referencePxFromPct, REFERENCE_CANVAS_WIDTH } from "./scene/measure";
 import type { EditCanvasRef, Layer, TextLayer, ImageLayer } from "./EditCanvas";
@@ -116,6 +120,34 @@ interface AppliedTemplate {
    *  forward unchanged across a swap, so removal restores the value that was
    *  true before the FIRST template, not the one a previous template set. */
   hideBaseBefore: boolean;
+  /** The template as applied, in the colourway it was applied in. Kept so a
+   *  colourway change can rebuild the same layout, ground and words in
+   *  different hues without the picker having to be open. */
+  template: TextTemplate;
+  /** Its colourway id — `template.spec.colourway`, held separately only so the
+   *  swatch row has one obvious thing to compare against. */
+  colourwayId: string;
+  /** The background-free copy of the photo, once it has been paid for.
+   *
+   *  THIS IS THE DOUBLE-BILLING GUARD. A colourway change re-renders the same
+   *  layout in different colours; the cutout is a property of the PHOTOGRAPH,
+   *  not of the palette, so it is identical across every colourway and re-running
+   *  `removeBackgroundCheap` would charge the customer a second time for an asset
+   *  already in hand. Carried forward across colourway changes and swaps. */
+  cutoutUrl?: string;
+}
+
+/** What an insertion needs to remember about the template it is inserting.
+ *  Passed rather than derived so both the direct path and the post-consent path
+ *  record the same thing. */
+interface InsertMeta {
+  template: TextTemplate;
+  colourwayId: string;
+  cutoutUrl?: string;
+  /** Land the user in the Add Text tool. True for a fresh apply, where the point
+   *  is to start editing the copy; false for a colourway change, which is a
+   *  one-click re-render and must not move the panel out from under the click. */
+  landInTextTool: boolean;
 }
 
 /** A key with no other job. `crypto.randomUUID` needs a secure context, which
@@ -511,7 +543,8 @@ export function EditControlsPanel({
   function insertTemplateLayers(
     resolved: ResolvedTemplate,
     subjectUrl: string,
-    disp?: { width: number; height: number } | null,
+    disp: { width: number; height: number } | null | undefined,
+    meta: InsertMeta,
   ) {
     const key = newTemplateKey();
     const newLayers = templateToLayers(
@@ -536,7 +569,7 @@ export function EditControlsPanel({
     // Select the first foreground layer, not the background
     onSelectLayer((newLayers[resolved.background ? 1 : 0] ?? newLayers[0]).id);
     // Land the user in the Add Text tool so the layers are instantly editable
-    onRequestTool?.("text");
+    if (meta.landInTextTool) onRequestTool?.("text");
 
     setAppliedTemplate({
       key,
@@ -545,6 +578,11 @@ export function EditControlsPanel({
       // was true before A — recapturing here would store the `true` A set and
       // leave a blank canvas on removal.
       hideBaseBefore: appliedTemplate ? appliedTemplate.hideBaseBefore : hideBaseImage,
+      template: meta.template,
+      colourwayId: meta.colourwayId,
+      // Same reasoning as `hideBaseBefore`: a cutout already paid for on this
+      // image stays paid for, whatever is applied over it.
+      cutoutUrl: meta.cutoutUrl ?? appliedTemplate?.cutoutUrl,
     });
 
     // A template that places the photo as a layer must not also show it as
@@ -570,6 +608,8 @@ export function EditControlsPanel({
   const [pendingCutout, setPendingCutout] = useState<{
     resolved: ResolvedTemplate;
     disp?: { width: number; height: number } | null;
+    template: TextTemplate;
+    colourwayId: string;
   } | null>(null);
   const [cutoutError, setCutoutError] = useState<string | null>(null);
 
@@ -582,12 +622,61 @@ export function EditControlsPanel({
     if (needsCutout(resolved)) {
       // Applying a template must never silently spend a customer's credits —
       // ask first. Nothing is built or appended until the user confirms.
+      //
+      // The dialog is NOT skipped when a cutout has already been resolved for
+      // this image. Reusing it is only correct where the composition is
+      // provably the same one — a colourway change, which `applyColourway`
+      // handles — and choosing a different template is a fresh decision the
+      // user should see the price of. Picking a template must not be a path
+      // that spends, or appears to spend, without asking.
       setCutoutError(null);
-      setPendingCutout({ resolved, disp });
+      setPendingCutout({ resolved, disp, template: t, colourwayId: t.spec.colourway });
       return;
     }
 
-    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp);
+    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp, {
+      template: t, colourwayId: t.spec.colourway, landInTextTool: true,
+    });
+  }
+
+  /** Re-render the applied template in another colourway — the same layout, the
+   *  same ground and the same words in different hues.
+   *
+   *  This is the swap mechanism, not a second one: `recolourTemplate` rebuilds
+   *  the template and `insertTemplateLayers` replaces the previous layers, so a
+   *  colourway change strips exactly what a template swap would and leaves every
+   *  layer the user added alone.
+   *
+   *  NO DIALOG, AND NO SECOND CHARGE. Where the applied template places a
+   *  cutout, the URL already resolved for it is reused verbatim — the palette
+   *  does not change the photograph, so there is nothing to fetch and nothing to
+   *  bill. Only the case where no cutout has been resolved at all can reach the
+   *  consent dialog, and that cannot arise from a colourway change on a template
+   *  that was applied through it. */
+  function applyColourway(colourwayId: string) {
+    const applied = appliedTemplate;
+    if (!applied || colourwayId === applied.colourwayId) return;
+
+    const next = recolourTemplate(applied.template, colourwayId);
+    const resolved = resolveTemplate(next);
+    const disp = canvasRef.current?.getDisplayedSize();
+
+    if (needsCutout(resolved)) {
+      if (!applied.cutoutUrl) {
+        // Defensive: nothing that reaches this row was applied without one.
+        setCutoutError(null);
+        setPendingCutout({ resolved, disp, template: next, colourwayId });
+        return;
+      }
+      insertTemplateLayers(resolved, applied.cutoutUrl, disp, {
+        template: next, colourwayId, cutoutUrl: applied.cutoutUrl, landInTextTool: false,
+      });
+      return;
+    }
+
+    insertTemplateLayers(resolved, subjectImageUrl ?? "", disp, {
+      template: next, colourwayId, cutoutUrl: applied.cutoutUrl, landInTextTool: false,
+    });
   }
 
   // Runs the paid cutout and, on success, builds the template's layers from
@@ -599,7 +688,15 @@ export function EditControlsPanel({
       return result.image_url;
     },
     onSuccess: (cutoutUrl) => {
-      if (pendingCutout) insertTemplateLayers(pendingCutout.resolved, cutoutUrl, pendingCutout.disp);
+      if (pendingCutout) {
+        insertTemplateLayers(pendingCutout.resolved, cutoutUrl, pendingCutout.disp, {
+          template: pendingCutout.template,
+          colourwayId: pendingCutout.colourwayId,
+          // Recorded so no later colourway change or swap pays for it again.
+          cutoutUrl,
+          landInTextTool: true,
+        });
+      }
       setPendingCutout(null);
       setCutoutError(null);
     },
@@ -794,18 +891,36 @@ export function EditControlsPanel({
             user in the text tool, so a control that only existed inside the
             template picker would be unreachable the moment it became useful. */}
         {appliedTemplate && (
-          <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-4 py-2">
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              {t("imageEdit.templates.applied", "Template applied")}
-            </span>
-            <button
-              type="button"
-              onClick={removeAppliedTemplate}
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Trash2 className="h-3 w-3" strokeWidth={1.8} />
-              {t("imageEdit.templates.remove", "Remove template")}
-            </button>
+          <div className="flex flex-col gap-2 border-b border-border bg-muted/20 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {t("imageEdit.templates.applied", "Template applied")}
+                <span className="text-foreground"> — {appliedTemplate.template.name}</span>
+              </span>
+              <button
+                type="button"
+                onClick={removeAppliedTemplate}
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Trash2 className="h-3 w-3" strokeWidth={1.8} />
+                {t("imageEdit.templates.remove", "Remove template")}
+              </button>
+            </div>
+
+            {/* The brand kit rebuilds the template in the org's own colours, so
+                while it is on a colourway would have no visible effect. Saying
+                so beats a row of swatches that does nothing when clicked. */}
+            {brandTemplates && brandUsable ? (
+              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                {t("imageEdit.templates.brandColours", "The brand kit is supplying this template's colours.")}
+              </p>
+            ) : (
+              <ColourwayPicker
+                colourways={suggestedColourways(appliedTemplate.template)}
+                currentId={appliedTemplate.colourwayId}
+                onPick={applyColourway}
+              />
+            )}
           </div>
         )}
 

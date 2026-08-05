@@ -1383,7 +1383,11 @@
     "templates": {
       "search": "Buscar plantillas",
       "applied": "Plantilla aplicada",
-      "remove": "Quitar la plantilla"
+      "remove": "Quitar la plantilla",
+      "palette": "Paleta",
+      "morePalettes": "Ver todas",
+      "fewerPalettes": "Ver menos",
+      "brandColours": "El kit de marca aporta los colores de esta plantilla."
     },
     "score": {
       "title": "Puntuación",

@@ -8,10 +8,10 @@ import { bestTextOn, resolvePalette, type TemplateCategory } from "./palette";
 import type { BlendMode, ClipSpec } from "./scene/types";
 import { pctFromReferencePx } from "./scene/measure";
 import { analyzeText } from "./design/layers";
-import { type Colourway, type ColourRegister, colourway } from "./design/colourways";
-import type { GroundKind } from "./design/ground";
+import { type Colourway, type ColourRegister, COLOURWAYS, colourway } from "./design/colourways";
+import { type GroundKind, REGISTERS_BY_GROUND, groundsFor } from "./design/ground";
 import {
-  type ChipCopy, type LayoutCopy, buildTemplate, layoutById,
+  type ChipCopy, type LayoutCopy, buildTemplate, colourwaysForLayout, layoutById,
 } from "./design/templates";
 import { verifyFieldClaims, type RunSpec } from "./design/type";
 
@@ -808,6 +808,99 @@ export function templateFingerprint(t: TextTemplate): string {
     l.kind === "text" ? { ...l, text: "" } : l,
   );
   return JSON.stringify({ background: t.background ?? null, layers });
+}
+
+// ── Changing a template's colourway ───────────────────────────────────────────
+//
+// Colour is an axis, not a property of the finished layers, so changing it is a
+// REBUILD through the same `buildTemplate` the shipped set goes through rather
+// than a walk over the layer list swapping hex values. That is the same argument
+// `brandTemplate` makes below and for the same reason: a mesh, a duotone pair, a
+// glow and a glass chip are all SVG data URIs by the time they are layers, so
+// there is nothing left to recolour in place — and every colour in the result
+// comes from a role, exactly as in the authored form.
+
+/**
+ * Every colourway this template may be re-rendered in.
+ *
+ * Two constraints, both real and both enforced by `buildTemplate` anyway — this
+ * function exists so the picker never OFFERS a combination that would throw:
+ *
+ *  1. The layout's `accepts`, which is the register it renders correctly in.
+ *  2. The colourway's own `groundsFor`, which is where the measured exclusion
+ *     lives: Sunset and Ember measure 2.02:1 and 3.35:1 with light ink over
+ *     their own mesh, so neither is offered on a GRADIENT ground. Both stay
+ *     available on flat, duotone, photographic and textured, where the colour
+ *     under the type is known or the region is darkened first.
+ */
+export function colourwaysForTemplate(t: TextTemplate): Colourway[] {
+  return colourwaysForLayout(layoutById(t.spec.layout))
+    .filter((cw) => groundsFor(cw).includes(t.spec.ground));
+}
+
+/**
+ * The same list, ordered so the first few are the ones worth showing first.
+ *
+ * The order is a suggestion and nothing more — every compatible colourway is in
+ * the returned list, and a caller that shows all of them is not doing anything
+ * wrong. Ranked by, in order:
+ *
+ *  1. The colourway the template was designed in. It comes first because it is
+ *     the one a human approved for this exact layout and ground.
+ *  2. Whether it keeps the AUTHORED REGISTER. A register is which way the
+ *     composition reads — `vibrant` and `dark` are dark-ground with light ink,
+ *     `soft` is the inverse — so same-register options are the ones that change
+ *     the hues without changing the picture's whole light/dark character. Every
+ *     register still renders correctly; this is about what a shortlist should
+ *     open with, not about what is valid.
+ *  3. How well the remaining registers suit the GROUND — `REGISTERS_BY_GROUND`,
+ *     which is why a photographic template offers its deep sets before its pale
+ *     ones and a blocked one does the reverse.
+ *  4. The order in `COLOURWAYS`, which makes the result stable.
+ */
+export function suggestedColourways(t: TextTemplate): Colourway[] {
+  const authored = t.colourwayRef;
+  const byGround = REGISTERS_BY_GROUND[t.spec.ground];
+  const rank = (cw: Colourway): number[] => [
+    cw.id === authored.id ? 0 : 1,
+    cw.register === authored.register ? 0 : 1,
+    byGround.indexOf(cw.register),
+    COLOURWAYS.findIndex((c) => c.id === cw.id),
+  ];
+  return colourwaysForTemplate(t)
+    .map((cw) => ({ cw, r: rank(cw) }))
+    .sort((a, b) => {
+      for (let i = 0; i < a.r.length; i += 1) {
+        if (a.r[i] !== b.r[i]) return a.r[i] - b.r[i];
+      }
+      return 0;
+    })
+    .map((x) => x.cw);
+}
+
+/**
+ * Rebuild a template in a different colourway.
+ *
+ * Same layout, same ground, same words, different hues — which is exactly what
+ * `spec` was kept for. Throws on a colourway this template may not take, via
+ * `buildTemplate`; callers pick from `colourwaysForTemplate` and so never see it.
+ */
+export function recolourTemplate(t: TextTemplate, colourwayId: string): TextTemplate {
+  if (colourwayId === t.spec.colourway) return t;
+  const spec: TemplateSpec = { ...t.spec, colourway: colourwayId };
+  const built = buildTemplate(layoutById(spec.layout), {
+    cw: colourway(colourwayId),
+    ground: spec.ground,
+    copy: spec.copy,
+  });
+  return {
+    ...t,
+    colourwayRef: built.colourway,
+    headline: built.headline,
+    spec,
+    layers: built.layers,
+    runs: built.runs,
+  };
 }
 
 // ── Brand-aware mapping ───────────────────────────────────────────────────────
