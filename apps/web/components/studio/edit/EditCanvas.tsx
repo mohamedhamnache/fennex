@@ -11,6 +11,7 @@ import {
 import { RotateCw, Sparkles, Plus, Minus, Maximize2 } from "lucide-react";
 import { SceneSvg } from "./scene/SceneSvg";
 import { layerText, textBox, textMetrics } from "./scene/measure";
+import { primeHitProbes, resolveLayerAt } from "./hitTest";
 
 const MASK_TOOLS = new Set([
   "replace_background",
@@ -248,6 +249,14 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
       canvas.width = width;
       canvas.height = height;
     }
+
+    // Alpha probes for hit testing. Primed when the layer list changes so a
+    // pointer handler -- which cannot await -- has pixels to consult. Anything
+    // still loading answers "opaque", i.e. the old rectangle behaviour, so a
+    // click is never dropped while a probe is in flight.
+    useEffect(() => {
+      primeHitProbes(layers);
+    }, [layers]);
 
     useEffect(() => {
       const observer = new ResizeObserver(syncCanvas);
@@ -591,21 +600,52 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
 
     // ── Layer drag & resize ────────────────────────────────────────────────────
 
+    /**
+     * The layer this pointer event is really about.
+     *
+     * The event arrives on whichever overlay RECTANGLE is topmost, which is
+     * frequently not the thing under the cursor: Convert to canvas gives every
+     * object a full-canvas layer positioned only by its alpha, and templates
+     * add full-canvas decoration (`grain`, `tornEdge`) last of all. In both
+     * cases one rectangle covered the whole canvas and swallowed every click.
+     *
+     * So the rectangle only decides that a click happened; what it landed on is
+     * resolved against the pixels. A layer whose probe has not loaded yet
+     * answers "opaque", which is exactly the old rectangle behaviour.
+     */
+    function resolveTarget(e: React.PointerEvent<HTMLDivElement>, fallback: Layer): Layer {
+      if (!canvasRect.width || !canvasRect.height) return fallback;
+      const host = containerRef.current;
+      if (!host) return fallback;
+      const box = host.getBoundingClientRect();
+      const xPx = e.clientX - box.left - canvasRect.left;
+      const yPx = e.clientY - box.top - canvasRect.top;
+      return resolveLayerAt(visibleLayers, xPx, yPx, canvasRect.width, canvasRect.height)
+        ?? fallback;
+    }
+
     function onLayerPointerDown(e: React.PointerEvent<HTMLDivElement>, layer: Layer) {
       e.stopPropagation();
       e.currentTarget.setPointerCapture(e.pointerId);
+      const target = resolveTarget(e, layer);
       layerDragRef.current = {
-        id: layer.id,
+        id: target.id,
         startClientX: e.clientX,
         startClientY: e.clientY,
-        startXPct: layer.xPct,
-        startYPct: layer.yPct,
+        startXPct: target.xPct,
+        startYPct: target.yPct,
         hasMoved: false,
       };
     }
 
-    function onLayerPointerMove(e: React.PointerEvent<HTMLDivElement>, layer: Layer) {
-      if (!layerDragRef.current || layerDragRef.current.id !== layer.id || !canvasRect.width) return;
+    function onLayerPointerMove(e: React.PointerEvent<HTMLDivElement>, _layer: Layer) {
+      // Keyed on the drag ref, NOT on the layer whose rectangle caught the
+      // event: resolveTarget may have redirected the drag to the layer actually
+      // under the cursor, and comparing against the rectangle's owner would
+      // then discard every move.
+      if (!layerDragRef.current || !canvasRect.width) return;
+      const dragId = layerDragRef.current.id;
+      const layer = layers.find((l) => l.id === dragId) ?? _layer;
       const dx = e.clientX - layerDragRef.current.startClientX;
       const dy = e.clientY - layerDragRef.current.startClientY;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
@@ -654,12 +694,13 @@ export const EditCanvas = forwardRef<EditCanvasRef, EditCanvasProps>(
         }
       }
       setGuides({ v: guideV, h: guideH });
-      onLayerMove?.(layer.id, newXPct, newYPct);
+      onLayerMove?.(dragId, newXPct, newYPct);
     }
 
-    function onLayerPointerUp(layer: Layer) {
+    function onLayerPointerUp(_layer: Layer) {
       if (layerDragRef.current && !layerDragRef.current.hasMoved) {
-        onSelectLayer?.(layer.id);
+        // The resolved id, so a click selects what was under the cursor.
+        onSelectLayer?.(layerDragRef.current.id);
       }
       layerDragRef.current = null;
       setGuides({ v: null, h: null });
