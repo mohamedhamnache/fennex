@@ -179,18 +179,26 @@ function llmCredits(inputTokens: number, outputTokens: number): number {
  * `claude-haiku-4-5-20251001` call through `call_llm` and is metered
  * ambiently against the org.
  *
- *   input  ~= 110 tokens of `_IMPROVE_EDIT_SYSTEM` + ~30 for the wrapper and a
- *             typical one-line instruction              -> 140
- *   output ~= the one or two sentences the system prompt asks for -> 40
- *   140 * 1.0 + 40 * 5.0 = 340 micro-$ -> ceil(340 / 1050) = 1 credit
+ * Unlike every other LLM estimate here, this one is NOT token-derived. The
+ * feature carries a pricing floor -- `FEATURE_MIN_CREDITS["improve_prompt"]`
+ * in apps/api/app/core/credits.py -- so a rephrase bills a flat
+ * MIN_REPLICATE_CREDITS regardless of how few tokens it actually spent.
  *
- * WORST CASE, if a user pastes a long instruction and the model answers at
- * its `improve_prompt` policy ceiling of 512 output tokens
- * (apps/api/app/services/agents/policy.py), this reaches ~3 credits. The
- * label says "about", and the authoritative number is whatever
- * `getUsageSummary()` reports afterwards.
+ * Its real token cost is ~2 credits' worth: `_IMPROVE_EDIT_SYSTEM` is a
+ * detailed prompt-engineering brief (~600 tokens) and the answer runs to a
+ * few sentences (~200), so 600 * 1.0 + 200 * 5.0 = 1600 micro-$. The floor
+ * prices the action as an operation rather than at cost, and comfortably
+ * covers the richer system prompt.
+ *
+ * This is therefore an exact figure, not an estimate, for any rephrase that
+ * lands under the floor -- which is all of them short of a pathological
+ * input. If the floor is ever raised or removed, change it in credits.py and
+ * here in the same commit, or the button will quote a price the ledger does
+ * not charge.
  */
-export const PROMPT_REPHRASE_CREDIT_COST = llmCredits(140, 40);
+export const PROMPT_REPHRASE_CREDIT_COST = Math.max(
+  MIN_REPLICATE_CREDITS, llmCredits(140, 40),
+);
 
 /**
  * Reading an image attached to a Mirage message, shown on the attachment chip

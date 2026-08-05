@@ -11,6 +11,7 @@ from app.models.cost_rate import CostRate
 from app.models.usage_event import UsageEvent
 from app.models.billing import OrgUsage
 from app.core.billing import current_billing_period_start
+from app.core.credits import MIN_REPLICATE_CREDITS
 from app.services.llm_service import LLMUsage
 from app.services.metering import meter
 
@@ -103,3 +104,89 @@ async def test_missing_cost_rate_logs_warning_and_prices_zero(caplog):
             cost = await meter.record_llm(db, org_id=org, project_id=None, usage=usage)
         assert cost == 0
         assert any("claude-opus-4-8" in r.message for r in caplog.records)
+
+
+async def test_floored_feature_bills_the_floor_but_records_true_cost():
+    """A feature in FEATURE_MIN_CREDITS bills at least its floor, while
+    cost_micros keeps the real supplier cost.
+
+    The split is the whole point: credits are what the customer is charged,
+    cost_micros is what the supplier charged us, and COGS/margin reporting
+    reads the latter. If the floor leaked into cost_micros the markup would
+    masquerade as cost and every margin figure would be wrong.
+    """
+    await _seed(
+        CostRate(provider="anthropic", unit="input_token",
+                 model="claude-haiku-4-5-20251001", micro_dollars_per_unit=1.0),
+        CostRate(provider="anthropic", unit="output_token",
+                 model="claude-haiku-4-5-20251001", micro_dollars_per_unit=5.0),
+    )
+    org = uuid.uuid4()
+    async with Session() as db:
+        usage = LLMUsage("anthropic", "claude-haiku-4-5-20251001",
+                         input_tokens=600, output_tokens=200, cache_read_tokens=0)
+        cost = await meter.record_llm(db, org_id=org, project_id=None, usage=usage,
+                                      feature="improve_prompt")
+        # 600 * 1.0 + 200 * 5.0 = 1600 micro-$, which is 2 credits unfloored.
+        assert cost == 1600
+
+        ev = (await db.execute(select(UsageEvent).where(UsageEvent.org_id == org))).scalar_one()
+        assert ev.cost_micros == 1600, "the ledger must keep the TRUE supplier cost"
+
+        ou = (await db.execute(select(OrgUsage).where(
+            OrgUsage.org_id == org, OrgUsage.period_start == current_billing_period_start()
+        ))).scalar_one()
+        assert ou.ai_credits_used == MIN_REPLICATE_CREDITS  # 10, not 2
+        assert ou.ai_cost_micros == 1600, "cost rollup must stay unfloored too"
+
+
+async def test_unfloored_feature_is_unchanged_by_the_floor_mechanism():
+    """The floor is per-feature. Every other LLM call must keep billing at
+    cost, so adding a floor for one feature cannot reprice the whole product."""
+    await _seed(
+        CostRate(provider="anthropic", unit="input_token",
+                 model="claude-haiku-4-5-20251001", micro_dollars_per_unit=1.0),
+        CostRate(provider="anthropic", unit="output_token",
+                 model="claude-haiku-4-5-20251001", micro_dollars_per_unit=5.0),
+    )
+    org = uuid.uuid4()
+    async with Session() as db:
+        usage = LLMUsage("anthropic", "claude-haiku-4-5-20251001",
+                         input_tokens=600, output_tokens=200, cache_read_tokens=0)
+        await meter.record_llm(db, org_id=org, project_id=None, usage=usage,
+                               feature="some_other_feature")
+        ou = (await db.execute(select(OrgUsage).where(
+            OrgUsage.org_id == org, OrgUsage.period_start == current_billing_period_start()
+        ))).scalar_one()
+        assert ou.ai_credits_used == 2  # ceil(1600 / 1050)
+
+
+async def test_floored_feature_still_bills_when_the_cost_rate_is_missing():
+    """An unrated model prices to 0 micro-$. Without anchoring the floor on
+    tokens rather than cost, a missing cost_rate row would silently make the
+    floored feature free -- the exact failure the floor exists to prevent."""
+    org = uuid.uuid4()
+    async with Session() as db:
+        usage = LLMUsage("anthropic", "claude-haiku-4-5-20251001",
+                         input_tokens=600, output_tokens=200, cache_read_tokens=0)
+        cost = await meter.record_llm(db, org_id=org, project_id=None, usage=usage,
+                                      feature="improve_prompt")
+        assert cost == 0
+        ou = (await db.execute(select(OrgUsage).where(
+            OrgUsage.org_id == org, OrgUsage.period_start == current_billing_period_start()
+        ))).scalar_one()
+        assert ou.ai_credits_used == MIN_REPLICATE_CREDITS
+
+
+async def test_a_call_that_never_happened_bills_nothing():
+    """No tokens means no call. The floor must not charge for a no-op."""
+    org = uuid.uuid4()
+    async with Session() as db:
+        usage = LLMUsage("anthropic", "claude-haiku-4-5-20251001",
+                         input_tokens=0, output_tokens=0, cache_read_tokens=0)
+        await meter.record_llm(db, org_id=org, project_id=None, usage=usage,
+                               feature="improve_prompt")
+        ou = (await db.execute(select(OrgUsage).where(
+            OrgUsage.org_id == org, OrgUsage.period_start == current_billing_period_start()
+        ))).scalar_one()
+        assert ou.ai_credits_used == 0

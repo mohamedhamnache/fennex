@@ -6,7 +6,9 @@ import uuid
 from sqlalchemy import select
 
 from app.core.billing import current_billing_period_start
-from app.core.credits import credits_from_micros, replicate_operation_credits, seo_credits_for
+from app.core.credits import (
+    credits_from_micros, feature_min_credits, replicate_operation_credits, seo_credits_for,
+)
 from app.models.billing import OrgUsage
 from app.models.cost_rate import CostRate
 from app.models.usage_event import UsageEvent
@@ -77,9 +79,20 @@ async def record_llm(db, *, org_id: uuid.UUID, project_id, usage: LLMUsage, feat
         cache_write_tokens=usage.cache_write_tokens,
         cost_micros=cost,
     ))
+    # Billed credits may exceed the cost-derived amount where the feature
+    # carries a pricing floor. The floor is keyed off `feature`, so it holds on
+    # the ambient metering path too -- no call site has to remember to ask for
+    # it. Anchored on tokens rather than on cost so a missing cost_rate row
+    # under-bills nothing: an unrated model prices to 0 (logged above), and
+    # without this the floored feature would silently become free.
+    billed_credits = credits_from_micros(cost)
+    if usage.input_tokens > 0 or usage.output_tokens > 0:
+        billed_credits = max(feature_min_credits(feature), billed_credits)
+    # cost/ai_cost_micros stay the TRUE unfloored supplier cost -- COGS and
+    # margin reporting read them, and a markup must never look like cost.
     await _bump_org_usage(db, org_id, ai_input_tokens=usage.input_tokens,
                           ai_output_tokens=usage.output_tokens, ai_requests=1, cost_micros=cost,
-                          ai_cost_micros=cost, ai_credits_used=credits_from_micros(cost))
+                          ai_cost_micros=cost, ai_credits_used=billed_credits)
     await db.commit()
     return cost
 

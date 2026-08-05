@@ -102,7 +102,31 @@ async def test_improve_prompt_meters_against_the_calling_org_and_names_the_featu
 async def test_edit_instruction_mode_uses_the_editing_system_prompt(monkeypatch, metered):
     await _call(monkeypatch, metered, org_id=uuid.uuid4(), mode="edit_instruction")
     assert metered["system"] == images_router._IMPROVE_EDIT_SYSTEM
-    assert "Rewrite this editing instruction" in metered["user"]
+    # The user's own words must reach the model intact; the wrapper only frames
+    # them. Asserting the payload rather than the wrapper's exact sentence so
+    # the framing can be reworded without a test edit.
+    assert "remove the mint" in metered["user"]
+
+
+async def test_edit_instruction_prompt_is_operation_aware(monkeypatch, metered):
+    """The rewriter must know which edits take rich description and which do
+    not.
+
+    Uniform verbosity is the failure mode this guards: dressing a parametric
+    edit ("brighten it") in scene description misroutes the planner into
+    regenerating the picture instead of adjusting it, and a removal only ever
+    needed an unambiguous target. The instruction also has to keep saying what
+    must NOT change, which is what stops a generative edit drifting into a
+    different photograph.
+    """
+    system = images_router._IMPROVE_EDIT_SYSTEM
+    for term in ("GENERATIVE", "REGIONAL", "PARAMETRIC"):
+        assert term in system, f"the rewriter must distinguish {term} edits"
+    assert "MUST NOT CHANGE" in system
+    assert "SAME LANGUAGE" in system
+    # It stays an instruction to an editor: a whole-photo description reads as
+    # "generate this" and replaces the user's image.
+    assert "never write a description of the whole photograph" in system.lower()
 
 
 async def test_default_mode_still_improves_a_generation_prompt(monkeypatch, metered):
