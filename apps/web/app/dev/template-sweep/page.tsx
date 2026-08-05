@@ -30,8 +30,10 @@ import {
 } from "@/components/studio/edit/text-templates";
 import { analyzeText } from "@/components/studio/edit/families";
 import {
-  PROBE_TEMPLATES, HEADLINE_REFERENCE, headlinePct, type ProbeTemplate,
+  PROBE_TEMPLATES, HEADLINE_REFERENCE, headlinePct, LAYOUTS, buildProbe, colourwaysForLayout,
+  type ProbeTemplate,
 } from "@/components/studio/edit/probe/templates";
+import { COLOURWAYS, colourway } from "@/components/studio/edit/probe/colourways";
 import { runReports, verifyFieldClaims, type RunReport } from "@/components/studio/edit/probe/type";
 import { worstCaseContrast, contrastRatio, MIN_CONTRAST } from "@/components/studio/edit/palette";
 import { SceneSvg } from "@/components/studio/edit/scene/SceneSvg";
@@ -694,6 +696,9 @@ function probeSetChecks(templates: ProbeTemplate[]): Check[] {
     templates.filter((t) => t.intent === intent).length;
   const byRegister = (register: ProbeTemplate["register"]) =>
     templates.filter((t) => t.register === register).length;
+  const groundCounts = new Map<string, number>();
+  for (const t of templates) groundCounts.set(t.ground, (groundCounts.get(t.ground) ?? 0) + 1);
+  const overused = [...groundCounts.entries()].filter(([, n]) => n > 2).map(([g]) => g);
 
   return [
     {
@@ -717,11 +722,20 @@ function probeSetChecks(templates: ProbeTemplate[]): Check[] {
       detail: `${byIntent("quiet")} quiet, ${byIntent("mid")} mid, ${byIntent("loud")} loud`,
     },
     {
-      // The owner supplied two reference designs, so the set has to answer both
-      // and then say something of its own. Two of each is the brief.
+      // Both approved directions have to be represented. There is no third
+      // register: the two we invented were rejected.
       name: "reference registers",
-      pass: byRegister("vibrant") >= 2 && byRegister("soft") >= 2 && byRegister("own") >= 2,
-      detail: `${byRegister("vibrant")} vibrant (reference 1), ${byRegister("soft")} soft (reference 2), ${byRegister("own")} extending`,
+      pass: byRegister("vibrant") >= 2 && byRegister("soft") >= 2,
+      detail: `${byRegister("vibrant")} vibrant (reference 1), ${byRegister("soft")} soft (reference 2)`,
+    },
+    {
+      // One treatment dominating is the same failure as one layout dominating,
+      // on a different axis.
+      name: "ground variety",
+      pass: overused.length === 0,
+      detail: overused.length
+        ? `${overused.join(", ")} used more than twice`
+        : [...groundCounts.entries()].map(([g, n]) => `${g} x${n}`).join(", "),
     },
   ];
 }
@@ -740,7 +754,7 @@ function probeChecks(t: ProbeTemplate): Check[] {
       ? `"${t.headline}" matches no run in this template`
       : `${hp.toFixed(2)}% of canvas width (${((hp / 100) * W).toFixed(0)}px at ${W}) — ` +
         `rejected set ${HEADLINE_REFERENCE.rejectedHeadline.toFixed(2)}%, ` +
-        `editorial ${HEADLINE_REFERENCE.editorial[0]}-${HEADLINE_REFERENCE.editorial[1]}%, intent ${t.intent}`,
+        `approved band ${HEADLINE_REFERENCE.approved[0]}-${HEADLINE_REFERENCE.approved[1]}%, intent ${t.intent}`,
   });
 
   const reports = runReports(t.runs);
@@ -811,7 +825,7 @@ function RunTable({ runs }: { runs: RunReport[] }) {
 
 interface ProbeRow { t: ProbeTemplate; row: Row }
 
-function ProbeSweep({ size }: { size: number }) {
+function ProbeSweep({ size, cwId }: { size: number; cwId: string | null }) {
   const [rows, setRows] = useState<ProbeRow[]>([]);
 
   useEffect(() => {
@@ -819,7 +833,16 @@ function ProbeSweep({ size }: { size: number }) {
     setRows([]);
     (async () => {
       await document.fonts.ready;
-      for (const t of PROBE_TEMPLATES) {
+      // "as shipped" builds each layout in its own colourway; picking one
+      // rebuilds every layout that accepts it, which is the whole point of the
+      // colour axis and the fastest way to see a layout carrying an assumption
+      // it should not.
+      const chosen = cwId ? colourway(cwId) : null;
+      const built = LAYOUTS.map((l) => {
+        const ok = chosen && colourwaysForLayout(l).some((c) => c.id === chosen.id);
+        return buildProbe(l, ok ? chosen : undefined);
+      });
+      for (const t of built) {
         if (cancelled) return;
         const row = await checkVariant(t, "probe", { background: null, layers: t.layers }, false);
         if (cancelled) return;
@@ -827,7 +850,7 @@ function ProbeSweep({ size }: { size: number }) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [cwId]);
 
   return (
     <div className="space-y-14">
@@ -839,7 +862,10 @@ function ProbeSweep({ size }: { size: number }) {
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.subject}</span>{" "}
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.intent}</span>{" "}
               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
-                {t.register === "own" ? "extends" : `reference: ${t.register}`}
+                {t.register}
+              </span>{" "}
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
+                {t.ground} / {t.colourway.name}
               </span>{" "}
               <span className="font-mono text-xs text-muted-foreground">{t.id}</span>
             </h2>
@@ -890,6 +916,7 @@ export default function TemplateSweepPage() {
   // The full set is one click away and unchanged.
   const [mode, setMode] = useState<"probe" | "set">("probe");
   const [probeSize, setProbeSize] = useState(PROBE_SIZES[1]);
+  const [probeCw, setProbeCw] = useState<string | null>(null);
 
   const variants = [
     AS_AUTHORED,
@@ -981,12 +1008,46 @@ export default function TemplateSweepPage() {
         </div>
 
         {mode === "probe" ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">colourway</span>
+            <button
+              type="button"
+              onClick={() => setProbeCw(null)}
+              className={cn(
+                "rounded-md border px-2 py-1 text-xs",
+                probeCw === null ? "border-primary bg-primary/10" : "border-border",
+              )}
+            >
+              as shipped
+            </button>
+            {COLOURWAYS.map((cw) => (
+              <button
+                key={cw.id}
+                type="button"
+                onClick={() => setProbeCw(cw.id)}
+                className={cn(
+                  "rounded-md border px-2 py-1 text-xs",
+                  probeCw === cw.id ? "border-primary bg-primary/10" : "border-border",
+                )}
+                title={`${cw.register}: ${cw.stops.join(" ")}`}
+              >
+                <span
+                  className="mr-1.5 inline-block h-2.5 w-2.5 translate-y-px rounded-full"
+                  style={{ background: `linear-gradient(135deg, ${cw.stops.join(", ")})` }}
+                />
+                {cw.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {mode === "probe" ? (
           <p className="max-w-3xl text-sm text-muted-foreground">
             Six compositions — two quiet, two mid, two loud — built before the set is scaled back to
             ~34. Type sizes are percentages of canvas width, chosen per composition: the rejected set
             put every headline at {HEADLINE_REFERENCE.rejectedHeadline.toFixed(1)}% and every display
-            at {HEADLINE_REFERENCE.rejectedDisplay.toFixed(1)}%, where editorial work sets a headline
-            at {HEADLINE_REFERENCE.editorial[0]}-{HEADLINE_REFERENCE.editorial[1]}%. Amber rows are
+            at {HEADLINE_REFERENCE.rejectedDisplay.toFixed(1)}%, where the approved band is
+            {HEADLINE_REFERENCE.approved[0]}-{HEADLINE_REFERENCE.approved[1]}%. Amber rows are
             warnings, not defects: contrast is measured and reported here, and no longer forces every
             run onto an opaque box.
           </p>
@@ -1039,7 +1100,7 @@ export default function TemplateSweepPage() {
             <CheckList checks={probeSetChecks(PROBE_TEMPLATES)} />
           </section>
           <ResolutionChecks />
-          <ProbeSweep size={probeSize} />
+          <ProbeSweep size={probeSize} cwId={probeCw} />
         </>
       ) : (
         <>
