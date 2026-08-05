@@ -28,7 +28,7 @@ import type { TemplateLayerDef } from "../text-templates";
 import { resolvePalette } from "../palette";
 import { REFERENCE_WIDTH, photo } from "../families";
 import {
-  type RunSpec, compose, cornerScrim, field, rule,
+  type RunSpec, compose, cornerScrim, edgeScrim, field, rule,
 } from "./type";
 
 export interface ProbeTemplate {
@@ -313,11 +313,83 @@ function margin(): ProbeTemplate {
   };
 }
 
+// ── 5. Half Off — sale, loud ─────────────────────────────────────────────────
+//
+// Loud on purpose, and the reason the other four are allowed to be quiet: when
+// every template shouts, nothing is emphasis. The numeral is 13.75% of canvas
+// width — bigger than anything else in the six, and still under the 14% the
+// rejected set used for a blog cover.
+//
+// Two owned regions, no box. A band bleeding off both edges is multiplied over
+// the photograph, which can only drive the accent darker, so white type on it
+// inherits the palette's own onAccent/accent floor whatever the customer
+// uploads. The terms sit at the bottom in a ramp the template built out of
+// eight overlapping steps, and the alpha each run is measured against is read
+// back off the ramp rather than guessed.
+//
+// The numeral is set a hair past the left edge so its sidebearing is cropped
+// and the glyph optically aligns with the frame, which is what ranging display
+// type to an edge actually means.
+
+function halfOff(): ProbeTemplate {
+  const p = resolvePalette("ecommerce");
+  const c = compose();
+  const ramp = edgeScrim(p.surface, { yPct: 68, heightPct: 32, steps: 8, stepAlpha: 0.26 });
+  const onRamp = (yPct: number) => ({ kind: "prepared", color: p.surface, alpha: ramp.alphaAt(yPct) } as const);
+  const onBand = { kind: "wash", color: p.accent, blend: "multiply" } as const;
+
+  c.add(
+    photo(),
+    field({ color: p.accent, xPct: -6, yPct: 34, widthPct: 112, heightPct: 19, blend: "multiply" }),
+    ...ramp.layers,
+  );
+
+  c.type(
+    {
+      text: "50%",
+      sizePct: 13.75, font: "impact", trackingPct: -0.5,
+      color: p.onAccent, xPct: -1.2, yPct: 36.2, on: onBand,
+    },
+    {
+      text: "Outerwear / Final weekend",
+      sizePct: 1.6, font: "mono", uppercase: true, trackingPct: 0.35,
+      color: p.onAccent, xPct: 20, yPct: 44.6, on: onBand,
+    },
+    {
+      text: "Half off every coat",
+      sizePct: 4, font: "modern", weight: 700, trackingPct: -0.06,
+      color: p.ink, xPct: 6, yPct: 79.5, on: onRamp(79.5),
+    },
+    {
+      text: "Ends Sunday at midnight. Marked at the till, no code needed.",
+      sizePct: 1.55, font: "support", opacity: 0.9,
+      color: p.ink, xPct: 6, yPct: 85.5, on: onRamp(85.5),
+    },
+    {
+      text: "In store and online",
+      sizePct: 1.25, font: "mono", uppercase: true, trackingPct: 0.25,
+      color: p.accentInk, xPct: 6, yPct: 89.8, on: onRamp(89.8),
+    },
+  );
+
+  return {
+    id: "pb_sale_halfoff",
+    name: "Half Off",
+    subject: "sale",
+    intent: "loud",
+    headline: "50%",
+    note: "A multiply band bleeding off both edges carries the numeral; the terms sit in an eight-step ramp the template built down the bottom edge.",
+    layers: c.layers,
+    runs: c.runs,
+  };
+}
+
 export const PROBE_TEMPLATES: ProbeTemplate[] = [
   smallBatch(),
   culvert(),
   nightMarket(),
   margin(),
+  halfOff(),
 ];
 
 /** Reference points for reading the headline sizes above. */
