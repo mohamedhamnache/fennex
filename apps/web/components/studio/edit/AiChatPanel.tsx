@@ -3,16 +3,41 @@
 import { useState, useRef, useEffect, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
-import { Send, Bot, User, Sparkles, Wand2, Undo2, Loader2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, Wand2, Undo2, Loader2, Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  sendAiCommand, improvePrompt, ApiError,
-  type GeneratedImage, type AiCommandMessage,
+  sendAiCommand, improvePrompt, uploadImage, interpretAttachment, ApiError,
+  type GeneratedImage, type AiCommandMessage, type AttachmentInterpretation,
 } from "@/lib/api";
-import { PROMPT_REPHRASE_CREDIT_COST } from "@/lib/creditCosts";
+import { PROMPT_REPHRASE_CREDIT_COST, ATTACHMENT_INTERPRET_CREDIT_COST } from "@/lib/creditCosts";
 import type { EditCanvasRef } from "./EditCanvas";
 
 const SUGGESTION_GROUPS = ["oneGo", "enhance", "retouch", "style", "transform"] as const;
+
+/** Refuse before uploading rather than after: a large photo costs the user a
+ *  slow upload and then still has to be downloaded again server-side. */
+const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024;
+
+/**
+ * Appended to the user's own sentence when their attachment is used as a
+ * REFERENCE. Model-facing text, deliberately NOT run through t(): it is an
+ * instruction to the planner (whose own system prompt is English), not
+ * something the user reads. The user's message is displayed and stored
+ * unchanged; only the text sent to the model carries this.
+ *
+ * The "do not add" clause is the load-bearing half. Handed a description of
+ * another picture with no such instruction, the instruction model cheerfully
+ * composites that picture in -- which is precisely the failure "reference"
+ * exists to avoid.
+ */
+function referenceClause(description: string): string {
+  return description
+    ? `\n\nThe user attached a REFERENCE image. Do NOT add that image, or any part of `
+      + `it, to the picture: use it only as a guide for the look being asked for. `
+      + `The reference image shows: ${description}`
+    : `\n\nThe user attached a reference image showing the look they want. Do NOT add `
+      + `any new image to the picture.`;
+}
 
 interface AiChatPanelProps {
   imageId: string;
@@ -29,6 +54,63 @@ interface AiChatPanelProps {
    * the conversation after every single edit (and on every undo/redo).
    */
   conversationId: string;
+  /** Where an attached image is stored. */
+  projectId: string;
+  /**
+   * Adds an attached image to the composition as a LAYER, returning its id.
+   * This is the "insert" half of an attachment, and it reuses the editor's
+   * existing layer system rather than a generative insert: the element lands
+   * where the user can move, resize and delete it, and it costs nothing to
+   * place or to remove again -- which is what makes correcting a wrong
+   * interpretation free.
+   */
+  onAddImageLayer?: (imageUrl: string, name: string, aspectRatio: number) => string;
+  /** Removes a layer this panel added, when the user corrects an insert into a
+   *  reference. Without it a rejected insert would stay in the picture. */
+  onRemoveLayer?: (layerId: string) => void;
+}
+
+/** An image the user has attached to the message they are composing. */
+interface PendingAttachment {
+  imageId: string;
+  url: string;
+  name: string;
+  aspectRatio: number;
+}
+
+/**
+ * The last attachment that was interpreted, kept so the user can CORRECT the
+ * interpretation. The classification will sometimes be wrong and the failure
+ * is asymmetric, so the correction has to be one click and it has to be free:
+ * both the description and the uploaded file are already in hand, so switching
+ * either way re-uploads nothing and calls nothing.
+ */
+interface ResolvedAttachment extends PendingAttachment {
+  /** The user's own sentence, without the reference clause. */
+  command: string;
+  description: string;
+  intent: AttachmentInterpretation["intent"];
+  guessed: boolean;
+  /** Set while the "insert" reading is in effect, so undoing it can remove
+   *  the layer again. */
+  layerId?: string;
+}
+
+/** Natural size of a picked file, for the layer's aspect ratio. */
+function readAspectRatio(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 1);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(1);
+    };
+    img.src = objectUrl;
+  });
 }
 
 /** Awaiting the user's approval of an auto-derived mask for one step of a

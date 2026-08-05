@@ -40,22 +40,21 @@ def metered(monkeypatch):
         recorded["max_tokens"] = max_tokens
         return "  a rewritten instruction  ", _Usage()
 
-    class _FakeMeter:
-        @staticmethod
-        async def record_llm(db, *, org_id, project_id, usage, feature=None):
-            recorded["org_id"] = org_id
-            recorded["feature"] = feature
-            return 0
-
-    import sys
-    import types
+    async def fake_record_llm(db, *, org_id, project_id, usage, feature=None):
+        recorded["org_id"] = org_id
+        recorded["feature"] = feature
+        return 0
 
     monkeypatch.setattr(llm_service, "call_llm_usage", fake_call_llm_usage)
-    # call_llm imports the meter and the session factory lazily, inside its
-    # ambient branch, so both are replaced at their source modules.
-    fake_pkg = types.ModuleType("app.services.metering.meter")
-    fake_pkg.record_llm = _FakeMeter.record_llm
-    monkeypatch.setitem(sys.modules, "app.services.metering.meter", fake_pkg)
+    # The ambient branch imports the meter and the session factory lazily, so
+    # both are replaced on their own modules. Patching the FUNCTION rather than
+    # swapping the module into sys.modules is deliberate: `from
+    # app.services.metering import meter` resolves the already-bound package
+    # ATTRIBUTE, which a sys.modules substitution does not touch -- so that
+    # form of the stub silently does nothing as soon as any earlier test has
+    # imported the real module.
+    from app.services.metering import meter as real_meter
+    monkeypatch.setattr(real_meter, "record_llm", fake_record_llm)
 
     class _NullSession:
         async def __aenter__(self):

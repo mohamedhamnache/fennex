@@ -23,7 +23,7 @@ from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.project import Project
 from app.services.image_service import build_image_prompt, build_social_prompt, generate_image_dalle, get_placeholder_url, SOCIAL_PRESETS
 from app.core.storage import upload_file
-from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
+from app.services.llm_service import get_org_llm_keys, call_llm, call_llm_vision, project_locale
 from app.services import editing_service
 
 router = APIRouter()
@@ -251,6 +251,191 @@ async def improve_prompt(body: ImprovePromptRequest, current_user: CurrentUser, 
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="No AI API key configured. Add an Anthropic or OpenAI key in Settings → API Keys.",
+    )
+
+
+# ── Attachment interpretation (Mirage chat) ───────────────────────────────────
+
+class InterpretAttachmentRequest(BaseModel):
+    """One image the user attached to a Mirage message, plus what they asked."""
+    command: str
+    # The GeneratedImage row created by POST /images/upload. Taken as an ID
+    # rather than a URL on purpose: the row is looked up scoped to the caller's
+    # org, so there is no client-supplied URL to fetch server-side and
+    # therefore no request-forgery surface to guard (contrast mask_urls in
+    # ai_command.py, which does take URLs and must run every one of them
+    # through is_own_storage_url first).
+    attachment_image_id: uuid.UUID
+
+
+class InterpretAttachmentResponse(BaseModel):
+    # "insert": the attachment is an element to place INTO the picture (a
+    # logo, a product, a person). "reference": it shows a look to imitate and
+    # must never itself appear in the result.
+    intent: Literal["insert", "reference"]
+    # What the image shows. Returned for BOTH intents -- see _INTERPRET_FEATURE
+    # for why -- so the caller can switch interpretation without paying again.
+    description: str
+    # True when no vision-capable key was configured and the verdict came from
+    # the wording of the command alone. The caller shows the interpretation
+    # either way; this only says how confident it is entitled to sound.
+    guessed: bool = False
+
+
+_INTERPRET_SYSTEM = (
+    "You decide what a user wants done with an image they attached to a photo-"
+    "editing chat message, and you describe that image.\n\n"
+    "Two possible intents:\n"
+    '- "insert": the attached image is a THING to place into the picture they '
+    "are editing -- a logo, a product, a person, an object. Signals: add, put, "
+    "place, insert, stick, paste, overlay, \"this logo\", \"this product\".\n"
+    '- "reference": the attached image shows a LOOK to imitate -- a style, a '
+    "colour palette, a background, a mood. It must never itself appear in the "
+    "result. Signals: like this, in this style, match this, similar to, "
+    '"make the background look like this".\n\n'
+    "Then describe the attached image in two or three sentences: the subject, "
+    "the colours, the lighting, the background, and whether it has a "
+    "transparent or plain backdrop. Write the description so it could guide an "
+    "image editor that cannot see the image.\n\n"
+    'Reply with ONLY this JSON: {"intent": "insert"|"reference", '
+    '"description": "..."}. No markdown, no text outside the JSON.'
+)
+
+# Vision-capable, cheap-band models. Both entries carry `vision: true` in the
+# provider catalog (app/services/providers/catalog.py).
+_INTERPRET_PROVIDERS = [
+    ("anthropic", "claude-haiku-4-5-20251001"),
+    ("openai", "gpt-4o-mini"),
+]
+
+# ONE vision call answers both questions, and it is made for BOTH verdicts --
+# the description is fetched even when the answer is "insert", where nothing
+# will read it. That looks wasteful and is not: the classification will
+# sometimes be wrong, and the failure is asymmetric (a reference treated as an
+# insert puts an unwanted picture in the frame; an insert treated as a
+# reference silently drops the element that was asked for). Having both
+# artifacts in hand after one call is what lets the user correct the verdict in
+# either direction without re-uploading and without paying a second time. It
+# also makes the price quotable up front as a single number instead of a range
+# that depends on a verdict nobody has yet.
+_INTERPRET_FEATURE = "attachment_intent"
+
+# Fallback classification when no vision-capable key is configured. Deliberately
+# crude and deliberately biased: with no model to ask, the safer default is
+# "reference", because a wrong reference produces a slightly-off edit the user
+# can see and correct, while a wrong insert stamps an unwanted image into their
+# picture.
+_INSERT_HINTS = (
+    # en
+    "add ", "insert", "put ", "place ", "paste", "overlay", "stick ",
+    # fr / es / pt / de / ar
+    "ajoute", "insère", "insere", "mets ", "colle", "pose ",
+    "añade", "anade", "agrega", "pon ", "coloca", "inserta",
+    "adicione", "coloque", "insira",
+    "füge", "fuege", "setze", "platziere",
+    "أضف", "ضع", "أدرج",
+)
+
+
+def _classify_from_command(command: str) -> str:
+    lowered = (command or "").lower()
+    return "insert" if any(hint in lowered for hint in _INSERT_HINTS) else "reference"
+
+
+def _parse_interpretation(raw: str) -> tuple[Optional[str], str]:
+    """Pull {intent, description} out of a model reply. Returns (None, "") when
+    the reply is not usable, so the caller can try the next provider."""
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
+        text = re.sub(r"```$", "", text).strip()
+    try:
+        data = json.loads(text)
+    except Exception:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            return None, ""
+        try:
+            data = json.loads(match.group(0))
+        except Exception:
+            return None, ""
+    if not isinstance(data, Mapping):
+        return None, ""
+    intent = str(data.get("intent") or "").strip().lower()
+    if intent not in ("insert", "reference"):
+        intent = None
+    return intent, str(data.get("description") or "").strip()
+
+
+@router.post("/interpret-attachment", response_model=InterpretAttachmentResponse)
+async def interpret_attachment(
+    body: InterpretAttachmentRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
+    """Decide whether an attached image is to be INSERTED or used as a
+    REFERENCE, and describe it, in a single metered vision call.
+
+    Deliberately NOT folded into POST /images/{id}/ai-command. That route
+    carries the mask-confirmation round trip and its resume token, whose entire
+    purpose is that a chain which stops for confirmation is never re-planned
+    and never re-billed for steps already applied. A vision call inside it
+    would either run again on every confirmation round trip -- exactly the
+    repeat billing the resume token exists to prevent -- or need its result
+    threaded through the chain snapshot as well. Answering here instead leaves
+    that machinery untouched, and lets the caller hold the answer across as
+    many confirmation round trips, retries and corrections as it likes.
+    """
+    result = await db.execute(
+        select(GeneratedImage).where(
+            GeneratedImage.id == body.attachment_image_id,
+            GeneratedImage.org_id == current_user.org_id,
+        )
+    )
+    attachment = result.scalar_one_or_none()
+    if attachment is None or not attachment.image_url:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+
+    keys = await get_org_llm_keys(current_user.org_id, db)
+    providers = [(p, m) for p, m in _INTERPRET_PROVIDERS if p in keys]
+
+    if providers:
+        from app.services.image_output import _download
+
+        try:
+            image_bytes = await _download(attachment.image_url)
+        except Exception:
+            image_bytes = None
+
+        if image_bytes:
+            media_type = "image/png"
+            lowered_url = attachment.image_url.lower()
+            if lowered_url.endswith((".jpg", ".jpeg")) or "image/jpeg" in lowered_url:
+                media_type = "image/jpeg"
+            elif lowered_url.endswith(".webp") or "image/webp" in lowered_url:
+                media_type = "image/webp"
+
+            user_prompt = (
+                f"The user attached this image and wrote:\n\n{body.command.strip()}"
+            )
+            for provider, model in providers:
+                try:
+                    raw = await call_llm_vision(
+                        provider, model, keys[provider], _INTERPRET_SYSTEM, user_prompt,
+                        image_bytes, media_type, feature=_INTERPRET_FEATURE,
+                    )
+                except Exception:
+                    continue
+                intent, description = _parse_interpretation(raw)
+                if intent:
+                    return InterpretAttachmentResponse(
+                        intent=intent, description=description, guessed=False,
+                    )
+
+    # No vision key, an unreachable file, or every provider failed. Never a hard
+    # error: the user has already uploaded the image and is waiting on a reply,
+    # and a wording-based verdict is far better than refusing the message.
+    return InterpretAttachmentResponse(
+        intent=_classify_from_command(body.command), description="", guessed=True,
     )
 
 

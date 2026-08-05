@@ -1,4 +1,5 @@
 """LLM provider dispatch: decrypt org keys, call Anthropic/OpenAI/Google."""
+import base64
 import logging
 import uuid
 from dataclasses import dataclass
@@ -165,20 +166,9 @@ async def call_llm(
             logger.exception("usage metering failed (non-fatal)")
     else:
         # Ambient metering: capture EVERY LLM call (requests and workers alike)
-        # against the org whose keys were resolved for it. Uses a fresh isolated
-        # session so the meter's own commit never touches a caller transaction;
-        # best-effort, never breaks the call.
-        from app.core.metering_context import get_metering_org
-        org_id = get_metering_org()
-        if org_id is not None:
-            try:
-                from app.core.database import async_session_factory
-                from app.services.metering import meter as _m
-                async with async_session_factory() as mdb:
-                    await _m.record_llm(mdb, org_id=org_id, project_id=None,
-                                        usage=usage, feature=feature)
-            except Exception:
-                logger.exception("ambient usage metering failed (non-fatal)")
+        # against the org whose keys were resolved for it. See _meter_ambient,
+        # which call_llm_vision shares so the two cannot drift apart.
+        await _meter_ambient(usage, feature)
     return text
 
 
@@ -228,6 +218,123 @@ async def _anthropic_usage(model, api_key, system_prompt, user_prompt, max_token
                      cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
                      cache_write_tokens=getattr(u, "cache_creation_input_tokens", 0) or 0)
     return message.content[0].text, usage
+
+
+async def _meter_ambient(usage: "LLMUsage", feature: str | None) -> None:
+    """Record one provider call against the ambient org.
+
+    Extracted from ``call_llm``'s else-branch so ``call_llm_vision`` meters
+    through exactly the same path rather than a parallel one that could drift
+    out of step with it. Same contract: best-effort, its own isolated session
+    so the meter's commit never touches a caller transaction, and a metering
+    failure never breaks the call.
+    """
+    from app.core.metering_context import get_metering_org
+    org_id = get_metering_org()
+    if org_id is None:
+        return
+    try:
+        from app.core.database import async_session_factory
+        from app.services.metering import meter as _m
+        async with async_session_factory() as mdb:
+            await _m.record_llm(mdb, org_id=org_id, project_id=None,
+                                usage=usage, feature=feature)
+    except Exception:
+        logger.exception("ambient usage metering failed (non-fatal)")
+
+
+async def call_llm_vision(
+    provider: str,
+    model: str,
+    api_key: str,
+    system_prompt: str,
+    user_prompt: str,
+    image_bytes: bytes,
+    media_type: str = "image/png",
+    max_tokens: int | None = None,
+    feature: str | None = None,
+) -> str:
+    """Call a vision-capable model with ONE image and return its text answer.
+
+    The image is sent as base64 rather than as a URL. Both providers accept a
+    URL, but our storage URLs are not necessarily reachable from a provider's
+    network (local/dev backends, private buckets, signed URLs that expire), and
+    a silent fetch failure at the provider would look exactly like a bad answer.
+    The caller has already downloaded the bytes to validate ownership anyway.
+
+    Metered identically to ``call_llm``: the org comes from the ambient
+    metering context that ``get_org_llm_keys`` set when the caller resolved its
+    keys, and ``feature`` supplies both the output-token ceiling and the name
+    the usage event is reported under. A vision call is the expensive turn --
+    an image is worth well over a thousand input tokens -- so leaving it
+    unnamed in the ledger is not an option.
+    """
+    if max_tokens is None:
+        from app.services.agents.policy import policy_for
+        max_tokens = policy_for(feature).max_output_tokens if feature else DEFAULT_MAX_TOKENS
+    text, usage = await call_llm_vision_usage(
+        provider, model, api_key, system_prompt, user_prompt,
+        image_bytes, media_type, max_tokens=max_tokens,
+    )
+    await _meter_ambient(usage, feature)
+    return text
+
+
+async def call_llm_vision_usage(
+    provider: str, model: str, api_key: str, system_prompt: str, user_prompt: str,
+    image_bytes: bytes, media_type: str = "image/png",
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+) -> tuple[str, "LLMUsage"]:
+    """Like call_llm_vision but also returns the LLMUsage (token counts).
+
+    Deliberately NOT routed through the batch client: batching trades latency
+    for a 50% discount, and this call sits in front of a user waiting on a chat
+    reply.
+    """
+    b64 = base64.b64encode(image_bytes).decode("ascii")
+    if provider == "anthropic":
+        client = AsyncAnthropic(api_key=api_key)
+        message = await client.messages.create(
+            model=model, max_tokens=max_tokens,
+            system=_anthropic_system_blocks(system_prompt),
+            messages=[{"role": "user", "content": [
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": media_type, "data": b64}},
+                {"type": "text", "text": user_prompt},
+            ]}],
+        )
+        u = getattr(message, "usage", None)
+        usage = LLMUsage("anthropic", model,
+                         input_tokens=getattr(u, "input_tokens", 0) or 0,
+                         output_tokens=getattr(u, "output_tokens", 0) or 0,
+                         cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
+                         cache_write_tokens=getattr(u, "cache_creation_input_tokens", 0) or 0)
+        return message.content[0].text, usage
+    if provider == "openai":
+        client = AsyncOpenAI(api_key=api_key)
+        resp = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": [
+                    {"type": "image_url",
+                     "image_url": {"url": f"data:{media_type};base64,{b64}"}},
+                    {"type": "text", "text": user_prompt},
+                ]},
+            ],
+            max_tokens=max_tokens,
+        )
+        u = getattr(resp, "usage", None)
+        cached = 0
+        details = getattr(u, "prompt_tokens_details", None) if u else None
+        if details is not None:
+            cached = getattr(details, "cached_tokens", 0) or 0
+        usage = LLMUsage("openai", model,
+                         input_tokens=getattr(u, "prompt_tokens", 0) or 0,
+                         output_tokens=getattr(u, "completion_tokens", 0) or 0,
+                         cache_read_tokens=cached)
+        return resp.choices[0].message.content, usage
+    raise ValueError(f"Provider does not support vision here: {provider}")
 
 
 async def call_llm_usage(
