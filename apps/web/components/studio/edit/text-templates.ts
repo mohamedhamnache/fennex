@@ -13,7 +13,7 @@ import { type GroundKind, REGISTERS_BY_GROUND, groundsFor } from "./design/groun
 import {
   type ChipCopy, type LayoutCopy, buildTemplate, colourwaysForLayout, layoutById,
 } from "./design/templates";
-import { verifyFieldClaims, type RunSpec } from "./design/type";
+import { runReports, verifyFieldClaims, type RunSpec } from "./design/type";
 
 /** A reusable design composition: optional background, shape objects, and text.
  *  Positions are canvas percentages; font sizes assume an ~800px-wide canvas
@@ -821,21 +821,78 @@ export function templateFingerprint(t: TextTemplate): string {
 // comes from a role, exactly as in the authored form.
 
 /**
+ * The contrast a cell must reach before the picker will offer it.
+ *
+ * NOT the AA floor, and not a taste knob. `groundsFor` already excludes two
+ * cells outright by measurement — Sunset at 2.02:1 and Ember at 3.35:1 with
+ * light ink over their own mesh — and a picker that refuses 3.35 while cheerfully
+ * offering 2.94 is not applying a rule, it is applying a rule in one place. This
+ * is that same measured line, extended to every cell the picker can reach.
+ *
+ * The value has a band rather than a preference behind it. It must sit ABOVE
+ * 3.35, or it would readmit the case `ground.ts` excludes; and it must sit at or
+ * below 3.48, the worst run in the 34 shipped templates, or it would start
+ * refusing colourways a human already approved. 3.4 is inside that band with
+ * room on both sides. Anything outside it is a contradiction rather than a
+ * tuning choice.
+ *
+ * Contrast is still REPORTED and not enforced for the SHIPPED set — that rule is
+ * what forced the rejected designs into a box, and it has not been reinstated.
+ * What is enforced is narrower: a combination this system generates and OFFERS,
+ * for a template that measured fine as authored, must not be worse than one it
+ * refuses to build at all.
+ */
+const OFFER_CONTRAST_FLOOR = 3.4;
+
+/** Worst measured run in one (template, colourway) cell, cached. 34 x 13 cells
+ *  at most, each built once; the picker re-renders on every keystroke in the
+ *  panel and rebuilding a composition per swatch per render is not free. */
+const cellWorstRatio = new Map<string, number>();
+
+function worstRatioIn(t: TextTemplate, cw: Colourway): number {
+  const cacheKey = `${t.id}:${cw.id}`;
+  const hit = cellWorstRatio.get(cacheKey);
+  if (hit !== undefined) return hit;
+  const built = buildTemplate(layoutById(t.spec.layout), {
+    cw, ground: t.spec.ground, copy: t.spec.copy,
+  });
+  // A null ratio is an ornament or a run with no bound. Ornaments are decorative
+  // by declaration, and the bare photograph is already forbidden across the
+  // shipped set by `assertTemplatesSound` — and a colourway change cannot alter
+  // a run's backdrop KIND, only its colours, so no cell reachable from here can
+  // introduce one.
+  const ratios = runReports(built.runs).map((r) => r.ratio).filter((r): r is number => r !== null);
+  const worst = ratios.length ? Math.min(...ratios) : Infinity;
+  cellWorstRatio.set(cacheKey, worst);
+  return worst;
+}
+
+/**
  * Every colourway this template may be re-rendered in.
  *
- * Two constraints, both real and both enforced by `buildTemplate` anyway — this
- * function exists so the picker never OFFERS a combination that would throw:
+ * Three constraints. The first two are structural and `buildTemplate` enforces
+ * them anyway — this function exists so the picker never OFFERS a combination
+ * that would throw. The third is the measured one:
  *
  *  1. The layout's `accepts`, which is the register it renders correctly in.
- *  2. The colourway's own `groundsFor`, which is where the measured exclusion
+ *  2. The colourway's own `groundsFor`, which is where the outright exclusion
  *     lives: Sunset and Ember measure 2.02:1 and 3.35:1 with light ink over
  *     their own mesh, so neither is offered on a GRADIENT ground. Both stay
  *     available on flat, duotone, photographic and textured, where the colour
  *     under the type is known or the region is darkened first.
+ *  3. `OFFER_CONTRAST_FLOOR`, measured per cell. This is what stops the picker
+ *     offering combinations worse than the ones rule 2 refuses to build.
+ *
+ * The template's OWN colourway is always kept, whatever it measures. It is
+ * already on the canvas — the swatch row's job there is to show which one is
+ * current, and hiding it would leave the user unable to see or return to the
+ * state they are in. The only template this affects is the one shipped run at
+ * 3.48:1, which passes anyway.
  */
 export function colourwaysForTemplate(t: TextTemplate): Colourway[] {
   return colourwaysForLayout(layoutById(t.spec.layout))
-    .filter((cw) => groundsFor(cw).includes(t.spec.ground));
+    .filter((cw) => groundsFor(cw).includes(t.spec.ground))
+    .filter((cw) => cw.id === t.spec.colourway || worstRatioIn(t, cw) >= OFFER_CONTRAST_FLOOR);
 }
 
 /**

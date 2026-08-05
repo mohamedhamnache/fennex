@@ -1382,7 +1382,7 @@
     },
     "templates": {
       "search": "Buscar plantillas",
-      "applied": "Plantilla aplicada",
+      "appliedNamed": "Plantilla aplicada: {{name}}",
       "remove": "Quitar la plantilla",
       "palette": "Paleta",
       "morePalettes": "Ver todas",

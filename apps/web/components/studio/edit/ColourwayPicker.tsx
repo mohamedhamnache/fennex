@@ -104,7 +104,7 @@ export function ColourwayPicker({
             >
               <span
                 aria-hidden
-                className="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full"
+                className="absolute bottom-0.5 end-0.5 h-1.5 w-1.5 rounded-full"
                 style={{ background: cw.accent }}
               />
               {current && (

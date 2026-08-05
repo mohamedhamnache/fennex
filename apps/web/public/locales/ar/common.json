@@ -1382,7 +1382,7 @@
     },
     "templates": {
       "search": "ابحث عن القوالب",
-      "applied": "تم تطبيق القالب",
+      "appliedNamed": "القالب المُطبَّق: {{name}}",
       "remove": "إزالة القالب",
       "palette": "لوحة الألوان",
       "morePalettes": "عرض الكل",

@@ -1382,7 +1382,7 @@
     },
     "templates": {
       "search": "Rechercher des modèles",
-      "applied": "Modèle appliqué",
+      "appliedNamed": "Modèle appliqué : {{name}}",
       "remove": "Retirer le modèle",
       "palette": "Palette",
       "morePalettes": "Tout afficher",

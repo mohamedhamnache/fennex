@@ -1479,7 +1479,7 @@
     },
     "templates": {
       "search": "Search templates",
-      "applied": "Template applied",
+      "appliedNamed": "Applied template: {{name}}",
       "remove": "Remove template",
       "palette": "Palette",
       "morePalettes": "Show all",

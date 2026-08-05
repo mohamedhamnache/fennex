@@ -945,9 +945,15 @@ export function EditControlsPanel({
         {appliedTemplate && (
           <div className="flex flex-col gap-2 border-b border-border bg-muted/20 px-4 py-2">
             <div className="flex items-center gap-2">
+              {/* One interpolated string rather than a label plus a hard-coded
+                  separator: an em dash concatenated outside t() lands on the
+                  wrong side of the name in Arabic, and each locale needs its own
+                  punctuation anyway (French spaces its colon, Arabic does not
+                  want a dash at all). */}
               <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                {t("imageEdit.templates.applied", "Template applied")}
-                <span className="text-foreground"> — {appliedTemplate.template.name}</span>
+                {t("imageEdit.templates.appliedNamed", "Applied template: {{name}}", {
+                  name: appliedTemplate.template.name,
+                })}
               </span>
               <button
                 type="button"

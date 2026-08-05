@@ -1382,7 +1382,7 @@
     },
     "templates": {
       "search": "Vorlagen durchsuchen",
-      "applied": "Vorlage angewendet",
+      "appliedNamed": "Angewendete Vorlage: {{name}}",
       "remove": "Vorlage entfernen",
       "palette": "Palette",
       "morePalettes": "Alle anzeigen",
