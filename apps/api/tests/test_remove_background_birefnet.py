@@ -13,9 +13,12 @@ noticed because `remove_background` uploaded its result directly with no
 ResolutionPolicy at all.
 
 These tests pin the fix: BiRefNet at the source frame, asserted, at
-MIN_REPLICATE_CREDITS instead of $0.20 flat. `_removebg_cutout` is NOT part
-of this change -- mask_service still derives product-tier masks from it --
-so one test holds that boundary in place.
+MIN_REPLICATE_CREDITS instead of $0.20 flat.
+
+Remove.bg is now gone from the product entirely. mask_service was its last
+caller and takes BiRefNet's alpha instead, measured on 2026-08-05 as the same
+segmentation to within 0.1 percentage points of coverage -- so the last test
+here holds that no code path reaches the supplier at all.
 """
 import io
 from unittest.mock import AsyncMock, patch
@@ -44,16 +47,15 @@ def test_birefnet_identifier_is_the_one_verified_against_replicate():
 @pytest.mark.asyncio
 async def test_remove_background_calls_birefnet_not_removebg():
     run = AsyncMock(return_value="https://replicate/out.png")
-    cutout = AsyncMock()
     with patch("app.services.editing_service._replicate_run", run), \
-         patch("app.services.editing_service._removebg_cutout", cutout), \
          patch("app.services.editing_service._download", AsyncMock(return_value=_png())), \
          patch("app.services.editing_service.finalize",
                AsyncMock(return_value=StoredImage("https://cdn/out.png", 1792, 1024))):
         result = await editing_service.remove_background("https://cdn/in.png")
 
     assert result["ok"] is True
-    assert cutout.await_count == 0, "remove.bg must no longer serve the user-facing button"
+    # There is no longer a Remove.bg helper to assert against -- see
+    # test_masks_now_come_from_birefnet_too, which pins that it is gone.
     (model, params), kwargs = run.call_args
     assert model == editing_service._MODEL_BIREFNET
     assert kwargs["version"] == editing_service._BIREFNET_VERSION
@@ -128,9 +130,16 @@ async def test_a_storage_failure_is_still_a_soft_error():
 
 
 @pytest.mark.asyncio
-async def test_removebg_cutout_still_uses_removebg_for_masks():
-    """mask_service's product tier derives its mask from this alpha. Only the
-    user-facing button switched supplier; this path is deliberately unchanged."""
+async def test_masks_now_come_from_birefnet_too():
+    """The last Remove.bg caller.
+
+    mask_service's product tier used to derive its mask from Remove.bg's alpha.
+    Measured on real images (2026-08-05) the two segmentations agree to within
+    0.1 percentage points of coverage -- but Remove.bg returned 0.25 MP, so the
+    mask was upscaled back with NEAREST and its boundary came out stair-stepped,
+    at 191 credits against BiRefNet's 10. Nothing reaches the supplier now.
+    """
     import inspect
-    src = inspect.getsource(editing_service._removebg_cutout)
-    assert "api.remove.bg" in src
+    assert not hasattr(editing_service, "_removebg_cutout")
+    src = inspect.getsource(editing_service)
+    assert "api.remove.bg" not in src, "no code path may call Remove.bg"

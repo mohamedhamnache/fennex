@@ -77,9 +77,9 @@ def test_alpha_to_mask_thresholds_semi_transparent_pixels():
 async def test_product_tier_polarity(operation, expect_subject_white):
     upload = AsyncMock(return_value="https://cdn/mask.png")
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+         patch("app.services.mask_service.birefnet_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", upload), \
-         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=200_000)):
+         patch("app.services.metering.meter.record_replicate", AsyncMock(return_value=200_000)):
         res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
 
     assert res.ok is True
@@ -96,9 +96,9 @@ async def test_product_tier_polarity(operation, expect_subject_white):
 async def test_absent_target_uses_the_free_product_tier():
     segment = AsyncMock(return_value="https://cdn/seg.png")
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+         patch("app.services.mask_service.birefnet_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)), \
+         patch("app.services.metering.meter.record_replicate", AsyncMock(return_value=0)), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None, uuid.uuid4(), None)
 
@@ -111,7 +111,7 @@ async def test_present_target_uses_the_prompted_tier():
     cutout = AsyncMock(return_value=_cutout())
     segment = AsyncMock(return_value="https://cdn/seg.png")
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service.birefnet_cutout", cutout), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", "remove_object",
                                  "the person on the left", uuid.uuid4(), None)
@@ -131,9 +131,9 @@ async def test_present_target_uses_the_prompted_tier():
 @pytest.mark.asyncio
 async def test_product_tier_does_not_need_confirmation():
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=_cutout())), \
+         patch("app.services.mask_service.birefnet_cutout", AsyncMock(return_value=_cutout())), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")), \
-         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)):
+         patch("app.services.metering.meter.record_replicate", AsyncMock(return_value=0)):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 
@@ -145,14 +145,14 @@ async def test_product_tier_does_not_need_confirmation():
 
 @pytest.mark.asyncio
 async def test_product_tier_tags_its_removebg_call_as_auto_mask():
-    """Metering itself now lives inside _removebg_cutout, at the supplier
+    """Metering itself now lives inside _replicate_run, at the supplier
     chokepoint, so every caller is covered and none is billed twice (see
-    tests/test_removebg_cutout.py). What this layer still owns is the TAG, which
+    tests/test_metering_replicate.py). What this layer still owns is the TAG, which
     lets the cost dashboard separate auto-masking from the user-initiated
     background removals that share the removebg provider."""
     cutout = AsyncMock(return_value=_cutout())
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service.birefnet_cutout", cutout), \
          patch("app.services.mask_service._upload_mask", AsyncMock(return_value="https://cdn/m.png")):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), object())
@@ -162,12 +162,12 @@ async def test_product_tier_tags_its_removebg_call_as_auto_mask():
 
 
 @pytest.mark.asyncio
-async def test_prompted_tier_does_not_meter_removebg():
+async def test_prompted_tier_does_not_meter_the_cutout_model():
     record = AsyncMock()
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
          patch("app.services.mask_service._segment_by_prompt",
                AsyncMock(return_value="https://cdn/seg.png")), \
-         patch("app.services.metering.meter.record_removebg", record):
+         patch("app.services.metering.meter.record_replicate", record):
         await resolve_mask("https://cdn/x.png", "remove_object", "the car",
                            uuid.uuid4(), None)
 
@@ -175,17 +175,18 @@ async def test_prompted_tier_does_not_meter_removebg():
 
 
 @pytest.mark.asyncio
-async def test_a_failed_removebg_call_bills_nothing():
+async def test_a_failed_cutout_call_bills_nothing():
     """A supplier that raised did not process an image, so it must not bill.
 
-    Holds only because record_removebg is awaited AFTER the cutout returns;
-    nothing but this test stops a refactor from reordering the two.
+    Holds only because metering happens inside _replicate_run's success branch,
+    after the prediction succeeds; nothing but this test stops a refactor from
+    billing a call that never produced anything.
     """
     record = AsyncMock()
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout",
-               AsyncMock(side_effect=RuntimeError("remove.bg 402"))), \
-         patch("app.services.metering.meter.record_removebg", record):
+         patch("app.services.mask_service.birefnet_cutout",
+               AsyncMock(side_effect=RuntimeError("replicate 422"))), \
+         patch("app.services.metering.meter.record_replicate", record):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 
@@ -196,7 +197,7 @@ async def test_a_failed_removebg_call_bills_nothing():
 @pytest.mark.asyncio
 async def test_an_ambiguous_request_meters_nothing():
     record = AsyncMock()
-    with patch("app.services.metering.meter.record_removebg", record):
+    with patch("app.services.metering.meter.record_replicate", record):
         res = await resolve_mask("https://cdn/x.png", "insert_object", None,
                                  uuid.uuid4(), None)
 
@@ -284,7 +285,7 @@ async def test_segmenter_is_called_with_the_pinned_version():
 async def test_ambiguous_operations_ask_and_spend_nothing(operation):
     cutout, segment = AsyncMock(), AsyncMock()
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service.birefnet_cutout", cutout), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
 
@@ -311,13 +312,13 @@ async def test_ambiguous_operation_with_a_target_resolves_normally():
 @pytest.mark.asyncio
 async def test_supplier_failure_returns_an_error_not_an_exception():
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout",
-               AsyncMock(side_effect=RuntimeError("remove.bg 402"))):
+         patch("app.services.mask_service.birefnet_cutout",
+               AsyncMock(side_effect=RuntimeError("replicate 422"))):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
     assert res.ok is False
     assert res.question is None
-    assert "remove.bg 402" in res.error
+    assert "replicate 422" in res.error
 
 
 # ---- own-storage URL guard ------------------------------------------------
@@ -468,9 +469,9 @@ async def test_product_tier_fits_a_downscaled_cutout_back_to_the_source():
     upload = AsyncMock(return_value="https://cdn/mask.png")
     with patch("app.services.mask_service._download",
                AsyncMock(return_value=_source_bytes((64, 48)))), \
-         patch("app.services.mask_service._removebg_cutout", AsyncMock(return_value=small)), \
+         patch("app.services.mask_service.birefnet_cutout", AsyncMock(return_value=small)), \
          patch("app.services.mask_service._upload_mask", upload), \
-         patch("app.services.metering.meter.record_removebg", AsyncMock(return_value=0)):
+         patch("app.services.metering.meter.record_replicate", AsyncMock(return_value=0)):
         res = await resolve_mask("https://cdn/x.png", "replace_background", None,
                                  uuid.uuid4(), None)
 
@@ -487,7 +488,7 @@ async def test_untargeted_removal_asks_instead_of_erasing_the_main_subject(opera
     leaving the mint untouched. Removal with no target must ask, not guess."""
     cutout, segment = AsyncMock(), AsyncMock()
     with patch("app.services.mask_service._download", AsyncMock(return_value=_source_bytes())), \
-         patch("app.services.mask_service._removebg_cutout", cutout), \
+         patch("app.services.mask_service.birefnet_cutout", cutout), \
          patch("app.services.mask_service._segment_by_prompt", segment):
         res = await resolve_mask("https://cdn/x.png", operation, None, uuid.uuid4(), None)
 
@@ -509,3 +510,50 @@ async def test_targeted_removal_goes_to_the_segmenter_and_asks_for_confirmation(
     assert res.tier == "prompted"
     assert res.needs_confirmation is True
     assert res.mask_url == "https://cdn/seg.png"
+
+
+async def test_the_auto_mask_tag_survives_the_supplier_switch():
+    """The product-tier mask must still be billed as `auto_mask`.
+
+    _replicate_run tags everything `image_edit` by default, so moving the mask
+    onto it would have silently merged an auto-derived mask into ordinary edit
+    spend. The caller passes the tag explicitly; this pins that it arrives.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    seen: dict = {}
+
+    async def fake_replicate(model, params, version=None, feature="image_edit"):
+        seen["model"], seen["feature"] = model, feature
+        return "https://example.com/cut.png"
+
+    import io as _io
+    from PIL import Image as _Image
+    buf = _io.BytesIO()
+    _Image.new("RGBA", (40, 30), (0, 0, 0, 255)).save(buf, format="PNG")
+    png = buf.getvalue()
+
+    with patch("app.services.editing_service._replicate_run", fake_replicate), \
+         patch("app.services.editing_service._download", AsyncMock(return_value=png)):
+        from app.services.editing_service import birefnet_cutout
+        await birefnet_cutout("https://example.com/src.png", feature="auto_mask")
+
+    assert seen["feature"] == "auto_mask", "the mask must not bill as a generic edit"
+    assert "birefnet" in seen["model"], "the mask must come from BiRefNet, not Remove.bg"
+
+
+async def test_remove_bg_is_gone_from_the_codebase():
+    """No code path may reach Remove.bg.
+
+    It was 191 credits a call against BiRefNet's 10, for a segmentation that
+    measured the same, and its `size: "auto"` default silently returned a
+    quarter-megapixel result for weeks. Leaving the helper in place would let
+    it be reused with that default intact.
+    """
+    import app.services.editing_service as es
+    import app.services.mask_service as ms
+
+    assert not hasattr(es, "_removebg_cutout"), "the Remove.bg helper is deleted"
+    for mod in (es, ms):
+        src = __import__("inspect").getsource(mod)
+        assert "api.remove.bg" not in src, f"{mod.__name__} still calls Remove.bg"
