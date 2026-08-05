@@ -131,3 +131,32 @@ Changed:
   not only thumbnails.
 
 What only a human can settle: whether the six are any good.
+
+---
+
+## Decision: the contrast floor is 3.4:1, not 4.5:1
+
+**Decided by the product owner, 2026-08-05. Do not "fix" this as a defect.**
+
+The palette picker refuses any colourway/ground combination measuring worse than
+3.4:1, and still offers 25 combinations below the WCAG AA threshold of 4.5:1.
+
+That band is forced, not arbitrary:
+
+- It must sit **above 3.35:1**, which `ground.ts` already excludes outright
+  (Ember on a gradient ground with light ink).
+- It must sit **at or below 3.48:1**, which is the worst run in the 34 templates
+  the owner approved.
+
+Enforcing AA in the picker while the shipped set itself misses it would be
+incoherent in the opposite direction: the picker would refuse combinations no
+worse than ones the product already ships.
+
+The alternative — raising the floor to 4.5:1 everywhere and reworking whatever
+fails, including the approved 3.48:1 run — was considered and declined. It means
+reworking signed-off designs, and it pushes compositions back toward the opaque
+boxed look that got two earlier template sets rejected.
+
+Contrast remains **measured and reported** as a warning in the sweep. It is not
+a gate. That is the decision that made the current designs possible, and this
+floor is its consequence rather than an oversight.
