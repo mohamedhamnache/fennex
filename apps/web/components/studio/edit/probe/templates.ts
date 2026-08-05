@@ -1,17 +1,26 @@
 /** Six compositions, built before thirty-four.
  *
  *  The last two sets were built whole and then judged, so "I don't like it"
- *  meant discarding a night's work. These six exist to be judged instead: two
- *  quiet, two mid, two loud, on six different subjects, with six different
- *  relationships between the photograph and the type.
+ *  meant discarding a night's work. These six exist to be judged instead, and
+ *  they answer the two reference designs the owner supplied — which are ground
+ *  truth about taste in a way no trend reading is:
  *
- *  They are not variations on one grid. Read down the `note` on each and the
- *  arrangements have nothing in common but the frame: a product with the type
- *  demoted to a caption under a trimmed photo; an editorial column with a plate
- *  bleeding off two edges; an event with its title in a corner the template
- *  darkened itself; a quote set at reading weight beside a circle; a sale
- *  bleeding a numeral off the left edge through a multiply band; a portrait cut
- *  out and standing in front of its own display type.
+ *    reference 1, vibrant   Bass Line 11.00%   Half Price 12.00%   (loud)
+ *    reference 2, soft      Sound Pro  6.50%   Counter     6.00%   (mid)
+ *    extending              Culvert    4.25%   Small Batch 3.40%   (quiet)
+ *
+ *  The percentages are headline size as a fraction of canvas width, which is
+ *  what "the text looks very big" was about: the rejected set could only set a
+ *  headline at 10.0% and a display at 14.0%, and four of these six are quieter
+ *  than anything it could express. The two that are louder are louder because a
+ *  sale and a product promo should be, and because one loud element in six
+ *  reads as a decision where six loud elements read as a setting.
+ *
+ *  Both references share two things worth stating plainly. NEITHER puts type on
+ *  an opaque box: both set it directly on a gradient the design owns, which is
+ *  exactly the freedom the spec unlocked. And reference 2 builds its whole
+ *  headline hierarchy out of WEIGHT at a constant size, which the old system had
+ *  no vocabulary for — four sizes, one weight, everywhere.
  *
  *  Rules that still hold, because they are correctness rather than taste:
  *  colours come from palette roles and never from literals; no string names a
