@@ -1574,7 +1574,20 @@
     "rephraseUndo": "Undo",
     "rephraseFailed": "Couldn't rephrase that — your text is unchanged.",
     "rephraseCost_one": "about {{count}} credit",
-    "rephraseCost_other": "about {{count}} credits"
+    "rephraseCost_other": "about {{count}} credits",
+    "attachTitle": "Attach an image to this message",
+    "attachRemove": "Remove the attachment",
+    "attachCost_one": "Reading it costs about {{count}} credit",
+    "attachCost_other": "Reading it costs about {{count}} credits",
+    "attachTooLarge": "That image is too large — pick one under 12 MB.",
+    "attachUploadFailed": "Couldn't upload that image — try again.",
+    "attachFailed": "I couldn't read your image, so nothing was changed. Try sending it again.",
+    "attachInserted": "Added your image to the picture as a layer — drag it to move or resize it.",
+    "attachReferenced": "Used your image as a reference — it won't appear in the result.",
+    "attachUseAsReference": "Use it as a reference instead",
+    "attachInsertInstead": "Add it to the picture instead",
+    "attachCorrectionFree": "free — no re-upload",
+    "attachGuessed": "Read from your wording only."
   },
   "articleStudio": {
     "write": "Write",

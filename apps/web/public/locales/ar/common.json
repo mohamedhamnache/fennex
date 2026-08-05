@@ -1481,7 +1481,24 @@
     "rephraseCost_two": "نحو رصيدين",
     "rephraseCost_few": "نحو {{count}} أرصدة",
     "rephraseCost_many": "نحو {{count}} رصيدًا",
-    "rephraseCost_other": "نحو {{count}} رصيد"
+    "rephraseCost_other": "نحو {{count}} رصيد",
+    "attachTitle": "أرفق صورة بهذه الرسالة",
+    "attachRemove": "إزالة المرفق",
+    "attachCost_zero": "قراءتها بدون تكلفة",
+    "attachCost_one": "قراءتها تكلّف نحو رصيد واحد",
+    "attachCost_two": "قراءتها تكلّف نحو رصيدين",
+    "attachCost_few": "قراءتها تكلّف نحو {{count}} أرصدة",
+    "attachCost_many": "قراءتها تكلّف نحو {{count}} رصيدًا",
+    "attachCost_other": "قراءتها تكلّف نحو {{count}} رصيد",
+    "attachTooLarge": "هذه الصورة كبيرة جدًا — اختر صورة أقل من 12 ميغابايت.",
+    "attachUploadFailed": "تعذّر رفع هذه الصورة — أعد المحاولة.",
+    "attachFailed": "تعذّرت قراءة صورتك، فلم يتغيّر شيء. أعد إرسالها.",
+    "attachInserted": "أضفتُ صورتك إلى اللوحة كطبقة — اسحبها لتحريكها أو تغيير حجمها.",
+    "attachReferenced": "استخدمتُ صورتك كمرجع — لن تظهر في النتيجة.",
+    "attachUseAsReference": "استخدمها كمرجع بدلاً من ذلك",
+    "attachInsertInstead": "أضفها إلى الصورة بدلاً من ذلك",
+    "attachCorrectionFree": "مجانًا — دون إعادة رفع",
+    "attachGuessed": "مستنتَج من صياغتك وحدها."
   },
   "articleStudio": {
     "dock": {

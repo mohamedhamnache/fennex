@@ -1477,7 +1477,20 @@
     "rephraseUndo": "Desfazer",
     "rephraseFailed": "Não foi possível reformular — seu texto não mudou.",
     "rephraseCost_one": "cerca de {{count}} crédito",
-    "rephraseCost_other": "cerca de {{count}} créditos"
+    "rephraseCost_other": "cerca de {{count}} créditos",
+    "attachTitle": "Anexar uma imagem a esta mensagem",
+    "attachRemove": "Remover o anexo",
+    "attachCost_one": "Lê-la custa cerca de {{count}} crédito",
+    "attachCost_other": "Lê-la custa cerca de {{count}} créditos",
+    "attachTooLarge": "Essa imagem é grande demais — escolha uma com menos de 12 MB.",
+    "attachUploadFailed": "Não foi possível enviar essa imagem — tente novamente.",
+    "attachFailed": "Não consegui ler sua imagem, então nada foi alterado. Envie-a de novo.",
+    "attachInserted": "Adicionei sua imagem como camada — arraste para mover ou redimensionar.",
+    "attachReferenced": "Usei sua imagem como referência — ela não aparecerá no resultado.",
+    "attachUseAsReference": "Usar como referência",
+    "attachInsertInstead": "Adicionar à imagem",
+    "attachCorrectionFree": "grátis — sem reenviar",
+    "attachGuessed": "Deduzido apenas da sua frase."
   },
   "articleStudio": {
     "dock": {

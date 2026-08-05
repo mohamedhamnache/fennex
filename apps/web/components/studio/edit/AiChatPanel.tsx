@@ -152,6 +152,9 @@ function TypingIndicator() {
 export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   onProcessingChange,
   conversationId,
+  projectId,
+  onAddImageLayer,
+  onRemoveLayer,
 }: AiChatPanelProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
@@ -175,6 +178,17 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   const [rephrasing, setRephrasing] = useState(false);
   const [rephraseOriginal, setRephraseOriginal] = useState<string | null>(null);
   const [rephraseError, setRephraseError] = useState(false);
+
+  // Image attachment. `attachment` is the file already uploaded and waiting to
+  // be sent with the next message; `resolved` is the last one that was
+  // interpreted, kept so the interpretation can be corrected for free.
+  const [attachment, setAttachment] = useState<PendingAttachment | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [attachErrorKey, setAttachErrorKey] = useState<string | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
+  const [resolved, setResolved] = useState<ResolvedAttachment | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
   // area never rendered, so Apply must be disabled: approving a mask the
   // user never actually saw would defeat the confirmation gate entirely.
@@ -314,9 +328,11 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   }, [mutation.isPending, onProcessingChange]);
 
 
+  const busy = mutation.isPending || uploading || interpreting;
+
   function submit(command: string) {
     const trimmed = command.trim();
-    if (!trimmed || mutation.isPending || pendingConfirm) return;
+    if (!trimmed || busy || pendingConfirm) return;
     // Post the user's turn BEFORE the request so the chat reflects what was
     // asked while it runs, instead of staying empty until the edit finishes.
     const priorHistory = history;
@@ -325,12 +341,110 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
     // The message is gone; there is no longer an "original" to go back to.
     setRephraseOriginal(null);
     setRephraseError(false);
+    if (attachment) {
+      void submitWithAttachment(trimmed, attachment, priorHistory);
+      return;
+    }
+    // A message with no attachment ends whatever the previous one attached, so
+    // the correction affordance does not linger against an unrelated turn.
+    setResolved(null);
     mutation.mutate({ command: trimmed, priorHistory });
+  }
+
+  /** Send a message that carries an image: interpret it, then act on the verdict. */
+  async function submitWithAttachment(
+    trimmed: string, att: PendingAttachment, priorHistory: AiCommandMessage[],
+  ) {
+    setAttachment(null);
+    setResolved(null);
+    setInterpreting(true);
+    let verdict: AttachmentInterpretation;
+    try {
+      verdict = await interpretAttachment({ command: trimmed, attachment_image_id: att.imageId });
+    } catch {
+      setHistory((prev) => [...prev, { role: "assistant", content: t("mirage.attachFailed") }]);
+      // Give the file back rather than making the user pick it again.
+      setAttachment(att);
+      return;
+    } finally {
+      setInterpreting(false);
+    }
+    applyIntent(
+      { ...att, command: trimmed, description: verdict.description, intent: verdict.intent, guessed: verdict.guessed },
+      priorHistory,
+    );
+  }
+
+  /**
+   * Act on an interpretation and say which one was chosen.
+   *
+   * Called both for the model's verdict and for the user's correction of it,
+   * from the same held data -- neither path re-uploads the file nor asks for
+   * the interpretation again, so a correction is free in either direction.
+   */
+  function applyIntent(next: ResolvedAttachment, priorHistory: AiCommandMessage[]) {
+    if (next.intent === "insert") {
+      // The editor's own layer system, not a generative insert: the element
+      // lands where it can be moved, resized and deleted, at no cost.
+      const layerId = onAddImageLayer?.(next.url, next.name, next.aspectRatio);
+      setResolved({ ...next, layerId });
+      setHistory((prev) => [...prev, { role: "assistant", content: t("mirage.attachInserted") }]);
+      return;
+    }
+    // Correcting an insert into a reference must also take the layer back out,
+    // or the image the user just said should NOT appear stays in the picture.
+    if (next.layerId) onRemoveLayer?.(next.layerId);
+    setResolved({ ...next, layerId: undefined });
+    setHistory((prev) => [...prev, { role: "assistant", content: t("mirage.attachReferenced") }]);
+    mutation.mutate({ command: next.command + referenceClause(next.description), priorHistory });
+  }
+
+  /**
+   * Switch the interpretation the other way, for free.
+   *
+   * Correcting reference -> insert only PLACES the layer; it does not roll
+   * back the edit that was already applied. Undoing an applied edit is the
+   * version history's job (every edit is a new version), and this panel must
+   * not invent a second, competing undo for it.
+   */
+  function handleCorrectIntent() {
+    if (!resolved || busy || pendingConfirm) return;
+    applyIntent(
+      { ...resolved, intent: resolved.intent === "insert" ? "reference" : "insert" },
+      history,
+    );
+  }
+
+  async function handlePickAttachment(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset immediately so picking the SAME file twice still fires a change.
+    e.target.value = "";
+    if (!file) return;
+    setAttachErrorKey(null);
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setAttachErrorKey("mirage.attachTooLarge");
+      return;
+    }
+    setUploading(true);
+    try {
+      const aspectRatio = await readAspectRatio(file);
+      const uploaded = await uploadImage(projectId, file);
+      setAttachment({
+        imageId: uploaded.id,
+        url: uploaded.image_url ?? "",
+        name: file.name,
+        aspectRatio,
+      });
+    } catch {
+      setAttachErrorKey("mirage.attachUploadFailed");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleRephrase() {
     const original = input.trim();
-    if (!original || rephrasing || mutation.isPending || pendingConfirm) return;
+    if (!original || rephrasing || busy || pendingConfirm) return;
     setRephraseError(false);
     setRephrasing(true);
     try {
@@ -372,7 +486,15 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
     // Confirming re-sends the SAME command, whose user turn is already on
     // screen from the original submit -- so it is not posted again, and the
     // request carries the history as it stood before that turn.
-    const priorHistory = history.filter((m, i) => !(m.role === "user" && i === history.length - 1));
+    //
+    // The turn is found by searching BACKWARDS rather than by assuming it is
+    // the last entry. An attachment read as a reference posts an assistant
+    // line ("Used your image as a reference") between the user's turn and the
+    // request, so a last-entry-only test would find an assistant message,
+    // leave the user turn in place, and send the command twice -- once in
+    // `history` and once as `command`.
+    const lastUserIndex = history.map((m) => m.role).lastIndexOf("user");
+    const priorHistory = history.filter((_, i) => i !== lastUserIndex);
     mutation.mutate({ command, priorHistory, maskUrls, resumeToken });
   }
 
@@ -408,7 +530,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
       <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
 
         {/* Suggestion chips — shown only before any messages */}
-        {history.length === 0 && !mutation.isPending && !pendingConfirm && (
+        {history.length === 0 && !busy && !pendingConfirm && (
           <div className="flex flex-col gap-3 animate-fade-in">
             <p className="text-xs text-muted-foreground leading-relaxed px-1">
               {t("mirage.tryPrompt")}
@@ -424,7 +546,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
                         key={s}
                         type="button"
                         onClick={() => submit(s)}
-                        disabled={mutation.isPending}
+                        disabled={busy}
                         className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50"
                       >
                         {s}
@@ -512,8 +634,34 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
           </div>
         )}
 
+        {/* The interpretation that was chosen, and the one-click way to change
+            it. Stating the choice is not decoration: the classification will
+            sometimes be wrong and the two failures are not symmetric -- a
+            reference read as an insert puts an unwanted picture in the frame,
+            an insert read as a reference silently drops what was asked for.
+            Both the file and its description are already held, so this button
+            re-uploads nothing and calls nothing. */}
+        {resolved && !pendingConfirm && (
+          <div className="flex items-center gap-2 flex-wrap pl-9 animate-msg-in">
+            {resolved.guessed && (
+              <span className="text-[10px] text-muted-foreground">{t("mirage.attachGuessed")}</span>
+            )}
+            <button
+              type="button"
+              onClick={handleCorrectIntent}
+              disabled={busy}
+              className="rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50"
+            >
+              {resolved.intent === "insert"
+                ? t("mirage.attachUseAsReference")
+                : t("mirage.attachInsertInstead")}
+            </button>
+            <span className="text-[10px] text-muted-foreground">{t("mirage.attachCorrectionFree")}</span>
+          </div>
+        )}
+
         {/* Typing indicator */}
-        {mutation.isPending && !pendingConfirm && <TypingIndicator />}
+        {(mutation.isPending || interpreting) && !pendingConfirm && <TypingIndicator />}
 
         <div ref={bottomRef} />
       </div>
@@ -527,7 +675,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
           <button
             type="button"
             onClick={handleRephrase}
-            disabled={!input.trim() || rephrasing || mutation.isPending || !!pendingConfirm}
+            disabled={!input.trim() || rephrasing || busy || !!pendingConfirm}
             title={t("mirage.rephraseTitle")}
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors",
@@ -543,6 +691,26 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
           <span className="text-[10px] text-muted-foreground">
             {t("mirage.rephraseCost", { count: PROMPT_REPHRASE_CREDIT_COST })}
           </span>
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy || !!pendingConfirm || !!attachment}
+            title={t("mirage.attachTitle")}
+            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {uploading
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Paperclip className="h-3.5 w-3.5" strokeWidth={1.8} />}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePickAttachment}
+            className="hidden"
+          />
+
           {rephraseOriginal !== null && (
             <button
               type="button"
@@ -558,6 +726,39 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
         {rephraseError && (
           <p className="text-[10px] text-destructive pb-2 px-1">{t("mirage.rephraseFailed")}</p>
         )}
+        {attachErrorKey && (
+          <p className="text-[10px] text-destructive pb-2 px-1">{t(attachErrorKey)}</p>
+        )}
+
+        {/* The attached file, and what reading it will cost — on screen before
+            the send that spends it. Inserting the image costs nothing beyond
+            this read; using it as a reference then costs whatever the edit
+            itself costs, which is the normal per-message charge. */}
+        {attachment && (
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-2 mb-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={attachment.url}
+              alt=""
+              className="h-9 w-9 rounded-lg object-cover shrink-0 border border-border"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] font-semibold text-foreground">{attachment.name}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {t("mirage.attachCost", { count: ATTACHMENT_INTERPRET_CREDIT_COST })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setAttachment(null); setAttachErrorKey(null); }}
+              disabled={busy}
+              title={t("mirage.attachRemove")}
+              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 shrink-0"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-2 items-end rounded-xl border border-border bg-input focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15 transition-all overflow-hidden">
           <textarea
@@ -572,7 +773,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
           />
           <button
             type="button"
-            disabled={!input.trim() || mutation.isPending || !!pendingConfirm}
+            disabled={!input.trim() || busy || !!pendingConfirm}
             onClick={() => submit(input)}
             className="m-1.5 h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 shrink-0"
           >

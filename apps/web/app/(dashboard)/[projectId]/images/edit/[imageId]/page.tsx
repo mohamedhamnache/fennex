@@ -263,6 +263,10 @@ export default function EditPage({
     };
     setLayers((prev) => [...prev, newLayer]);
     setSelectedLayerId(newLayer.id);
+    // The id is returned so a caller that may need to take the layer back out
+    // again can do so -- Mirage's attachment flow places a layer on its own
+    // "insert" reading and has to remove it if the user corrects that reading.
+    return newLayer.id;
   }
 
   function handleRemoveLayer(id: string) {
@@ -639,6 +643,12 @@ export default function EditPage({
                 onVersionAdded={handleVersionAdded}
                 canvasRef={canvasRef}
                 onProcessingChange={setIsAiProcessing}
+                projectId={projectId}
+                // An attached image read as "insert" lands in the SAME layer
+                // list the manual editor uses, so it arrives movable and
+                // resizable and can be taken back out for free.
+                onAddImageLayer={handleAddImageLayer}
+                onRemoveLayer={handleRemoveLayer}
               />
             ) : (
               <EditControlsPanel

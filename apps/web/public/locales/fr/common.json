@@ -1477,7 +1477,20 @@
     "rephraseUndo": "Annuler",
     "rephraseFailed": "Reformulation impossible — votre texte est inchangé.",
     "rephraseCost_one": "environ {{count}} crédit",
-    "rephraseCost_other": "environ {{count}} crédits"
+    "rephraseCost_other": "environ {{count}} crédits",
+    "attachTitle": "Joindre une image à ce message",
+    "attachRemove": "Retirer la pièce jointe",
+    "attachCost_one": "La lire coûte environ {{count}} crédit",
+    "attachCost_other": "La lire coûte environ {{count}} crédits",
+    "attachTooLarge": "Cette image est trop lourde — choisissez-en une de moins de 12 Mo.",
+    "attachUploadFailed": "Impossible d'envoyer cette image — réessayez.",
+    "attachFailed": "Je n'ai pas pu lire votre image, rien n'a été modifié. Renvoyez-la.",
+    "attachInserted": "Votre image a été ajoutée comme calque — faites-la glisser pour la déplacer ou la redimensionner.",
+    "attachReferenced": "Votre image sert de référence — elle n'apparaîtra pas dans le résultat.",
+    "attachUseAsReference": "L'utiliser comme référence",
+    "attachInsertInstead": "L'ajouter à l'image",
+    "attachCorrectionFree": "gratuit — sans réenvoi",
+    "attachGuessed": "Déduit de votre formulation seule."
   },
   "articleStudio": {
     "dock": {
