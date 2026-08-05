@@ -68,7 +68,7 @@ import { type Colourway, colourway, colourwaysFor, type ColourRegister } from ".
 import { type GroundKind, type Zone, BLOCK_SPLIT_PCT, ground, groundsFor } from "./ground";
 import {
   type Backdrop, type Measurable, type RunSpec,
-  centerOn, centreOf, compose, estWidthPct, overArtwork, rotateAbout,
+  centerOn, centreOf, compose, estWidthPct, litBy, overArtwork, rotateAbout,
 } from "./type";
 import {
   type IconName, cross, dotCluster, flare, ghostPill, glassPill, glow, grain, halftone,
@@ -237,6 +237,40 @@ export function loudestPct(t: BuiltTemplate): number {
  *  layout being ground-agnostic. */
 function backdropAt(g: { on: Backdrop; onSecond?: Backdrop }): (yPct: number) => Backdrop {
   return (yPct) => (yPct >= BLOCK_SPLIT_PCT && g.onSecond ? g.onSecond : g.on);
+}
+
+/**
+ * A flare's band, and what a run inside it sits on.
+ *
+ * Three layouts lay a neon flare across their own type. A flare is the accent
+ * SCREENED over the ground, so it only moves the colour under a run toward
+ * white, and every vibrant colourway sets a light ink — measuring those runs
+ * against the bare ground overstates them, and by the most exactly where the
+ * bloom is brightest. `litBy` computes the lifted colour; this decides which
+ * runs are in it.
+ *
+ * The test is vertical only, and that is a deliberate over-application rather
+ * than an oversight: all three flares span most of the frame's width, run widths
+ * move with the copy table, and the direction of the error has to be the safe
+ * one. A run outside the bloom horizontally is reported against a colour lighter
+ * than it meets, which costs a warning; the reverse would cost a defect.
+ *
+ * GLOWS ARE NOT INCLUDED, and do not need to be. A glow is a normal-blend
+ * radial of the accent at up to 0.55 alpha, which would swamp a run — and every
+ * layout already keeps its glow clear of its type, because a glow that overlaps
+ * a run also invalidates that run's field claim. That constraint is in the
+ * layouts as placement, so there is nothing left here to model.
+ */
+interface FlareBand {
+  top: number;
+  bottom: number;
+  /** Peak alpha at the centre of the bloom, applied across the whole band. */
+  alpha: number;
+}
+
+function litIn(band: FlareBand, accent: string) {
+  return (yPct: number, sizePct: number, b: Backdrop): Backdrop =>
+    yPct + sizePct * 1.2 > band.top && yPct < band.bottom ? litBy(b, accent, band.alpha) : b;
 }
 
 // ── 1. Sound Pro — product ───────────────────────────────────────────────────
@@ -471,6 +505,9 @@ function culvert(s: BuildSpec): BuiltTemplate {
   const c = compose();
   const g = ground(s.ground, cw, { seed, zones: CULVERT_ZONES });
   const at = backdropAt(g);
+  // The flare runs off the top of the frame and reaches 26%, which is the first
+  // two headline lines and the label pill above them.
+  const lit = litIn({ top: -12, bottom: 26, alpha: 0.34 }, cw.accent);
   const on = at(17);
   const head = { sizePct: 7, font: "modern" as const, trackingPct: -0.09, color: cw.ink };
   const stand = { sizePct: 2.1, font: "support" as const, opacity: 0.85, color: cw.ink };
@@ -524,10 +561,10 @@ function culvert(s: BuildSpec): BuiltTemplate {
   c.type(
     {
       text: copy.kicker, sizePct: 1.15, font: "mono", uppercase: true, trackingPct: 0.2,
-      color: cw.ink, xPct: 9.4, yPct: 10.4, on: overArtwork(on),
+      color: cw.ink, xPct: 9.4, yPct: 10.4, on: lit(10.4, 1.15, overArtwork(on)),
     },
-    { ...head, weight: 400, text: copy.head[0], xPct: 6, yPct: 17, on },
-    { ...head, weight: 400, text: copy.head[1], xPct: 6, yPct: 24.8, on },
+    { ...head, weight: 400, text: copy.head[0], xPct: 6, yPct: 17, on: lit(17, head.sizePct, on) },
+    { ...head, weight: 400, text: copy.head[1], xPct: 6, yPct: 24.8, on: lit(24.8, head.sizePct, on) },
     { ...head, weight: 700, text: copy.head[2], xPct: 6, yPct: 32.6, on },
     { ...stand, text: copy.body[0], xPct: 6, yPct: 43, on: at(43) },
     { ...stand, text: copy.body[1], xPct: 6, yPct: 46, on: at(46) },
@@ -580,7 +617,10 @@ function bassLine(s: BuildSpec): BuiltTemplate {
   const c = compose();
   const g = ground(s.ground, cw, { seed });
   const at = backdropAt(g);
-  const on = at(13.5);
+  // The flare below spans 22-58% of the frame, so the cap-line's descender band
+  // and every chip sit inside its bloom.
+  const lit = litIn({ top: 22, bottom: 58, alpha: 0.36 }, cw.accent);
+  const on = lit(13.5, 11, at(13.5));
   const chip = { ...CHIP_RUN, color: cw.ink };
 
   // Ink, not accentInk. A gradient ground can run through the accent's own hue —
@@ -656,11 +696,11 @@ function bassLine(s: BuildSpec): BuiltTemplate {
   );
 
   c.type(
-    { ...script, xPct: centerOn(0, 100, script), yPct: 8.5, on },
+    { ...script, xPct: centerOn(0, 100, script), yPct: 8.5, on: at(8.5) },
     { ...caps, xPct: centerOn(0, 100, caps), yPct: 13.5, on },
     ...chips.map((ch) => ({
       ...chip, text: ch.label, xPct: Number((ch.xPct + CHIP_GUTTER).toFixed(2)), yPct: ch.yPct + 2.3,
-      on: overArtwork(at(ch.yPct + 2.3)),
+      on: lit(ch.yPct + 2.3, chip.sizePct, overArtwork(at(ch.yPct + 2.3))),
     })),
     {
       text: copy.footer, sizePct: 1.3, font: "mono", color: cw.ink,
@@ -833,11 +873,20 @@ function lateSet(s: BuildSpec): BuiltTemplate {
   const c = compose();
   const g = ground(s.ground, cw, { seed, zones: LATE_SET_ZONES });
   const at = backdropAt(g);
-  const on = at(17.5);
+  // The flare enters at 16% and reaches 50%, which is the whole type block:
+  // script, cap-line, standfirst and both chips.
+  const lit = litIn({ top: 16, bottom: 50, alpha: 0.42 }, cw.accent);
+  const on = lit(17.5, 10.5, at(17.5));
   const onPaper = { kind: "owned" as const, colors: [cw.ink] };
   const chipText = { ...CHIP_RUN, color: cw.ink };
 
-  const script = { text: copy.script, sizePct: 4.6, font: "script" as const, color: cw.accentInk };
+  // Ink, not accentInk, for the reason Bass Line's script gives: `accentInk` is
+  // the accent moved until it clears 4.5:1 against SURFACE, and this run is not
+  // on surface — it is on the ground with a 0.42 flare screened over it. Across
+  // the matrix that cost it 1.98:1 on a Blurple mesh and under 3:1 on eight
+  // other cells, the single largest source of warnings in the whole space. The
+  // ink is the one colour with a floor against every colour the ground can be.
+  const script = { text: copy.script, sizePct: 4.6, font: "script" as const, color: cw.ink };
   const caps = {
     text: copy.head[0], sizePct: 10.5, font: "impact" as const, uppercase: true,
     trackingPct: -0.35, color: cw.ink,
@@ -896,15 +945,16 @@ function lateSet(s: BuildSpec): BuiltTemplate {
   );
 
   c.type(
-    { ...script, xPct: 54, yPct: 12, on: at(12) },
+    { ...script, xPct: 54, yPct: 12, on: lit(12, script.sizePct, at(12)) },
     { ...caps, xPct: 53, yPct: 17.5, on },
     {
       text: copy.body[0],
-      sizePct: 1.6, font: "support", opacity: 0.9, color: cw.ink, xPct: 53.5, yPct: 30.5, on: at(30.5),
+      sizePct: 1.6, font: "support", opacity: 0.9, color: cw.ink, xPct: 53.5, yPct: 30.5,
+      on: lit(30.5, 1.6, at(30.5)),
     },
     ...chips.map((ch) => ({
       ...chipText, text: ch.label, xPct: 53 + CHIP_GUTTER, yPct: ch.yPct + 2.4,
-      on: overArtwork(at(ch.yPct + 2.4)),
+      on: lit(ch.yPct + 2.4, chipText.sizePct, overArtwork(at(ch.yPct + 2.4))),
     })),
     { ...tickets, xPct: centerOn(ticketsX, ticketsW, tickets), yPct: 62.3, on: { kind: "owned", colors: [cw.accent] } },
     { ...burstLabel, ...burstAnchor, rotation: burstTurn, on: { kind: "owned", colors: [cw.accent] } },
@@ -1000,7 +1050,7 @@ export function layoutById(id: string): Layout {
 export const PLACEHOLDER_COPY: LayoutCopy = {
   kicker: "Feature",
   script: "Just landed",
-  head: ["Headline one", "Headline two", "Third line"],
+  head: ["Headline", "Headline two", "Third line"],
   body: ["A supporting line that runs to about here,", "and a second one under it."],
   chips: [
     { icon: "bolt", label: "Fast charging" },

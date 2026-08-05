@@ -78,3 +78,6 @@ Thumbs.db
 
 # Temp build artifacts
 apps/web/tmp/
+
+# transpiled output of apps/web/scripts/verify-templates.ts
+apps/web/.verify-out/

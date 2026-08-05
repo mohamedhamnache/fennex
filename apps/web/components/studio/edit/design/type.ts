@@ -40,7 +40,7 @@ import type { TemplateLayerDef, TemplateShapeDef, TemplateTextDef } from "../tex
 import type { BlendMode } from "../scene/types";
 import type { ShapeId } from "../shapes";
 import {
-  FONT_ROLES, MIN_CONTRAST, compositeOver, contrastRatio, mixHex, worstCaseContrast,
+  FONT_ROLES, MIN_CONTRAST, compositeOver, contrastRatio, mixHex, screenHex, worstCaseContrast,
 } from "../palette";
 import { REFERENCE_WIDTH, analyzeText } from "../families";
 
@@ -436,17 +436,85 @@ export function zoneScrim(
  * A glass chip, a ghost pill or a halftone bloom is translucent: the run on it
  * still meets the ground's colour, so the contrast number does not move. What
  * moves is the geometry — `analyzeText` reads the artwork as an occluder and
- * reports the run as no longer sitting on the field beneath it — so a `field`
- * claim there would be false about the picture while being true about the
- * colour. Restating it as a `prepared` region at full alpha keeps the measured
- * ratio identical to the bit and stops the layout claiming a field it has
- * covered up.
+ * reports the run as no longer sitting on whatever was beneath it — so a claim
+ * that names a field or a wash is false about the picture while being true
+ * about the colour. `verifyFieldClaims` checks exactly those two kinds against
+ * the geometry, and it caught this in 596 of the 443-cell matrix's runs before
+ * this function covered the wash case.
  *
- * Every other kind passes through: a run over a chip over a mesh is still over
- * the mesh, and `owned` already measures the worst of it.
+ * FIELD and WASH both restate as a `prepared` region at full alpha, and the
+ * reported ratio does not move either time:
+ *
+ *  - a `field` claim is `contrastRatio(ink, colour)`, and `prepared` at alpha 1
+ *    is the same expression;
+ *  - a `wash` claim is the worse of that and the ink against the blend's
+ *    reachable extreme — black for multiply, white for screen. `ground()`
+ *    derives the wash direction from the colourway's register, so the ink is
+ *    always on the side the monotone bound protects, so the extreme is always
+ *    the flattering end and the minimum is always the field colour. Identical
+ *    number, and a claim that is true of the geometry.
+ *
+ * `prepared`, `owned` and `photograph` pass through: none of them asserts an
+ * unoccluded layer, and `owned` already measures the worst colour a mesh can
+ * put under the run.
  */
 export function overArtwork(b: Backdrop): Backdrop {
-  return b.kind === "field" ? { kind: "prepared", color: b.color, alpha: 1 } : b;
+  return b.kind === "field" || b.kind === "wash"
+    ? { kind: "prepared", color: b.color, alpha: 1 }
+    : b;
+}
+
+/**
+ * The backdrop a run meets once a screen-blend atmospheric has been laid over
+ * the ground.
+ *
+ * WHY THIS IS NOT `overArtwork`. A glass chip is translucent and neutral: what
+ * is under the run does not change colour, so restating the claim is enough. A
+ * neon flare is not neutral. It is the accent screened over the ground at up to
+ * 0.42 alpha, and screen only moves a colour toward white — so under a flare a
+ * dark ground becomes a middling one and the LIGHT ink every vibrant colourway
+ * sets loses contrast against it. Reporting that run against the bare ground
+ * overstates it, and the overstatement is largest exactly where the flare is
+ * brightest, which is where the composition puts its headline.
+ *
+ * The 443-cell matrix is what surfaced this: three layouts paint a flare across
+ * their own type, and on the three grounds whose claim is checked against the
+ * geometry — flat, blocked, duotone — `verifyFieldClaims` reported the run as no
+ * longer sitting on the field it named. It was equally wrong on the three
+ * unchecked grounds; nothing was measuring it there.
+ *
+ * `alpha` is the flare's PEAK, at the centre of its bloom, applied across the
+ * whole of its box. That over-reports for a run near the edge of the bloom,
+ * where the real alpha has fallen away — deliberately, because the direction of
+ * the error has to be the safe one and contrast is a warning rather than a gate.
+ *
+ * WHAT THIS DOES NOT MODEL, stated rather than left to be discovered: halftone
+ * fields, dot clusters and grain are also screened over the ground, and they are
+ * not folded in. They are discrete marks with low area coverage — a glyph mostly
+ * falls between the dots — so treating them as a solid field of their colour
+ * would report a number no run actually experiences, and a warning nobody
+ * believes is a warning nobody reads. The flare is a continuous bloom and is
+ * therefore the one that is modelled.
+ */
+export function litBy(b: Backdrop, color: string, alpha: number): Backdrop {
+  const lift = (base: string) => compositeOver(screenHex(base, color), base, alpha);
+  switch (b.kind) {
+    case "field":
+      return { kind: "prepared", color: lift(b.color), alpha: 1 };
+    case "prepared":
+      // Keep the region's own alpha: a scrim at 0.90 over an unknown photograph
+      // is still only 0.90 over an unknown photograph once it has been lit.
+      return { kind: "prepared", color: lift(b.color), alpha: b.alpha };
+    case "wash":
+      // `multiply` bounds the composite at or below `color`, and screening a
+      // darker base lands darker than screening `color` itself, so lifting the
+      // wash's own colour stays the worst case for a light ink.
+      return { kind: "prepared", color: lift(b.color), alpha: 1 };
+    case "owned":
+      return { kind: "owned", colors: b.colors.map(lift) };
+    case "photograph":
+      return b;
+  }
 }
 
 // ── Composition ───────────────────────────────────────────────────────────────

@@ -71,6 +71,19 @@ export function mixHex(a: string, b: string, t: number): string {
   return toHex([0, 1, 2].map((i) => ca[i] * (1 - t) + cb[i] * t) as [number, number, number]);
 }
 
+/** Channel-wise `screen`: 255 - (255-a)(255-b)/255.
+ *
+ *  The composite a screen-blend layer produces over a known backdrop, which is
+ *  what lets a template that lays a neon flare over its own ground report the
+ *  colour a run actually meets instead of the colour underneath it. Monotone and
+ *  non-decreasing per channel, so the result is never darker than either input —
+ *  which is why the number it feeds is the worst case for light ink. */
+export function screenHex(a: string, b: string): string {
+  const ca = rgb(a);
+  const cb = rgb(b);
+  return toHex([0, 1, 2].map((i) => 255 - ((255 - ca[i]) * (255 - cb[i])) / 255) as [number, number, number]);
+}
+
 /** Contrast of `text` against a field of `fieldColor` at `opacity`, assuming
  *  the worst photograph underneath it. A translucent scrim is composited over
  *  both white and black and the poorer of the two ratios is returned, because a
