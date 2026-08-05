@@ -842,12 +842,19 @@ export interface ResolvedTemplate {
  * A subject image layer resolves to `subjectUrl`; when that is empty the layer
  * is skipped rather than rendered as an empty box, so the caller must handle an
  * empty result.
+ *
+ * `templateKey` stamps every layer produced here, which is what lets a later
+ * apply replace this template's layers rather than stack on them, and a remove
+ * take them away without touching a layer the user added. It is supplied by the
+ * caller rather than derived from `now`: the ids below already use `now` for
+ * uniqueness, and one string cannot safely carry both meanings.
  */
 export function templateToLayers(
   t: ResolvedTemplate,
   subjectUrl: string,
   width: number,
   height: number,
+  templateKey?: string,
 ): Layer[] {
   const canvasAspect = width && height ? width / height : 1;
   const now = Date.now();
@@ -860,6 +867,7 @@ export function templateToLayers(
       type: "image",
       imageUrl: backgroundDataUri(t.background),
       name: "Background",
+      templateKey,
       xPct: 0, yPct: 0, widthPct: 100,
       aspectRatio: canvasAspect,
       opacity: 1,
@@ -879,6 +887,7 @@ export function templateToLayers(
         type: "image",
         imageUrl: url,
         name: def.source === "subject-cutout" ? "Cutout" : def.source === "subject" ? "Photo" : "Image",
+        templateKey,
         xPct: def.xPct,
         yPct: def.yPct,
         widthPct: def.widthPct,
@@ -899,6 +908,7 @@ export function templateToLayers(
         type: "image",
         imageUrl: shapeDataUri(def.shape, def.color, { color2: def.color2, gradient: def.gradient, shadow: def.shadow }),
         name: `shape:${def.shape}`,
+        templateKey,
         xPct: def.xPct, yPct: def.yPct, widthPct: def.widthPct,
         heightPct: def.heightPct,
         aspectRatio: shapeAspect(def.shape, !!def.shadow),
@@ -927,6 +937,7 @@ export function templateToLayers(
       letterSpacingPct: letterSpacing !== undefined ? pctFromReferencePx(letterSpacing) : undefined,
       outlineWidthPct: outlineWidth !== undefined ? pctFromReferencePx(outlineWidth) : undefined,
       id: `tpl-${now}-${i}`,
+      templateKey,
     });
   });
 

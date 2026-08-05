@@ -1381,7 +1381,9 @@
       "hintRequired": "Não sabemos onde atuar sem um nome aqui ou uma máscara pintada."
     },
     "templates": {
-      "search": "Pesquisar modelos"
+      "search": "Pesquisar modelos",
+      "applied": "Modelo aplicado",
+      "remove": "Remover o modelo"
     },
     "score": {
       "title": "Pontuação",

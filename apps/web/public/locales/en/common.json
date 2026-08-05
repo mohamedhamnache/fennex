@@ -1478,7 +1478,9 @@
       "hintRequired": "We don't know where to work without a name here or a painted mask."
     },
     "templates": {
-      "search": "Search templates"
+      "search": "Search templates",
+      "applied": "Template applied",
+      "remove": "Remove template"
     },
     "score": {
       "title": "Score",

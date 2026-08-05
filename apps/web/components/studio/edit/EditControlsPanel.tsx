@@ -64,6 +64,10 @@ interface EditControlsPanelProps {
   burnError?: string | null;
   onProcessingChange?: (pending: boolean) => void;
   onHideBaseImage?: (hide: boolean) => void;
+  /** Whether the backdrop copy of the photo is currently hidden. Read — not just
+   *  written — because removing a template has to put the flag back the way it
+   *  was BEFORE the template was applied, and only the shell holds that value. */
+  hideBaseImage?: boolean;
   cropAspect?: number | null;
   onCropAspectChange?: (aspect: number | null) => void;
   onDuplicateLayer?: (id: string) => void;
@@ -98,6 +102,30 @@ function AlignRow({ layerId, onAlign }: { layerId: string; onAlign?: (id: string
       ))}
     </div>
   );
+}
+
+/** What the editor remembers about the template currently on the canvas.
+ *
+ *  The editor's undo is no help here: `historyIdx` walks SAVED image versions,
+ *  while layers are unsaved editor state, so nothing else can put a template
+ *  back the way it was. */
+interface AppliedTemplate {
+  /** Stamped on every layer this template created. */
+  key: string;
+  /** `hideBaseImage` as it was BEFORE this template was applied — carried
+   *  forward unchanged across a swap, so removal restores the value that was
+   *  true before the FIRST template, not the one a previous template set. */
+  hideBaseBefore: boolean;
+}
+
+/** A key with no other job. `crypto.randomUUID` needs a secure context, which
+ *  localhost and production both are, but the fallback keeps a plain-http
+ *  preview host from throwing in the middle of applying a template. */
+function newTemplateKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `tplkey-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 const CSS_PREVIEW: Record<string, string> = {
@@ -235,6 +263,7 @@ export function EditControlsPanel({
   burnError,
   onProcessingChange,
   onHideBaseImage,
+  hideBaseImage = false,
   cropAspect = null,
   onCropAspectChange,
   onDuplicateLayer,
@@ -457,6 +486,9 @@ export function EditControlsPanel({
     setNewText("");
   }
 
+  /** The template currently on the canvas, or null when none is applied. */
+  const [appliedTemplate, setAppliedTemplate] = useState<AppliedTemplate | null>(null);
+
   /** Template (background + layers) with brand colours/fonts applied when the toggle is on. */
   function resolveTemplate(t: TextTemplate): ResolvedTemplate {
     return brandTemplates && brandUsable
@@ -473,32 +505,62 @@ export function EditControlsPanel({
 
   /** Turns a resolved template into canvas layers and lands the user in the
    *  Add Text tool, ready to edit them. Shared by the plain apply path and
-   *  the cutout-confirm path so both build layers identically. */
+   *  the cutout-confirm path so both build layers identically — which is also
+   *  why the swap logic lives here rather than in `applyTemplate`: putting it
+   *  there would silently skip every cutout template. */
   function insertTemplateLayers(
     resolved: ResolvedTemplate,
     subjectUrl: string,
     disp?: { width: number; height: number } | null,
   ) {
+    const key = newTemplateKey();
     const newLayers = templateToLayers(
       resolved,
       subjectUrl,
       disp?.width ?? 0,
       disp?.height ?? 0,
+      key,
     );
 
     // A subject-only template can skip every def (no subjectImageUrl yet),
-    // leaving nothing to append or select.
+    // leaving nothing to append or select. Nothing is stripped in that case
+    // either: an apply that produces no layers must change nothing at all.
     if (newLayers.length === 0) return;
 
-    onSetLayers([...layers, ...newLayers]);
+    // Replace rather than stack. Only layers stamped with the CURRENTLY applied
+    // key go; anything the user added carries no key and keeps its position.
+    const kept = appliedTemplate
+      ? layers.filter((l) => l.templateKey !== appliedTemplate.key)
+      : layers;
+    onSetLayers([...kept, ...newLayers]);
     // Select the first foreground layer, not the background
     onSelectLayer((newLayers[resolved.background ? 1 : 0] ?? newLayers[0]).id);
     // Land the user in the Add Text tool so the layers are instantly editable
     onRequestTool?.("text");
 
+    setAppliedTemplate({
+      key,
+      // Carried FORWARD across a swap, never recaptured. If template A hides the
+      // photo and B replaces A, the value to restore on a later removal is what
+      // was true before A — recapturing here would store the `true` A set and
+      // leave a blank canvas on removal.
+      hideBaseBefore: appliedTemplate ? appliedTemplate.hideBaseBefore : hideBaseImage,
+    });
+
     // A template that places the photo as a layer must not also show it as
     // the backdrop underneath — that would double-render the subject.
     if (placesSubject(resolved.layers)) onHideBaseImage?.(true);
+  }
+
+  /** Take the applied template away: its layers go, the backdrop photo comes
+   *  back exactly as it was before the FIRST template in this run was applied,
+   *  and layers the user added are left untouched in their existing order. */
+  function removeAppliedTemplate() {
+    if (!appliedTemplate) return;
+    onSetLayers(layers.filter((l) => l.templateKey !== appliedTemplate.key));
+    onSelectLayer(null);
+    onHideBaseImage?.(appliedTemplate.hideBaseBefore);
+    setAppliedTemplate(null);
   }
 
   // Template pending the user's sign-off on CutoutConsentDialog -- set only
@@ -726,6 +788,26 @@ export function EditControlsPanel({
             {toolLabel}
           </p>
         </div>
+
+        {/* ── Applied template ────────────────────────────────────────────────
+            Outside the tool sections on purpose: applying a template lands the
+            user in the text tool, so a control that only existed inside the
+            template picker would be unreachable the moment it became useful. */}
+        {appliedTemplate && (
+          <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-4 py-2">
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+              {t("imageEdit.templates.applied", "Template applied")}
+            </span>
+            <button
+              type="button"
+              onClick={removeAppliedTemplate}
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Trash2 className="h-3 w-3" strokeWidth={1.8} />
+              {t("imageEdit.templates.remove", "Remove template")}
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 p-4 flex-1 overflow-y-auto">
 

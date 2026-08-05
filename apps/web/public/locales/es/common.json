@@ -1381,7 +1381,9 @@
       "hintRequired": "No sabemos dónde actuar sin un nombre aquí o una máscara pintada."
     },
     "templates": {
-      "search": "Buscar plantillas"
+      "search": "Buscar plantillas",
+      "applied": "Plantilla aplicada",
+      "remove": "Quitar la plantilla"
     },
     "score": {
       "title": "Puntuación",

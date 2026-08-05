@@ -1381,7 +1381,9 @@
       "hintRequired": "Ohne einen Namen hier oder eine gemalte Maske wissen wir nicht, wo wir arbeiten sollen."
     },
     "templates": {
-      "search": "Vorlagen durchsuchen"
+      "search": "Vorlagen durchsuchen",
+      "applied": "Vorlage angewendet",
+      "remove": "Vorlage entfernen"
     },
     "score": {
       "title": "Score",

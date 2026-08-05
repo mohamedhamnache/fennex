@@ -1381,7 +1381,9 @@
       "hintRequired": "Nous ne savons pas où intervenir sans un nom ici ou un masque peint."
     },
     "templates": {
-      "search": "Rechercher des modèles"
+      "search": "Rechercher des modèles",
+      "applied": "Modèle appliqué",
+      "remove": "Retirer le modèle"
     },
     "score": {
       "title": "Score",

@@ -657,6 +657,7 @@ export default function EditPage({
                 burnError={burnError}
                 onProcessingChange={setIsAiProcessing}
                 onHideBaseImage={setHideBaseImage}
+                hideBaseImage={hideBaseImage}
                 cropAspect={cropAspect}
                 onCropAspectChange={setCropAspect}
                 onDuplicateLayer={handleDuplicateLayer}
