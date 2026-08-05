@@ -28,7 +28,7 @@ import type { TemplateLayerDef } from "../text-templates";
 import { resolvePalette } from "../palette";
 import { REFERENCE_WIDTH, photo } from "../families";
 import {
-  type RunSpec, compose, field, rule,
+  type RunSpec, compose, cornerScrim, field, rule,
 } from "./type";
 
 export interface ProbeTemplate {
@@ -190,9 +190,73 @@ function culvert(): ProbeTemplate {
   };
 }
 
+// ── 3. Night Market — event, mid ─────────────────────────────────────────────
+//
+// The first of the six with no box in it at all. The photograph runs full
+// bleed and the type sits in the top-left corner, on a region the template
+// darkened itself: two nested gradient squares, each fading corner to corner,
+// compounding to roughly 0.84-0.97 alpha where the type lands and dissolving
+// into the photograph on the way out. The declared 0.82 below is deliberately
+// under the worst point of that range, so the contrast reported is a floor
+// rather than a flattering average.
+//
+// This is the composition the previous system could not express. A template
+// that must stay legible over ANY photograph can only be a box; a designer
+// prepares the region the type needs and picks a photograph that suits it.
+//
+// Headline 6.5% over two lines — mid, and the loudest thing in the frame by a
+// factor of five over the date beneath it.
+
+function nightMarket(): ProbeTemplate {
+  const p = resolvePalette("promo");
+  const c = compose();
+  const corner = { kind: "prepared", color: p.surface, alpha: 0.82 } as const;
+  const display = { sizePct: 6.5, font: "impact", uppercase: true, trackingPct: -0.25, color: p.ink } as const;
+
+  c.add(photo(), ...cornerScrim(p.surface, [78, 46]));
+
+  c.type(
+    {
+      text: "Two nights only",
+      sizePct: 1.3, font: "mono", uppercase: true, trackingPct: 0.2,
+      color: p.accentInk, xPct: 5, yPct: 6.5, on: corner,
+    },
+    { ...display, text: "Night Market", xPct: 5, yPct: 10.5, on: corner },
+    { ...display, text: "After Dark", xPct: 5, yPct: 17.8, on: corner },
+    {
+      text: "Fri 12 + Sat 13 Sep, from 18:00",
+      sizePct: 1.5, font: "mono", color: p.ink, xPct: 5, yPct: 26.5, on: corner,
+    },
+    {
+      text: "Twenty-two kitchens in the old car park.",
+      sizePct: 1.5, font: "support", opacity: 0.85, color: p.ink, xPct: 5, yPct: 29.7, on: corner,
+    },
+    {
+      // A stub, knocked off square. Its own pill is its own field, so this run
+      // is guaranteed wherever it lands and does not depend on the corner.
+      text: "Free entry",
+      sizePct: 1.4, font: "mono", uppercase: true, trackingPct: 0.18, rotation: -4,
+      color: p.onAccent, bg: p.accent, xPct: 64, yPct: 8,
+      on: { kind: "field", color: p.accent },
+    },
+  );
+
+  return {
+    id: "pb_event_nightmarket",
+    name: "Night Market",
+    subject: "event",
+    intent: "mid",
+    headline: "Night Market",
+    note: "No box anywhere: full-bleed photo with the title in a corner the template darkened with its own compounded gradient, plus one stub knocked off square.",
+    layers: c.layers,
+    runs: c.runs,
+  };
+}
+
 export const PROBE_TEMPLATES: ProbeTemplate[] = [
   smallBatch(),
   culvert(),
+  nightMarket(),
 ];
 
 /** Reference points for reading the headline sizes above. */
