@@ -30,8 +30,8 @@ import {
 } from "@/components/studio/edit/text-templates";
 import { analyzeText } from "@/components/studio/edit/families";
 import {
-  PROBE_TEMPLATES, HEADLINE_REFERENCE, headlinePct, LAYOUTS, buildProbe, colourwaysForLayout,
-  type ProbeTemplate,
+  APPROVED_SIX, HEADLINE_REFERENCE, headlinePct, LAYOUTS, buildTemplate, colourwaysForLayout,
+  PLACEHOLDER_COPY, type BuiltTemplate, type Layout,
 } from "@/components/studio/edit/design/templates";
 import { COLOURWAYS, colourway } from "@/components/studio/edit/design/colourways";
 import { runReports, verifyFieldClaims, type RunReport } from "@/components/studio/edit/design/type";
@@ -666,7 +666,7 @@ async function sweep(
  *  capability rather than per family, because six templates are not seven
  *  families and the requirement is that the six between them exercise blend,
  *  rotation, a non-rounded-rect clip and a cutout. */
-function probeSetChecks(templates: ProbeTemplate[]): Check[] {
+function probeSetChecks(templates: BuiltTemplate[]): Check[] {
   const seen = new Map<string, string>();
   const collisions: string[] = [];
   for (const t of templates) {
@@ -692,10 +692,10 @@ function probeSetChecks(templates: ProbeTemplate[]): Check[] {
   ];
   const missing = capability.filter(([, ok]) => !ok).map(([name]) => name);
 
-  const byIntent = (intent: ProbeTemplate["intent"]) =>
+  const byIntent = (intent: BuiltTemplate["intent"]) =>
     templates.filter((t) => t.intent === intent).length;
-  const byRegister = (register: ProbeTemplate["register"]) =>
-    templates.filter((t) => t.register === register).length;
+  const byRegister = (register: string) =>
+    templates.filter((t) => t.colourway.register === register).length;
   const groundCounts = new Map<string, number>();
   for (const t of templates) groundCounts.set(t.ground, (groundCounts.get(t.ground) ?? 0) + 1);
   const overused = [...groundCounts.entries()].filter(([, n]) => n > 2).map(([g]) => g);
@@ -743,7 +743,7 @@ function probeSetChecks(templates: ProbeTemplate[]): Check[] {
 /** Per-template checks that only exist for the probe: how big the headline is,
  *  what the type actually does, and whether the backdrop each run claims is the
  *  backdrop it has. */
-function probeChecks(t: ProbeTemplate): Check[] {
+function probeChecks(t: BuiltTemplate): Check[] {
   const out: Check[] = [];
 
   const hp = headlinePct(t);
@@ -823,7 +823,7 @@ function RunTable({ runs }: { runs: RunReport[] }) {
   );
 }
 
-interface ProbeRow { t: ProbeTemplate; row: Row }
+interface ProbeRow { t: BuiltTemplate; row: Row }
 
 function ProbeSweep({ size, cwId }: { size: number; cwId: string | null }) {
   const [rows, setRows] = useState<ProbeRow[]>([]);
@@ -838,9 +838,10 @@ function ProbeSweep({ size, cwId }: { size: number; cwId: string | null }) {
       // colour axis and the fastest way to see a layout carrying an assumption
       // it should not.
       const chosen = cwId ? colourway(cwId) : null;
-      const built = LAYOUTS.map((l) => {
+      const built = LAYOUTS.map((l: Layout) => {
         const ok = chosen && colourwaysForLayout(l).some((c) => c.id === chosen.id);
-        return buildProbe(l, ok ? chosen : undefined);
+        const cw = ok ? chosen : colourway(l.defaultColourway);
+        return buildTemplate(l, { cw, ground: l.defaultGround, copy: PLACEHOLDER_COPY });
       });
       for (const t of built) {
         if (cancelled) return;
@@ -862,7 +863,7 @@ function ProbeSweep({ size, cwId }: { size: number; cwId: string | null }) {
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.subject}</span>{" "}
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t.intent}</span>{" "}
               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
-                {t.register}
+                {t.colourway.register}
               </span>{" "}
               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-normal">
                 {t.ground} / {t.colourway.name}
@@ -900,8 +901,8 @@ function ProbeSweep({ size, cwId }: { size: number; cwId: string | null }) {
           </div>
         </section>
       ))}
-      {rows.length < PROBE_TEMPLATES.length ? (
-        <p className="text-sm text-muted-foreground">Rendering {rows.length} / {PROBE_TEMPLATES.length}…</p>
+      {rows.length < APPROVED_SIX.length ? (
+        <p className="text-sm text-muted-foreground">Rendering {rows.length} / {APPROVED_SIX.length}…</p>
       ) : null}
     </div>
   );
@@ -1097,7 +1098,7 @@ export default function TemplateSweepPage() {
         <>
           <section className="mb-8 space-y-2 rounded-lg border border-border bg-card p-4">
             <h2 className="font-semibold">Probe-set checks</h2>
-            <CheckList checks={probeSetChecks(PROBE_TEMPLATES)} />
+            <CheckList checks={probeSetChecks(APPROVED_SIX)} />
           </section>
           <ResolutionChecks />
           <ProbeSweep size={probeSize} cwId={probeCw} />

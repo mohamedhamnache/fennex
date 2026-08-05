@@ -1,10 +1,11 @@
-/** Probe primitives — type set to its composition.
+/** Type set to its composition.
  *
- *  This module exists to answer one question before thirty-four templates are
- *  rebuilt: does a system with continuous type sizes, real weight contrast and
- *  type outside a box produce work worth looking at?
+ *  This module answered one question before thirty-four templates were rebuilt:
+ *  does a system with continuous type sizes, real weight contrast and type
+ *  outside a box produce work worth looking at? The owner said yes, so it is now
+ *  the type system the shipped set is built on.
  *
- *  What it changes relative to `families.ts`:
+ *  What it changed relative to the composition families it replaced:
  *
  *  1. SIZE IS CONTINUOUS. A run states its size as a percentage of canvas
  *     width, chosen for the composition it belongs to. There is no ladder and
@@ -380,6 +381,72 @@ export function edgeScrim(
     return 1 - (1 - a) ** covering;
   };
   return { layers, alphaAt };
+}
+
+/**
+ * The region a layout reserves for its type, darkened by the template and
+ * dissolving outward in steps.
+ *
+ * `cornerScrim` is anchored to the top-left corner and nothing else, which was
+ * enough while one layout used a photograph. Six layouts put their type in six
+ * different places — a left column, a centred stack, a bottom-left block, a
+ * right-hand block — so the photographic ground has to darken wherever the
+ * layout actually writes rather than where the first one happened to.
+ *
+ * Every step COVERS THE WHOLE ZONE and extends a different distance beyond it,
+ * so the accumulated alpha inside the zone is exactly 1-(1-a)^k and the ramp
+ * lives entirely outside it. That is what makes `alpha` a fact rather than an
+ * estimate: a run inside the zone sits on that alpha, and the contrast report
+ * takes it from here rather than from a number typed next to it.
+ *
+ * Built from plain opaque-model rects, like `edgeScrim` and unlike
+ * `cornerScrim`: this path renders identically wherever the scene goes, so if
+ * the gradient variant ever turns out wrong in a browser this one still stands.
+ */
+export interface ZoneScrim {
+  layers: TemplateShapeDef[];
+  /** Accumulated alpha anywhere inside the zone. */
+  alpha: number;
+}
+
+export function zoneScrim(
+  color: string,
+  zone: { xPct: number; yPct: number; widthPct: number; heightPct: number },
+  opts?: { steps?: number; stepAlpha?: number; reach?: number },
+): ZoneScrim {
+  const steps = Math.max(2, opts?.steps ?? 7);
+  const a = opts?.stepAlpha ?? 0.28;
+  const reach = opts?.reach ?? 24;
+  const layers = Array.from({ length: steps }, (_, i) => {
+    // i = 0 is the widest and softest halo; the last step is the zone exactly.
+    const m = (reach * (steps - 1 - i)) / (steps - 1);
+    const x = Math.max(0, zone.xPct - m);
+    const y = Math.max(0, zone.yPct - m);
+    const right = Math.min(100, zone.xPct + zone.widthPct + m);
+    const bottom = Math.min(100, zone.yPct + zone.heightPct + m);
+    return field({ color, xPct: x, yPct: y, widthPct: right - x, heightPct: bottom - y, opacity: a });
+  });
+  return { layers, alpha: 1 - (1 - a) ** steps };
+}
+
+/**
+ * The same backdrop, re-stated for a run that sits on ARTWORK the layout painted
+ * over the ground rather than on the ground itself.
+ *
+ * A glass chip, a ghost pill or a halftone bloom is translucent: the run on it
+ * still meets the ground's colour, so the contrast number does not move. What
+ * moves is the geometry — `analyzeText` reads the artwork as an occluder and
+ * reports the run as no longer sitting on the field beneath it — so a `field`
+ * claim there would be false about the picture while being true about the
+ * colour. Restating it as a `prepared` region at full alpha keeps the measured
+ * ratio identical to the bit and stops the layout claiming a field it has
+ * covered up.
+ *
+ * Every other kind passes through: a run over a chip over a mesh is still over
+ * the mesh, and `owned` already measures the worst of it.
+ */
+export function overArtwork(b: Backdrop): Backdrop {
+  return b.kind === "field" ? { kind: "prepared", color: b.color, alpha: 1 } : b;
 }
 
 // ── Composition ───────────────────────────────────────────────────────────────
