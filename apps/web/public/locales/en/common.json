@@ -1570,7 +1570,7 @@
     "maskTargetDefault": "Which area did you mean?",
     "rephrase": "Rephrase",
     "rephrasing": "Rephrasing...",
-    "rephraseTitle": "Rewrite your instruction to be clearer before sending it",
+    "rephraseTitle": "Turn your instruction into a detailed, high-quality editing prompt",
     "rephraseUndo": "Undo",
     "rephraseFailed": "Couldn't rephrase that — your text is unchanged.",
     "rephraseCost_one": "about {{count}} credit",
@@ -1587,7 +1587,15 @@
     "attachUseAsReference": "Use it as a reference instead",
     "attachInsertInstead": "Add it to the picture instead",
     "attachCorrectionFree": "free — no re-upload",
-    "attachGuessed": "Read from your wording only."
+    "attachGuessed": "Read from your wording only.",
+    "send": "Send",
+    "attachNotAnImage": "That file isn't an image — pick a picture.",
+    "attachPastedName": "Pasted image",
+    "attachDropHere": "Drop the image here",
+    "attachInsertedShort": "Added to the picture as a layer.",
+    "attachReferencedShort": "Used as a reference only — it won't appear.",
+    "attachOneAtATime": "One image at a time — remove the attached one first.",
+    "attachBusy": "Wait for the current step to finish."
   },
   "articleStudio": {
     "write": "Write",

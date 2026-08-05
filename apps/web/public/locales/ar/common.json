@@ -1473,7 +1473,7 @@
     "maskTargetDefault": "ما المنطقة التي تقصدها؟",
     "rephrase": "إعادة الصياغة",
     "rephrasing": "جارٍ إعادة الصياغة...",
-    "rephraseTitle": "أعد صياغة تعليمتك بوضوح أكبر قبل إرسالها",
+    "rephraseTitle": "حوّل تعليمتك إلى مطالبة تحرير مفصّلة ودقيقة",
     "rephraseUndo": "تراجع",
     "rephraseFailed": "تعذّرت إعادة الصياغة — نصّك لم يتغيّر.",
     "rephraseCost_zero": "بدون تكلفة",
@@ -1498,7 +1498,15 @@
     "attachUseAsReference": "استخدمها كمرجع بدلاً من ذلك",
     "attachInsertInstead": "أضفها إلى الصورة بدلاً من ذلك",
     "attachCorrectionFree": "مجانًا — دون إعادة رفع",
-    "attachGuessed": "مستنتَج من صياغتك وحدها."
+    "attachGuessed": "مستنتَج من صياغتك وحدها.",
+    "send": "إرسال",
+    "attachNotAnImage": "هذا الملف ليس صورة — اختر صورة.",
+    "attachPastedName": "صورة ملصوقة",
+    "attachDropHere": "أفلت الصورة هنا",
+    "attachInsertedShort": "أُضيفت إلى الصورة كطبقة.",
+    "attachReferencedShort": "استُخدمت كمرجع فقط — لن تظهر.",
+    "attachOneAtATime": "صورة واحدة في كل مرة — أزل المرفق أولًا.",
+    "attachBusy": "انتظر انتهاء الخطوة الحالية."
   },
   "articleStudio": {
     "dock": {

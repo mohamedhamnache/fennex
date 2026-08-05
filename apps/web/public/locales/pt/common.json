@@ -1473,7 +1473,7 @@
     "maskTargetDefault": "Qual área você quis dizer?",
     "rephrase": "Reformular",
     "rephrasing": "Reformulando...",
-    "rephraseTitle": "Reescreva sua instrução com mais clareza antes de enviar",
+    "rephraseTitle": "Transformar sua instrução em um prompt de edição detalhado e preciso",
     "rephraseUndo": "Desfazer",
     "rephraseFailed": "Não foi possível reformular — seu texto não mudou.",
     "rephraseCost_one": "cerca de {{count}} crédito",
@@ -1490,7 +1490,15 @@
     "attachUseAsReference": "Usar como referência",
     "attachInsertInstead": "Adicionar à imagem",
     "attachCorrectionFree": "grátis — sem reenviar",
-    "attachGuessed": "Deduzido apenas da sua frase."
+    "attachGuessed": "Deduzido apenas da sua frase.",
+    "send": "Enviar",
+    "attachNotAnImage": "Esse arquivo não é uma imagem — escolha uma foto.",
+    "attachPastedName": "Imagem colada",
+    "attachDropHere": "Solte a imagem aqui",
+    "attachInsertedShort": "Adicionada à imagem como camada.",
+    "attachReferencedShort": "Usada apenas como referência — não aparecerá.",
+    "attachOneAtATime": "Uma imagem por vez — remova primeiro o anexo.",
+    "attachBusy": "Aguarde a etapa atual terminar."
   },
   "articleStudio": {
     "dock": {

@@ -3,7 +3,10 @@
 import { useState, useRef, useEffect, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
-import { Send, Bot, User, Sparkles, Wand2, Undo2, Loader2, Paperclip, X } from "lucide-react";
+import {
+  Send, Bot, User, Sparkles, Wand2, Undo2, Loader2, Paperclip, X,
+  AlertCircle, ImagePlus, RefreshCw,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   sendAiCommand, improvePrompt, uploadImage, interpretAttachment, ApiError,
@@ -188,6 +191,8 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
   const [interpreting, setInterpreting] = useState(false);
   const [resolved, setResolved] = useState<ResolvedAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
 
   // True when showMaskPreview() rejected (404/CORS/etc.) — the highlighted
   // area never rendered, so Apply must be disabled: approving a mask the
@@ -329,6 +334,9 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
 
 
   const busy = mutation.isPending || uploading || interpreting;
+  /** Whether a new file can be taken right now. One condition, so the paperclip,
+   *  the drop overlay and attachFile itself cannot disagree about it. */
+  const canAttach = !busy && !pendingConfirm && !attachment;
 
   function submit(command: string) {
     const trimmed = command.trim();
@@ -415,12 +423,21 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
     );
   }
 
-  async function handlePickAttachment(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    // Reset immediately so picking the SAME file twice still fires a change.
-    e.target.value = "";
-    if (!file) return;
+  /**
+   * The single intake for an attached image, shared by the file picker, paste
+   * and drop.
+   *
+   * One function rather than three because the validation and the upload are
+   * the parts that must not drift: a size limit enforced on the picker but not
+   * on drop is a limit that does not exist.
+   */
+  async function attachFile(file: File) {
+    if (!canAttach) return;
     setAttachErrorKey(null);
+    if (!file.type.startsWith("image/")) {
+      setAttachErrorKey("mirage.attachNotAnImage");
+      return;
+    }
     if (file.size > MAX_ATTACHMENT_BYTES) {
       setAttachErrorKey("mirage.attachTooLarge");
       return;
@@ -432,7 +449,9 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
       setAttachment({
         imageId: uploaded.id,
         url: uploaded.image_url ?? "",
-        name: file.name,
+        // A pasted screenshot arrives as "image.png" or with no name at all;
+        // showing that tells the user nothing about what they attached.
+        name: file.name || t("mirage.attachPastedName"),
         aspectRatio,
       });
     } catch {
@@ -440,6 +459,53 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
     } finally {
       setUploading(false);
     }
+  }
+
+  function handlePickAttachment(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset immediately so picking the SAME file twice still fires a change.
+    e.target.value = "";
+    if (file) void attachFile(file);
+  }
+
+  /** Paste an image straight into the composer -- the fastest path from a
+   *  screenshot to an edit, and the one people reach for first. */
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    if (!item) return; // Plain text paste: leave it to the textarea.
+    const file = item.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    void attachFile(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    // Reset the counter, not just the flag: the drop consumes the drag without
+    // firing the matching dragleave, so a depth left above zero would keep the
+    // NEXT drag's overlay stuck on screen after the pointer had left.
+    dragDepth.current = 0;
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void attachFile(file);
+  }
+
+  /**
+   * Drag tracking, counted rather than toggled.
+   *
+   * dragenter/dragleave both fire when the pointer crosses a CHILD element, so
+   * a plain boolean flickers off the moment the cursor moves over the textarea
+   * inside the drop zone. Counting enters against leaves is the standard fix.
+   */
+  function handleDragEnter(e: React.DragEvent) {
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+    dragDepth.current += 1;
+    setDragging(true);
+  }
+
+  function handleDragLeave() {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
   }
 
   async function handleRephrase() {
@@ -642,21 +708,46 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
             Both the file and its description are already held, so this button
             re-uploads nothing and calls nothing. */}
         {resolved && !pendingConfirm && (
-          <div className="flex items-center gap-2 flex-wrap pl-9 animate-msg-in">
-            {resolved.guessed && (
-              <span className="text-[10px] text-muted-foreground">{t("mirage.attachGuessed")}</span>
-            )}
-            <button
-              type="button"
-              onClick={handleCorrectIntent}
-              disabled={busy}
-              className="rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50"
-            >
-              {resolved.intent === "insert"
-                ? t("mirage.attachUseAsReference")
-                : t("mirage.attachInsertInstead")}
-            </button>
-            <span className="text-[10px] text-muted-foreground">{t("mirage.attachCorrectionFree")}</span>
+          <div className="pl-9 animate-msg-in">
+            <div className="rounded-xl border border-border bg-muted/30 p-2.5 flex items-start gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={resolved.url}
+                alt={resolved.name}
+                className="h-8 w-8 rounded-lg object-cover shrink-0 border border-border"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] text-foreground leading-snug">
+                  {resolved.intent === "insert"
+                    ? t("mirage.attachInsertedShort")
+                    : t("mirage.attachReferencedShort")}
+                </p>
+                {resolved.guessed && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {t("mirage.attachGuessed")}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCorrectIntent}
+                  disabled={busy}
+                  className={cn(
+                    "mt-1.5 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold",
+                    "min-h-[28px] text-primary transition-colors hover:bg-primary/10",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                  )}
+                >
+                  <RefreshCw className="h-3 w-3" strokeWidth={2} />
+                  {resolved.intent === "insert"
+                    ? t("mirage.attachUseAsReference")
+                    : t("mirage.attachInsertInstead")}
+                  <span className="font-normal text-muted-foreground">
+                    {t("mirage.attachCorrectionFree")}
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -666,11 +757,19 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
         <div ref={bottomRef} />
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-border p-3 shrink-0">
-        {/* Composer toolbar. The rephrase button carries its own price so the
-            cost is on screen BEFORE the click that spends it, never only in
-            the balance afterwards. */}
+      {/* Input area. The whole block is the drop target, not just the text
+          box: aiming at a 2-row textarea is fussy, and a drop that lands one
+          pixel outside navigates the browser away to the dropped file. */}
+      <div
+        className="relative border-t border-border p-3 shrink-0"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+      >
+        {/* Composer toolbar. Each action carries its own price, so the cost is
+            on screen BEFORE the click that spends it and never only in the
+            balance afterwards. */}
         <div className="flex items-center gap-2 pb-2">
           <button
             type="button"
@@ -678,8 +777,9 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
             disabled={!input.trim() || rephrasing || busy || !!pendingConfirm}
             title={t("mirage.rephraseTitle")}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors",
-              "bg-primary/10 text-primary hover:bg-primary/20",
+              "group flex items-center gap-1.5 rounded-lg pl-2.5 pr-1.5 py-1.5 text-[11px] font-semibold",
+              "min-h-[32px] transition-colors bg-primary/10 text-primary hover:bg-primary/20",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}
           >
@@ -687,21 +787,34 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
               ? <Loader2 className="h-3 w-3 animate-spin" />
               : <Wand2 className="h-3 w-3" strokeWidth={1.8} />}
             {rephrasing ? t("mirage.rephrasing") : t("mirage.rephrase")}
+            {/* The price rides INSIDE the control it applies to. As a loose
+                span beside it, it read as a caption for the whole toolbar and
+                left the attachment's separate cost unexplained. */}
+            <span
+              aria-label={t("mirage.rephraseCost", { count: PROMPT_REPHRASE_CREDIT_COST })}
+              title={t("mirage.rephraseCost", { count: PROMPT_REPHRASE_CREDIT_COST })}
+              className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+            >
+              {PROMPT_REPHRASE_CREDIT_COST}
+            </span>
           </button>
-          <span className="text-[10px] text-muted-foreground">
-            {t("mirage.rephraseCost", { count: PROMPT_REPHRASE_CREDIT_COST })}
-          </span>
 
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={busy || !!pendingConfirm || !!attachment}
+            disabled={!canAttach}
             title={t("mirage.attachTitle")}
-            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label={t("mirage.attachTitle")}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground",
+              "transition-colors hover:text-foreground hover:bg-accent",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+            )}
           >
             {uploading
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <Paperclip className="h-3.5 w-3.5" strokeWidth={1.8} />}
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Paperclip className="h-4 w-4" strokeWidth={1.8} />}
           </button>
           <input
             ref={fileInputRef}
@@ -709,13 +822,19 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
             accept="image/*"
             onChange={handlePickAttachment}
             className="hidden"
+            tabIndex={-1}
+            aria-hidden="true"
           />
 
           {rephraseOriginal !== null && (
             <button
               type="button"
               onClick={handleUndoRephrase}
-              className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className={cn(
+                "ml-auto flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold",
+                "min-h-[32px] text-muted-foreground transition-colors hover:text-foreground hover:bg-accent",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              )}
             >
               <Undo2 className="h-3 w-3" strokeWidth={1.8} />
               {t("mirage.rephraseUndo")}
@@ -723,11 +842,14 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
           )}
         </div>
 
-        {rephraseError && (
-          <p className="text-[10px] text-destructive pb-2 px-1">{t("mirage.rephraseFailed")}</p>
-        )}
-        {attachErrorKey && (
-          <p className="text-[10px] text-destructive pb-2 px-1">{t(attachErrorKey)}</p>
+        {/* Errors carry an icon as well as the destructive colour: colour
+            alone is not a signal every reader receives. role="alert" so the
+            message is announced rather than only painted. */}
+        {(rephraseError || attachErrorKey) && (
+          <p role="alert" className="flex items-start gap-1.5 text-[10px] text-destructive pb-2 px-1">
+            <AlertCircle className="h-3 w-3 shrink-0 mt-px" strokeWidth={2} />
+            {rephraseError ? t("mirage.rephraseFailed") : t(attachErrorKey!)}
+          </p>
         )}
 
         {/* The attached file, and what reading it will cost — on screen before
@@ -735,12 +857,12 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
             this read; using it as a reference then costs whatever the edit
             itself costs, which is the normal per-message charge. */}
         {attachment && (
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-2 mb-2">
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 p-2 mb-2 animate-scale-in">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={attachment.url}
-              alt=""
-              className="h-9 w-9 rounded-lg object-cover shrink-0 border border-border"
+              alt={attachment.name}
+              className="h-10 w-10 rounded-lg object-cover shrink-0 border border-border"
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11px] font-semibold text-foreground">{attachment.name}</p>
@@ -753,9 +875,15 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
               onClick={() => { setAttachment(null); setAttachErrorKey(null); }}
               disabled={busy}
               title={t("mirage.attachRemove")}
-              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 shrink-0"
+              aria-label={t("mirage.attachRemove")}
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
+                "transition-colors hover:text-foreground hover:bg-accent",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                "disabled:opacity-40",
+              )}
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
@@ -766,7 +894,9 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={t("mirage.placeholder")}
+            aria-label={t("mirage.placeholder")}
             rows={2}
             disabled={!!pendingConfirm}
             className="flex-1 resize-none px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground bg-transparent focus:outline-none disabled:opacity-50"
@@ -775,7 +905,14 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
             type="button"
             disabled={!input.trim() || busy || !!pendingConfirm}
             onClick={() => submit(input)}
-            className="m-1.5 h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 shrink-0"
+            title={t("mirage.send")}
+            aria-label={t("mirage.send")}
+            className={cn(
+              "m-1.5 h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground",
+              "transition-colors hover:bg-primary/90 shrink-0",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              "disabled:opacity-40",
+            )}
           >
             <Send className="h-3.5 w-3.5" />
           </button>
@@ -783,6 +920,30 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
         <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
           {t("mirage.enterHint")}
         </p>
+
+        {/* Drop overlay. Rendered above the composer only while a file is
+            actually over it, and pointer-events-none so it can never swallow
+            the drop it is advertising. */}
+        {dragging && (
+          canAttach ? (
+            <div className="absolute inset-2 z-10 pointer-events-none rounded-xl border-2 border-dashed border-primary bg-background/90 flex flex-col items-center justify-center gap-1 animate-fade-in">
+              <ImagePlus className="h-5 w-5 text-primary" strokeWidth={1.8} />
+              <p className="text-[11px] font-semibold text-primary">{t("mirage.attachDropHere")}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {t("mirage.attachCost", { count: ATTACHMENT_INTERPRET_CREDIT_COST })}
+              </p>
+            </div>
+          ) : (
+            /* Dragging over a composer that cannot take the file. Saying why
+               beats an inviting dashed outline over a drop that would be
+               silently discarded. */
+            <div className="absolute inset-2 z-10 pointer-events-none rounded-xl border-2 border-dashed border-border bg-background/90 flex items-center justify-center px-4 animate-fade-in">
+              <p className="text-[11px] font-semibold text-muted-foreground text-center">
+                {attachment ? t("mirage.attachOneAtATime") : t("mirage.attachBusy")}
+              </p>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
