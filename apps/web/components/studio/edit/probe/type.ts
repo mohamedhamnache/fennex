@@ -234,6 +234,43 @@ export function centerOn(x0: number, width: number, s: Measurable): number {
   return Number((x0 + (width - estWidthPct(s)) / 2).toFixed(2));
 }
 
+/**
+ * A point rotated about a centre, in canvas percent.
+ *
+ * This exists for one specific problem: putting a label on a knocked-off-square
+ * sticker. `SceneSvg` rotates a SHAPE about its own centre and a TEXT RUN about
+ * its anchor — two different origins — so setting the same angle on both leaves
+ * the label sliding off the badge. The fix is to place the anchor where it
+ * would END UP if the badge and the label had been rotated together: rotate the
+ * label's unrotated anchor about the badge's centre, then give the label the
+ * same angle. It then pivots in place and the pair moves as one object.
+ *
+ * Exact only on a square canvas, since `xPct` is a percentage of width and
+ * `yPct` of height. The whole probe is authored and measured at 1:1.
+ */
+export function rotateAbout(
+  point: { xPct: number; yPct: number },
+  centre: { xPct: number; yPct: number },
+  degrees: number,
+): { xPct: number; yPct: number } {
+  const rad = (degrees * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const dx = point.xPct - centre.xPct;
+  const dy = point.yPct - centre.yPct;
+  return {
+    xPct: Number((centre.xPct + dx * cos - dy * sin).toFixed(2)),
+    yPct: Number((centre.yPct + dx * sin + dy * cos).toFixed(2)),
+  };
+}
+
+/** The centre of a box, for `rotateAbout`. */
+export function centreOf(box: { xPct: number; yPct: number; widthPct: number; heightPct: number }): {
+  xPct: number; yPct: number;
+} {
+  return { xPct: box.xPct + box.widthPct / 2, yPct: box.yPct + box.heightPct / 2 };
+}
+
 // ── Fields, rules and prepared regions ────────────────────────────────────────
 
 export interface FieldSpec {
