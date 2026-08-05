@@ -1495,8 +1495,6 @@
     "attachNotAnImage": "Ce fichier n'est pas une image — choisissez une photo.",
     "attachPastedName": "Image collée",
     "attachDropHere": "Déposez l'image ici",
-    "attachInsertedShort": "Ajoutée à l'image comme calque.",
-    "attachReferencedShort": "Utilisée comme référence seulement — elle n'apparaîtra pas.",
     "attachOneAtATime": "Une image à la fois — retirez d'abord la pièce jointe.",
     "attachBusy": "Attendez la fin de l'étape en cours."
   },

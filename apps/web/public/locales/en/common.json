@@ -1592,8 +1592,6 @@
     "attachNotAnImage": "That file isn't an image — pick a picture.",
     "attachPastedName": "Pasted image",
     "attachDropHere": "Drop the image here",
-    "attachInsertedShort": "Added to the picture as a layer.",
-    "attachReferencedShort": "Used as a reference only — it won't appear.",
     "attachOneAtATime": "One image at a time — remove the attached one first.",
     "attachBusy": "Wait for the current step to finish."
   },

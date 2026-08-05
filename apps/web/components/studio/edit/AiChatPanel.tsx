@@ -716,14 +716,12 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
                 alt={resolved.name}
                 className="h-8 w-8 rounded-lg object-cover shrink-0 border border-border"
               />
+              {/* Deliberately does NOT restate the verdict: the assistant
+                  message directly above already says which reading was taken.
+                  This card exists for the thumbnail and the way out of it. */}
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-foreground leading-snug">
-                  {resolved.intent === "insert"
-                    ? t("mirage.attachInsertedShort")
-                    : t("mirage.attachReferencedShort")}
-                </p>
                 {resolved.guessed && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[10px] text-muted-foreground">
                     {t("mirage.attachGuessed")}
                   </p>
                 )}
@@ -732,7 +730,7 @@ export function AiChatPanel({ imageId, onVersionAdded, canvasRef,
                   onClick={handleCorrectIntent}
                   disabled={busy}
                   className={cn(
-                    "mt-1.5 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold",
+                    "flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold",
                     "min-h-[28px] text-primary transition-colors hover:bg-primary/10",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                     "disabled:opacity-50 disabled:cursor-not-allowed",

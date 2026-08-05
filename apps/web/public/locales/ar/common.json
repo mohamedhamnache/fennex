@@ -1503,8 +1503,6 @@
     "attachNotAnImage": "هذا الملف ليس صورة — اختر صورة.",
     "attachPastedName": "صورة ملصوقة",
     "attachDropHere": "أفلت الصورة هنا",
-    "attachInsertedShort": "أُضيفت إلى الصورة كطبقة.",
-    "attachReferencedShort": "استُخدمت كمرجع فقط — لن تظهر.",
     "attachOneAtATime": "صورة واحدة في كل مرة — أزل المرفق أولًا.",
     "attachBusy": "انتظر انتهاء الخطوة الحالية."
   },

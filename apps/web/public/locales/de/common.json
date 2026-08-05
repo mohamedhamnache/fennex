@@ -1495,8 +1495,6 @@
     "attachNotAnImage": "Diese Datei ist kein Bild — wähle ein Foto.",
     "attachPastedName": "Eingefügtes Bild",
     "attachDropHere": "Bild hier ablegen",
-    "attachInsertedShort": "Als Ebene ins Bild eingefügt.",
-    "attachReferencedShort": "Nur als Referenz genutzt — es erscheint nicht.",
     "attachOneAtATime": "Ein Bild auf einmal — entferne zuerst den Anhang.",
     "attachBusy": "Warte, bis der aktuelle Schritt fertig ist."
   },

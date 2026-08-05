@@ -1495,8 +1495,6 @@
     "attachNotAnImage": "Ese archivo no es una imagen — elige una foto.",
     "attachPastedName": "Imagen pegada",
     "attachDropHere": "Suelta la imagen aquí",
-    "attachInsertedShort": "Añadida a la imagen como capa.",
-    "attachReferencedShort": "Usada solo como referencia — no aparecerá.",
     "attachOneAtATime": "Una imagen a la vez — quita primero la adjunta.",
     "attachBusy": "Espera a que termine el paso actual."
   },
