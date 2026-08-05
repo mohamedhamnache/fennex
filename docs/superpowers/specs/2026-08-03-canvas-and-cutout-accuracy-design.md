@@ -171,9 +171,70 @@ needed.
 8. Run the decompose pipeline on a real marketing image and compare the detected
    text boxes against the LLM's previous guesses.
 
-**Open question, deliberately not answered here:** two of the four measured
+## Results, measured 2026-08-05
+
+Run against the real images in the database. Cost about $0.008: only the
+BiRefNet side needed paying for, because the remove.bg outputs for these exact
+images were already stored from when the bug was found.
+
+### The aspect-ratio open question: resolved, and it was not cropping
+
+The question below asked whether remove.bg was also cropping. It is not.
+Decoding the stored PNGs and measuring their real pixels shows the DATABASE was
+wrong about the parents:
+
+| image | DB records | actual pixels | aspect |
+| --- | --- | --- | --- |
+| parent A | 1792x1024 | **2080x1664** | 1.250 |
+| cutout A | -- | 559x447 | **1.251** |
+| parent B | 1080x1920 | **1024x1536** | 0.667 |
+| cutout B | -- | 408x612 | **0.667** |
+| parent C | 1024x1024 | 1024x1024 | 1.000 |
+| cutout C | -- | 500x500 | **1.000** |
+
+remove.bg preserved aspect ratio exactly in all three. The apparent anomaly was
+entirely an artifact of the generation-dimensions defect -- dimensions are
+recorded as REQUESTED, never measured. **One bug, not two**, and switching
+supplier was never going to fix the recording defect, which is still open.
+
+### BiRefNet preserves resolution: confirmed
+
+3 of 3 returned the source frame exactly (2080x1664, 1024x1536, 1024x1024), in
+6-10 seconds each.
+
+### Matte quality: EQUIVALENT, not better. This spec's premise was wrong.
+
+Comparing the alpha channels at MATCHED resolution -- which is the only way to
+separate matte quality from the resolution tier:
+
+| case | coverage remove.bg / BiRefNet | soft-edge px | pixels disagreeing |
+| --- | --- | --- | --- |
+| A (products) | 13.71% / 13.87% | 0.63% / 0.49% | 0.10% |
+| B (figure) | 22.65% / 22.76% | 1.50% / 1.19% | 0.00% |
+| C (portrait) | 39.86% / 39.91% | 0.62% / 0.76% | 0.27% |
+
+The two segmentations are the same to within a fraction of a percent, and
+remove.bg holds marginally MORE soft-edge detail in two of three.
+
+The "rembg loses ~40% of fine strands, BiRefNet is state of the art" claim
+above was taken from published comparisons and is not supported by this
+evidence. Side-by-side at full size the BiRefNet cutout looks dramatically
+better, but that difference is entirely the 0.25 MP tier, not the matte.
+
+**The switch to BiRefNet is still right, for a different reason than this spec
+gave.** Not better edges -- equivalent edges at **full resolution for 10 credits
+instead of 191**. The alternative of keeping remove.bg at `size: "full"` would
+have produced a comparable matte at roughly 19x the cost.
+
+**Limitation, stated because it bounds the conclusion:** none of the three
+images is the hard case this spec asked for. The products are hard-edged, and
+both people have their hair covered. Fine flyaway hair against a busy
+background remains untested, and it is the case where the two models are most
+likely to actually differ.
+
+---
+
+**Original open question, now answered above:** two of the four measured
 downscales also changed aspect ratio (1080x1920 to 408x612, 1792x1024 to
 559x447). A 0.25 MP cap preserves aspect; these did not. Either remove.bg is
 also cropping, or `source_image_id` does not point at the true immediate parent.
-Resolve this before closing the bug, because if it is cropping then switching
-supplier fixes the symptom and leaves the cause.
