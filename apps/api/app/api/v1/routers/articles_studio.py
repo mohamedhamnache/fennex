@@ -129,7 +129,8 @@ async def studio_chat_stream(
     async def event_stream():
         acc: list[str] = []
         try:
-            async for chunk in stream_llm(provider, model, key, system, user, locale=locale):
+            async for chunk in stream_llm(provider, model, key, system, user, locale=locale,
+                                          feature="article_chat"):
                 acc.append(chunk)
                 yield _sse({"d": chunk})
             result = writing_service.parse_chat_response("".join(acc))
@@ -220,7 +221,7 @@ async def studio_generate_stream(
         try:
             async for chunk in stream_llm(
                 provider_val, model, api_key, system_prompt, user_prompt,
-                locale=locale, max_tokens=ARTICLE_MAX_TOKENS,
+                locale=locale, max_tokens=ARTICLE_MAX_TOKENS, feature="article_generate",
             ):
                 acc.append(chunk)
                 yield _sse({"d": chunk})

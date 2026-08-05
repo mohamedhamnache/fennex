@@ -956,6 +956,13 @@ export async function improvePrompt(data: {
   prompt: string;
   usage?: ImageUsage;
   style?: ImageStyle;
+  /** Which KIND of prompt this is. Omit (the default) for a text-to-image
+   *  brief, as the Image Studio's PromptToolbar does. Pass
+   *  "edit_instruction" for an instruction aimed at a picture that already
+   *  exists, as Mirage's rephrase control does -- the default mode would
+   *  answer "remove the mint" with a full scene description, which tells the
+   *  editor to generate rather than to remove. */
+  mode?: "edit_instruction";
 }): Promise<{ improved_prompt: string }> {
   return apiClient.post<{ improved_prompt: string }>("/images/improve-prompt", data);
 }
@@ -2148,6 +2155,39 @@ export async function sendAiCommand(
     ...(maskUrls !== undefined ? { mask_urls: maskUrls } : {}),
     ...(resumeToken !== undefined ? { resume_token: resumeToken } : {}),
   }));
+}
+
+/** What Mirage decided to do with an image attached to a chat message. */
+export interface AttachmentInterpretation {
+  /** "insert": the image is an element to place INTO the picture. "reference":
+   *  it shows a look to imitate and must never appear in the result. */
+  intent: "insert" | "reference";
+  /** What the image shows. Returned for BOTH intents, so switching the
+   *  interpretation afterwards needs neither a re-upload nor a second call. */
+  description: string;
+  /** True when no vision key was configured and the verdict came from the
+   *  wording of the command alone — say "looks like", not "is". */
+  guessed: boolean;
+}
+
+/**
+ * Decide whether an attached image is to be inserted or used as a reference,
+ * and describe it, in ONE metered vision call.
+ *
+ * Deliberately separate from sendAiCommand: that route carries the
+ * mask-confirmation round trip and its resume token, whose whole purpose is
+ * that a chain stopping for confirmation is never re-planned or re-billed. A
+ * vision call inside it would run again on every confirmation round trip.
+ * Answering here lets the caller hold the result across as many round trips,
+ * retries and corrections as it likes, paying once.
+ */
+export async function interpretAttachment(data: {
+  command: string;
+  attachment_image_id: string;
+}): Promise<AttachmentInterpretation> {
+  return withCreditRefresh(
+    apiClient.post<AttachmentInterpretation>("/images/interpret-attachment", data),
+  );
 }
 
 // ── Templates ─────────────────────────────────────────────────────────────────

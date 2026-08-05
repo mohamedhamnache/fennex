@@ -833,7 +833,7 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                     raise RuntimeError(event.get("message") or "stream failed")
         else:
             async for piece in stream_llm(provider, model, ctx.keys[provider], system, user,
-                                          locale=ctx.locale):
+                                          locale=ctx.locale, feature="employee_chat"):
                 chunks.append(piece)
                 yield {"type": "delta", "employeeId": employee.id, "text": piece}
     except Exception as exc:   # noqa: BLE001

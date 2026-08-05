@@ -23,7 +23,7 @@ from app.models.brand_kit import BrandKit as BrandKitModel
 from app.models.project import Project
 from app.services.image_service import build_image_prompt, build_social_prompt, generate_image_dalle, get_placeholder_url, SOCIAL_PRESETS
 from app.core.storage import upload_file
-from app.services.llm_service import get_org_llm_keys, call_llm, project_locale
+from app.services.llm_service import get_org_llm_keys, call_llm, call_llm_vision, project_locale
 from app.services import editing_service
 
 router = APIRouter()
@@ -89,6 +89,16 @@ class ImprovePromptRequest(BaseModel):
     prompt: str
     usage: Optional[str] = None
     style: Optional[str] = None
+    # Which KIND of prompt is being improved. "generate" (the default, and the
+    # only behaviour before Mirage's rephrase control existed) rewrites a
+    # text-to-image brief. "edit_instruction" rewrites an instruction aimed at
+    # an image that ALREADY exists, which is a different job entirely: asked to
+    # improve "remove the mint", the generate-mode system prompt happily
+    # returns a full scene description with lighting and mood, and the editor
+    # would then be told to generate a new picture instead of removing
+    # anything. One endpoint, one metered call path, two system prompts --
+    # there is deliberately no second improve endpoint.
+    mode: Optional[str] = None
 
 
 class ImprovePromptResponse(BaseModel):
@@ -179,10 +189,81 @@ _IMPROVE_SYSTEM = (
     "Keep it under 200 words."
 )
 
+# Mirage's rephrase control. The input is an EDIT instruction against a picture
+# that already exists, so the job is precision, not evocation: name the target,
+# state the change, and say nothing about anything the user did not ask to
+# touch. Length is a failure mode here rather than a goal -- a rephrase that
+# merely lengthens is worse than none, because every extra clause is another
+# thing the instruction model may decide to re-render.
+_IMPROVE_EDIT_SYSTEM = (
+    "You are a prompt engineer for an AI photo editor. You are given a user's "
+    "rough editing instruction and you write the high-value instruction that "
+    "gets a professional result on the first attempt. The picture already "
+    "exists; the user wants it CHANGED, not replaced.\n\n"
+
+    "Your output is read by a planner that maps the instruction onto one of "
+    "these edits, so write for it:\n"
+    "  GENERATIVE  - replacing a background, inserting an object, filling a "
+    "region. A generative model renders the words you write, so this is where "
+    "specific craft language earns its place.\n"
+    "  REGIONAL    - removing or erasing something. What matters is naming the "
+    "target exactly; description of the new content is meaningless.\n"
+    "  PARAMETRIC  - crop, rotate, flip, brightness/contrast/saturation, a "
+    "named filter, denoise, sharpen, upscale, face restore, shadow, relight. "
+    "These take numbers and directions, not adjectives.\n\n"
+
+    "MATCH THE DETAIL TO THE EDIT. This is the difference between a good "
+    "instruction and a bad one:\n"
+    "- Generative: specify the concrete, renderable qualities that decide "
+    "whether the result looks real -- material and surface finish, lighting "
+    "direction and hardness, colour temperature, depth of field and how much "
+    "the background falls off, the scale and perspective the new content must "
+    "match, contact shadow where objects meet a surface, and how edges "
+    "integrate. Prefer precise nouns over adjectives: 'brushed stainless "
+    "steel' beats 'nice metal'.\n"
+    "- Regional: name the target the way it appears in the picture, "
+    "unambiguously enough to pick it out from everything near it. Add nothing "
+    "else. Removing 'the leaves' when there are two plants deletes the wrong "
+    "one.\n"
+    "- Parametric: state the direction and rough magnitude and stop. "
+    "'Noticeably brighter' or 'rotate 90 degrees clockwise'. Never dress a "
+    "parametric edit in scene description -- it misroutes the planner into "
+    "regenerating the picture instead of adjusting it.\n\n"
+
+    "ALWAYS STATE WHAT MUST NOT CHANGE when the edit is generative or "
+    "regional. Naming what to preserve -- the subject's identity and pose, the "
+    "framing, the existing lighting direction, brand colours, text -- is the "
+    "single most effective way to stop a generative edit drifting into a "
+    "different picture.\n\n"
+
+    "HARD RULES:\n"
+    "- Keep the user's intent and every constraint they stated. Never drop "
+    "one.\n"
+    "- Write in the SAME LANGUAGE the user wrote in.\n"
+    "- Never change the subject of the edit, and never introduce a style, "
+    "mood, season, or object the user did not ask for. Enriching means being "
+    "more specific about what they asked for, never asking for something "
+    "else.\n"
+    "- If the instruction is already precise, return it nearly unchanged. "
+    "Padding a clear instruction makes it worse.\n"
+    "- Stay an instruction to an editor. Never write a description of the "
+    "whole photograph -- that reads as 'generate this' and replaces the "
+    "user's image.\n"
+    "- One to three sentences. Reply with the instruction only -- no "
+    "markdown, no preamble, no explanation, no options."
+)
+
 _IMPROVE_PROVIDERS = [
     ("anthropic", "claude-haiku-4-5-20251001"),
     ("openai", "gpt-4o-mini"),
 ]
+
+# The metering key for this endpoint's usage events. The call is already
+# attributed to the org ambiently (get_org_llm_keys -> set_metering_org, read
+# back by call_llm's else-branch), but without a feature name the resulting
+# UsageEvent.feature is NULL and the spend cannot be told apart from every
+# other unnamed LLM call in the org's ledger.
+_IMPROVE_FEATURE = "improve_prompt"
 
 
 @router.post("/improve-prompt", response_model=ImprovePromptResponse)
@@ -192,19 +273,27 @@ async def improve_prompt(body: ImprovePromptRequest, current_user: CurrentUser, 
 
     keys = await get_org_llm_keys(current_user.org_id, db)
 
-    context_parts = []
-    if body.usage:
-        context_parts.append(f"Usage: {body.usage.replace('_', ' ')}")
-    if body.style:
-        context_parts.append(f"Style: {body.style.replace('_', ' ')}")
-    context = f" [{', '.join(context_parts)}]" if context_parts else ""
-
-    user_prompt = f"Improve this image prompt{context}:\n\n{body.prompt.strip()}"
+    if body.mode == "edit_instruction":
+        system = _IMPROVE_EDIT_SYSTEM
+        user_prompt = (
+            "Write the high-value editing instruction for this request:\n\n"
+            f"{body.prompt.strip()}"
+        )
+    else:
+        system = _IMPROVE_SYSTEM
+        context_parts = []
+        if body.usage:
+            context_parts.append(f"Usage: {body.usage.replace('_', ' ')}")
+        if body.style:
+            context_parts.append(f"Style: {body.style.replace('_', ' ')}")
+        context = f" [{', '.join(context_parts)}]" if context_parts else ""
+        user_prompt = f"Improve this image prompt{context}:\n\n{body.prompt.strip()}"
 
     for provider, model in _IMPROVE_PROVIDERS:
         if provider in keys:
             try:
-                improved = await call_llm(provider, model, keys[provider], _IMPROVE_SYSTEM, user_prompt)
+                improved = await call_llm(provider, model, keys[provider], system, user_prompt,
+                                          feature=_IMPROVE_FEATURE)
                 return ImprovePromptResponse(improved_prompt=improved.strip())
             except Exception:
                 continue
@@ -212,6 +301,191 @@ async def improve_prompt(body: ImprovePromptRequest, current_user: CurrentUser, 
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="No AI API key configured. Add an Anthropic or OpenAI key in Settings → API Keys.",
+    )
+
+
+# ── Attachment interpretation (Mirage chat) ───────────────────────────────────
+
+class InterpretAttachmentRequest(BaseModel):
+    """One image the user attached to a Mirage message, plus what they asked."""
+    command: str
+    # The GeneratedImage row created by POST /images/upload. Taken as an ID
+    # rather than a URL on purpose: the row is looked up scoped to the caller's
+    # org, so there is no client-supplied URL to fetch server-side and
+    # therefore no request-forgery surface to guard (contrast mask_urls in
+    # ai_command.py, which does take URLs and must run every one of them
+    # through is_own_storage_url first).
+    attachment_image_id: uuid.UUID
+
+
+class InterpretAttachmentResponse(BaseModel):
+    # "insert": the attachment is an element to place INTO the picture (a
+    # logo, a product, a person). "reference": it shows a look to imitate and
+    # must never itself appear in the result.
+    intent: Literal["insert", "reference"]
+    # What the image shows. Returned for BOTH intents -- see _INTERPRET_FEATURE
+    # for why -- so the caller can switch interpretation without paying again.
+    description: str
+    # True when no vision-capable key was configured and the verdict came from
+    # the wording of the command alone. The caller shows the interpretation
+    # either way; this only says how confident it is entitled to sound.
+    guessed: bool = False
+
+
+_INTERPRET_SYSTEM = (
+    "You decide what a user wants done with an image they attached to a photo-"
+    "editing chat message, and you describe that image.\n\n"
+    "Two possible intents:\n"
+    '- "insert": the attached image is a THING to place into the picture they '
+    "are editing -- a logo, a product, a person, an object. Signals: add, put, "
+    "place, insert, stick, paste, overlay, \"this logo\", \"this product\".\n"
+    '- "reference": the attached image shows a LOOK to imitate -- a style, a '
+    "colour palette, a background, a mood. It must never itself appear in the "
+    "result. Signals: like this, in this style, match this, similar to, "
+    '"make the background look like this".\n\n'
+    "Then describe the attached image in two or three sentences: the subject, "
+    "the colours, the lighting, the background, and whether it has a "
+    "transparent or plain backdrop. Write the description so it could guide an "
+    "image editor that cannot see the image.\n\n"
+    'Reply with ONLY this JSON: {"intent": "insert"|"reference", '
+    '"description": "..."}. No markdown, no text outside the JSON.'
+)
+
+# Vision-capable, cheap-band models. Both entries carry `vision: true` in the
+# provider catalog (app/services/providers/catalog.py).
+_INTERPRET_PROVIDERS = [
+    ("anthropic", "claude-haiku-4-5-20251001"),
+    ("openai", "gpt-4o-mini"),
+]
+
+# ONE vision call answers both questions, and it is made for BOTH verdicts --
+# the description is fetched even when the answer is "insert", where nothing
+# will read it. That looks wasteful and is not: the classification will
+# sometimes be wrong, and the failure is asymmetric (a reference treated as an
+# insert puts an unwanted picture in the frame; an insert treated as a
+# reference silently drops the element that was asked for). Having both
+# artifacts in hand after one call is what lets the user correct the verdict in
+# either direction without re-uploading and without paying a second time. It
+# also makes the price quotable up front as a single number instead of a range
+# that depends on a verdict nobody has yet.
+_INTERPRET_FEATURE = "attachment_intent"
+
+# Fallback classification when no vision-capable key is configured. Deliberately
+# crude and deliberately biased: with no model to ask, the safer default is
+# "reference", because a wrong reference produces a slightly-off edit the user
+# can see and correct, while a wrong insert stamps an unwanted image into their
+# picture.
+_INSERT_HINTS = (
+    # en
+    "add ", "insert", "put ", "place ", "paste", "overlay", "stick ",
+    # fr / es / pt / de / ar
+    "ajoute", "insère", "insere", "mets ", "colle", "pose ",
+    "añade", "anade", "agrega", "pon ", "coloca", "inserta",
+    "adicione", "coloque", "insira",
+    "füge", "fuege", "setze", "platziere",
+    "أضف", "ضع", "أدرج",
+)
+
+
+def _classify_from_command(command: str) -> str:
+    lowered = (command or "").lower()
+    return "insert" if any(hint in lowered for hint in _INSERT_HINTS) else "reference"
+
+
+def _parse_interpretation(raw: str) -> tuple[Optional[str], str]:
+    """Pull {intent, description} out of a model reply. Returns (None, "") when
+    the reply is not usable, so the caller can try the next provider."""
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
+        text = re.sub(r"```$", "", text).strip()
+    try:
+        data = json.loads(text)
+    except Exception:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            return None, ""
+        try:
+            data = json.loads(match.group(0))
+        except Exception:
+            return None, ""
+    if not isinstance(data, Mapping):
+        return None, ""
+    intent = str(data.get("intent") or "").strip().lower()
+    if intent not in ("insert", "reference"):
+        intent = None
+    return intent, str(data.get("description") or "").strip()
+
+
+@router.post("/interpret-attachment", response_model=InterpretAttachmentResponse)
+async def interpret_attachment(
+    body: InterpretAttachmentRequest, current_user: CurrentUser, db: DB,
+    _: Annotated[None, Depends(require_credits("ai"))],
+):
+    """Decide whether an attached image is to be INSERTED or used as a
+    REFERENCE, and describe it, in a single metered vision call.
+
+    Deliberately NOT folded into POST /images/{id}/ai-command. That route
+    carries the mask-confirmation round trip and its resume token, whose entire
+    purpose is that a chain which stops for confirmation is never re-planned
+    and never re-billed for steps already applied. A vision call inside it
+    would either run again on every confirmation round trip -- exactly the
+    repeat billing the resume token exists to prevent -- or need its result
+    threaded through the chain snapshot as well. Answering here instead leaves
+    that machinery untouched, and lets the caller hold the answer across as
+    many confirmation round trips, retries and corrections as it likes.
+    """
+    result = await db.execute(
+        select(GeneratedImage).where(
+            GeneratedImage.id == body.attachment_image_id,
+            GeneratedImage.org_id == current_user.org_id,
+        )
+    )
+    attachment = result.scalar_one_or_none()
+    if attachment is None or not attachment.image_url:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+
+    keys = await get_org_llm_keys(current_user.org_id, db)
+    providers = [(p, m) for p, m in _INTERPRET_PROVIDERS if p in keys]
+
+    if providers:
+        from app.services.image_output import _download
+
+        try:
+            image_bytes = await _download(attachment.image_url)
+        except Exception:
+            image_bytes = None
+
+        if image_bytes:
+            media_type = "image/png"
+            lowered_url = attachment.image_url.lower()
+            if lowered_url.endswith((".jpg", ".jpeg")) or "image/jpeg" in lowered_url:
+                media_type = "image/jpeg"
+            elif lowered_url.endswith(".webp") or "image/webp" in lowered_url:
+                media_type = "image/webp"
+
+            user_prompt = (
+                f"The user attached this image and wrote:\n\n{body.command.strip()}"
+            )
+            for provider, model in providers:
+                try:
+                    raw = await call_llm_vision(
+                        provider, model, keys[provider], _INTERPRET_SYSTEM, user_prompt,
+                        image_bytes, media_type, feature=_INTERPRET_FEATURE,
+                    )
+                except Exception:
+                    continue
+                intent, description = _parse_interpretation(raw)
+                if intent:
+                    return InterpretAttachmentResponse(
+                        intent=intent, description=description, guessed=False,
+                    )
+
+    # No vision key, an unreachable file, or every provider failed. Never a hard
+    # error: the user has already uploaded the image and is waiting on a reply,
+    # and a wording-based verdict is far better than refusing the message.
+    return InterpretAttachmentResponse(
+        intent=_classify_from_command(body.command), description="", guessed=True,
     )
 
 

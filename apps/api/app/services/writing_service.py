@@ -218,7 +218,8 @@ async def chat_stream(project, article, question: str, history: list[dict], db, 
         project, article, question, history, db, live_body
     )
     from app.services.llm_service import stream_llm
-    async for chunk in stream_llm(provider, model, key, system, user, locale=locale):
+    async for chunk in stream_llm(provider, model, key, system, user, locale=locale,
+                                  feature="article_chat"):
         yield chunk
 
 

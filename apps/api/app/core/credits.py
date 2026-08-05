@@ -65,6 +65,31 @@ def credit_allowance(plan_tier: str) -> int:
 MIN_REPLICATE_CREDITS = 10  # pricing floor: a Replicate edit never bills less
 
 
+def feature_min_credits(feature: str | None) -> int:
+    """Credit floor for one invocation of a named feature, or 0 for no floor.
+
+    Same principle as :data:`MIN_REPLICATE_CREDITS`, applied to LLM features
+    whose supplier cost is far below what the action is worth to sell. A
+    rephrase costs well under a credit of tokens but is a deliberate button
+    press that delivers a discrete result, so it is priced as an operation
+    rather than at cost.
+
+    Like the Replicate floor, this touches ONLY the billed counter.
+    ``cost_micros`` keeps the true, unfloored supplier cost, so COGS and margin
+    reporting stay honest and the markup never masquerades as cost.
+    """
+    return FEATURE_MIN_CREDITS.get(feature or "", 0)
+
+
+# Per-feature credit floors. Keyed by the `feature` string passed to
+# record_llm, so the floor holds no matter which call path did the metering --
+# including the ambient path, where no call site passes a meter explicitly.
+FEATURE_MIN_CREDITS: dict[str, int] = {
+    # apps/api/app/api/v1/routers/images.py::_IMPROVE_FEATURE
+    "improve_prompt": MIN_REPLICATE_CREDITS,
+}
+
+
 def replicate_operation_credits(cost_micros: int) -> int:
     """Credits billed for ONE Replicate prediction: the cost-derived amount,
     floored.

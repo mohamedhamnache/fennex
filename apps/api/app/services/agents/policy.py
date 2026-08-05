@@ -33,6 +33,18 @@ FEATURE_POLICY: dict[str, FeaturePolicy] = {
     "extraction": FeaturePolicy(_CHEAP, 2048, cascade=True),
     "classification": FeaturePolicy(_CHEAP, 512, cascade=True),
     "image_prompt": FeaturePolicy(_CHEAP, 512),
+    # /images/improve-prompt, both modes. Its system prompt caps the answer at
+    # 200 words (~270 tokens) in generate mode and one or two sentences in
+    # edit_instruction mode, so 512 is a real ceiling rather than the 4096
+    # default the endpoint used to inherit -- output costs ~5x input, and this
+    # is a button a user can press repeatedly.
+    "improve_prompt": FeaturePolicy(_CHEAP, 512),
+    # /images/interpret-attachment. One vision call returning a small JSON
+    # verdict plus a two-or-three sentence description. The INPUT is the
+    # expensive half here (an image is worth well over a thousand tokens), so
+    # the output ceiling is kept tight -- nothing downstream reads more than a
+    # short paragraph.
+    "attachment_intent": FeaturePolicy(_CHEAP, 512),
     "suggest": FeaturePolicy(_CHEAP, 1024, cascade=True),
     "document_digest": FeaturePolicy(_CHEAP, 2048, cascade=True),
 

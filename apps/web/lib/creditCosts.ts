@@ -150,3 +150,76 @@ export function estimateProduct3DCredits(
  * above, apps/api/app/core/credits.py).
  */
 export const CUTOUT_CREDIT_COST = MIN_REPLICATE_CREDITS;
+
+/**
+ * Anthropic `claude-haiku-4-5-20251001` token prices in micro-$, seeded by
+ * migrations `h3w4x5y6z7a8` (input/output) and used by every LLM-backed
+ * estimate below. Same caveat as the Replicate rates above: an LLM charge is
+ * token-shaped and therefore never exactly knowable before the call, so
+ * anything derived from these is an ESTIMATE and must be labelled "about".
+ */
+const HAIKU_INPUT_MICROS_PER_TOKEN = 1.0;
+const HAIKU_OUTPUT_MICROS_PER_TOKEN = 5.0;
+
+/** Round a token-priced LLM cost to whole credits the way the backend does. */
+function llmCredits(inputTokens: number, outputTokens: number): number {
+  const micros =
+    inputTokens * HAIKU_INPUT_MICROS_PER_TOKEN + outputTokens * HAIKU_OUTPUT_MICROS_PER_TOKEN;
+  // LLM credits are NOT floored -- the MIN_REPLICATE_CREDITS floor applies
+  // only to Replicate ("edit" kind) operations. See
+  // apps/api/app/core/credits.py::replicate_operation_credits.
+  return Math.max(1, Math.ceil(micros / CREDIT_MICROS));
+}
+
+/**
+ * Mirage's "Rephrase" control, shown on the button before it spends.
+ *
+ * It calls `POST /images/improve-prompt` with `mode: "edit_instruction"`
+ * (apps/api/app/api/v1/routers/images.py), which runs ONE
+ * `claude-haiku-4-5-20251001` call through `call_llm` and is metered
+ * ambiently against the org.
+ *
+ * Unlike every other LLM estimate here, this one is NOT token-derived. The
+ * feature carries a pricing floor -- `FEATURE_MIN_CREDITS["improve_prompt"]`
+ * in apps/api/app/core/credits.py -- so a rephrase bills a flat
+ * MIN_REPLICATE_CREDITS regardless of how few tokens it actually spent.
+ *
+ * Its real token cost is ~2 credits' worth: `_IMPROVE_EDIT_SYSTEM` is a
+ * detailed prompt-engineering brief (~600 tokens) and the answer runs to a
+ * few sentences (~200), so 600 * 1.0 + 200 * 5.0 = 1600 micro-$. The floor
+ * prices the action as an operation rather than at cost, and comfortably
+ * covers the richer system prompt.
+ *
+ * This is therefore an exact figure, not an estimate, for any rephrase that
+ * lands under the floor -- which is all of them short of a pathological
+ * input. If the floor is ever raised or removed, change it in credits.py and
+ * here in the same commit, or the button will quote a price the ledger does
+ * not charge.
+ */
+export const PROMPT_REPHRASE_CREDIT_COST = Math.max(
+  MIN_REPLICATE_CREDITS, llmCredits(140, 40),
+);
+
+/**
+ * Reading an image attached to a Mirage message, shown on the attachment chip
+ * before the message is sent.
+ *
+ * `POST /images/interpret-attachment` makes exactly ONE vision call
+ * (`claude-haiku-4-5-20251001`, metered ambiently through `call_llm_vision`)
+ * that returns BOTH the chosen interpretation and a description of the image.
+ * One call, not two, is deliberate: the description is fetched even when the
+ * verdict is "insert", so switching the interpretation afterwards costs
+ * nothing at all and the number shown here is the same whichever way the
+ * classification lands.
+ *
+ *   input  ~= ~1600 image tokens for a normal photo (Anthropic bills roughly
+ *             width*height/750) + ~250 for the system prompt and command
+ *   output ~= the small JSON verdict + one-paragraph description -> 250
+ *   1850 * 1.0 + 250 * 5.0 = 3100 micro-$ -> ceil(3100 / 1050) = 3 credits
+ *
+ * This is the ATTACHMENT READ only. Inserting the image costs nothing further
+ * (it lands as a client-side layer). Using it as a reference then spends
+ * whatever the edit itself costs, which is the normal Mirage per-message
+ * charge and is unchanged by this feature.
+ */
+export const ATTACHMENT_INTERPRET_CREDIT_COST = llmCredits(1850, 250);
