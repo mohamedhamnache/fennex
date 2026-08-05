@@ -3,8 +3,10 @@
  *  WHY THIS EXISTS. A template used to hard-code its colours through a category
  *  palette, so the only way to get variety was to invent another layout. That is
  *  how 34 hand-built templates still managed to look related. Making colour an
- *  ORTHOGONAL axis means six layouts times twelve colourways is seventy-two
- *  variants with no new layouts, which is how a real template library scales.
+ *  ORTHOGONAL axis means six layouts times thirteen colourways times six
+ *  grounds is a library rather than six pictures, with no new layouts — which
+ *  is how a template set actually scales. `matrixFor` enumerates the legal
+ *  cells; there are 443 of them, and the shipped 34 are a sample.
  *
  *  A colourway carries HUES ONLY. How the colour is applied — gradient, flat,
  *  photographic, duotone, blocked, textured — is the separate `ground` axis in
@@ -78,7 +80,11 @@ function blob(color: string, x: number, y: number, r: number, alpha: number): Me
 }
 
 /**
- * Twelve colourways: three vibrant, five soft, four dark.
+ * Thirteen colourways: three vibrant, six soft, four dark. The count is stated
+ * because it is load-bearing — the shipped set is required to use every one of
+ * them and `scripts/verify-templates.ts` compares against `COLOURWAYS.length`,
+ * so adding one here without placing it fails the run rather than sitting
+ * unused.
  *
  * Each name describes the colours. The parenthetical in each comment is the
  * family the research pointed at, recorded so the reasoning is auditable — it
