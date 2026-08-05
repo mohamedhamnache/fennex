@@ -91,12 +91,34 @@ merely lengthening them.
 
 ## Out of scope, recorded here so it is not lost
 
-An audit found four call sites that bypass the `call_llm` chokepoint and are
-therefore invisible to ambient metering. Three appear unmetered:
-`knowledge_service.py:105`, `batch/client.py:31`, `product.py:143`. The fourth,
-`image_service.py:162`, is metered.
+**The audit was done, and the preliminary finding was mostly wrong.** Recorded
+here because the wrong version was committed and someone will otherwise act on
+it.
 
-That finding is preliminary — established by proximity grep, which has already
-produced one false result in this area. It needs its own audit, and the durable
-fix is a startup assertion that every supplier call path is metered, rather than
-periodic greps.
+What the proximity grep claimed, and what was actually true:
+
+- `batch/client.py:31` — **not a bypass.** `run_batched` is called from inside
+  `call_llm_usage`, on `call_llm`'s own batch path. Already metered.
+- `product.py:143` — **does not exist.** The file is `product_service.py`, and
+  it makes no LLM calls at all.
+- `knowledge_service.py:105` — **real.** OpenAI embeddings, called directly, and
+  `text-embedding-3-small` had no `cost_rate` row either, so metering it alone
+  would still have priced to zero.
+
+The grep missed the finding that mattered. **`stream_llm` was entirely
+unmetered** — no `record_llm`, no usage accumulation — and it is the path taken
+by Article Studio generation, Article Studio chat, the writing service and the
+employee chat. The busiest LLM surfaces in the product billed the customer
+nothing while the supplier billed us.
+
+It was invisible to the grep because it is not a call site that bypasses
+`call_llm`; it is a sibling entry point *in the same file*, one that looks
+metered by association.
+
+Both are now fixed and pinned by tests, including the case that decides whether
+the stream fix is real: an abandoned stream still bills what it consumed, since
+metering only complete streams would leave exactly the interrupted ones free.
+
+The durable fix remains the same and is still not built: a startup assertion
+that every supplier call path is metered. Greps find call sites; they do not
+find entry points nobody thought to check.

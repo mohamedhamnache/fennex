@@ -175,16 +175,20 @@ async def test_stream_llm_openai_unaffected_by_cache_marking_and_gets_directive_
 
 @pytest.mark.asyncio
 async def test_stream_llm_google_unaffected_by_cache_marking_and_gets_directive_in_user_prompt():
-    mock_google = AsyncMock(return_value="hola")
+    # Patches _google_usage, not _call_google: the streaming path deliberately
+    # routes through the usage-reporting call so Google is metered like every
+    # other provider instead of being the one that streams for free.
+    from app.services.llm_service import LLMUsage
+    mock_google = AsyncMock(return_value=("hola", LLMUsage("google", "gemini-1.5-flash")))
 
-    with patch("app.services.llm_service._call_google", mock_google):
+    with patch("app.services.llm_service._google_usage", mock_google):
         chunks = await _drain(
             stream_llm("google", "gemini-1.5-flash", "key", "system", "user prompt", locale="es")
         )
 
     assert chunks == ["hola"]
     args, _ = mock_google.call_args
-    # _call_google(model, api_key, system_prompt, user_prompt)
+    # _google_usage(model, api_key, system_prompt, user_prompt)
     assert args[2] == "system"
     assert args[3].startswith("IMPORTANT: Write all human-readable text in your response in Spanish.")
     assert args[3].endswith("user prompt")

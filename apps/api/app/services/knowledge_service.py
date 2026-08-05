@@ -104,6 +104,21 @@ async def embed(texts: list[str], keys: dict) -> list[Optional[list[float]]]:
 
         client = AsyncOpenAI(api_key=api_key)
         response = await client.embeddings.create(model=EMBED_MODEL, input=texts)
+        # Embeddings are a paid OpenAI call and were the one provider path that
+        # bypassed metering entirely: ingest a large document and the supplier
+        # billed us while the customer was billed nothing. Metered through the
+        # same ambient helper as every other call, so it lands on the org whose
+        # keys were resolved for it. Input-only -- embeddings have no output.
+        try:
+            from app.services.llm_service import LLMUsage, _meter_ambient
+            u = getattr(response, "usage", None)
+            await _meter_ambient(
+                LLMUsage("openai", EMBED_MODEL,
+                         input_tokens=getattr(u, "prompt_tokens", 0) or 0),
+                "knowledge_embed",
+            )
+        except Exception:
+            logger.exception("embedding usage metering failed (non-fatal)")
         return [item.embedding for item in response.data]
     except Exception:
         logger.exception("embedding failed; knowledge stored without vectors")

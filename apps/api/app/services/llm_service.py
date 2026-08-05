@@ -194,14 +194,7 @@ async def _openai_usage(model, api_key, system_prompt, user_prompt, max_tokens):
         max_tokens=max_tokens,
     )
     u = getattr(resp, "usage", None)
-    cached = 0
-    details = getattr(u, "prompt_tokens_details", None) if u else None
-    if details is not None:
-        cached = getattr(details, "cached_tokens", 0) or 0
-    usage = LLMUsage("openai", model,
-                     input_tokens=getattr(u, "prompt_tokens", 0) or 0,
-                     output_tokens=getattr(u, "completion_tokens", 0) or 0,
-                     cache_read_tokens=cached)
+    usage = _openai_usage_from(u, model) if u is not None else LLMUsage("openai", model)
     return resp.choices[0].message.content, usage
 
 
@@ -369,6 +362,7 @@ async def stream_llm(
     user_prompt: str,
     locale: str | None = "en",
     max_tokens: int = DEFAULT_MAX_TOKENS,
+    feature: str | None = None,
 ):
     """Stream the provider's response as text chunks (async generator).
 
@@ -383,35 +377,102 @@ async def stream_llm(
     directive = language_directive(locale)
     if directive:
         user_prompt = directive.strip() + "\n\n" + user_prompt
-    if provider == "anthropic":
-        client = AsyncAnthropic(api_key=api_key)
-        async with client.messages.stream(
-            model=model,
-            max_tokens=max_tokens,
-            system=_anthropic_system_blocks(system_prompt),
-            messages=[{"role": "user", "content": user_prompt}],
-        ) as stream:
-            async for text in stream.text_stream:
-                yield text
-    elif provider == "openai":
-        client = AsyncOpenAI(api_key=api_key)
-        response = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        async for chunk in response:
-            delta = chunk.choices[0].delta.content if chunk.choices else None
-            if delta:
-                yield delta
-    elif provider == "google":
-        yield await _call_google(model, api_key, system_prompt, user_prompt)
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
+
+    # Streamed calls are metered exactly like unstreamed ones. They were not,
+    # and streaming is what Article Studio, the writing service and the
+    # employee chat all use -- so the busiest LLM surfaces in the product were
+    # billing nothing at all.
+    #
+    # The usage is collected in a `finally` rather than after the loop because
+    # the caller is an HTTP response the user can navigate away from: an
+    # abandoned stream still consumed tokens the supplier charges for, and
+    # metering only complete streams would leave exactly the interrupted ones
+    # free.
+    usage: LLMUsage | None = None
+    try:
+        if provider == "anthropic":
+            client = AsyncAnthropic(api_key=api_key)
+            async with client.messages.stream(
+                model=model,
+                max_tokens=max_tokens,
+                system=_anthropic_system_blocks(system_prompt),
+                messages=[{"role": "user", "content": user_prompt}],
+            ) as stream:
+                try:
+                    async for text in stream.text_stream:
+                        yield text
+                finally:
+                    # The snapshot carries whatever the stream accumulated,
+                    # which is why it is read instead of get_final_message():
+                    # it is populated on an interrupted stream too, where
+                    # awaiting the final message would have nothing to wait for.
+                    usage = _anthropic_stream_usage(stream, model)
+        elif provider == "openai":
+            client = AsyncOpenAI(api_key=api_key)
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=max_tokens,
+                stream=True,
+                # Without this OpenAI sends no usage on a streamed call at all,
+                # and the token counts arrive as a final, choice-less chunk.
+                stream_options={"include_usage": True},
+            )
+            async for chunk in response:
+                if getattr(chunk, "usage", None):
+                    usage = _openai_usage_from(chunk.usage, model)
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    yield delta
+        elif provider == "google":
+            # Google has no token stream here; it yields once. Route through
+            # the usage-reporting call so it is billed like the rest rather
+            # than being the one provider that streams for free.
+            text, usage = await _google_usage(model, api_key, system_prompt, user_prompt)
+            yield text
+        else:
+            raise ValueError(f"Unknown provider: {provider}")
+    finally:
+        if usage is not None:
+            await _meter_ambient(usage, feature)
+
+
+def _anthropic_stream_usage(stream, model: str) -> "LLMUsage | None":
+    """Token usage accumulated by an Anthropic message stream, or None.
+
+    Defensive because it runs in a `finally`: if the stream failed before any
+    snapshot existed, metering must be skipped, never allowed to raise and
+    mask the original error.
+    """
+    try:
+        u = getattr(stream.current_message_snapshot, "usage", None)
+    except Exception:
+        return None
+    if u is None:
+        return None
+    return LLMUsage("anthropic", model,
+                    input_tokens=getattr(u, "input_tokens", 0) or 0,
+                    output_tokens=getattr(u, "output_tokens", 0) or 0,
+                    cache_read_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
+                    cache_write_tokens=getattr(u, "cache_creation_input_tokens", 0) or 0)
+
+
+def _openai_usage_from(u, model: str) -> "LLMUsage":
+    """Build LLMUsage from an OpenAI usage object.
+
+    Shared by the streamed and unstreamed paths so the cached-token handling
+    -- which record_llm relies on to avoid double-charging the cached subset
+    -- cannot be got right in one and wrong in the other.
+    """
+    details = getattr(u, "prompt_tokens_details", None)
+    cached = (getattr(details, "cached_tokens", 0) or 0) if details is not None else 0
+    return LLMUsage("openai", model,
+                    input_tokens=getattr(u, "prompt_tokens", 0) or 0,
+                    output_tokens=getattr(u, "completion_tokens", 0) or 0,
+                    cache_read_tokens=cached)
 
 
 async def _call_openai(
