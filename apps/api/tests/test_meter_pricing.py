@@ -190,3 +190,35 @@ async def test_a_call_that_never_happened_bills_nothing():
             OrgUsage.org_id == org, OrgUsage.period_start == current_billing_period_start()
         ))).scalar_one()
         assert ou.ai_credits_used == 0
+
+
+async def test_an_auto_mask_bills_ten_credits_not_one_hundred_and_ninety_one():
+    """The product-tier mask moved from Remove.bg to BiRefNet.
+
+    Remove.bg billed a flat $0.20 -> 191 credits for a 0.25 MP mask. BiRefNet
+    runs a few GPU-seconds and lands on the Replicate floor. This pins the
+    actual charge rather than the intention, and it is the number a customer
+    sees leave their balance.
+    """
+    await _seed(CostRate(provider="replicate", unit="second",
+                         model="men1scus/birefnet", micro_dollars_per_unit=1400.0))
+    org = uuid.uuid4()
+    async with Session() as db:
+        cost = await meter.record_replicate(
+            db, org_id=org, project_id=None, model="men1scus/birefnet",
+            feature="auto_mask", predict_seconds=1.9,
+        )
+        # 1.9s * 1400 = 2660 micro-$, which is 3 credits unfloored.
+        assert cost == round(1.9 * 1400)
+
+        ou = (await db.execute(select(OrgUsage).where(
+            OrgUsage.org_id == org, OrgUsage.period_start == current_billing_period_start()
+        ))).scalar_one()
+        assert ou.ai_credits_used == MIN_REPLICATE_CREDITS  # 10, was 191
+        assert ou.ai_cost_micros == cost, "cost stays the true supplier spend"
+
+        ev = (await db.execute(select(UsageEvent).where(UsageEvent.org_id == org))).scalar_one()
+        assert ev.feature == "auto_mask", (
+            "the mask must stay distinguishable from ordinary edit spend"
+        )
+        assert ev.provider == "replicate" and ev.model == "men1scus/birefnet"
