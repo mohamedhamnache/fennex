@@ -253,10 +253,71 @@ function nightMarket(): ProbeTemplate {
   };
 }
 
+// ── 4. Margin — quote, mid ───────────────────────────────────────────────────
+//
+// The quote is set at 5.4% in Inter at 400 — reading weight, at display size.
+// That is the type treatment none of the other five use, and it is the whole
+// argument of this one: a pull quote is speech, and speech set in a condensed
+// display face at 700 stops sounding like anyone. Everything that would
+// normally carry emphasis is spent elsewhere — an oversized quote mark in the
+// accent as pure ornament, and a hairline separating the attribution.
+//
+// The photograph is a circle bleeding off the right edge. The type block is
+// ranged against it and stops short of its box, so the two never negotiate.
+
+function margin(): ProbeTemplate {
+  const p = resolvePalette("social");
+  const c = compose();
+  const onField = { kind: "field", color: p.surface } as const;
+  const say = { sizePct: 5.4, font: "modern", trackingPct: -0.06, color: p.ink } as const;
+
+  c.add(
+    field({ color: p.surface, xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }),
+    photo({ xPct: 62, yPct: 18, widthPct: 56, heightPct: 56, clip: { shape: "circle" } }),
+    rule(p.accent, 6, 60.8, 8, 0.3),
+  );
+
+  c.type(
+    {
+      // Ornament, not a word: it is here to open the paragraph optically and is
+      // reported as decorative rather than measured for contrast.
+      text: "“",
+      sizePct: 11, font: "modern", weight: 700, color: p.accentInk,
+      xPct: 5.5, yPct: 14, ornament: true, on: onField,
+    },
+    { ...say, text: "We stopped asking", xPct: 6, yPct: 30, on: onField },
+    { ...say, text: "what the tool did", xPct: 6, yPct: 36, on: onField },
+    { ...say, text: "and started asking", xPct: 6, yPct: 42, on: onField },
+    { ...say, text: "what the night", xPct: 6, yPct: 48, on: onField },
+    { ...say, text: "shift felt like.", xPct: 6, yPct: 54, on: onField },
+    {
+      text: "Charge nurse, night team",
+      sizePct: 1.3, font: "mono", uppercase: true, trackingPct: 0.2,
+      color: p.accentInk, xPct: 6, yPct: 63.5, on: onField,
+    },
+    {
+      text: "From the ward review, published in full online.",
+      sizePct: 1.5, font: "support", opacity: 0.75, color: p.ink, xPct: 6, yPct: 66.8, on: onField,
+    },
+  );
+
+  return {
+    id: "pb_quote_margin",
+    name: "Margin",
+    subject: "quote",
+    intent: "mid",
+    headline: "We stopped asking",
+    note: "Speech set at reading weight and display size, ranged against a circle that bleeds off the right edge; emphasis spent on an ornament instead.",
+    layers: c.layers,
+    runs: c.runs,
+  };
+}
+
 export const PROBE_TEMPLATES: ProbeTemplate[] = [
   smallBatch(),
   culvert(),
   nightMarket(),
+  margin(),
 ];
 
 /** Reference points for reading the headline sizes above. */
