@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 MODE_SINGLE = "single"
 MODE_TEAM = "team"
 MODE_CLARIFY = "clarify"
+# The assistant answers in its own right, without waking a specialist.
+MODE_ASSISTANT = "assistant"
 
 # Below this, the Router is not confident enough to hand over silently.
 MIN_CONFIDENCE = 0.30
@@ -169,6 +171,13 @@ async def understand(message: str, ctx, history: Optional[list[dict]] = None) ->
         "content.product_description\n"
         '- "launch our new product" -> research, competitive check, angle, copy, visuals, social\n'
         "Do NOT collapse a compound request to its first deliverable.\n\n"
+        "RETURN AN EMPTY LIST when the request is outside what this company does. Fennex does "
+        "SEO, content, images, publishing and ecommerce analysis for a project. The weather, "
+        "general knowledge, coding help, personal advice, current events -- none of these are "
+        "work for anyone here, and naming a capability anyway hands a specialist a job it "
+        "cannot do and makes it answer outside its competence. An empty list is a correct, "
+        "useful answer: the assistant handles it.\n\n"
+
         "Also judge:\n"
         '- "topicChanged": true if the MESSAGE moves away from what RECENT was about.\n'
         '- "summary": one short line naming the deliverable(s).\n'
@@ -231,6 +240,35 @@ def _evidence(employee, message: str) -> float:
             c.split(".", 1)[-1].replace("_", " ") for c in action.capabilities]
         vocabulary = _phrase_match(message, terms)
     return max(phrase, vocabulary)
+
+
+# Messages that ask nothing of the company. Routing these to a specialist is
+# how "how are you" reached the Market Researcher at 0.69 confidence: the
+# keyword fallback scores phrase overlap against `supported_tasks`, and a
+# greeting brushes against enough words to look like work. Small talk and
+# questions ABOUT Fennex are answered by Fennex.
+_SMALL_TALK = re.compile(
+    r"^\s*(?:"
+    r"h(?:i|ey|ello|allo)|salut|bonjour|bonsoir|coucou|hola|ol[aá]|hallo|"
+    r"thanks?|thank you|merci|gracias|danke|obrigad[oa]|"
+    r"ok(?:ay)?|d'accord|super|parfait|nice|cool|bye|au revoir|"
+    r"(?:how are you|how's it going|ça va|comment (?:ça )?vas?[- ]tu|qui es[- ]tu|"
+    r"who are you|what (?:can|do) you do|que (?:peux|sais)[- ]tu faire|"
+    r"what are you|aide|help)"
+    r")\b[\s!?.,;:]*$",
+    re.IGNORECASE)
+
+
+def is_small_talk(message: str) -> bool:
+    """A greeting, a thank-you, or a question about Fennex itself.
+
+    Deliberately anchored to the whole message: "hello" is small talk, but
+    "hello, write me an article about running shoes" is work, and a loose
+    substring match would swallow the second.
+    """
+    text = (message or "").strip()
+    # A long message is doing something even if it opens with a greeting.
+    return len(text) <= 60 and bool(_SMALL_TALK.match(text))
 
 
 def _keyword_intent(message: str, known: list[str]) -> Intent:
@@ -531,7 +569,22 @@ def next_steps(employee_id: str, done_capabilities: list[str],
 async def route(message: str, ctx, *, history: Optional[list[dict]] = None,
                 current_owner: Optional[str] = None) -> Decision:
     """The whole decision: understand, rank, and decide who takes the thread."""
+    # Before anything is understood or ranked: a greeting is not work. Checked
+    # first so it costs no router call at all -- the cheapest answer to "hello"
+    # is the one that never reaches a model to classify it.
+    if is_small_talk(message):
+        return Decision(mode=MODE_ASSISTANT, intent=Intent(summary=message[:200],
+                                                           source="smalltalk"),
+                        reason="Conversational message -- Fennex answers directly.")
+
     intent = await understand(message, ctx, history)
+    if not intent.capabilities and intent.source == "llm":
+        # The router looked and found no work here. Only trusted from the LLM
+        # path: the keyword fallback returns nothing whenever it simply fails
+        # to match, which is a different statement entirely.
+        return Decision(mode=MODE_ASSISTANT, intent=intent,
+                        reason="Outside what the company does -- Fennex answers.")
+
     candidates = rank(message, intent, current_owner=current_owner)
 
     if not candidates or candidates[0].confidence < MIN_CONFIDENCE:

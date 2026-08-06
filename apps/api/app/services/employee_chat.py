@@ -299,6 +299,15 @@ async def run_turn(convo: Conversation, message: str, db,
                 convo.title = brief["title"][:200]
                 await db.commit()
 
+    # A greeting, a thank-you, or a question about Fennex itself. Fennex
+    # answers in its own voice: waking a specialist for "how are you" both
+    # misrepresents who is speaking and spends a model call on a pleasantry.
+    if decision.mode == ai_router.MODE_ASSISTANT:
+        async for event in _assistant_reply(convo, ctx, db, message):
+            yield event
+        yield {"type": "done"}
+        return
+
     # The Router is not sure enough to hand over silently.
     if decision.mode == ai_router.MODE_CLARIFY:
         row = await add_message(
@@ -811,6 +820,7 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
     # answer is visible where the answer is, rather than only in an admin
     # report -- a reseller decides whether a reply was worth its model.
     used_model, used_provider = model, provider
+    prompt_tokens = completion_tokens = 0
 
     chunks: list[str] = []
     try:
@@ -838,6 +848,8 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                     m = (event.get("metrics") or {})
                     used_model = m.get("model_id") or m.get("model") or used_model
                     used_provider = m.get("provider") or used_provider
+                    prompt_tokens = m.get("promptTokens") or prompt_tokens
+                    completion_tokens = m.get("completionTokens") or completion_tokens
                     yield event
                 elif event["type"] == "error":
                     raise RuntimeError(event.get("message") or "stream failed")
@@ -858,7 +870,9 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
     row = await add_message(
         convo, db, role="employee", employee_id=employee.id, content=text,
         routing={**(decision.to_dict() if announce else {}),
-                 "model": used_model, "provider": used_provider},
+                 "model": used_model, "provider": used_provider,
+                 **await _message_cost(db, used_provider, used_model,
+                                       prompt_tokens, completion_tokens)},
         confidence=decision.confidence if announce else None,
         structured={"actionId": decision.action_id} if decision.action_id else None)
 
@@ -1007,3 +1021,97 @@ async def decide_approval(approval_id: uuid.UUID, org_id: uuid.UUID, decision: s
     await db.commit()
     await db.refresh(approval)
     return approval
+
+
+async def _assistant_reply(convo: Conversation, ctx: WorkContext, db, message: str):
+    """Fennex answering for itself -- no specialist, no artifact.
+
+    It knows the roster, so "what can you do" is answered from the company as
+    it actually is rather than from a hardcoded blurb that drifts the moment an
+    employee is hired.
+    """
+    from app.employees import registry
+    from app.services.agents.tiers import resolve_model
+    from app.services.llm_service import stream_llm
+
+    roster = "\n".join(f"- {e.name}, {e.role}: {e.description}"
+                        for e in registry.all_employees())
+    system = (
+        "You are Fennex, the assistant in front of a company of AI specialists in SEO, "
+        "content, images and ecommerce.\n\n"
+
+        "The user has said something conversational, or asked something outside what this "
+        "company does. Answer in ONE OR TWO SHORT SENTENCES. Warm, human, never stiff.\n\n"
+
+        "IF IT IS A GREETING OR A THANK-YOU: greet them back and offer to get started. Do not "
+        "list the team unless they ask.\n\n"
+
+        "IF IT IS OUTSIDE WHAT FENNEX DOES: say so kindly and plainly -- that it is outside "
+        "what you can help with here -- then name in half a sentence what you CAN do, so they "
+        "leave with a way forward rather than a refusal. Never pretend to help, never guess at "
+        "an answer you have no business giving.\n\n"
+
+        "IF THEY ASKED WHO YOU ARE OR WHAT YOU CAN DO: two or three specialists and what they "
+        "would actually get, then invite the request. Never the whole roster -- a wall of names "
+        "is not an answer.\n\n"
+
+        "Speak as Fennex. Do not pretend to be one of the specialists, and do not start any "
+        "work yourself.\n\n"
+
+        f"THE TEAM BEHIND YOU:\n{roster}"
+    )
+
+    providers = ctx.available_providers()
+    if not providers:
+        row = await add_message(convo, db, role="assistant", content=(
+            "Hello. Add an AI key in Settings and I can put the team to work for you."))
+        yield {"type": "message", "message": message_dict(row)}
+        return
+
+    # Always the cheap band: a pleasantry must never buy the expensive model.
+    provider, model = resolve_model("economy", "light", providers)
+    chunks: list[str] = []
+    try:
+        async for piece in stream_llm(provider, model, ctx.keys[provider], system,
+                                      message, locale=ctx.locale, feature="employee_chat"):
+            chunks.append(piece)
+            yield {"type": "delta", "employeeId": None, "text": piece}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("assistant reply failed")
+        row = await add_message(convo, db, role="assistant", content="", error=str(exc))
+        yield {"type": "error", "employeeId": None, "message": str(exc),
+               "messageRow": message_dict(row)}
+        return
+
+    row = await add_message(convo, db, role="assistant",
+                            content="".join(chunks).strip(),
+                            routing={"model": model, "provider": provider,
+                                     "mode": "assistant"})
+    yield {"type": "message", "message": message_dict(row)}
+
+
+async def _message_cost(db, provider: str, model: str,
+                        prompt_tokens: int, completion_tokens: int) -> dict:
+    """What this reply cost, priced with the meter's own rates.
+
+    Deliberately reads cost_rates rather than estimating: a second price table
+    would drift from billing, and a cost shown beside an answer that disagrees
+    with the invoice is worse than showing none. Returns {} when the rate is
+    unknown, so the UI omits the figure instead of printing a confident zero.
+    """
+    if not provider or (prompt_tokens <= 0 and completion_tokens <= 0):
+        return {}
+    try:
+        from app.core.credits import credits_from_micros
+        from app.services.metering.meter import rate
+
+        in_rate = await rate(db, provider, "input_token", model)
+        out_rate = await rate(db, provider, "output_token", model)
+        if in_rate == 0 and out_rate == 0:
+            return {}
+        micros = int(prompt_tokens * in_rate + completion_tokens * out_rate)
+        return {"costMicros": micros, "credits": credits_from_micros(micros),
+                "tokens": prompt_tokens + completion_tokens}
+    except Exception:  # noqa: BLE001 - a price is never worth failing a reply
+        logger.exception("could not price a chat message")
+        return {}

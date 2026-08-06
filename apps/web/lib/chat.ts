@@ -32,6 +32,12 @@ export interface RoutingInfo {
    *  model, so this is reported from its telemetry rather than assumed. */
   model?: string;
   provider?: string;
+  /** What this reply cost, priced with the meter's own rates. Absent when the
+   *  rate is unknown -- the UI omits the figure rather than printing a
+   *  confident zero. */
+  credits?: number;
+  costMicros?: number;
+  tokens?: number;
   mode: "single" | "team" | "clarify";
   intent: {
     capabilities: string[];
@@ -61,7 +67,7 @@ export interface TeamStep {
 export interface ChatMessage {
   id: string;
   seq: number;
-  role: "user" | "employee" | "system" | "approval";
+  role: "user" | "employee" | "system" | "approval" | "assistant";   // "assistant" = Fennex speaking for itself
   employeeId: string | null;
   event: string | null;
   content: string;

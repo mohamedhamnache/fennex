@@ -807,12 +807,23 @@ function MessageRow({
   if (message.event === "result") {
     return <ArtifactCard message={message} employee={employee} projectId={projectId} />;
   }
-  if (!employee) return <UnknownBubble content={message.content} />;
+  if (!employee) {
+    return message.role === "assistant"
+      ? <AssistantBubble
+          content={message.content}
+          model={message.routing?.model ?? undefined}
+          credits={message.routing?.credits}
+          tokens={message.routing?.tokens}
+        />
+      : <UnknownBubble content={message.content} />;
+  }
   return (
     <EmployeeBubble
       employee={employee}
       content={message.content}
       model={message.routing?.model ?? undefined}
+      credits={message.routing?.credits}
+      tokens={message.routing?.tokens}
     />
   );
 }
@@ -827,6 +838,39 @@ function UserBubble({ content }: { content: string }) {
   );
 }
 
+/** Fennex speaking for itself: a greeting, or a question outside what the
+ *  company does. It wears the Fennex mark rather than any specialist's icon --
+ *  an assistant reply under an employee's avatar claims the wrong author. */
+function AssistantBubble({ content, streaming = false, model, credits, tokens }: {
+  content: string; streaming?: boolean; model?: string; credits?: number; tokens?: number;
+}) {
+  return (
+    <div className="group/msg flex gap-3 animate-slide-up">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/fennec-white.png" alt="" className="h-5 w-5 object-contain" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="mb-1 flex items-baseline gap-2">
+          <span className="font-display text-xs font-bold text-foreground">Fennex</span>
+          {model && !streaming && (
+            <span
+              title={tokens ? `${model} · ${tokens.toLocaleString()} tokens` : model}
+              className="rounded border border-border px-1.5 py-px font-mono text-[9px] text-muted-foreground"
+            >
+              {model}
+              {credits !== undefined && <span className="ml-1 text-primary">{credits} cr</span>}
+            </span>
+          )}
+        </p>
+        <div className="rounded-2xl rounded-tl-md border border-border bg-card px-4 py-2.5 text-sm leading-relaxed text-foreground">
+          <Markdown text={content} streaming={streaming} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function UnknownBubble({ content }: { content: string }) {
   return (
     <div className="max-w-[85%] rounded-2xl border border-border bg-card px-4 py-2.5 text-sm leading-relaxed text-foreground">
@@ -836,8 +880,11 @@ function UnknownBubble({ content }: { content: string }) {
 }
 
 function EmployeeBubble({
-  employee, content, streaming = false, model,
-}: { employee: Employee; content: string; streaming?: boolean; model?: string }) {
+  employee, content, streaming = false, model, credits, tokens,
+}: {
+  employee: Employee; content: string; streaming?: boolean;
+  model?: string; credits?: number; tokens?: number;
+}) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const Icon = employeeIcon(employee.icon);
@@ -866,10 +913,15 @@ function EmployeeBubble({
               answer belongs beside the answer rather than only in a report. */}
           {model && !streaming && (
             <span
-              title={`Answered by ${model}`}
+              title={tokens
+                ? `${model} · ${tokens.toLocaleString()} tokens`
+                : `Answered by ${model}`}
               className="rounded border border-border px-1.5 py-px font-mono text-[9px] text-muted-foreground"
             >
               {model}
+              {credits !== undefined && (
+                <span className="ml-1 text-primary">{credits} cr</span>
+              )}
             </span>
           )}
           {!streaming && content && (
