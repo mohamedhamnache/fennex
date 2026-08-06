@@ -580,9 +580,13 @@ fennex/
       <table class="tbl col">
         <tr><th>Unit</th><th>Credits</th><th>Unit</th><th>Credits</th></tr>
         <tr><td>serp</td><td>2</td><td>audit</td><td>10</td></tr>
-        <tr><td>rank_check</td><td>2</td><td>keyword_ideas</td><td>15</td></tr>
+        <tr><td>rank_check</td><td>2</td><td>keyword_ideas</td><td>20</td></tr>
         <tr><td>backlinks</td><td>5</td><td>keyword_analysis</td><td>1</td></tr>
       </table>
+
+      <div class="note warn col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">No SEO unit may be sold below cost:</span><span>Weights are set against the DataForSEO price per task — serp and rank_check cost 1,500 micro-$ (1.43 credits of cost), backlinks 3,000, audit 5,000, keyword_ideas 20,000 (19.05). <code>keyword_ideas</code> billed 15 until 6 Aug 2026, the one unit priced <b>under</b> its own cost; it is now 20, and a test fails if any unit ever drops below parity again. <code>keyword_analysis</code> has no live caller and no seeded rate — seed one before wiring it.</span></div>
+
+      <p class="col"><b>Scheduled work is not billed.</b> Cron paths — weekly rank checks, backlink syncs — pass <code>bill_credits=False</code>, so they record supplier cost that no customer pays for. A deliberate trade, but real money: it scales with the number of projects, not with usage.</p>
 
       <h3 class="col">Language &amp; embedding models</h3>
       <p class="col">Rates are micro-dollars per token, exactly as stored. Batch pricing is seeded at <b>50% off</b> for the OpenAI and Anthropic models, modelled as its own unit so a discount change stays a data change.</p>
