@@ -175,3 +175,59 @@ async def sync_orders(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
     await db.commit()
     return {"ok": True, "synced": synced, "attributed": attributed,
             "window_days": days}
+
+
+async def revenue_summary(project_id: uuid.UUID, db: AsyncSession, days: int = 30) -> dict:
+    """Revenue that started on content, and the articles it started on.
+
+    `attributed` and `total` are both returned on purpose. A share of 12% is not
+    a poor result -- most sales never begin on an article -- but a number shown
+    without its denominator invites the reader to assume it is one.
+    """
+    from sqlalchemy import func
+    from app.models.article import Article
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    base = [StoreOrder.project_id == project_id, StoreOrder.ordered_at >= since]
+
+    totals = (await db.execute(
+        select(func.count(StoreOrder.id), func.coalesce(func.sum(StoreOrder.total_price), 0))
+        .where(*base)
+    )).one()
+    attr = (await db.execute(
+        select(func.count(StoreOrder.id), func.coalesce(func.sum(StoreOrder.total_price), 0))
+        .where(*base, StoreOrder.attributed_article_id.isnot(None))
+    )).one()
+
+    rows = (await db.execute(
+        select(
+            StoreOrder.attributed_article_id,
+            Article.title,
+            StoreOrder.attributed_path,
+            func.count(StoreOrder.id).label("orders"),
+            func.coalesce(func.sum(StoreOrder.total_price), 0).label("revenue"),
+        )
+        .join(Article, Article.id == StoreOrder.attributed_article_id)
+        .where(*base, StoreOrder.attributed_article_id.isnot(None))
+        .group_by(StoreOrder.attributed_article_id, Article.title, StoreOrder.attributed_path)
+        .order_by(func.coalesce(func.sum(StoreOrder.total_price), 0).desc())
+        .limit(20)
+    )).all()
+
+    currency = (await db.execute(
+        select(StoreOrder.currency).where(*base, StoreOrder.currency.isnot(None)).limit(1)
+    )).scalar()
+
+    return {
+        "window_days": days,
+        "currency": currency,
+        "orders_total": totals[0] or 0,
+        "revenue_total": float(totals[1] or 0),
+        "orders_attributed": attr[0] or 0,
+        "revenue_attributed": float(attr[1] or 0),
+        "articles": [
+            {"article_id": str(r[0]), "title": r[1], "path": r[2],
+             "orders": r[3], "revenue": float(r[4] or 0)}
+            for r in rows
+        ],
+    }

@@ -73,6 +73,7 @@ import { FENNEX_AGENTS } from "@/lib/agents";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
+import { RevenuePanel } from "./RevenuePanel";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/components/ui/Toast";
@@ -462,6 +463,11 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
           />
         </div>
       </div>
+
+      {/* Revenue sits directly under the Search Console figures: clicks answer
+          what got found, this answers what got bought, and the pair is the
+          point. Renders nothing when no store is connected. */}
+      <RevenuePanel projectId={projectId} days={range === "7d" ? 7 : range === "90d" ? 90 : 28} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card className="p-5">

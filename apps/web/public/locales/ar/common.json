@@ -354,6 +354,21 @@
       "article": "المقال",
       "page": "الصفحة",
       "query": "الاستعلام"
+    },
+    "revenue": {
+      "title": "الإيرادات من المحتوى",
+      "subtitle": "طلبات بدأت من صفحة نشرتها",
+      "window_one": "آخر يوم",
+      "window_other": "آخر {{count}} يومًا",
+      "ofTotal": "من {{total}} إجمالًا · {{share}}%",
+      "orders": "{{attributed}} من {{total}} طلبًا بدأت من محتواك",
+      "byArticle": "حسب المقال",
+      "orderCount_one": "طلب واحد",
+      "orderCount_two": "طلبان",
+      "orderCount_few": "{{count}} طلبات",
+      "orderCount_many": "{{count}} طلبًا",
+      "orderCount_other": "{{count}} طلب",
+      "caveat": "يحسب الطلبات التي بدأت جلستها من إحدى صفحاتك. يوضّح أين بدأ الشراء لا ما سبّبه: القارئ الذي يعود لاحقًا ويشتري مباشرة لا يُحتسب، ومن كان سيشتري على أي حال يُحتسب."
     }
   },
   "seoHub": {

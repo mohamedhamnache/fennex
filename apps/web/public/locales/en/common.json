@@ -451,6 +451,18 @@
       "article": "Article",
       "page": "Page",
       "query": "Query"
+    },
+    "revenue": {
+      "title": "Revenue from content",
+      "subtitle": "Orders that started on a page you published",
+      "window_one": "last {{count}} day",
+      "window_other": "last {{count}} days",
+      "ofTotal": "of {{total}} total · {{share}}%",
+      "orders": "{{attributed}} of {{total}} orders started on your content",
+      "byArticle": "By article",
+      "orderCount_one": "{{count}} order",
+      "orderCount_other": "{{count}} orders",
+      "caveat": "Counts orders whose session began on one of your pages. It shows where buying started, not what caused the sale — a reader who returns later and buys direct is not counted here, and a buyer who would have purchased anyway is."
     }
   },
   "seoHub": {

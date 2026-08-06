@@ -2909,3 +2909,37 @@ export async function runPlagiarismScan(articleId: string): Promise<PlagiarismRe
 export async function testDataForSeo(): Promise<{ ok: boolean; error?: string; results?: number }> {
   return apiClient.post("/api-keys/dataforseo/test", {});
 }
+
+// ── Store revenue attribution ────────────────────────────────────────────────
+
+export interface RevenueArticle {
+  article_id: string;
+  title: string;
+  path: string | null;
+  orders: number;
+  revenue: number;
+}
+
+export interface RevenueSummary {
+  window_days: number;
+  currency: string | null;
+  orders_total: number;
+  revenue_total: number;
+  orders_attributed: number;
+  revenue_attributed: number;
+  articles: RevenueArticle[];
+}
+
+/** Revenue that STARTED on published content, with its denominator.
+ *  Attributed and total come back together on purpose: a share shown without
+ *  what it is a share of reads as though it were everything. */
+export async function getStoreRevenue(projectId: string, days = 30): Promise<RevenueSummary> {
+  return apiClient.get<RevenueSummary>(
+    `/shopify/orders/revenue?project_id=${projectId}&days=${days}`);
+}
+
+export async function syncStoreOrders(projectId: string): Promise<{
+  ok: boolean; synced: number; attributed: number; error?: string | null;
+}> {
+  return apiClient.post(`/shopify/orders/sync?project_id=${projectId}`, {});
+}

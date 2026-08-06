@@ -354,6 +354,18 @@
       "article": "Article",
       "page": "Page",
       "query": "Requête"
+    },
+    "revenue": {
+      "title": "Revenus du contenu",
+      "subtitle": "Commandes ayant démarré sur une page que vous avez publiée",
+      "window_one": "{{count}} dernier jour",
+      "window_other": "{{count}} derniers jours",
+      "ofTotal": "sur {{total}} au total · {{share}} %",
+      "orders": "{{attributed}} commandes sur {{total}} ont démarré sur votre contenu",
+      "byArticle": "Par article",
+      "orderCount_one": "{{count}} commande",
+      "orderCount_other": "{{count}} commandes",
+      "caveat": "Compte les commandes dont la session a commencé sur une de vos pages. Indique où l'achat a démarré, pas ce qui l'a provoqué : un lecteur qui revient plus tard et achète en direct n'est pas compté, et un acheteur qui aurait acheté de toute façon l'est."
     }
   },
   "seoHub": {

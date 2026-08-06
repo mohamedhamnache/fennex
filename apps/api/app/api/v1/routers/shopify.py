@@ -174,6 +174,36 @@ async def shopify_sync_orders(project_id: uuid.UUID, current_user: CurrentUser, 
     return OrderSyncResult(**result)
 
 
+class RevenueArticle(BaseModel):
+    article_id: str
+    title: str
+    path: str | None = None
+    orders: int
+    revenue: float
+
+
+class RevenueSummary(BaseModel):
+    window_days: int
+    currency: str | None = None
+    orders_total: int
+    revenue_total: float
+    orders_attributed: int
+    revenue_attributed: float
+    articles: list[RevenueArticle] = []
+
+
+@router.get("/orders/revenue", response_model=RevenueSummary)
+async def shopify_revenue(project_id: uuid.UUID, current_user: CurrentUser, db: DB,
+                          days: int = 30):
+    """Revenue that STARTED on published content, with its denominator.
+
+    Returns attributed and total together deliberately: a share shown without
+    what it is a share of invites the reader to assume it is everything.
+    """
+    from app.services import store_revenue_service
+    return RevenueSummary(**await store_revenue_service.revenue_summary(project_id, db, days))
+
+
 @router.get("/products", response_model=list[StoreProductOut])
 async def shopify_list_products(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
     return await shopify_service.list_products(project_id, current_user.org_id, db)

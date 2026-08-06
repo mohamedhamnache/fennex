@@ -354,6 +354,18 @@
       "article": "Artículo",
       "page": "Página",
       "query": "Consulta"
+    },
+    "revenue": {
+      "title": "Ingresos del contenido",
+      "subtitle": "Pedidos que empezaron en una página que publicaste",
+      "window_one": "último {{count}} día",
+      "window_other": "últimos {{count}} días",
+      "ofTotal": "de {{total}} en total · {{share}} %",
+      "orders": "{{attributed}} de {{total}} pedidos empezaron en tu contenido",
+      "byArticle": "Por artículo",
+      "orderCount_one": "{{count}} pedido",
+      "orderCount_other": "{{count}} pedidos",
+      "caveat": "Cuenta los pedidos cuya sesión empezó en una de tus páginas. Muestra dónde empezó la compra, no qué la provocó: un lector que vuelve más tarde y compra directo no se cuenta, y alguien que habría comprado igualmente sí."
     }
   },
   "seoHub": {

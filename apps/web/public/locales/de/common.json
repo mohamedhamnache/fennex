@@ -354,6 +354,18 @@
       "article": "Artikel",
       "page": "Seite",
       "query": "Suchanfrage"
+    },
+    "revenue": {
+      "title": "Umsatz aus Inhalten",
+      "subtitle": "Bestellungen, die auf einer von dir veröffentlichten Seite begannen",
+      "window_one": "letzter {{count}} Tag",
+      "window_other": "letzte {{count}} Tage",
+      "ofTotal": "von {{total}} gesamt · {{share}} %",
+      "orders": "{{attributed}} von {{total}} Bestellungen begannen bei deinen Inhalten",
+      "byArticle": "Nach Artikel",
+      "orderCount_one": "{{count}} Bestellung",
+      "orderCount_other": "{{count}} Bestellungen",
+      "caveat": "Zählt Bestellungen, deren Sitzung auf einer deiner Seiten begann. Zeigt, wo der Kauf startete — nicht, was ihn ausgelöst hat: Wer später direkt kauft, fehlt hier; wer ohnehin gekauft hätte, wird mitgezählt."
     }
   },
   "seoHub": {
