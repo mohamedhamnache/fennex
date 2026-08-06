@@ -29,6 +29,11 @@ async def lifespan(app: FastAPI):
     # wrong response to a margin finding.
     from app.core.metering_audit import assert_supplier_calls_are_metered
     assert_supplier_calls_are_metered()
+    # The same discipline for tenancy: metering asks "is this paid call
+    # accounted for", this asks "is this row the caller's to touch". Logged,
+    # never fatal -- CI blocks the merge (tests/test_tenant_audit.py).
+    from app.core.tenant_audit import assert_routes_are_tenant_scoped
+    assert_routes_are_tenant_scoped()
     if not (settings.OPENAI_API_KEY or settings.ANTHROPIC_API_KEY or settings.GOOGLE_API_KEY):
         logger.warning(
             "No platform LLM key configured (OPENAI_API_KEY/ANTHROPIC_API_KEY/GOOGLE_API_KEY). "

@@ -4,10 +4,13 @@ from typing import Annotated, Optional
 
 import arq
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 
 from app.core.billing import require_credits
 from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
+from app.models.backlinks import ExchangeRequest
+from app.models.project import Project
 from app.schemas.backlinks import (
     AnalyzeResponse,
     BacklinkOpportunityOut,
@@ -59,8 +62,32 @@ async def backlink_profile(
 async def analyze_backlinks(
     project_id: uuid.UUID,
     current_user: CurrentUser,
+    db: DB,
     _: Annotated[None, Depends(require_credits("seo"))],
 ):
+    """Queue a backlink sync for one of the caller's own projects.
+
+    The ownership check is not decoration. sync_backlink_profile loads
+    `org_id` from the PROJECT it is given and bills that org, so without this
+    any authenticated user could post a guessed project_id and spend another
+    organisation's SEO credits -- and write backlink rows into their project.
+    Confirmed against a live server before the check existed: a caller in one
+    org received 202 for a project in another.
+
+    require_credits("seo") does not cover it: that gates the CALLER's balance,
+    while the job charges the target. The two orgs are only the same once this
+    query has passed.
+
+    404 rather than 403, so the response cannot be used to discover which
+    project ids exist.
+    """
+    owned = (await db.execute(
+        select(Project.id).where(Project.id == project_id,
+                                 Project.org_id == current_user.org_id)
+    )).scalar_one_or_none()
+    if owned is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     redis = await arq.create_pool(settings.REDIS_SETTINGS)
     job = await redis.enqueue_job("sync_backlink_profile", str(project_id))
     await redis.aclose()
@@ -177,8 +204,29 @@ async def update_request(
 async def verify_request(
     request_id: uuid.UUID,
     current_user: CurrentUser,
+    db: DB,
     side: str = Query(pattern="^(requester|target)$"),
 ):
+    """Verify one side of an exchange the caller is actually party to.
+
+    verify_exchange_link writes `requester_link_verified` / `target_link_verified`
+    and can promote the request to "live". Without this check any authenticated
+    user could post a guessed request_id and flip those flags on two other
+    organisations' agreement -- asserting a backlink had been placed when it had
+    not. No credits are spent, which is why it went unnoticed; it is still a
+    cross-tenant write.
+
+    The membership rule is the same one update_exchange_request already applies:
+    the caller's org must be one of the two parties. Sibling endpoints on the
+    same resource disagreeing about who may act on it is how this kind of gap
+    appears in the first place.
+    """
+    req = (await db.execute(
+        select(ExchangeRequest).where(ExchangeRequest.id == request_id)
+    )).scalar_one_or_none()
+    if req is None or current_user.org_id not in (req.requester_org_id, req.target_org_id):
+        raise HTTPException(status_code=404, detail="Request not found")
+
     redis = await arq.create_pool(settings.REDIS_SETTINGS)
     job = await redis.enqueue_job("verify_exchange_link", str(request_id), side)
     await redis.aclose()
