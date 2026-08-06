@@ -481,7 +481,8 @@
       "kpiNewSub": "first purchase",
       "kpiRepeat": "Repeat rate",
       "kpiRepeatSub": "{{count}} returning",
-      "fromContentCount": "{{count}} from content"
+      "fromContentCount": "{{count}} from content",
+      "noOrders": "No orders synced yet for this period. Connect your store or run a sync to see revenue from content."
     },
     "connectGscFirst": "Connect Google Search Console to see clicks, impressions and rankings for this project."
   },

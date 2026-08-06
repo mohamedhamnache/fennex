@@ -387,7 +387,8 @@
       "kpiNewSub": "أول عملية شراء",
       "kpiRepeat": "معدل التكرار",
       "kpiRepeatSub": "{{count}} عائدون",
-      "fromContentCount": "{{count}} من المحتوى"
+      "fromContentCount": "{{count}} من المحتوى",
+      "noOrders": "لا توجد طلبات متزامنة لهذه الفترة. اربط متجرك أو شغّل المزامنة."
     },
     "connectGscFirst": "اربط Google Search Console لعرض النقرات والظهور والترتيب لهذا المشروع."
   },

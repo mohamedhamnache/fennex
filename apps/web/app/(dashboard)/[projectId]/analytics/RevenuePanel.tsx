@@ -41,6 +41,12 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
   // An unconnected store is the normal case, not an error worth a red box.
   if (!connected || isLoading || isError || !data) return null;
 
+  // Connected but nothing synced yet. The KPI block would otherwise render
+  // $0 revenue, 0 orders and 0% share -- which reads as "your content earns
+  // nothing" when it actually means "no orders have been pulled". A confident
+  // zero is worse than an empty state.
+  const hasOrders = data.orders_total > 0;
+
   const money = (n: number) =>
     new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -81,6 +87,13 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
       {/* Four numbers a store owner manages against. Each attributed figure is
           shown against its store-wide counterpart rather than alone: "£4,934"
           reads as everything, "£4,934 of £7,014" reads as what it is. */}
+      {!hasOrders && (
+        <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          {t("analytics.revenue.noOrders")}
+        </p>
+      )}
+
+      {hasOrders && (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label={t("analytics.revenue.kpiRevenue")} value={money(data.revenue_attributed)}
              sub={t("analytics.revenue.ofStore", { value: money(data.revenue_total) })} accent />
@@ -91,9 +104,11 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
         <Kpi label={t("analytics.revenue.kpiShare")} value={`${share}%`}
              sub={t("analytics.revenue.shareSub")} />
       </div>
+      )}
 
       {/* The share as a bar, because a proportion is easier to judge than to
           read. Labelled at both ends so it is never a decorative stripe. */}
+      {hasOrders && (
       <div className="flex flex-col gap-1.5">
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-emerald-500 transition-all"
@@ -104,6 +119,7 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
           <span>{t("analytics.revenue.storeTotal", { value: money(data.revenue_total) })}</span>
         </div>
       </div>
+      )}
 
       {data.series.length > 1 && (
         <div className="flex flex-col gap-2 border-t border-border pt-4">
@@ -125,7 +141,10 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi label={t("analytics.revenue.kpiSessions")} value={fmt(data.traffic.sessions)}
                  sub={t("analytics.revenue.fromContentCount", { count: data.traffic.sessions_from_content })} />
-            <Kpi label={t("analytics.revenue.kpiConversion")} value={`${data.traffic.conversion_rate}%`}
+            <Kpi label={t("analytics.revenue.kpiConversion")}
+                 value={data.traffic.sessions > 0
+                   ? `${((data.products.reduce((n, p) => n + p.units, 0) / data.traffic.sessions) * 100).toFixed(2)}%`
+                   : "—"}
                  sub={t("analytics.revenue.kpiConversionSub")} />
             <Kpi label={t("analytics.revenue.kpiNew")} value={fmt(data.customers.new)}
                  sub={t("analytics.revenue.kpiNewSub")} />

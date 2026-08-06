@@ -384,7 +384,8 @@
       "kpiNewSub": "primeira compra",
       "kpiRepeat": "Taxa de recompra",
       "kpiRepeatSub": "{{count}} recorrentes",
-      "fromContentCount": "{{count}} via conteúdo"
+      "fromContentCount": "{{count}} via conteúdo",
+      "noOrders": "Nenhum pedido sincronizado neste período. Conecte sua loja ou execute uma sincronização."
     },
     "connectGscFirst": "Conecte o Google Search Console para ver cliques, impressões e posições deste projeto."
   },

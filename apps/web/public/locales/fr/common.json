@@ -384,7 +384,8 @@
       "kpiNewSub": "premier achat",
       "kpiRepeat": "Taux de retour",
       "kpiRepeatSub": "{{count}} clients fidèles",
-      "fromContentCount": "{{count}} via le contenu"
+      "fromContentCount": "{{count}} via le contenu",
+      "noOrders": "Aucune commande synchronisée pour cette période. Connectez votre boutique ou lancez une synchronisation."
     },
     "connectGscFirst": "Connectez Google Search Console pour voir les clics, impressions et positions de ce projet."
   },

@@ -384,7 +384,8 @@
       "kpiNewSub": "Erstkauf",
       "kpiRepeat": "Wiederkaufrate",
       "kpiRepeatSub": "{{count}} wiederkehrend",
-      "fromContentCount": "{{count}} aus Inhalten"
+      "fromContentCount": "{{count}} aus Inhalten",
+      "noOrders": "Für diesen Zeitraum wurden noch keine Bestellungen synchronisiert. Verbinde deinen Shop oder starte eine Synchronisierung."
     },
     "connectGscFirst": "Verbinde Google Search Console, um Klicks, Impressionen und Rankings dieses Projekts zu sehen."
   },
