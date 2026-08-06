@@ -1,11 +1,49 @@
 """Souk -- Ecommerce Growth Operator. Department: Growth."""
 
+from dataclasses import dataclass
+
 from app.employees.spec import (
-    Action, Employee, P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS,
+    Action, Employee, Evaluation, P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS,
     SCOPE_PROJECT,
 )
 
-EMPLOYEE = Employee(
+# Fields whose emptiness the reviewer reads as failure, when it can equally
+# mean the honest answer.
+_RECOMMENDATION_FIELDS = ("push", "bundles", "reprice", "retire", "findings", "leaks", "flows")
+
+
+@dataclass
+class _Souk(Employee):
+    """Souk, with one hook overridden.
+
+    WHY. The shared reviewer grades an artifact on whether it delivered
+    recommendations, and it cannot know that "I have no catalogue, so I will
+    not name a product" IS the correct answer here. On a live run it scored
+    that 10/100 three times over -- "l'artefact manque des recommandations
+    concrètes" -- so the orchestrator retried twice and the merchant paid three
+    times for the same honest reply, and the model was pushed toward inventing
+    something to satisfy the grader. That pressure is precisely what the rest
+    of this agent exists to resist.
+
+    So a DECLINE passes: empty recommendation lists AND a populated
+    `cannot_see` naming what was missing. Narrow on purpose -- an empty answer
+    with no explanation still fails, because that is a failure.
+    """
+
+    async def evaluate(self, outcome, task, ctx) -> Evaluation:
+        structured = getattr(outcome, "structured", None) or {}
+        if outcome.ok and isinstance(structured, dict):
+            declared = [k for k in _RECOMMENDATION_FIELDS if k in structured]
+            all_empty = declared and all(not structured.get(k) for k in declared)
+            explained = bool(structured.get("cannot_see") or structured.get("blind_spots"))
+            if all_empty and explained:
+                return Evaluation(
+                    passed=True, score=80,
+                    feedback="Declined to recommend without the data, and said what was missing.")
+        return await super().evaluate(outcome, task, ctx)
+
+
+EMPLOYEE = _Souk(
     id="souk",
     name="Souk",
     codename="The Merchant",

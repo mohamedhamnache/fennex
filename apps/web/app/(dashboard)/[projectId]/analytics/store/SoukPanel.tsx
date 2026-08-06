@@ -147,6 +147,33 @@ export function SoukPanel({ projectId }: { projectId: string }) {
   );
 }
 
+/**
+ * Coerce whatever the model returned into readable text.
+ *
+ * The prompt asks for strings and the model mostly obliges -- but a live run
+ * returned `test_first` as {description, reason} and `cannot_see` as
+ * [{step, reason}], which React renders as "[object Object]". A prompt is a
+ * request, not a type system, so the boundary has to absorb the difference
+ * rather than trust it.
+ */
+function asText(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map(asText).filter(Boolean).join(" · ");
+  if (typeof v === "object") {
+    // Join the object's own values: whichever keys the model invented, the
+    // sentence it wrote is in there somewhere.
+    return Object.values(v as Record<string, unknown>).map(asText).filter(Boolean).join(" — ");
+  }
+  return "";
+}
+
+function asTextList(v: unknown): string[] {
+  if (v == null) return [];
+  return (Array.isArray(v) ? v : [v]).map(asText).filter(Boolean);
+}
+
 /** One renderer, four shapes. Each action answers a different question, so a
  *  single generic list would flatten away what makes each answer useful. */
 function Result({ data, who }: { data: Structured; who: string }) {
@@ -155,9 +182,9 @@ function Result({ data, who }: { data: Structured; who: string }) {
   const flows = data.flows as Flow[] | undefined;
   const push = data.push as PushRow[] | undefined;
   const bundles = data.bundles as BundleRow[] | undefined;
-  const blind = (data.blind_spots ?? data.cannot_see) as string[] | undefined;
-  const thisWeek = data.this_week as string[] | undefined;
-  const testFirst = data.test_first as string | undefined;
+  const blind = asTextList(data.blind_spots ?? data.cannot_see);
+  const thisWeek = asTextList(data.this_week);
+  const testFirst = asText(data.test_first);
 
   const empty = !findings?.length && !leaks?.length && !flows?.length
     && !push?.length && !bundles?.length;
@@ -187,12 +214,12 @@ function Result({ data, who }: { data: Structured; who: string }) {
                   {f.effort}
                 </span>
               )}
-              <span className="text-sm font-semibold text-foreground">{f.problem}</span>
+              <span className="text-sm font-semibold text-foreground">{asText(f.problem)}</span>
             </div>
-            {f.evidence && <Line label="Evidence" value={f.evidence} />}
-            {f.diagnosis && <Line label="Why" value={f.diagnosis} />}
-            {f.action && <Line label="Do this" value={f.action} strong />}
-            {f.impact && <Line label="Moves" value={f.impact} />}
+            {f.evidence && <Line label="Evidence" value={asText(f.evidence)} />}
+            {f.diagnosis && <Line label="Why" value={asText(f.diagnosis)} />}
+            {f.action && <Line label="Do this" value={asText(f.action)} strong />}
+            {f.impact && <Line label="Moves" value={asText(f.impact)} />}
           </div>
         );
       })}
@@ -208,11 +235,11 @@ function Result({ data, who }: { data: Structured; who: string }) {
                 {l.confidence} confidence
               </span>
             )}
-            <span className="text-sm font-semibold text-foreground">{l.problem}</span>
+            <span className="text-sm font-semibold text-foreground">{asText(l.problem)}</span>
           </div>
-          {l.evidence && <Line label="Evidence" value={l.evidence} />}
-          {l.fix && <Line label="Fix" value={l.fix} strong />}
-          {l.impact && <Line label="Moves" value={l.impact} />}
+          {l.evidence && <Line label="Evidence" value={asText(l.evidence)} />}
+          {l.fix && <Line label="Fix" value={asText(l.fix)} strong />}
+          {l.impact && <Line label="Moves" value={asText(l.impact)} />}
         </div>
       ))}
 
@@ -227,7 +254,7 @@ function Result({ data, who }: { data: Structured; who: string }) {
               </span>
             )}
           </div>
-          <Line label="Trigger" value={`${f.trigger}${f.timing ? ` · ${f.timing}` : ""}`} />
+          <Line label="Trigger" value={[asText(f.trigger), asText(f.timing)].filter(Boolean).join(" · ")} />
           {f.messages?.length > 0 && (
             <ol className="flex flex-col gap-1.5 border-l-2 border-emerald-500/30 pl-3">
               {f.messages.map((m, j) => (
@@ -235,7 +262,7 @@ function Result({ data, who }: { data: Structured; who: string }) {
                   <span className="font-semibold tabular-nums text-muted-foreground">
                     {m.delay || "immediately"}
                   </span>
-                  {" — "}{m.angle}
+                  {" — "}{asText(m.angle)}
                   {m.offer
                     ? <span className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-600 dark:text-emerald-400">{m.offer}</span>
                     : <span className="ml-1 text-muted-foreground">(no offer)</span>}
@@ -243,7 +270,7 @@ function Result({ data, who }: { data: Structured; who: string }) {
               ))}
             </ol>
           )}
-          {f.metric && <Line label="Measure" value={f.metric} />}
+          {f.metric && <Line label="Measure" value={asText(f.metric)} />}
         </div>
       ))}
 
@@ -251,18 +278,18 @@ function Result({ data, who }: { data: Structured; who: string }) {
         <div className="flex flex-col gap-3">
           {push?.map((p, i) => (
             <div key={i} className="rounded-xl border border-border bg-muted/20 p-4">
-              <p className="text-sm font-semibold text-foreground">Push: {p.product}</p>
-              <Line label="Why" value={p.why} />
-              {p.where && <Line label="Where" value={p.where} />}
+              <p className="text-sm font-semibold text-foreground">Push: {asText(p.product)}</p>
+              <Line label="Why" value={asText(p.why)} />
+              {p.where && <Line label="Where" value={asText(p.where)} />}
             </div>
           ))}
           {bundles?.map((b, i) => (
             <div key={i} className="rounded-xl border border-border bg-muted/20 p-4">
               <p className="text-sm font-semibold text-foreground">
-                Bundle: {(b.products || []).join(" + ")}
+                Bundle: {asTextList(b.products).join(" + ")}
               </p>
-              <Line label="Angle" value={b.angle} />
-              {b.price_logic && <Line label="Pricing" value={b.price_logic} />}
+              <Line label="Angle" value={asText(b.angle)} />
+              {b.price_logic && <Line label="Pricing" value={asText(b.price_logic)} />}
             </div>
           ))}
         </div>

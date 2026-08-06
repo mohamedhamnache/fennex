@@ -301,3 +301,91 @@ class TestNeverInventsAnEntity:
         system, _ = skills._merchandising_prompt(_brief(), {}, {})
         assert "MUST APPEAR IN THE CATALOGUE" in system
         assert "An article title is not a product" in system
+
+
+class TestAnHonestDeclineIsNotAFailure:
+    """The shared reviewer scored a correct answer 10/100, three times.
+
+    With no catalogue synced, merchandising correctly returned empty lists and
+    said why. The reviewer reads "no recommendations" as a failed artifact --
+    "l'artefact manque des recommandations concretes" -- so the orchestrator
+    retried twice. The merchant paid three times for the same honest reply, and
+    the model was pushed toward inventing a product to satisfy the grader,
+    which is the exact pressure this agent is built to resist.
+    """
+
+    class _Outcome:
+        def __init__(self, structured, ok=True):
+            self.ok, self.structured, self.action_id = ok, structured, "merchandising"
+            self.summary, self.error = "", None
+
+    async def test_an_empty_answer_that_explains_itself_passes(self):
+        e = registry.get("souk")
+        ev = await e.evaluate(self._Outcome(
+            {"push": [], "bundles": [], "reprice": [], "retire": [],
+             "cannot_see": ["catalogue not synced"]}), None, None)
+        assert ev.passed and ev.score >= 70
+
+    async def test_an_empty_answer_with_no_explanation_still_fails_through(self):
+        """Narrow on purpose. Silence is not the same as a declared blind spot,
+        and blanket-passing empty output would hide real failures."""
+        e = registry.get("souk")
+        called = {}
+
+        async def fake_review(self, outcome, task, ctx):
+            called["yes"] = True
+            from app.employees.spec import Evaluation
+            return Evaluation(passed=False, score=10, feedback="empty")
+
+        from app.employees.spec import Employee
+        original = Employee.evaluate
+        Employee.evaluate = fake_review
+        try:
+            await e.evaluate(self._Outcome({"push": [], "bundles": []}), None, None)
+        finally:
+            Employee.evaluate = original
+        assert called.get("yes"), "an unexplained empty answer must reach the normal reviewer"
+
+    async def test_a_real_recommendation_still_goes_to_the_reviewer(self):
+        """The override must not become a way to skip review entirely."""
+        e = registry.get("souk")
+        called = {}
+
+        async def fake_review(self, outcome, task, ctx):
+            called["yes"] = True
+            from app.employees.spec import Evaluation
+            return Evaluation(passed=True, score=90, feedback="")
+
+        from app.employees.spec import Employee
+        original = Employee.evaluate
+        Employee.evaluate = fake_review
+        try:
+            await e.evaluate(self._Outcome(
+                {"push": [{"product": "Cafe"}], "cannot_see": []}), None, None)
+        finally:
+            Employee.evaluate = original
+        assert called.get("yes"), "a populated answer must still be reviewed"
+
+
+class TestNoFabricatedForecasts:
+    """The rule lived only in growth_audit's format string. The other three
+    each carry their own JSON contract, and a live run produced "+10-15%",
+    "+5-10%" and "+3-5%" for steps with no measured data behind them."""
+
+    @pytest.mark.parametrize("build", [
+        skills._growth_audit_prompt, skills._cro_review_prompt,
+        skills._retention_prompt, skills._merchandising_prompt,
+    ])
+    def test_every_prompt_forbids_an_unmeasured_percentage(self, build):
+        system, _ = build(_brief(), {}, {})
+        assert "DO NOT PUT A PERCENTAGE" in system
+
+    @pytest.mark.parametrize("build", [
+        skills._cro_review_prompt, skills._retention_prompt, skills._merchandising_prompt,
+    ])
+    def test_free_text_fields_are_pinned_to_strings(self, build):
+        """A live run returned test_first as {description, reason} and
+        cannot_see as [{step, reason}]; the UI renders both as text, so the
+        contract has to say STRING."""
+        system, _ = build(_brief(), {}, {})
+        assert "STRING" in system

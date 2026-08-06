@@ -22,6 +22,9 @@ _NO_INVENTION = (
 )
 
 
+NO_PCT = ('\\nDO NOT PUT A PERCENTAGE ON AN OUTCOME YOU HAVE NOT MEASURED. A range like "+10-15% sales" for a step you have no data on is a fabricated forecast, and the merchant will plan against it. Say which measured figure should move, and in which direction, instead.')
+
+
 def _store_block(td) -> str:
     """The store, rendered so measured and missing cannot be confused.
 
@@ -173,8 +176,10 @@ def _cro_review_prompt(brief, inputs, td):
         'Respond with ONLY JSON: {"leaks": [{"step": "landing"|"collection"|"product"|"cart"'
         '|"checkout"|"post-purchase", "problem": str, "evidence": str, "fix": str, '
         '"impact": str, "confidence": "high"|"medium"|"low"}], '
-        '"test_first": the single change to ship first and why, '
-        '"cannot_see": [steps you have no data for, and the connector that would show them]}'
+        '"test_first": a STRING -- the single change to ship first and why, not an object, '
+        '"cannot_see": an array of STRINGS, each naming a step you have no data for and the '
+        'connector that would show it -- strings, not objects}'
+        + NO_PCT
     )
     user = brief_block(brief) + "\n\n" + _store_block(td) + _products_block(td) + feedback_block(inputs)
     return system, user
@@ -201,7 +206,9 @@ def _retention_prompt(brief, inputs, td):
         '"messages": [{"delay": str, "angle": str, "offer": str|null}], "metric": str, '
         '"priority": "critical"|"important"|"optimise"}], '
         '"segments": [{"name": str, "definition": str, "why": str}], '
-        '"cannot_see": [what customer data you lack and the connector that supplies it]}'
+        '"cannot_see": an array of STRINGS -- what customer data you lack and the connector '
+        'that supplies it}'
+        + NO_PCT
     )
     user = brief_block(brief) + "\n\n" + _store_block(td) + feedback_block(inputs)
     return system, user
@@ -233,7 +240,9 @@ def _merchandising_prompt(brief, inputs, td):
         '"bundles": [{"products": [str], "angle": str, "price_logic": str}], '
         '"reprice": [{"product": str, "from": str, "to": str, "why": str}], '
         '"retire": [{"product": str, "why": str}], '
-        '"cannot_see": [what product-level data you lack and the connector that supplies it]}'
+        '"cannot_see": an array of STRINGS -- what product-level data you lack and the '
+        'connector that supplies it}'
+        + NO_PCT
     )
     user = brief_block(brief) + "\n\n" + _store_block(td) + _products_block(td) + feedback_block(inputs)
     return system, user
