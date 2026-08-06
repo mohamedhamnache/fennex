@@ -38,7 +38,9 @@ async def run_rank_tracker(ctx) -> None:
 
         projects = (await db.execute(
             select(Project).join(TrackedKeyword, TrackedKeyword.project_id == Project.id)
-            .where(TrackedKeyword.is_active.is_(True), Project.id.in_(active))
+            .where(TrackedKeyword.is_active.is_(True),
+                   Project.rank_tracking_enabled.is_(True),
+                   Project.id.in_(active))
             .distinct()
         )).scalars().all()
     logger.info("rank tracker: %d active project(s) after the %d-day dormancy filter",
@@ -46,10 +48,13 @@ async def run_rank_tracker(ctx) -> None:
     for project in projects:
         try:
             async with async_session_factory() as db:
-                # Background/cron rank tracking must still be metered for
-                # cost visibility but must never consume the enforced SEO
-                # credit bucket -- only user-initiated work (e.g. the
-                # /refresh endpoint) does that. See rank_tracking_service.
+                # Scheduled tracking BILLS the org's SEO credits. It used to
+                # pass bill_credits=False so a cron fan-out could not exhaust
+                # the bucket a user's own searches draw on -- but that made the
+                # platform absorb the entire cost of a feature the customer
+                # opted into, which is the wrong side of the trade for a
+                # reseller. It is opt-in per project now, so the spend is asked
+                # for, and it is charged like any other paid work.
                 #
                 # The cost is real and guaranteed: it is committed for every
                 # tracked keyword whether the customer logs in or not, and it
@@ -64,7 +69,7 @@ async def run_rank_tracker(ctx) -> None:
                 # Standard queue: $0.0006/page against Live's $0.002. Nobody
                 # is waiting on a 05:30 job, so the 3.3x latency premium buys
                 # nothing.
-                await snapshot_project(project, db, bill_credits=False,
+                await snapshot_project(project, db, bill_credits=True,
                                        depth=CRON_SERP_DEPTH, standard_queue=True)
         except Exception:  # noqa: BLE001 - one project must not break the batch
             logger.exception("rank tracker failed for project %s", project.id)

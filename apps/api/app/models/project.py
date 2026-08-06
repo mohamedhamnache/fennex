@@ -18,6 +18,12 @@ class Project(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     domain: Mapped[str] = mapped_column(String(255), nullable=False)
     locale: Mapped[str] = mapped_column(String(10), default="en")
+    # Scheduled rank tracking, per project. Every tracked keyword on an enabled
+    # project is a paid SERP task every week, billed to the org's SEO credits,
+    # so this is opt-in rather than something a project acquires silently by
+    # having keywords on it.
+    rank_tracking_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false")
     target_country: Mapped[str | None] = mapped_column(String(10))
     industry: Mapped[str | None] = mapped_column(String(100))
     # What this project actually is, in the owner's words: "a WordPress blog

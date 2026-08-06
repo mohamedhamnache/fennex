@@ -35,6 +35,10 @@ class ProjectUpdate(BaseModel):
     persona: Optional[str] = None
     persona_data: Optional[dict] = None
     autopilot_enabled: Optional[bool] = None
+    # Scheduled rank tracking. Off by default and opt-in per project: every
+    # tracked keyword becomes a weekly paid SERP task drawn from the org's SEO
+    # credits, so it is never switched on implicitly.
+    rank_tracking_enabled: Optional[bool] = None
     theme: Optional[str] = None
 
 
@@ -52,6 +56,7 @@ class ProjectResponse(BaseModel):
     persona: Optional[str] = None
     persona_data: Optional[dict] = None
     autopilot_enabled: bool = False
+    rank_tracking_enabled: bool = False
     theme: Optional[str] = None
 
     class Config:

@@ -354,6 +354,8 @@ async def _mark_active(db, project):
     so without this it looks abandoned and is correctly skipped.
     """
     from app.models.usage_event import UsageEvent
+    project.rank_tracking_enabled = True      # scheduled tracking is opt-in now
+    db.add(project)
     db.add(UsageEvent(org_id=project.org_id, project_id=project.id, kind="seo",
                       provider="dataforseo", feature="serp", seo_unit="serp",
                       seo_count=1, cost_micros=0))
@@ -381,13 +383,15 @@ async def test_rank_tracker_cron_isolates_and_filters(db_session):
 
 
 @pytest.mark.asyncio
-async def test_rank_tracker_cron_does_not_bill_seo_credits(db_session):
-    """The daily rank-tracking cron must meter its DataForSEO spend for
-    COGS/margin visibility but must never increment seo_credits_used --
-    background work must not be able to trip the enforced bucket a user's own
-    searches would then get 429'd against. Asserted by spying on
-    snapshot_project's bill_credits kwarg, since that's the exact thread this
-    cron is required to pull."""
+async def test_rank_tracker_cron_bills_seo_credits(db_session):
+    """Scheduled tracking BILLS the org's SEO credits.
+
+    It used to pass bill_credits=False so a cron fan-out could not exhaust the
+    bucket a user's own searches draw on. That made the platform absorb the
+    whole cost of a feature the customer opted into -- the wrong side of the
+    trade for a reseller. Scheduled tracking is opt-in per project now, so the
+    spend is asked for, and it is charged like any other paid work. Asserted on
+    snapshot_project's bill_credits kwarg, the exact thread the cron pulls."""
     from app.workers.tasks import seo_tasks
     from app.services import rank_tracking_service as rts
     p_ok = await _mk_project(db_session)
@@ -402,7 +406,7 @@ async def test_rank_tracker_cron_does_not_bill_seo_credits(db_session):
     with patch.object(seo_tasks, "snapshot_project", new=fake_snapshot_project), \
          patch.object(seo_tasks, "async_session_factory", new=lambda: _single_session(db_session)):
         await seo_tasks.run_rank_tracker(None)
-    assert calls == [False]
+    assert calls == [True]
 
 
 @pytest.mark.asyncio

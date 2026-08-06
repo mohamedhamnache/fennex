@@ -108,10 +108,10 @@ async def test_billing_plans_ok_with_admin_bearer():
         assert by_plan["free"]["org_count"] == 1
         assert by_plan["free"]["mrr_usd"] == pytest.approx(0.0)
 
-        assert by_plan["starter"]["price_usd"] == 29
+        assert by_plan["starter"]["price_usd"] == 39
         assert by_plan["starter"]["org_count"] == 2
         # Only the paying starter org counts toward mrr.
-        assert by_plan["starter"]["mrr_usd"] == pytest.approx(29.0)
+        assert by_plan["starter"]["mrr_usd"] == pytest.approx(39.0)
 
         assert by_plan["pro"]["price_usd"] == 99
         assert by_plan["pro"]["org_count"] == 2

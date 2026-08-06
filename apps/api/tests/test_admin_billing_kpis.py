@@ -35,8 +35,8 @@ ORG_FREE = uuid.uuid4()
 ORG_SUSPENDED_PAID = uuid.uuid4()
 
 # Expected math, spelled out so assertions double as documentation:
-# paying: starter(29) + pro(99) + pro(99) + enterprise(0, custom) = 227
-EXPECTED_MRR = 29 + 99 + 99 + 0
+# paying: starter(39) + pro(99) + pro(99) + enterprise(0, custom) = 237
+EXPECTED_MRR = 39 + 99 + 99 + 0
 EXPECTED_PAYING_ORGS = 4
 EXPECTED_TRIALING_ORGS = 1
 EXPECTED_ENTERPRISE_ORGS = 1
@@ -148,7 +148,7 @@ async def test_billing_kpis_ok_with_admin_bearer():
 
         by_plan = {row["plan"]: row for row in body["by_plan"]}
         assert by_plan["starter"]["orgs"] == 1
-        assert by_plan["starter"]["mrr_usd"] == pytest.approx(29.0)
+        assert by_plan["starter"]["mrr_usd"] == pytest.approx(39.0)
         assert by_plan["pro"]["orgs"] == 2
         assert by_plan["pro"]["mrr_usd"] == pytest.approx(198.0)
         assert by_plan["enterprise"]["orgs"] == 1

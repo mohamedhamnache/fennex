@@ -81,7 +81,7 @@ PLAN_LIMITS: dict[str, dict[str, int]] = {
 # rather than a fabricated number.
 PLAN_PRICE_USD: dict[str, int] = {
     "free": 0,
-    "starter": 29,
+    "starter": 39,
     "pro": 99,
     "agency": 299,
     "scale": 799,
