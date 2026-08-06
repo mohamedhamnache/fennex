@@ -153,6 +153,27 @@ async def shopify_oauth_callback(request: Request, db: DB):
     return RedirectResponse(f"{dest}?shopify=connected")
 
 
+class OrderSyncResult(BaseModel):
+    ok: bool
+    synced: int = 0
+    attributed: int = 0
+    window_days: int | None = None
+    error: str | None = None
+
+
+@router.post("/orders/sync", response_model=OrderSyncResult)
+async def shopify_sync_orders(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Pull recent orders and attribute them to the content they landed on.
+
+    `attributed` counts orders whose landing page is one we published. It is
+    always <= `synced`, and a low ratio is information rather than a fault: most
+    sales do not begin on an article.
+    """
+    from app.services import store_revenue_service
+    result = await store_revenue_service.sync_orders(project_id, current_user.org_id, db)
+    return OrderSyncResult(**result)
+
+
 @router.get("/products", response_model=list[StoreProductOut])
 async def shopify_list_products(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
     return await shopify_service.list_products(project_id, current_user.org_id, db)

@@ -74,6 +74,9 @@ ALLOWLIST: dict[str, str] = {
     "app.services.knowledge_service:embed": "meters via _meter_ambient (knowledge_embed)",
     "app.api.v1.routers.product:_analyze_product_image": "meters via _meter_ambient",
     "app.services.image_service:generate_image_dalle": "meters via record_image",
+    # Shopify Admin API is a merchant-authorised call on the merchant's own
+    # plan, not capacity Fennex buys, so there is nothing to meter.
+    "app.services.store_revenue_service:sync_orders": "merchant-authorised API; no supplier cost to Fennex",
     # ── batch ───────────────────────────────────────────────────────────────
     "app.services.batch.client:run_batched": "returns LLMUsage to call_llm_usage, which meters",
     # ── SEO: a separate credit bucket, metered by its CALLERS ───────────────
