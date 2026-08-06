@@ -23,11 +23,27 @@ _NO_INVENTION = (
 
 
 def _store_block(td) -> str:
-    """The store, rendered so measured and missing cannot be confused."""
+    """The store, rendered so measured and missing cannot be confused.
+
+    THE EMPTY CASE HAS TWO MEANINGS. These prompts run on two paths. The skill
+    runner pre-fetches every declared tool, so an empty payload there really
+    does mean no store. The agentic runtime deliberately passes {} and expects
+    the model to call the tool itself mid-loop (see runtime/base.py: "Tools run
+    live now, so the skill receives an empty pre-fetched tool payload").
+
+    Reading {} as "no store" was therefore wrong on the path the UI actually
+    uses: the model was told the store was disconnected before it had looked,
+    so it never looked, and reported a connected store with 51 orders as empty.
+    The message now serves both readings -- fetch first, and only conclude
+    "no store" from an actual empty result.
+    """
     d = (td.get("store_analytics") or {}).get("data") or {}
     if not d:
-        return ("STORE DATA: unavailable -- no store is connected, or it has no orders yet. "
-                "Say so plainly and give only advice that does not depend on figures.")
+        return ("STORE DATA: not loaded yet. If a store_analytics tool is available to you, "
+                "CALL IT NOW and answer from what it returns -- do not answer before you have. "
+                "Only if you have already called it and it came back empty may you conclude "
+                "that no store is connected or it has no orders; say so plainly then, and give "
+                "only advice that does not depend on figures.")
 
     cur = d.get("currency", "")
     w = d.get("window", {})
@@ -54,7 +70,9 @@ def _store_block(td) -> str:
     cr = d.get("content_revenue") or {}
     if cr.get("pages"):
         lines += ["", f"REVENUE FROM PUBLISHED CONTENT: {cr['revenue']:,.0f} {cur} "
-                      f"({cr['share_pct']:.0f}% of store revenue)"]
+                      f"({cr['share_pct']:.0f}% of store revenue). These are ARTICLES the "
+                      "merchant published, NOT products -- never merchandise, bundle or "
+                      "price one:"]
         lines += [f"  \"{p['title']}\" ({p['path']}): {p['orders']} orders, "
                   f"{p['revenue']:,.0f} {cur}" for p in cr["pages"][:6]]
 
@@ -70,11 +88,30 @@ def _store_block(td) -> str:
 
 
 def _products_block(td) -> str:
+    """The catalogue -- or an explicit statement that we cannot see it.
+
+    Returning "" for an empty catalogue was a silent gap, and a live run walked
+    straight into it: with no products listed, the model recommended pushing
+    "Le café" (an ARTICLE title from the content block) and bundling it with
+    "French Biscotti" (invented outright) at "$140 against $155 individual"
+    (invented prices, for invented products).
+
+    The metric guard did not catch this because the fabrication was an ENTITY,
+    not a figure. An absent list reads as an invitation to supply one, exactly
+    as an absent number did.
+    """
     p = (td.get("store_products") or {}).get("data") or {}
     rows = p.get("products") or []
     if not rows:
-        return ""
-    return ("\nCATALOGUE (title, price):\n"
+        return ("\nCATALOGUE: not loaded. If a store_products tool is available, CALL IT before "
+                "naming any product. If it is not available, or comes back empty, then no "
+                "product has been synced and you do not know what this merchant sells, at "
+                "what price, or in what variants. "
+                "You must not name, invent or price a product, and you must not treat an "
+                "article title as a product. Say the catalogue needs syncing and give only "
+                "advice that does not depend on knowing the products.")
+    return ("\nCATALOGUE (title, price) -- these are the ONLY products that exist. Never name "
+            "one that is not on this list, and never state a price that is not here:\n"
             + "\n".join(f"  {r.get('title')} -- {r.get('price')}" for r in rows[:40]))
 
 
@@ -185,6 +222,12 @@ def _merchandising_prompt(brief, inputs, td):
         "Base every call on what actually sells and on the catalogue -- not on category "
         "intuition. A bundle must name both products and the reason a buyer wants them "
         "together. A price change must name the current price, the new one, and the logic.\n"
+        "EVERY PRODUCT YOU NAME MUST APPEAR IN THE CATALOGUE ABOVE, and every price must be "
+        "one listed there. If the catalogue is not available you cannot recommend a push, a "
+        "bundle, a reprice or a retirement at all -- return empty lists and say the catalogue "
+        "needs syncing. An article title is not a product. Inventing a product, or a price "
+        "for one, is the worst error you can make here: the merchant will look for it in "
+        "their own admin and find nothing.\n"
         + _NO_INVENTION + "\n"
         'Respond with ONLY JSON: {"push": [{"product": str, "why": str, "where": str}], '
         '"bundles": [{"products": [str], "angle": str, "price_logic": str}], '

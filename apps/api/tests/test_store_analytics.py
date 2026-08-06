@@ -28,9 +28,15 @@ class TestReferrerClassification:
         assert sa.classify_referrer(
             "https://www.google.com/", "https://shop.com/p?utm_medium=cpc") == "Paid search"
 
-    def test_no_referrer_is_direct_not_unknown(self):
-        assert sa.classify_referrer(None, None) == "Direct"
-        assert sa.classify_referrer("", "https://shop.com/") == "Direct"
+    def test_no_referrer_is_unattributed_not_direct(self):
+        """This test used to assert the opposite, and its old name --
+        "direct not unknown" -- encoded the mistake exactly. A live agent read
+        a store where no order carried a referrer as "99% direct traffic" and
+        recommended buying ads to diversify. The bucket is every order that
+        arrived without a referrer, which covers both someone typing the URL
+        and a referrer that was never recorded; the label has to say so."""
+        assert sa.classify_referrer(None, None) == "Direct or unattributed"
+        assert sa.classify_referrer("", "https://shop.com/") == "Direct or unattributed"
 
     def test_social_hosts_are_grouped_but_strangers_stay_referrals(self):
         assert sa.classify_referrer("https://t.co/xyz", None) == "Social"

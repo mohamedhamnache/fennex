@@ -136,9 +136,20 @@ class TestNeverInventsANumber:
         assert "no comparable previous period" in block
         assert "0.0%" not in block
 
-    def test_a_store_with_no_data_says_so_instead_of_rendering_blanks(self):
+    def test_an_unloaded_store_tells_the_model_to_fetch_before_concluding(self):
+        """An empty payload means two different things on the two execution
+        paths. The skill runner pre-fetches, so empty really is "no store". The
+        agentic runtime passes {} on purpose and expects the model to call the
+        tool itself -- and reading that as "no store" made Souk report a
+        connected store with 51 orders as empty, in the UI, to the user.
+
+        The message must therefore instruct a fetch first and permit the
+        "no store" conclusion only from an actual empty result.
+        """
         block = skills._store_block({})
-        assert "unavailable" in block.lower()
+        assert "CALL IT NOW" in block
+        assert "Only if you have already called it" in block
+        # It must still reach the honest conclusion when there genuinely is none.
         assert "no store is connected" in block
 
     @pytest.mark.parametrize("build", [
@@ -208,53 +219,85 @@ class TestNoSkillDeclaresAToolThatCannotResolve:
 
 
 class TestUnknownIsNotDirect:
-    """Found by running the agent for real, not by reading the code.
+    """Found by running the agent, twice.
 
-    Every seeded order lacked a referrer, so the channel split read
-    "Direct: 100%". The agent called that over-reliance on direct traffic and
-    recommended buying ads -- a real budget decision taken on missing data.
+    Every seeded order lacked a referrer, so the split read "Direct: 100%".
+    The agent called that over-reliance on direct traffic and recommended
+    buying ads -- a real budget decision taken on missing data.
 
-    "Direct" and "not recorded" are opposite facts that render identically.
-    A measured-LOOKING figure is not a measured one, and this is the second
-    door into the failure the whole agent is built to avoid.
+    The first fix was a >=99.5% threshold in the context builder. A single
+    genuine referral then dropped the rest to 99.3%, the guard stopped firing,
+    and the agent said "99% direct" again. A share cannot carry the ambiguity;
+    only the label can, because in this classifier "Direct" IS "no referrer
+    recorded".
     """
 
-    def _dashboard(self, share, label="Direct"):
-        return {
-            "currency": "USD",
-            "range": {"days": 30, "start": "2026-07-08", "end": "2026-08-06",
-                      "compare_start": "2026-06-08"},
-            "kpis": {}, "series": [],
-            "breakdowns": {
-                "channel": {"source": "live",
-                            "rows": [{"label": label, "revenue": 100.0, "orders": 5,
-                                      "share": share}]},
-            },
-            "content": {"revenue": 0.0, "share": 0.0, "rows": []},
-            "forecast": {"rows": [], "projected_revenue": 0.0},
-            "insights": [],
-        }
+    def test_a_missing_referrer_is_never_called_direct(self):
+        from app.services.store_analytics import classify_referrer
+        assert classify_referrer(None, None) == "Direct or unattributed"
+        assert classify_referrer("", "https://shop.com/p") == "Direct or unattributed"
 
-    async def _build(self, dashboard, monkeypatch):
-        from app.services import store_agent_context, store_analytics
+    def test_a_real_referrer_still_classifies_normally(self):
+        from app.services.store_analytics import classify_referrer
+        assert classify_referrer("https://www.google.com/", None) == "Organic search"
+        assert classify_referrer("https://t.co/x", None) == "Social"
+        assert classify_referrer("https://blog.example/", None) == "Referral"
 
-        async def fake(*a, **k):
-            return dashboard
-        monkeypatch.setattr(store_analytics, "dashboard", fake)
-        return await store_agent_context.build(uuid.uuid4(), uuid.uuid4(), None, 30)
+    def test_the_ambiguity_survives_at_any_share(self):
+        """The bug the threshold could not cover: one genuine referral must not
+        make the remaining unattributed orders read as measured direct traffic."""
+        from app.services.store_analytics import classify_referrer
+        labels = [classify_referrer(None, None) for _ in range(99)]
+        labels.append(classify_referrer("https://www.google.com/", None))
+        assert labels.count("Direct or unattributed") == 99
+        assert "Direct" not in set(labels)          # never the bare, asserting word
 
-    async def test_an_all_direct_split_is_reported_as_unknown_not_as_a_channel(self, monkeypatch):
-        out = await self._build(self._dashboard(100.0), monkeypatch)
-        assert "channel" not in out["revenue_by"], "an all-Direct split must not read as a result"
-        note = next(u for u in out["unavailable"] if u["metric"] == "revenue_by_channel")
-        assert "unknown rather than direct" in note["needs"]
 
-    async def test_a_genuine_channel_mix_is_left_alone(self, monkeypatch):
-        """The guard must not fire on a real result -- a store where Direct is
-        merely the biggest channel still has a measured channel mix."""
-        d = self._dashboard(62.0)
-        d["breakdowns"]["channel"]["rows"].append(
-            {"label": "Organic search", "revenue": 60.0, "orders": 3, "share": 38.0})
-        out = await self._build(d, monkeypatch)
-        assert "channel" in out["revenue_by"]
-        assert len(out["revenue_by"]["channel"]) == 2
+class TestNeverInventsAnEntity:
+    """The second fabrication class, found the same way -- by running it.
+
+    The metric guard covers figures. It said nothing about ENTITIES, and with
+    an empty catalogue a live run recommended pushing "Le café" (an article
+    title lifted from the content block), bundling it with "French Biscotti"
+    (invented outright), and pricing the bundle at "$140 against $155
+    individual" (invented prices for invented products). A merchant would go
+    looking for those in their Shopify admin and find nothing.
+
+    An absent list invites the model to supply one, exactly as an absent
+    number did.
+    """
+
+    def test_an_empty_catalogue_forbids_naming_a_product(self):
+        block = skills._products_block({})
+        assert "CALL IT before" in block          # fetch first on the agentic path
+        assert "must not name, invent or price a product" in block
+
+    def test_an_empty_catalogue_is_never_silent(self):
+        """Returning "" was the bug: it left no trace in the prompt at all, so
+        the model had no way to know the list was missing rather than empty."""
+        assert skills._products_block({}).strip() != ""
+        assert skills._products_block({"store_products": {"data": {"products": []}}}).strip() != ""
+
+    def test_a_real_catalogue_is_marked_exhaustive(self):
+        block = skills._products_block(
+            {"store_products": {"data": {"products": [{"title": "Café Grand Cru", "price": "18.00"}]}}})
+        assert "Café Grand Cru" in block
+        assert "ONLY products that exist" in block
+
+    def test_articles_are_labelled_as_not_products(self):
+        """The model took an article title straight out of the content block and
+        merchandised it."""
+        td = {"store_analytics": {"data": {
+            "currency": "EUR", "window": {"days": 30, "from": "a", "to": "b"},
+            "measured": {}, "unavailable": [], "unavailable_dimensions": [],
+            "revenue_by": {}, "daily_revenue": [], "observations": [],
+            "content_revenue": {"revenue": 100.0, "share_pct": 50.0,
+                                "pages": [{"title": "Le café", "path": "/blog/le-cafe",
+                                           "orders": 3, "revenue": 100.0}]}}}}
+        block = skills._store_block(td)
+        assert "NOT products" in block
+
+    def test_the_merchandising_prompt_pins_products_to_the_catalogue(self):
+        system, _ = skills._merchandising_prompt(_brief(), {}, {})
+        assert "MUST APPEAR IN THE CATALOGUE" in system
+        assert "An article title is not a product" in system

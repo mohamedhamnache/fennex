@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Download, Globe, LayoutGrid, Loader2, Megaphone, Package, RefreshCw,
-  TrendingUp, Truck, Users,
+  Sparkles, TrendingUp, Truck, Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
@@ -23,6 +23,7 @@ import {
   FunnelSection, GeoSection, InsightsPanel, LiveSection, MarketingSection,
   OperationsSection, ProductsSection,
 } from "./sections";
+import { SoukPanel } from "./SoukPanel";
 
 // Charts are the heaviest thing on the page and none of them are above the
 // fold on a phone. Loading them separately keeps the KPIs interactive while
@@ -83,6 +84,10 @@ const VIEWS = [
   { key: "customers", label: "Customers", Icon: Users },
   { key: "marketing", label: "Marketing", Icon: Megaphone },
   { key: "operations", label: "Operations", Icon: Truck },
+  // Last in the row, first in usefulness: every other view reports, this one
+  // decides. It sits at the end because a merchant should see their numbers
+  // before being told what to do about them.
+  { key: "advisor", label: "Advisor", Icon: Sparkles },
 ] as const;
 
 type StoreView = (typeof VIEWS)[number]["key"];
@@ -328,6 +333,8 @@ export function StoreDashboard({ projectId, gscConnected }: {
           {activeView === "customers" && <CustomersSection data={data} fmt={fmt} />}
 
           {activeView === "marketing" && <MarketingSection data={data} fmt={fmt} />}
+
+          {activeView === "advisor" && <SoukPanel projectId={projectId} />}
 
           {activeView === "operations" && (
             <>

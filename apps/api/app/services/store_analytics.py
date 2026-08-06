@@ -74,7 +74,15 @@ def classify_referrer(referring_site: str | None, landing_site: str | None) -> s
         return "Email"
     host = _host(referring_site)
     if not host:
-        return "Direct"
+        # NOT "Direct". This bucket is every order that arrived without a
+        # referrer, and that covers two opposite cases: someone who typed the
+        # URL, and someone whose referrer was simply never recorded. Labelling
+        # it "Direct" asserted the first, and a live agent read a store where
+        # no order carried a referrer as 99% direct traffic and advised buying
+        # ads to diversify. The label has to carry the ambiguity, because a
+        # share threshold cannot -- one genuine referral drops the rest below
+        # any cutoff while the ambiguity is unchanged.
+        return "Direct or unattributed"
     if host in _SEARCH:
         return "Organic search"
     if host in _SOCIAL:
