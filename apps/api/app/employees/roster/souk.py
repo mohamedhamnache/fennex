@@ -201,5 +201,19 @@ EMPLOYEE = _Souk(
     supported_outputs=["audit", "action-plan", "brief"],
 
     consumes=["intel.competitor_scan", "research.market_report"],
-    produces_for=["content.article", "campaign.strategy", "content.product_copy"],
+    # What the company does NEXT with a finding, offered as buttons after Souk
+    # answers. These are the executable follow-ups: an audit that ends in
+    # "your product copy is thin" should hand the writing to Dune and the
+    # product shot to Mirage, not leave the merchant to work out who to ask.
+    #
+    # Every slug must exist in the taxonomy: resolve_action() silently skips an
+    # unknown one, so "content.product_copy" -- which is not a real slug, the
+    # capability is content.product_description -- dropped the whole
+    # product-copy handoff without any error.
+    produces_for=[
+        "content.product_description",   # Dune rewrites copy that is not converting
+        "image.product_photography",     # Mirage shoots the product that has no image
+        "content.article",               # Dune writes the piece the demand justifies
+        "campaign.strategy",             # Sirocco builds the campaign around a winner
+    ],
 )

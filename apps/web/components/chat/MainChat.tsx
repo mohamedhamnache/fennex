@@ -873,9 +873,7 @@ function EmployeeBubble({
           {/* Raw while streaming, markdown once complete. A partial table or an
               unterminated code fence reflows on every token if parsed live,
               which reads as the answer rewriting itself. */}
-          {streaming
-            ? <span className="whitespace-pre-wrap">{content}</span>
-            : <Markdown text={content} />}
+          <Markdown text={content} streaming={streaming} />
           {streaming && (
             <span aria-hidden className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse-dot bg-primary" />
           )}

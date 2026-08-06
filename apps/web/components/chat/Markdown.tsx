@@ -11,8 +11,35 @@ import { ChatChart, parseChartSpec } from "./ChatChart";
  *  chat. This covers exactly that subset rather than pulling in a full parser
  *  and its dependency tree.
  */
-export function Markdown({ text }: { text: string }) {
-  return <div className="chat-md">{renderBlocks(text)}</div>;
+export function Markdown({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  // Formatted from the first token, never raw-then-formatted. Rendering plain
+  // text while streaming and swapping to markdown at the end made the reader
+  // watch a bad version turn into a good one -- "##" and "**" on screen, then
+  // a snap. Only the trailing INCOMPLETE construct is withheld: a half-typed
+  // table row or an unterminated ``` fence would otherwise reflow on every
+  // token, or swallow the rest of the answer into a code block.
+  return <div className="chat-md">{renderBlocks(streaming ? trimPartial(text) : text)}</div>;
+}
+
+/** Drop the last block while it is still arriving. */
+function trimPartial(text: string): string {
+  const lines = (text || "").split("\n");
+  // An odd number of ``` fences means one is still open: hide from it onward,
+  // so a chart's JSON is never shown as raw text on its way in.
+  let open = -1;
+  let fences = 0;
+  lines.forEach((l, i) => {
+    if (l.trim().startsWith("```")) { fences += 1; if (fences % 2 === 1) open = i; }
+  });
+  if (fences % 2 === 1 && open >= 0) return lines.slice(0, open).join("\n");
+  // A table whose separator row has not arrived yet is not a table.
+  const last = lines[lines.length - 1]?.trim() ?? "";
+  if (last.startsWith("|") && lines.length >= 2) {
+    const prev = lines[lines.length - 2].trim();
+    if (prev.startsWith("|") && !/^\|[\s:|-]+\|?$/.test(last)) return lines.join("\n");
+    return lines.slice(0, -1).join("\n");
+  }
+  return text;
 }
 
 function renderBlocks(text: string) {
@@ -88,8 +115,9 @@ function renderBlocks(text: string) {
       i -= 1;
       out.push(
         <p key={`q-${out.length}`}
-           className="mb-2 rounded-lg border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs leading-relaxed text-foreground">
-          {inline(quote.join(" "))}
+           className="mb-3 flex gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-xs font-medium leading-relaxed text-foreground">
+          <span aria-hidden className="mt-0.5 h-4 w-0.5 shrink-0 rounded-full bg-primary" />
+          <span>{inline(quote.join(" "))}</span>
         </p>,
       );
       continue;
@@ -202,7 +230,22 @@ function inline(text: string): React.ReactNode {
       );
     }
     if (/^\*\*[^*]+\*\*$/.test(part) || /^__[^_]+__$/.test(part)) {
-      return <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
+      const value = part.slice(2, -2);
+      // A figure gets a chip; an emphasised word just gets weight. Highlighting
+      // every bold phrase would be the same as highlighting none.
+      const isFigure = /[\d]/.test(value) && value.length <= 24;
+      return (
+        <strong
+          key={i}
+          className={
+            isFigure
+              ? "rounded bg-primary/10 px-1 py-0.5 font-semibold tabular-nums text-primary"
+              : "font-semibold text-foreground"
+          }
+        >
+          {value}
+        </strong>
+      );
     }
     if (/^`[^`]+`$/.test(part)) {
       return (
