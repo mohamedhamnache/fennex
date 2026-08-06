@@ -272,13 +272,17 @@
       <span class="grp">Product</span>
       <a href="#pack">The Fennex Pack</a>
       <a href="#features">Features</a>
+      <a href="#direction">Direction &amp; business</a>
+      <a href="#credits">AI credits &amp; models</a>
       <a href="#compare">How it compares</a>
       <a href="#jasper">Fennex vs Jasper</a>
       <a href="#technologies">Technologies</a>
       <span class="grp">Run &amp; deploy</span>
       <a href="#local">Local development</a>
-      <a href="#deploy-vercel">Deploy · Vercel + Supabase</a>
-      <a href="#deploy-aws">Deploy · AWS</a>
+      <a href="#costs">Deployment &amp; cost</a>
+      <a href="#deploy-vercel">Deploy · Vercel + Railway</a>
+      <a href="#deploy-vercel-aws">Deploy · Vercel + AWS</a>
+      <a href="#deploy-aws">Deploy · Full AWS</a>
       <a href="#env">Environment reference</a>
     </nav>
   </aside>
@@ -369,7 +373,7 @@ fennex/
 
       <h3 class="col">System diagram</h3>
       <div class="diagram full">
-        <div class="layer"><div class="node web"><b>Next.js Web</b><small>App Router · TanStack Query</small></div></div>
+        <div class="layer"><div class="node web"><b>Next.js Web</b><small>App Router · TanStack Query</small></div><div class="node web"><b>Admin console</b><small>internal · separate app</small></div></div>
         <div class="arrow">▼ &nbsp; HTTPS · JWT · SSE streaming</div>
         <div class="layer">
           <div class="node api"><b>FastAPI</b><small>REST · async</small></div>
@@ -386,7 +390,7 @@ fennex/
         <div class="layer">
           <div class="node ext"><b>Anthropic / OpenAI</b><small>LLMs</small></div>
           <div class="node ext"><b>DataForSEO</b><small>SERP data</small></div>
-          <div class="node ext"><b>Replicate / rembg</b><small>image gen</small></div>
+          <div class="node ext"><b>Replicate / OpenAI</b><small>image gen &amp; edit</small></div>
           <div class="node ext"><b>Stripe</b><small>billing</small></div>
           <div class="node ext"><b>WordPress / Social</b><small>publishing</small></div>
         </div>
@@ -430,7 +434,7 @@ fennex/
       <div class="col">
         <p class="eyebrow">The product surface</p>
         <h2><span class="n">04</span> Features</h2>
-        <p class="sub">Grouped by domain. The Article Studio is the flagship — a full writing environment where Dune works beside you.</p>
+        <p class="sub">Grouped by domain. The Article Studio and the image editor are the two deepest surfaces; everything else feeds them.</p>
       </div>
 
       <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Article Studio &amp; content</h3>
@@ -458,12 +462,15 @@ fennex/
 
       <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Images &amp; social</h3>
       <div class="grid g3">
-        <div class="card"><h4>Image generation</h4><p>Create visuals with Replicate, background removal (rembg) and layer extraction, organised in folders &amp; collections.</p></div>
-        <div class="card"><h4>Mirage editing</h4><p>Natural-language image edits, chained operations and SEO scoring of visuals.</p></div>
-        <div class="card"><h4>Product shots &amp; banners</h4><p>Generate on-brand product photography and marketing banners.</p></div>
+        <div class="card"><h4>Image Studio</h4><p>Split-panel generation via <code>gpt-image-1</code> with a prompt assistant, style grid, batch runs and image-to-image, organised in folders &amp; collections.</p></div>
+        <div class="card"><h4>Mirage editing</h4><p>Natural-language edits planned into one or more operations. Chat history survives every version, and a mask-confirmation round trip carries a resume token so a stopped chain is never re-planned or re-billed.</p></div>
+        <div class="card"><h4>Rephrase &amp; attachments</h4><p>Rewrites a rough instruction into an operation-aware one. Attach an image by paste, drag or picker — it is read as either an insert or a reference, and the chosen reading is stated and correctable for free.</p></div>
+        <div class="card"><h4>AI operations</h4><p>Background removal and cutouts on BiRefNet, object removal, generative fill, upscaling, face restoration, relighting, product shadows and Convert to Canvas (Florence-2 OCR + detection).</p></div>
+        <div class="card"><h4>Automatic masking</h4><p>Region edits derive their own mask — prompted segmentation when a target is named, a BiRefNet cutout otherwise — and the highlighted region is confirmed before any paid edit runs on it.</p></div>
+        <div class="card"><h4>34 templates</h4><p>Ecommerce, social, blog and promo families built on twelve colourways and six grounds, with one-click palette swap and a distinctness, brand-neutrality and capability gate.</p></div>
+        <div class="card"><h4>Resolution-independent canvas</h4><p>Every layer field, including type metrics, is a percentage of the canvas — so a composition flattens at source size, 2x or a platform frame without relayout.</p></div>
+        <div class="card"><h4>Product shots &amp; banners</h4><p>On-brand product photography via flux-kontext-pro, marketing banners, and image-to-3D through trellis.</p></div>
         <div class="card"><h4>Social studio</h4><p>Platform-ready posts with real brand icons, aspect-ratio previews and a scheduling calendar.</p></div>
-        <div class="card"><h4>Brand kit &amp; voice</h4><p>Store brand colours and assets and clone a brand voice applied consistently across all generation.</p></div>
-        <div class="card"><h4>Image publishing &amp; scoring</h4><p>Score assets for quality and SEO, then push finished images to connected destinations.</p></div>
       </div>
 
       <h3 class="col"><svg class="h3ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>Platform</h3>
@@ -471,7 +478,10 @@ fennex/
         <div class="card"><h4>Campaigns &amp; autopilot</h4><p>Orchestrated multi-asset campaigns and a weekly autopilot plan.</p></div>
         <div class="card"><h4>Monitoring &amp; alerts</h4><p>Watchlists and an alerts inbox for ranking and market shifts.</p></div>
         <div class="card"><h4>A/B testing</h4><p>Experiment on titles and content variants.</p></div>
-        <div class="card"><h4>Billing</h4><p>Stripe subscriptions with usage limits and Starter / Pro / Agency tiers.</p></div>
+        <div class="card"><h4>Billing &amp; credits</h4><p>Stripe across five paid tiers, two metered credit buckets and per-operation accounting — see <a href="#credits">AI credits &amp; models</a>.</p></div>
+        <div class="card"><h4>Admin console</h4><p>A separate internal app for org and user administration, audit log, usage rollups and MRR/COGS reporting.</p></div>
+        <div class="card"><h4>Cost-first routing</h4><p>The model router picks on price as well as capability, and falls back across providers automatically.</p></div>
+        <div class="card"><h4>Guided onboarding</h4><p>A discovery-first flow that sets up the project, brand kit and first plan before the dashboard is ever shown.</p></div>
         <div class="card"><h4>Collaboration</h4><p>Organizations, projects, invites and roles.</p></div>
         <div class="card"><h4>i18n</h4><p>Full UI in English, French, Spanish, German, Portuguese and Arabic (RTL).</p></div>
         <div class="card"><h4>Content plans</h4><p>Multi-item plans and reusable templates.</p></div>
@@ -480,10 +490,173 @@ fennex/
     </section>
 
     <!-- COMPARISON -->
+    <!-- AI CREDITS & MODELS -->
+    <!-- DIRECTION & BUSINESS -->
+    <section id="direction">
+      <div class="col">
+        <p class="eyebrow">Where this is going</p>
+        <h2><span class="n">05</span> Direction &amp; business</h2>
+        <p class="sub">The north star, who it is for, how it makes money, and the sequence that gets there.</p>
+      </div>
+
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">North star:</span><span>An enterprise marketing operations platform fused with an AI SEO content studio — a <b>virtual agency of AI experts</b> that helps enterprises and individuals create content (text, image, and in time video), build their brand, and distribute it, all <b>guided by SEO and ranking</b>. The product proposes the right tools for each project and each persona.</span></div>
+
+      <p class="col"><b>The one-line strategy.</b> Tell Fennex your goal and who you are — it assembles the right expert agents and tools, produces content that ranks and converts, and publishes it where your audience is.</p>
+
+      <h3 class="col">The wedge</h3>
+      <p class="col">Fennex sits between two established markets: Jasper-style marketing operations and Surfer/Semrush-style SEO. The wedge is combining them with <b>honest, real-data grounding</b> — scores computed from live SERP and Search Console data rather than asserted by a model — and an <b>agent team that executes the work</b> rather than only advising. See <a href="#compare">How it compares</a> and <a href="#jasper">Fennex vs Jasper</a> for the detail.</p>
+
+      <h3 class="col">Personas and their squads</h3>
+      <p class="col">The core UX promise is a persona-driven workspace: onboarding detects the persona and goal, then surfaces a tailored home, a recommended squad and pre-shaped workflows.</p>
+      <table class="tbl col">
+        <tr><th>Persona</th><th>Primary goal</th><th>Squad</th><th>Signature tools</th><th>North-star metric</th></tr>
+        <tr><td><b>Creator / influencer</b></td><td>Grow audience with great content</td><td>Sirocco · Mirage · Dune</td><td>Image studio, trends, social studio &amp; calendar</td><td>Reach &amp; engagement per post</td></tr>
+        <tr><td><b>E-commerce seller</b></td><td>Product content that sells and ranks</td><td>Mirage · Dune · Zerda</td><td>Store sync, product-image studio, SEO descriptions</td><td>Product-page conversion &amp; organic traffic</td></tr>
+        <tr><td><b>Freelancer / agency</b></td><td>Win and service clients</td><td>Zerda · Dune · Nomad</td><td>Audits, outreach, multi-project workspaces</td><td>Clients served per hour</td></tr>
+        <tr><td><b>Enterprise</b></td><td>Brand governance at volume</td><td>The full Pack</td><td>Brand voice, approvals, GEO, reporting</td><td>Share of AI and search answers</td></tr>
+      </table>
+
+      <h3 class="col">How it makes money</h3>
+      <div class="grid g2 col">
+        <div class="card"><h4>Subscription</h4><p>Five paid tiers from $29 to $799, plus custom enterprise. Each carries plan limits on projects, articles, images, social posts, keywords, seats, audits and backlinks.</p></div>
+        <div class="card"><h4>Metered resale</h4><p>Fennex buys supplier capacity and resells it as credits at <b>$0.00105 of cost per credit</b>, holding roughly <b>80–82% gross margin</b> on allowance even if a customer consumes all of it. Full detail in <a href="#credits">AI credits &amp; models</a>.</p></div>
+      </div>
+      <p class="col">The margin depends on two disciplines the codebase enforces rather than assumes: every paid supplier call is metered — asserted at startup and in CI — and pricing floors bill cheap operations as operations rather than at cost. A single unmetered call path silently converts revenue into supplier spend, which is why the audit exists.</p>
+
+      <h3 class="col">The roadmap</h3>
+      <p class="col">Eight phases, sequenced by dependency and return rather than by appetite.</p>
+      <table class="tbl col">
+        <tr><th>Phase</th><th>What it delivers</th><th>Size</th></tr>
+        <tr><td>1 · Persona-guided platform</td><td>Onboarding detects persona and goal; integration hub</td><td>L</td></tr>
+        <tr><td>2 · E-commerce vertical</td><td>Shopify and WooCommerce as first-class surfaces</td><td>L</td></tr>
+        <tr><td>3 · Social distribution</td><td>Real OAuth publishing and the influencer studio</td><td>M/L</td></tr>
+        <tr><td>4 · Freelancer vertical</td><td>Outreach, audits-as-deliverables, client workspaces</td><td>M</td></tr>
+        <tr><td>5 · The virtual agency</td><td>Orchestration that makes the Pack feel like a team</td><td>XL</td></tr>
+        <tr><td>6 · Video &amp; multi-format</td><td>Beyond text and image</td><td>XL</td></tr>
+        <tr><td>7 · GEO &amp; brand governance</td><td>Ranking inside AI answers; enterprise pull</td><td>L</td></tr>
+        <tr><td>8 · Enterprise &amp; ecosystem</td><td>Procurement, compliance, third-party surface</td><td>L/XL</td></tr>
+      </table>
+
+      <div class="note warn col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Honest status:</span><span>Phases are a plan, not a shipped state. Social <b>posts</b> are live but real OAuth publishing is still pending; personas exist in the data model with per-agent fit, and the tailored experience is only partly wired. Everything in <a href="#features">Features</a> is built and running today — the roadmap above is what is not.</span></div>
+    </section>
+
+    <section id="credits">
+      <div class="col">
+        <p class="eyebrow">Unit economics</p>
+        <h2><span class="n">06</span> AI credits &amp; models</h2>
+        <p class="sub">Fennex buys supplier capacity and resells it as credits. Every figure below is read from <code>credits.py</code> and the <code>cost_rates</code> table.</p>
+      </div>
+
+      <div class="grid g2 col">
+        <div class="card"><h4>AI credits</h4><p>LLM calls, image generation and image edits. Priced from real supplier cost at <b>1 credit = $0.00105</b> (<code>CREDIT_MICROS = 1_050</code> micro-dollars).</p></div>
+        <div class="card"><h4>SEO credits</h4><p>DataForSEO tasks, counted per task and weighted per type. A separate bucket — the two are deliberately not interchangeable.</p></div>
+      </div>
+
+      <div class="note ok col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg><span class="b">The invariant that protects margin reporting:</span><span><code>cost_micros</code> always holds the <b>true, unfloored supplier cost</b>, because COGS and margin dashboards read it. Floors and markups live only in the billed counter. A markup must never masquerade as cost.</span></div>
+
+      <h3 class="col">Pricing floors</h3>
+      <p class="col">Some operations cost less to serve than they are worth to sell. A run that cost zero still bills zero — an unpriced model is never silently floored up.</p>
+      <table class="tbl col">
+        <tr><th>Floor</th><th>Credits</th><th>Applies to</th></tr>
+        <tr><td><code>MIN_REPLICATE_CREDITS</code></td><td>10</td><td>Every Replicate prediction that cost money</td></tr>
+        <tr><td><code>FEATURE_MIN_CREDITS["improve_prompt"]</code></td><td>10</td><td>The Mirage rephrase control</td></tr>
+      </table>
+
+      <h3 class="col">Plans &amp; gross margin</h3>
+      <table class="tbl col">
+        <tr><th>Plan</th><th>Price</th><th>AI credits</th><th>SEO credits</th><th>Supplier cost</th><th>Margin</th></tr>
+        <tr><td>Free</td><td>$0</td><td>200</td><td>100</td><td>$0.21</td><td>—</td></tr>
+        <tr><td>Starter</td><td>$29</td><td>5,000</td><td>1,500</td><td>$5.25</td><td>82%</td></tr>
+        <tr><td>Pro</td><td>$99</td><td>18,000</td><td>7,500</td><td>$18.90</td><td>81%</td></tr>
+        <tr><td>Agency</td><td>$299</td><td>55,000</td><td>20,000</td><td>$57.75</td><td>81%</td></tr>
+        <tr><td>Scale</td><td>$799</td><td>150,000</td><td>60,000</td><td>$157.50</td><td>80%</td></tr>
+        <tr><td>Enterprise</td><td>custom</td><td>500,000</td><td>250,000</td><td>$525.00</td><td>—</td></tr>
+      </table>
+      <p class="col">Those margins are worst-case: they assume every customer burns their whole allowance, and ignore that the floors bill many operations <em>above</em> cost.</p>
+
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">Decided, not a bug:</span><span>Credits reset on the <b>calendar 1st</b>, not the Stripe anniversary, so a mid-month subscriber receives a full allowance immediately. Reviewed and accepted 2 Aug 2026.</span></div>
+
+      <h3 class="col">SEO credit weights</h3>
+      <table class="tbl col">
+        <tr><th>Unit</th><th>Credits</th><th>Unit</th><th>Credits</th></tr>
+        <tr><td>serp</td><td>2</td><td>audit</td><td>10</td></tr>
+        <tr><td>rank_check</td><td>2</td><td>keyword_ideas</td><td>15</td></tr>
+        <tr><td>backlinks</td><td>5</td><td>keyword_analysis</td><td>1</td></tr>
+      </table>
+
+      <h3 class="col">Language &amp; embedding models</h3>
+      <p class="col">Rates are micro-dollars per token, exactly as stored. Batch pricing is seeded at <b>50% off</b> for the OpenAI and Anthropic models, modelled as its own unit so a discount change stays a data change.</p>
+      <table class="tbl col">
+        <tr><th>Provider</th><th>Model</th><th>Input</th><th>Output</th><th>Cache read</th><th>Cache write</th></tr>
+        <tr><td>anthropic</td><td><code>claude-haiku-4-5-20251001</code></td><td>1.0</td><td>5.0</td><td>0.1</td><td>1.25</td></tr>
+        <tr><td>anthropic</td><td><code>claude-sonnet-5</code></td><td>3.0</td><td>15.0</td><td>0.3</td><td>3.75</td></tr>
+        <tr><td>anthropic</td><td><code>claude-opus-5</code></td><td>5.0</td><td>25.0</td><td>0.5</td><td>6.25</td></tr>
+        <tr><td>anthropic</td><td><code>claude-opus-4-8</code></td><td>5.0</td><td>25.0</td><td>0.5</td><td>—</td></tr>
+        <tr><td>openai</td><td><code>gpt-4o-mini</code></td><td>0.15</td><td>0.6</td><td>0.075</td><td>0.1875</td></tr>
+        <tr><td>openai</td><td><code>gpt-4o</code></td><td>2.5</td><td>10.0</td><td>1.25</td><td>3.125</td></tr>
+        <tr><td>google</td><td><code>gemini-2.5-flash</code></td><td>0.3</td><td>2.5</td><td>—</td><td>—</td></tr>
+        <tr><td>google</td><td><code>gemini-2.5-flash-lite</code></td><td>0.1</td><td>0.4</td><td>—</td><td>—</td></tr>
+        <tr><td>openai</td><td><code>text-embedding-3-small</code></td><td>0.02</td><td>—</td><td>—</td><td>—</td></tr>
+      </table>
+
+      <h3 class="col">Image &amp; edit models (Replicate)</h3>
+      <table class="tbl col">
+        <tr><th>Model</th><th>Unit</th><th>Rate</th><th>Used for</th></tr>
+        <tr><td><code>google/nano-banana</code></td><td>image</td><td>39,000</td><td>Instruction-based editing</td></tr>
+        <tr><td><code>black-forest-labs/flux-kontext-pro</code></td><td>run</td><td>40,000</td><td>Product scene generation</td></tr>
+        <tr><td><code>black-forest-labs/flux-fill-pro</code></td><td>run</td><td>50,000</td><td>Generative fill</td></tr>
+        <tr><td><code>firtoz/trellis</code></td><td>run</td><td>35,000</td><td>Image to 3D</td></tr>
+        <tr><td><code>zsxkib/ic-light</code></td><td>run</td><td>21,000</td><td>Relighting</td></tr>
+        <tr><td><code>stability-ai/stable-diffusion-inpainting</code></td><td>run</td><td>7,000</td><td>Inpainting</td></tr>
+        <tr><td><code>nightmareai/real-esrgan</code></td><td>run</td><td>5,000</td><td>Upscaling</td></tr>
+        <tr><td><code>sczhou/codeformer</code></td><td>run</td><td>5,000</td><td>Face restoration</td></tr>
+        <tr><td><code>men1scus/birefnet</code></td><td>second</td><td>1,400</td><td>Background removal, cutouts, masks</td></tr>
+        <tr><td><code>851-labs/background-remover</code></td><td>second</td><td>1,400</td><td>Fast template cutout</td></tr>
+        <tr><td><code>bria/product-shadow</code></td><td>second</td><td>1,400</td><td>Product shadows</td></tr>
+        <tr><td><code>tmappdev/lang-segment-anything</code></td><td>second</td><td>1,400</td><td>Prompted segmentation</td></tr>
+        <tr><td><code>lucataco/florence-2-large</code></td><td>second</td><td>975</td><td>OCR &amp; object detection</td></tr>
+        <tr><td><code>allenhooo/lama</code></td><td>second</td><td>225</td><td>Inpainting &amp; background fill</td></tr>
+      </table>
+      <p class="col">Image generation itself uses OpenAI <code>gpt-image-1</code>, priced from the cost the image service computes per size and quality rather than from a rate row.</p>
+
+      <div class="note ok col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg><span class="b">remove.bg was retired:</span><span>It billed $0.20 flat — <b>191 credits</b> — per call, and its <code>size:"auto"</code> default silently returned quarter-megapixel images. Measured against real photographs, BiRefNet gives an equivalent matte (coverage within 0.1 percentage points) at full resolution for <b>10 credits</b>: about 75x cheaper, and sharper.</span></div>
+
+      <h3 class="col">What operations cost</h3>
+      <table class="tbl col">
+        <tr><th>Operation</th><th>Credits</th><th>Why</th></tr>
+        <tr><td>Background removal / cutout</td><td>10</td><td>Replicate floor</td></tr>
+        <tr><td>Auto-derived mask</td><td>10</td><td>Replicate floor</td></tr>
+        <tr><td>Prompt rephrase</td><td>10</td><td>Feature floor</td></tr>
+        <tr><td>Read an attached image</td><td>~3</td><td>One vision call</td></tr>
+        <tr><td>Instruction edit</td><td>~34</td><td>nano-banana</td></tr>
+        <tr><td>Image to 3D</td><td>~34</td><td>trellis</td></tr>
+        <tr><td>Product scene</td><td>~39</td><td>flux-kontext-pro</td></tr>
+        <tr><td>Convert to Canvas</td><td>~40</td><td>Florence-2 x2 + BiRefNet + LaMa</td></tr>
+        <tr><td>SERP lookup</td><td>2 SEO</td><td>Weighted per task</td></tr>
+      </table>
+      <p class="col">A masked edit costs the <em>sum</em> of its supplier calls — deriving the mask, then the edit itself.</p>
+
+      <h3 class="col">How metering works</h3>
+      <p class="col">Almost nothing meters at the call site. Three chokepoints cover nearly everything: <code>call_llm</code> for non-streamed calls, <code>stream_llm</code> for streamed ones (metered in a <code>finally</code>, so an abandoned stream still bills what it consumed), and <code>_replicate_run</code> for every prediction. Attribution is ambient — resolving an org's provider keys records that org as the metering target.</p>
+
+      <div class="note warn col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Two traps that have already cost real money:</span><span>Ambient metering <b>silently no-ops when no org is set</b> — a path only truly meters if it resolved keys through <code>get_org_llm_keys</code> or ran under an authenticated request. And <code>require_credits("ai")</code> only <b>checks</b> a balance; it deducts nothing, so its presence on an endpoint is not evidence that the endpoint bills.</span></div>
+
+      <p class="col">A startup and CI assertion walks the source and reports any function reaching a supplier host or SDK call that is not on an allowlist, where each entry must state where the money is recorded. It keys on the outbound call rather than the module, because past leaks sat in files whose other functions metered correctly. <b>Adding a supplier call without metering it fails the test suite.</b></p>
+
+      <h3 class="col">Adding or swapping a model</h3>
+      <ol class="steps col">
+        <li><h4>Verify the real price against the live API</h4><p>Never guess a rate. An unrated model prices to <b>zero</b>: it bills the customer nothing while the supplier bills you.</p></li>
+        <li><h4>Seed the rate in the same commit</h4><p>A hand-written Alembic migration adding the <code>cost_rates</code> row, shipped with the code that introduces the model.</p></li>
+        <li><h4>Prefer a per-second row</h4><p>The meter takes the per-second branch whenever Replicate reports <code>predict_time</code>, which makes a per-run row unreachable dead code.</p></li>
+        <li><h4>Delete rates for models no longer used</h4><p>A rate for a retired supplier can only mislead a future reader about what is in service.</p></li>
+        <li><h4>Run the full test suite</h4><p>Credit literals are asserted across router and worker tests, so a reprice needs all of pytest, not the touched file.</p></li>
+      </ol>
+    </section>
+
     <section id="compare">
       <div class="col">
         <p class="eyebrow">Positioning</p>
-        <h2><span class="n">05</span> How Fennex compares</h2>
+        <h2><span class="n">07</span> How Fennex compares</h2>
         <p class="sub">A balanced, grouped feature comparison &mdash; including where Fennex leads <em>and</em> where dedicated tools still do more. Marks reflect each product's typical, publicly-described feature set.</p>
       </div>
 
@@ -567,7 +740,7 @@ fennex/
     <section id="jasper">
       <div class="col">
         <p class="eyebrow">Head to head</p>
-        <h2><span class="n">06</span> Fennex vs Jasper &mdash; in depth</h2>
+        <h2><span class="n">08</span> Fennex vs Jasper &mdash; in depth</h2>
         <p class="sub">Jasper (2026) is a mature <b>enterprise marketing platform</b>: Jasper&nbsp;IQ brand intelligence, 100+ agents, content pipelines, GEO/AI-search optimization and a 1000+ integration ecosystem. Fennex is an <b>all-in-one AI SEO &amp; content studio</b> that owns the SEO stack natively and hands you control. Here is an honest, feature-by-feature read.</p>
       </div>
 
@@ -679,7 +852,7 @@ fennex/
     <section id="technologies">
       <div class="col">
         <p class="eyebrow">The stack</p>
-        <h2><span class="n">07</span> Technologies</h2>
+        <h2><span class="n">09</span> Technologies</h2>
         <p class="sub">Modern, typed and async end to end.</p>
       </div>
 
@@ -712,7 +885,7 @@ fennex/
       <div class="chips col">
         <span class="chip"><span class="dot"></span>Anthropic Claude</span><span class="chip"><span class="dot"></span>OpenAI</span>
         <span class="chip"><span class="dot"></span>Google Gemini</span><span class="chip"><span class="dot"></span>Replicate</span>
-        <span class="chip"><span class="dot"></span>rembg / onnxruntime · Pillow</span><span class="chip"><span class="dot"></span>DataForSEO</span>
+        <span class="chip"><span class="dot"></span>Pillow · BiRefNet · Florence-2</span><span class="chip"><span class="dot"></span>DataForSEO</span>
         <span class="chip"><span class="dot"></span>Google Search Console</span><span class="chip"><span class="dot"></span>Stripe</span>
         <span class="chip"><span class="dot"></span>WordPress REST</span>
       </div>
@@ -722,7 +895,7 @@ fennex/
     <section id="local">
       <div class="col">
         <p class="eyebrow">Get running</p>
-        <h2><span class="n">08</span> Local development</h2>
+        <h2><span class="n">10</span> Local development</h2>
         <p class="sub">The full stack runs in Docker in a couple of commands.</p>
       </div>
 
@@ -757,11 +930,56 @@ docker compose exec web npx tsc --noEmit</pre></div>
     </section>
 
     <!-- DEPLOY VERCEL -->
+    <!-- DEPLOYMENT & COST -->
+    <section id="costs">
+      <div class="col">
+        <p class="eyebrow">Choosing a host</p>
+        <h2><span class="n">11</span> Deployment &amp; cost</h2>
+        <p class="sub">Three ways to run Fennex. Fixed infrastructure only — supplier spend is identical on all three, and larger.</p>
+      </div>
+
+      <div class="grid g3 col">
+        <div class="card"><h4>Vercel + Railway</h4><p><b style="font-size:22px;color:var(--brand-2)">$67–107</b> / mo · about 2 hours.<br>The recommended start. Nothing about it is a dead end.</p></div>
+        <div class="card"><h4>Vercel + AWS</h4><p><b style="font-size:22px;color:var(--brand-2)">$205–230</b> / mo · about a day.<br>Multi-AZ, point-in-time recovery, real autoscaling.</p></div>
+        <div class="card"><h4>Full AWS</h4><p><b style="font-size:22px;color:var(--brand-2)">$245–270</b> / mo · one to two days.<br>One vendor and one VPC. Dearest at every volume.</p></div>
+      </div>
+
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">Infrastructure is not the cost — suppliers are:</span><span>At 100 customers the spread between the cheapest and dearest host is about <b>12% of the total bill</b>. Choose on reliability and operational fit, not on the infrastructure line.</span></div>
+
+      <h3 class="col">Monthly total, including supplier spend</h3>
+      <table class="tbl col">
+        <tr><th>Customers</th><th>Vercel + Railway</th><th>Vercel + AWS</th><th>Full AWS</th><th>Supplier spend</th></tr>
+        <tr><td>20</td><td>$140</td><td>$285</td><td>$335</td><td>~$105</td></tr>
+        <tr><td>100</td><td>$1,360</td><td>$1,485</td><td>$1,530</td><td>~$1,270</td></tr>
+        <tr><td>500</td><td>$6,750</td><td>$6,900</td><td>$7,000</td><td>~$6,500</td></tr>
+      </table>
+      <p class="col">Assumes every customer consumes their whole allowance. Revenue at 100 customers on a mixed plan distribution is roughly $6,700/month.</p>
+
+      <h3 class="col">Two levers that matter more than the host</h3>
+      <div class="grid g2 col">
+        <div class="card"><h4>Image egress</h4><p>Cloudflare R2 charges nothing for egress; S3 charges $0.09/GB. This product serves the same generated images repeatedly — always put a CDN in front of media.</p></div>
+        <div class="card"><h4>Model routing</h4><p>One nano-banana edit is about 34 credits; a BiRefNet cutout is 10. Which model an operation routes to moves the bill far more than instance size.</p></div>
+      </div>
+
+      <h3 class="col">What every option needs</h3>
+      <table class="tbl col">
+        <tr><th>Requirement</th><th>Why</th></tr>
+        <tr><td>Postgres with <code>pgvector</code></td><td>Knowledge search stores embeddings as vectors</td></tr>
+        <tr><td>Redis</td><td>arq job queue</td></tr>
+        <tr><td>S3-compatible storage</td><td>Generated images and edits</td></tr>
+        <tr><td>A worker process</td><td>Articles, crawls and audits — not just the API</td></tr>
+        <tr><td>A separate migration step</td><td>Two API replicas means concurrent migrations race</td></tr>
+        <tr><td><code>ENCRYPTION_KEY</code> backed up off-platform</td><td>It encrypts tenant credentials; losing it loses them</td></tr>
+      </table>
+
+      <div class="note warn col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Estimates, not quotes:</span><span>Figures assume us-east-1, on-demand pricing and roughly 100 customers. Cloud and model prices change frequently — verify against current provider pricing before committing.</span></div>
+    </section>
+
     <section id="deploy-vercel">
       <div class="col">
-        <p class="eyebrow">Go live · path A</p>
-        <h2><span class="n">09</span> Deploy · Vercel + Supabase</h2>
-        <p class="sub">The fastest path to production. Vercel hosts the frontend, Supabase provides Postgres, and a container host runs the Python API + worker.</p>
+        <p class="eyebrow">Go live · path A · from $67/mo</p>
+        <h2><span class="n">12</span> Deploy · Vercel + Railway</h2>
+        <p class="sub">The fastest path to production, and where most deployments should stay until traffic justifies moving. About two hours end to end.</p>
       </div>
 
       <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">Honest architecture:</span><span>Vercel is ideal for the <b>Next.js frontend</b> and Supabase is a managed <b>Postgres</b> (with pgvector). Fennex's backend is a long-running FastAPI service <b>plus an arq worker and Redis</b> — those don't fit Vercel's serverless model, so run the API on a container host (<b>Render, Railway or Fly.io</b>) and use <b>Upstash</b> for Redis. This split is production-grade and inexpensive.</span></div>
@@ -788,20 +1006,71 @@ docker compose exec web npx tsc --noEmit</pre></div>
         </li>
         <li><h4>Set backend env vars</h4><p>On both services set <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>SECRET_KEY</code>, <code>ENCRYPTION_KEY</code>, S3 credentials and Stripe keys — see the <a href="#env">Environment reference</a>.</p></li>
         <li><h4>Deploy the frontend to Vercel</h4><p>Import the repo, set the root to <code>apps/web</code>, framework <b>Next.js</b>, install command <code>pnpm install</code>. Add:</p>
-          <div class="code"><div class="bar"><span>Vercel · Environment Variables</span><button class="cp">Copy</button></div><pre>NEXT_PUBLIC_API_URL = https://your-api.onrender.com
-NEXTAUTH_URL        = https://your-app.vercel.app</pre></div>
+          <div class="code"><div class="bar"><span>Vercel · Environment Variables</span><button class="cp">Copy</button></div><pre>NEXT_PUBLIC_API_URL = https://your-api.up.railway.app</pre></div>
           <div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Monorepo:</span><span>In Vercel project settings set the <b>Root Directory</b> to <code>apps/web</code> so the workspace packages resolve.</span></div>
         </li>
         <li><h4>Wire CORS &amp; go live</h4><p>Add the Vercel domain to the API's allowed origins, then create an org, add an AI key in Settings and generate your first article.</p></li>
       </ol>
     </section>
 
+    <!-- DEPLOY VERCEL + AWS -->
+    <section id="deploy-vercel-aws">
+      <div class="col">
+        <p class="eyebrow">Go live · path B · from $205/mo</p>
+        <h2><span class="n">13</span> Deploy · Vercel + AWS</h2>
+        <p class="sub">Vercel keeps the frontend simple; AWS gives the backend multi-AZ, real autoscaling and S3 beside the compute that writes it. Roughly a day.</p>
+      </div>
+
+      <div class="diagram full">
+        <div class="layer"><div class="node web"><b>Vercel</b><small>Next.js web</small></div></div>
+        <div class="arrow">▼ NEXT_PUBLIC_API_URL</div>
+        <div class="layer"><div class="node api"><b>ALB → ECS Fargate</b><small>api, 2 tasks</small></div><div class="node api"><b>ECS Fargate</b><small>arq worker</small></div><div class="node api"><b>ECS Fargate</b><small>crawler</small></div></div>
+        <div class="arrow">▼</div>
+        <div class="layer"><div class="node data"><b>RDS Postgres 16</b><small>+ pgvector</small></div><div class="node data"><b>ElastiCache</b><small>Redis 7</small></div><div class="node ext"><b>S3 + CloudFront</b><small>media</small></div></div>
+      </div>
+
+      <h3 class="col">Step by step</h3>
+      <ol class="steps col">
+        <li><h4>Network</h4><p>A VPC across two AZs with public and private subnets and one NAT gateway. ECS tasks and RDS private; the load balancer public.</p></li>
+        <li><h4>RDS PostgreSQL 16</h4><p>Private subnets, not publicly accessible, automated backups on. pgvector ships with 15.5+ and 16.x.</p>
+          <div class="code"><div class="bar"><span>psql · once</span><button class="cp">Copy</button></div><pre>CREATE EXTENSION IF NOT EXISTS vector;</pre></div>
+        </li>
+        <li><h4>ElastiCache Redis 7</h4><p>Cluster mode disabled, one node to start, private subnets.</p></li>
+        <li><h4>S3 with CloudFront in front</h4><p>Not optional at volume: S3 egress is $0.09/GB and this product serves the same generated images many times over.</p></li>
+        <li><h4>Push images to ECR</h4><p>The API and worker share one image; only the command differs.</p></li>
+        <li><h4>Secrets Manager</h4><p>Every key referenced individually from the task definition. Back up <code>ENCRYPTION_KEY</code> outside AWS.</p></li>
+        <li><h4>ECS services</h4><p>Migrations as a one-off task, <b>never</b> in the API start command — with two API tasks, concurrent migrations race. API behind the ALB with a <code>/health</code> check; worker and crawler without load balancers.</p>
+          <div class="code"><div class="bar"><span>worker · task command</span><button class="cp">Copy</button></div><pre>python -m arq app.workers.worker.WorkerSettings</pre></div>
+          <div class="code"><div class="bar"><span>migrations · one-off task</span><button class="cp">Copy</button></div><pre>alembic upgrade head</pre></div>
+        </li>
+        <li><h4>Frontend &amp; webhook</h4><p>Vercel with root <code>apps/web</code> and <code>NEXT_PUBLIC_API_URL</code> set to the ALB domain; then point the Stripe webhook at <code>/api/v1/webhooks/stripe</code> and set <code>CORS_ORIGINS</code>.</p></li>
+      </ol>
+
+      <h3 class="col">Fixed cost</h3>
+      <table class="tbl col">
+        <tr><th>Item</th><th>Spec</th><th>$/mo</th></tr>
+        <tr><td>Fargate — api</td><td>2 × 0.5 vCPU / 1 GB</td><td>36</td></tr>
+        <tr><td>Fargate — worker</td><td>1 × 0.5 vCPU / 1 GB</td><td>18</td></tr>
+        <tr><td>Fargate — crawler</td><td>1 × 0.25 vCPU</td><td>9</td></tr>
+        <tr><td>RDS db.t4g.small</td><td>single-AZ, 20 GB</td><td>25</td></tr>
+        <tr><td>ElastiCache t4g.micro</td><td>1 node</td><td>12</td></tr>
+        <tr><td>Load balancer</td><td>+ LCU</td><td>18–25</td></tr>
+        <tr><td>NAT gateway</td><td>1</td><td>35–45</td></tr>
+        <tr><td>CloudFront + S3</td><td>200 GB out</td><td>19</td></tr>
+        <tr><td>Secrets, logs, Vercel</td><td>—</td><td>31</td></tr>
+        <tr><td><b>Total</b></td><td></td><td><b>205–230</b></td></tr>
+      </table>
+      <p class="col">Multi-AZ RDS roughly doubles the database line; a second NAT gateway adds about $35. A one-year compute savings plan cuts Fargate 20–30%, an RDS reservation 30–40%.</p>
+
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">At low volume this is dearer than Railway:</span><span>The load balancer and NAT gateway cost the same whether you have five customers or five hundred. This path wins on reliability and scale, not on price.</span></div>
+    </section>
+
     <!-- DEPLOY AWS -->
     <section id="deploy-aws">
       <div class="col">
-        <p class="eyebrow">Go live · path B</p>
-        <h2><span class="n">10</span> Deploy · AWS</h2>
-        <p class="sub">A fully-managed, scalable deployment on AWS using containers.</p>
+        <p class="eyebrow">Go live · path C · from $245/mo</p>
+        <h2><span class="n">14</span> Deploy · Full AWS</h2>
+        <p class="sub">Everything in one account and one VPC, frontend included. Choose it for a reason that is not cost — it is the most expensive option at every volume.</p>
       </div>
 
       <div class="diagram full">
@@ -821,7 +1090,8 @@ NEXTAUTH_URL        = https://your-app.vercel.app</pre></div>
         <tr><td>Crawler</td><td>ECS Fargate</td><td>From <code>services/crawler</code>.</td></tr>
         <tr><td>Database</td><td>RDS for PostgreSQL</td><td>Enable the <code>vector</code> extension.</td></tr>
         <tr><td>Cache / queue</td><td>ElastiCache for Redis</td><td>Used by arq and caching.</td></tr>
-        <tr><td>Object storage</td><td>S3</td><td>Generated images &amp; assets (boto3).</td></tr>
+        <tr><td>Object storage</td><td>S3</td><td>Generated images &amp; assets. <code>S3_ENDPOINT_URL</code> lets R2 or MinIO stand in.</td></tr>
+        <tr><td>Admin console</td><td>ECS Fargate <em>or</em> a second Vercel project</td><td>Internal staff app from <code>apps/admin</code>; restrict by IP or SSO.</td></tr>
         <tr><td>Secrets</td><td>Secrets Manager / SSM</td><td>Injected into ECS task definitions.</td></tr>
         <tr><td>Registry</td><td>ECR</td><td>Stores the built images.</td></tr>
       </table>
@@ -855,7 +1125,7 @@ docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest<
     <section id="env">
       <div class="col">
         <p class="eyebrow">Configuration</p>
-        <h2><span class="n">11</span> Environment reference</h2>
+        <h2><span class="n">15</span> Environment reference</h2>
         <p class="sub">Core variables. AI provider keys are added per-organization inside the app (encrypted), not as global env.</p>
       </div>
       <table class="tbl col">
@@ -865,13 +1135,20 @@ docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest<
         <tr><td><code>SECRET_KEY</code></td><td>JWT signing secret</td></tr>
         <tr><td><code>ALGORITHM</code> · <code>ACCESS_TOKEN_EXPIRE_MINUTES</code> · <code>REFRESH_TOKEN_EXPIRE_DAYS</code></td><td>JWT algorithm &amp; token lifetimes</td></tr>
         <tr><td><code>ENCRYPTION_KEY</code></td><td>AES key encrypting third-party credentials at rest</td></tr>
-        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td>Public API base URL used by the frontend</td></tr>
-        <tr><td><code>NEXTAUTH_URL</code> · <code>NEXTAUTH_SECRET</code></td><td>Frontend auth base URL &amp; secret</td></tr>
-        <tr><td><code>STRIPE_SECRET_KEY</code> · <code>STRIPE_WEBHOOK_SECRET</code></td><td>Billing &amp; webhook verification</td></tr>
-        <tr><td><code>STRIPE_PRICE_*</code> · <code>NEXT_PUBLIC_STRIPE_PRICE_*</code></td><td>Plan price IDs (Starter / Pro / Agency · monthly &amp; annual)</td></tr>
-        <tr><td>S3 credentials <em>(AWS_… / bucket)</em></td><td>Object storage for generated images &amp; assets</td></tr>
+        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td>Public API base URL used by the frontend — the only variable the web app needs</td></tr>
+        <tr><td><code>FRONTEND_URL</code> · <code>CORS_ORIGINS</code></td><td>Where the app is served, and which origins the API accepts</td></tr>
+        <tr><td><code>CRAWLER_SERVICE_URL</code></td><td>Internal address of the crawler service</td></tr>
+        <tr><td><code>STRIPE_SECRET_KEY</code> · <code>STRIPE_WEBHOOK_SECRET</code></td><td>Billing &amp; webhook verification (endpoint <code>/api/v1/webhooks/stripe</code>)</td></tr>
+        <tr><td><code>STRIPE_PRICE_*</code></td><td>Plan price IDs — Starter / Pro / Agency / Scale, monthly &amp; annual</td></tr>
+        <tr><td><code>S3_BUCKET</code> · <code>S3_REGION</code> · <code>S3_ACCESS_KEY</code> · <code>S3_SECRET_KEY</code> · <code>S3_ENDPOINT_URL</code></td><td>Object storage. The endpoint variable is what lets Cloudflare R2 or MinIO stand in for S3</td></tr>
+        <tr><td><code>OPENAI_API_KEY</code> · <code>ANTHROPIC_API_KEY</code> · <code>GOOGLE_API_KEY</code> · <code>REPLICATE_API_KEY</code></td><td>Platform-level AI keys, used when a tenant has not supplied their own</td></tr>
+        <tr><td><code>DATAFORSEO_LOGIN</code> · <code>DATAFORSEO_PASSWORD</code></td><td>SEO data provider — spends the SEO credit bucket</td></tr>
+        <tr><td><code>SENDGRID_API_KEY</code> · <code>FROM_EMAIL</code></td><td>Transactional email</td></tr>
+        <tr><td><code>PLATFORM_ADMIN_EMAILS</code> · <code>ADMIN_BOOTSTRAP_EMAIL</code> · <code>ADMIN_BOOTSTRAP_PASSWORD</code></td><td>Access to the internal admin console</td></tr>
+        <tr><td><code>GOOGLE_CLIENT_ID</code> · <code>LINKEDIN_CLIENT_ID</code> · <code>SHOPIFY_APP_CLIENT_ID</code> <em>(+ secrets &amp; redirect URIs)</em></td><td>OAuth integrations</td></tr>
       </table>
-      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">AI keys:</span><span>Anthropic / OpenAI / Google and DataForSEO keys are managed inside the app (Settings → API keys) per organization, so tenants can bring their own keys. The model router falls back across providers automatically.</span></div>
+      <div class="note warn col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Two that will bite:</span><span><code>DATABASE_URL</code> must use the <code>postgresql+asyncpg://</code> scheme — a plain <code>postgresql://</code> URL from a managed provider will not connect. And <b>losing <code>ENCRYPTION_KEY</code> makes every stored tenant credential unrecoverable</b>, so back it up somewhere other than the platform hosting it.</span></div>
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">AI keys:</span><span>Tenants may bring their own Anthropic / OpenAI / Google and DataForSEO keys in Settings → API keys, stored encrypted per organization; the platform keys above are the fallback. The router selects on cost as well as capability and falls back across providers automatically.</span></div>
     </section>
 
     <div class="foot">

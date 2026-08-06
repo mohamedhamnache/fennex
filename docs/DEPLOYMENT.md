@@ -1,5 +1,14 @@
 # Fennex — Deployment Guide
 
+> **Superseded.** This is the original free-tier-oriented guide (Supabase + Upstash). For
+> current step-by-step guides with cost estimates, see [docs/deploy/](./deploy/):
+> [Vercel + Railway](./deploy/vercel-railway.md) · [Vercel + AWS](./deploy/vercel-aws.md) ·
+> [Full AWS](./deploy/aws-full-stack.md).
+>
+> Kept because the Supabase/Upstash free-tier path is still the cheapest way to stand up a
+> staging environment.
+
+
 ## Architecture overview
 
 Fennex is a monorepo with four runtime components. Each deploys separately:
