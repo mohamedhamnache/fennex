@@ -21,10 +21,22 @@
 import type { Layer, ImageLayer } from "./EditCanvas";
 import { textBox } from "./scene/measure";
 
-/** Alpha below this is treated as "not there". Deliberately low: antialiased
- *  edges and soft shadows are still part of the object, and a high threshold
- *  would make thin strokes unclickable. */
-const OPAQUE_ALPHA = 24;
+/**
+ * Effective alpha below this is treated as "not there".
+ *
+ * EFFECTIVE, not the image's own: a layer's `opacity` is applied on top of its
+ * pixels, and reading only the pixels was the first version's mistake. Template
+ * grain is opaque feTurbulence noise carried at layer opacity 0.08-0.15, so by
+ * its own alpha it is solid and swallowed every click on the photograph beneath
+ * -- the exact symptom this module exists to fix, reintroduced one level down.
+ *
+ * A fifth of full strength is the line. Below it a layer is a wash or a texture
+ * and the thing under it is what the user is pointing at; above it the layer is
+ * content in its own right. Anything this rule makes unclickable on the canvas
+ * is still selectable from the Layers list, which is why the trade is safe in
+ * this direction and not the other.
+ */
+const OPAQUE_ALPHA = 51;
 
 /** Probes are sampled at low resolution -- this is a hit test, not a matte.
  *  256px keeps a full-canvas probe at 256KB and is far finer than a click. */
@@ -129,6 +141,12 @@ export function isOpaqueAt(
 ): boolean {
   const local = localPoint(layer, xPx, yPx, canvasW, canvasH);
   if (!local) return false;
+
+  // The layer's own opacity multiplies whatever its pixels say, so a
+  // near-invisible layer cannot capture a click it does not visibly own.
+  const opacity = layer.opacity ?? 1;
+  if (opacity * 255 < OPAQUE_ALPHA) return false;
+
   // Text already has a tight box; there is nothing transparent to see through.
   if (layer.type !== "image") return true;
   const url = (layer as ImageLayer).imageUrl;
@@ -137,7 +155,7 @@ export function isOpaqueAt(
   if (!alpha || !size) return true;
   const px = Math.min(size.w - 1, Math.max(0, Math.floor(local.u * size.w)));
   const py = Math.min(size.h - 1, Math.max(0, Math.floor(local.v * size.h)));
-  return alpha[py * size.w + px] >= OPAQUE_ALPHA;
+  return alpha[py * size.w + px] * opacity >= OPAQUE_ALPHA;
 }
 
 /**
