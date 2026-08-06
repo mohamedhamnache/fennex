@@ -41,16 +41,16 @@ def test_credit_allowance_falls_back_to_free():
 
 def test_seo_credits_weighted_by_unit():
     # a SERP lookup is the reference SEO operation at 2 credits
-    assert seo_credits_for("serp", 1) == 2
-    assert seo_credits_for("serp", 3) == 6
+    assert seo_credits_for("serp", 1) == 3    # 3 credits per 10-result page
+    assert seo_credits_for("serp", 3) == 9    # 3 pages
     # Pinned to literals, not SEO_CREDIT_WEIGHT[...]: a self-referential
     # assertion passes at any weight and cannot detect a reprice that misses
     # a call site.
     assert seo_credits_for("audit", 2) == 20
     assert seo_credits_for("audit", 1) == 10
     assert seo_credits_for("backlinks", 1) == 5
-    assert seo_credits_for("keyword_ideas", 1) == 20
-    assert seo_credits_for("rank_check", 1) == 2
+    assert seo_credits_for("keyword_ideas", 1) == 30
+    assert seo_credits_for("rank_check", 1) == 3   # same per-page basis as serp
     # unknown or missing unit falls back to 1x
     assert seo_credits_for("something_new", 4) == 4
     assert seo_credits_for(None, 5) == 5
@@ -203,7 +203,7 @@ def test_plan_cogs_stays_within_margin_target():
     # CREDIT_MICROS) while every other unit billed 1.4x-2.1x. Repriced
     # 2026-08-06; the assertion tracks the constant so a future reprice that
     # drops a unit back under cost fails here.
-    assert abs(worst_seo_cost_per_credit - 0.02 / 20) < 1e-9
+    assert abs(worst_seo_cost_per_credit - 0.02 / 30) < 1e-9
 
     # No SEO unit may be sold below what it costs to buy.
     for unit, cost in SEO_UNIT_COST_USD.items():

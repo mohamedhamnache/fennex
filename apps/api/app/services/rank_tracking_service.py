@@ -60,15 +60,30 @@ def _fmt_pos(v: float | None) -> str:
     return f"{v:.1f}" if v is not None else "not in top 100"
 
 
+# Scheduled tracking buys two pages, not ten. DataForSEO bills per 10-result
+# page, so depth 100 costs 5x depth 20 -- and the cron runs against every
+# tracked keyword on every project, weekly, whether the customer logs in or
+# not. At the Scale cap that is the difference between ~$693/month and
+# ~$3,464/month against a $799 plan.
+#
+# The trade is real and deliberate: a keyword ranking outside the top 20 now
+# reports as unranked on the scheduled pass. A user-initiated refresh still
+# asks for the full 100, so a deep position is always one click away -- the
+# depth is only reduced where nobody asked for the result.
+CRON_SERP_DEPTH = 20
+USER_SERP_DEPTH = 100
+
+
 async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession,
-                           bill_credits: bool = True) -> SerpSnapshot | None:
+                           bill_credits: bool = True,
+                           depth: int = USER_SERP_DEPTH) -> SerpSnapshot | None:
     today = date.today()
     existing = (await db.execute(select(SerpSnapshot).where(
         SerpSnapshot.tracked_keyword_id == tk.id, SerpSnapshot.date == today))).scalars().first()
     if existing is not None:
         return None
     res = await serp_service.fetch_serp(project, tk.keyword, db, unit="rank_check",
-                                        bill_credits=bill_credits)
+                                        bill_credits=bill_credits, depth=depth)
     if res is None:
         return None
     snap = SerpSnapshot(org_id=project.org_id, project_id=project.id, tracked_keyword_id=tk.id,
@@ -106,13 +121,14 @@ async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession,
     return snap
 
 
-async def snapshot_project(project, db: AsyncSession, bill_credits: bool = True) -> int:
+async def snapshot_project(project, db: AsyncSession, bill_credits: bool = True,
+                           depth: int = USER_SERP_DEPTH) -> int:
     tks = (await db.execute(select(TrackedKeyword).where(
         TrackedKeyword.project_id == project.id, TrackedKeyword.is_active.is_(True),
     ))).scalars().all()
     count = 0
     for tk in tks:
-        snap = await snapshot_keyword(project, tk, db, bill_credits=bill_credits)
+        snap = await snapshot_keyword(project, tk, db, bill_credits=bill_credits, depth=depth)
         if snap is not None:
             count += 1
     return count

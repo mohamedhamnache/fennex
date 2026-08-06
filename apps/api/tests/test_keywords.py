@@ -316,7 +316,7 @@ async def test_run_keyword_research_task_meters_seo_credits():
             select(OrgUsage).where(OrgUsage.org_id == org_id)
         )
         ou = ou_result.scalar_one()
-        assert ou.seo_credits_used == 20  # 1 keyword_ideas task * weight 20
+        assert ou.seo_credits_used == 30  # 1 keyword_ideas task * weight 30
 
 
 @pytest.mark.asyncio

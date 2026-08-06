@@ -113,14 +113,23 @@ def replicate_operation_credits(cost_micros: int) -> int:
 # operation at 2 credits; the rest are priced relative to it and to their real
 # supplier cost (keyword_ideas costs ~13x a SERP task, hence 15).
 SEO_CREDIT_WEIGHT: dict[str, int] = {
-    "serp": 2,
+    # PER 10-RESULT PAGE, not per request -- DataForSEO bills that way and
+    # fetch_serp passes count=pages. A page costs 2,000 micro-$ (1.90 credits),
+    # so 3 keeps the same 1.4x-2.1x band every other unit sits in. The old
+    # weight of 2 was right for one page and wrong for the ten a depth-100
+    # request actually buys, which is how serp came to be sold at a tenth of
+    # cost.
+    "serp": 3,
     # rank_check runs through the same fetch_serp chokepoint as `serp`, so it
     # is the same underlying task and must bill the same.
-    "rank_check": 2,
+    "rank_check": 3,
     # 20,000 micro-$ per task = 19.05 credits of cost at CREDIT_MICROS. Was 15,
     # the only SEO unit priced BELOW its own supplier cost while every other
     # billed 1.4x-2.1x. Measured 2026-08-06; see migration u7seoprice3.
-    "keyword_ideas": 20,
+    # 20,000 micro-$ per task = 19.05 credits of cost. 20 only cleared parity
+    # (1.05x) while every other unit billed 1.4x-2.1x; 30 puts it in the same
+    # band. Reseller margin comes from this multiple, not from the allowance.
+    "keyword_ideas": 30,
     "backlinks": 5,
     "audit": 10,
     # No live call site, and no seeded cost_rate either -- so its cost is

@@ -68,6 +68,7 @@ async def fetch_serp(project, keyword: str, db, unit: str = "serp",
     provider = await get_seo_provider_for_org(project.org_id, db)
     if provider is None:
         return None
+    pages = max(1, -(-depth // 10))   # DataForSEO bills per 10-result page
     items = await provider.serp(keyword, depth=depth,
                                 language_code=language_for_project(project),
                                 location_code=location_for_project(project))
@@ -79,7 +80,8 @@ async def fetch_serp(project, keyword: str, db, unit: str = "serp",
         from app.services.metering import meter as _meter
         async with async_session_factory() as _mdb:
             await _meter.record_seo(_mdb, org_id=project.org_id, project_id=project.id,
-                                    unit=unit, count=1, feature=unit, bill_credits=bill_credits)
+                                    unit=unit, count=pages, feature=unit,
+                                    bill_credits=bill_credits)
     except Exception:  # noqa: BLE001
         logger.warning("serp usage metering failed", exc_info=True)
 

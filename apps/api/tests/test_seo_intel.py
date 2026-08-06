@@ -352,7 +352,7 @@ async def test_rank_tracker_cron_isolates_and_filters(db_session):
     await _mk_project(db_session)  # no tracked keywords -> skipped
     calls = []
 
-    async def fake_snapshot_project(project, db, bill_credits=True):
+    async def fake_snapshot_project(project, db, bill_credits=True, depth=100):
         calls.append(project.id)
         raise RuntimeError("boom")
 
@@ -376,7 +376,7 @@ async def test_rank_tracker_cron_does_not_bill_seo_credits(db_session):
     await rts.add_keyword(p_ok, "kw", db_session)
     calls = []
 
-    async def fake_snapshot_project(project, db, bill_credits=True):
+    async def fake_snapshot_project(project, db, bill_credits=True, depth=100):
         calls.append(bill_credits)
         return 0
 
@@ -408,9 +408,9 @@ async def test_snapshot_keyword_bill_credits_false_meters_without_crediting(db_s
     assert snap is not None
 
     ev = (await db_session.execute(select(UsageEvent).where(UsageEvent.org_id == FAKE_ORG_ID))).scalars().one()
-    assert ev.cost_micros == 600
+    assert ev.cost_micros == 6000   # 600/page x 10 pages at depth 100
     ou = (await db_session.execute(select(OrgUsage).where(OrgUsage.org_id == FAKE_ORG_ID))).scalar_one()
-    assert ou.cost_micros == 600
+    assert ou.cost_micros == 6000   # per-page billing, see fetch_serp
     assert ou.seo_credits_used == 0
 
 
@@ -435,7 +435,7 @@ async def test_snapshot_keyword_default_still_bills_seo_credits(db_session, monk
     assert snap is not None
 
     ou = (await db_session.execute(select(OrgUsage).where(OrgUsage.org_id == FAKE_ORG_ID))).scalar_one()
-    assert ou.seo_credits_used == 2
+    assert ou.seo_credits_used == 30  # 3 credits/page x 10 pages at depth 100
 
 
 # ── Task 5: /seo router (CRUD, history, refresh, provider-status, suggestions) ──

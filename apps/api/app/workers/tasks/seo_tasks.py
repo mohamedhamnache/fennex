@@ -35,6 +35,8 @@ async def run_rank_tracker(ctx) -> None:
                 # cron frequency fails a test instead of eroding margin
                 # silently. The three levers are the cap, the frequency, and
                 # billing it.
-                await snapshot_project(project, db, bill_credits=False)
+                from app.services.rank_tracking_service import CRON_SERP_DEPTH
+                await snapshot_project(project, db, bill_credits=False,
+                                       depth=CRON_SERP_DEPTH)
         except Exception:  # noqa: BLE001 - one project must not break the batch
             logger.exception("rank tracker failed for project %s", project.id)
