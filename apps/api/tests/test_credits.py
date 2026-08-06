@@ -217,3 +217,53 @@ def test_plan_cogs_stays_within_margin_target():
             + SEO_PLAN_CREDITS[tier] * worst_seo_cost_per_credit
         )
         assert cogs <= PLAN_PRICE_USD[tier] * 0.32, (tier, cogs)
+
+
+def test_scheduled_work_is_counted_against_plan_margin():
+    """Cron spend is guaranteed COGS and must not stay invisible.
+
+    Rank tracking and backlink sync run on a schedule with bill_credits=False:
+    metered for cost, never charged to the customer. That is deliberate -- a
+    cron fan-out must not exhaust the bucket the customer's own work draws on --
+    but it means every plan carries supplier cost BEFORE the customer does
+    anything, and it scales with the plan's keyword cap rather than with usage.
+
+    The allowance-based margin test above cannot see this: it prices what a
+    customer *could* consume, not what the platform spends on their behalf
+    whether they log in or not. Measured 2026-08-06, weekly rank checks alone:
+
+        starter    500 keywords    $3.25/mo    11.2% of $29
+        pro      2,500 keywords   $16.24/mo    16.4% of $99
+        agency  10,000 keywords   $64.95/mo    21.7% of $299
+        scale   40,000 keywords  $259.80/mo    32.5% of $799
+
+    Scale is the tightest: a third of its revenue is committed before the first
+    request. This test pins that ratio so raising a keyword cap, or making the
+    cron more frequent, fails here instead of quietly eroding the margin.
+    """
+    from app.core.billing import PLAN_LIMITS, PLAN_PRICE_USD
+
+    RANK_CHECK_USD = 1500 / 1_000_000        # cost_rates: dataforseo/rank_check
+    RUNS_PER_MONTH = 4.33                    # weekly cron
+
+    for tier in ("starter", "pro", "agency", "scale"):
+        keywords = PLAN_LIMITS[tier]["keywords"]
+        assert keywords > 0, f"{tier} has an unbounded keyword cap; cron cost is unbounded"
+        monthly = keywords * RANK_CHECK_USD * RUNS_PER_MONTH
+        share = monthly / PLAN_PRICE_USD[tier]
+        assert share <= 0.33, (
+            f"{tier}: scheduled rank tracking is {share:.1%} of plan price "
+            f"(${monthly:.2f} of ${PLAN_PRICE_USD[tier]}) before the customer "
+            f"does anything. Lower the keyword cap, reduce cron frequency, or "
+            f"bill it."
+        )
+
+
+def test_an_unlimited_keyword_cap_would_make_cron_cost_unbounded():
+    """Enterprise sets keywords to -1 (unlimited). Scheduled tracking then has
+    no ceiling at all, so its cost cannot be bounded by the plan the way every
+    other tier is. Contract-priced by definition -- this records why that is
+    load-bearing rather than incidental."""
+    from app.core.billing import PLAN_LIMITS
+
+    assert PLAN_LIMITS["enterprise"]["keywords"] == -1
