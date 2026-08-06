@@ -200,7 +200,9 @@ async def understand(message: str, ctx, history: Optional[list[dict]] = None) ->
             # the router saying this request is not work for anyone here. Falling
             # back to keywords discarded that judgement and let phrase overlap
             # invent a match -- "what is the weather in Paris" came back as
-            # ecommerce.growth_audit and woke Souk.
+            # ecommerce.growth_audit and woke the specialist who owns it.
+            # (Named no one here on purpose: test_the_router_module_names_no_
+            # employee keeps routing name-free, and it caught this comment.)
             #
             # Keywords are still the fallback when the model named capabilities
             # we do not recognise, which IS a failed answer rather than a
