@@ -193,9 +193,23 @@ async def understand(message: str, ctx, history: Optional[list[dict]] = None) ->
         raw = await call_llm(provider, model, ctx.keys[provider], system, user,
                              locale=ctx.locale, feature="classification")
         parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
-        wanted = order_capabilities(
-            [c for c in parsed.get("capabilities", []) if c in known])[:8]
+        raw_caps = parsed.get("capabilities", [])
+        wanted = order_capabilities([c for c in raw_caps if c in known])[:8]
         if not wanted:
+            # An EMPTY list from the model is an answer, not a failure: it is
+            # the router saying this request is not work for anyone here. Falling
+            # back to keywords discarded that judgement and let phrase overlap
+            # invent a match -- "what is the weather in Paris" came back as
+            # ecommerce.growth_audit and woke Souk.
+            #
+            # Keywords are still the fallback when the model named capabilities
+            # we do not recognise, which IS a failed answer rather than a
+            # considered "none".
+            if not raw_caps:
+                return Intent(capabilities=[], complexity="simple",
+                              summary=str(parsed.get("summary", ""))[:200],
+                              topic_changed=bool(parsed.get("topicChanged", False)),
+                              source="llm")
             return _keyword_intent(message, known)
         # Complexity is derived from the work, never self-reported: if the
         # capabilities need two different specialists, it is collaboration.

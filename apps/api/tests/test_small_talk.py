@@ -84,3 +84,55 @@ class TestAssistantReply:
         from app.services import employee_chat
         src = inspect.getsource(employee_chat._assistant_reply)
         assert 'resolve_model("economy", "light"' in src
+
+
+class TestOutOfScope:
+    """An empty capability list is an ANSWER, not a failure.
+
+    understand() asked the model to return [] for work the company cannot do,
+    the model did, and `if not wanted: return _keyword_intent(...)` threw that
+    judgement away -- letting phrase overlap invent a match. "What is the
+    weather in Paris" came back as ecommerce.growth_audit and woke Souk, on
+    screen, in front of the user.
+    """
+
+    def test_an_empty_llm_answer_is_kept_rather_than_re_guessed(self):
+        import inspect
+        from app.employees import router
+        src = inspect.getsource(router.understand)
+        # The fallback must be reachable only when the model named capabilities
+        # we do not recognise -- a failed answer, not a considered "none".
+        assert "if not raw_caps:" in src
+        # The guard must sit before the fallback it protects. index() finds the
+        # FIRST _keyword_intent -- the no-providers path near the top -- so the
+        # comparison has to be against what follows the guard.
+        after_guard = src[src.index("if not raw_caps:"):]
+        assert "return _keyword_intent(message, known)" in after_guard
+        assert after_guard.index('source="llm"') < after_guard.index("_keyword_intent")
+
+    def test_an_unrecognised_answer_still_falls_back_to_keywords(self):
+        """A model naming slugs that do not exist HAS failed, and keywords are
+        better than nothing there."""
+        import inspect
+        from app.employees import router
+        assert "_keyword_intent(message, known)" in inspect.getsource(router.understand)
+
+    async def test_no_capabilities_routes_to_the_assistant(self):
+        from app.employees.router import MODE_ASSISTANT, Intent, route
+        from app.employees import router as r
+
+        async def fake_understand(message, ctx, history=None):
+            return Intent(capabilities=[], source="llm", summary=message)
+
+        original = r.understand
+        r.understand = fake_understand
+        try:
+            class _Ctx:
+                tier, locale, keys, dna = "balanced", "en", {}, None
+                def available_providers(self):
+                    return ["openai"]
+            decision = await route("what is the weather in Paris", _Ctx())
+        finally:
+            r.understand = original
+        assert decision.mode == MODE_ASSISTANT
+        assert decision.primary is None
