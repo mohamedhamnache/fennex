@@ -154,9 +154,18 @@ recorded cost because `usage_events` denormalises `cost_micros` per row.
 | SERP lookup (live, depth 10) | 3 SEO credits | DataForSEO bills per page, not per query |
 | Scheduled rank check (standard queue) | 1 SEO credit | ~5 min instead of ~6 s, a third of the cost |
 | Souk action (audit, CRO, retention, merchandising) | ~8-25 | agentic: several LLM turns per run |
-| Souk store read (`shopify.analytics`) | 0 | our own database, no supplier call |
+| Souk store read (`store_analytics`) | 0 | our own database, no supplier call |
+| Product shot in chat, product synced | ~39 | flux-kontext-pro, same as the studio |
+| Product shot in chat, no product synced | ~5 | gpt-image text-to-image fallback |
 
 A masked edit costs the **sum** of its supplier calls — mask derivation *plus* the edit itself.
+
+**A product shot in chat costs what one in the studio costs.** Chat used to run text-to-image
+while the studio ran flux-kontext-pro, so the same request produced a different image at a
+different price. Chat now re-scenes the merchant's real product photo when the catalogue has
+one, through the same metered `_replicate_run` chokepoint. Without a synced catalogue it falls
+back to text-to-image, which is cheaper because it is doing less -- it invents a product rather
+than photographing theirs, and the reply says so.
 
 Souk's actions are **agentic**: the model pulls store figures, reads them, and may go back for a
 breakdown before answering, so a run is several LLM turns rather than one. Reading the store
