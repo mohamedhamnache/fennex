@@ -178,18 +178,25 @@ async def sync_orders(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
             "window_days": days}
 
 
-async def revenue_summary(project_id: uuid.UUID, db: AsyncSession, days: int = 30) -> dict:
+async def revenue_summary(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession,
+                          days: int = 30) -> dict:
     """Revenue that started on content, and the articles it started on.
 
     `attributed` and `total` are both returned on purpose. A share of 12% is not
     a poor result -- most sales never begin on an article -- but a number shown
     without its denominator invites the reader to assume it is one.
+
+    `org_id` is required, not optional. project_id arrives from the query string
+    and is guessable, so filtering on it alone would hand any authenticated user
+    another organisation's revenue. Every query below derives from `base`, so
+    the tenant filter cannot be forgotten on one of them.
     """
     from sqlalchemy import func, case
     from app.models.article import Article
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
-    base = [StoreOrder.project_id == project_id, StoreOrder.ordered_at >= since]
+    base = [StoreOrder.org_id == org_id, StoreOrder.project_id == project_id,
+            StoreOrder.ordered_at >= since]
 
     totals = (await db.execute(
         select(func.count(StoreOrder.id), func.coalesce(func.sum(StoreOrder.total_price), 0))

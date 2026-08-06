@@ -228,7 +228,8 @@ async def shopify_revenue(project_id: uuid.UUID, current_user: CurrentUser, db: 
     what it is a share of invites the reader to assume it is everything.
     """
     from app.services import store_revenue_service
-    return RevenueSummary(**await store_revenue_service.revenue_summary(project_id, db, days))
+    return RevenueSummary(**await store_revenue_service.revenue_summary(
+        project_id, current_user.org_id, db, days))
 
 
 @router.get("/products", response_model=list[StoreProductOut])

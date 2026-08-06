@@ -4,9 +4,10 @@ The join that turns "400 clicks" into "2,300 earned". Everything here guards
 the two ways it can lie: crediting content for a sale that did not start there,
 and dropping a sale that did.
 """
+import inspect
 import uuid
 
-from app.services.store_revenue_service import attribute, normalise_path
+from app.services.store_revenue_service import attribute, normalise_path, revenue_summary
 
 ARTICLE = uuid.uuid4()
 PATHS = {"/blog/best-boots": ARTICLE, "/": uuid.uuid4()}
@@ -56,6 +57,26 @@ def test_normalise_path_is_stable_on_the_shapes_shopify_sends():
     assert normalise_path("https://a.com") == "/"
     assert normalise_path("/x/y?z=1") == "/x/y"
     assert normalise_path(None) is None
+
+
+def test_revenue_summary_requires_an_org_to_scope_to():
+    """project_id arrives from the query string and is guessable. Scoping the
+    summary on it alone handed any authenticated user another organisation's
+    revenue -- confirmed live against a seeded project in a foreign org before
+    this was fixed. Keeping org_id REQUIRED (no default) is what stops a caller
+    silently omitting it."""
+    params = inspect.signature(revenue_summary).parameters
+    assert "org_id" in params, "revenue_summary must be scoped to an organisation"
+    assert params["org_id"].default is inspect.Parameter.empty, \
+        "org_id must be required -- a default makes the tenant filter skippable"
+
+    # And it must actually reach the query, not merely sit in the signature.
+    src = inspect.getsource(revenue_summary)
+    assert "StoreOrder.org_id == org_id" in src, \
+        "org_id must filter the orders, not just be accepted"
+    # Every query in the function derives from `base`; if one is ever written
+    # without it, that query is unscoped.
+    assert src.count("base = [") == 1, "one base filter list, applied everywhere"
 
 
 def test_a_different_path_does_not_borrow_another_articles_credit():
