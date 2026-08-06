@@ -376,24 +376,32 @@ _REMBG_VERSION = "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80
 async def remove_background_cheap(image_url: str) -> dict:
     """Cutout via Replicate rather than Remove.bg.
 
-    Remove.bg bills $0.20 per image, which meters to 191 AI credits. This
-    community model runs a few GPU-seconds and lands on MIN_REPLICATE_CREDITS
-    (10) -- 19x cheaper for the customer's allowance and for our margin.
-    Output carries alpha, so the policy must be ALLOW_CHANGE: the model
-    returns the subject's bounding box, not the source frame -- asserting
-    PRESERVE would fail every call, the same defect that broke
-    generate_shadow until a real prediction caught it.
+    Remove.bg is gone from the product; this is the cheap cutout path for the
+    template flow, alongside BiRefNet for the user-facing button. It runs a few
+    GPU-seconds and lands on MIN_REPLICATE_CREDITS (10).
 
-    Separate from remove_background(), which is untouched: this adds a
-    cheaper path, it does not replace the existing Remove.bg tool.
+    This used to claim the model "returns the subject's bounding box, not the
+    source frame -- asserting PRESERVE would fail every call", and passed
+    ALLOW_CHANGE with no source_size at all, so nothing was ever checked.
+    MEASURED against the live model on 2026-08-05 with these exact inputs, that
+    claim is false: it preserved the source frame on 3 of 3 real images
+    (2080x1664, 1024x1536, 1024x1024).
+
+    WARN rather than PRESERVE deliberately. Three samples is thin evidence on
+    which to make a live path fail loudly, and a cutout the user can still use
+    beats an exception if the model ever does crop. But ALLOW_CHANGE cannot
+    tell "expected to differ" from "nobody ever looked", and not looking is
+    precisely what let remove.bg return quarter-megapixel images for weeks.
     """
     try:
+        source_size = dimensions(await _download(image_url))
         out = await _replicate_run(
             _MODEL_REMBG,
             {"image": image_url, "format": "png", "background_type": "rgba"},
             version=_REMBG_VERSION,
         )
-        stored = await finalize(out, policy=ResolutionPolicy.ALLOW_CHANGE)
+        stored = await finalize(out, source_size=source_size,
+                                policy=ResolutionPolicy.WARN)
         return {"ok": True, "image_url": stored.url,
                 "width": stored.width, "height": stored.height}
     except Exception as e:  # noqa: BLE001

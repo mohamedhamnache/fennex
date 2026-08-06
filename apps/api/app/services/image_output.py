@@ -19,6 +19,7 @@ from this module would be a circular import that fails at startup.
 import asyncio
 import base64
 import io
+import logging
 import uuid
 from enum import Enum
 from typing import NamedTuple, Optional
@@ -38,6 +39,9 @@ _TRANSIENT_ERRORS = (
     httpx.RemoteProtocolError,
     httpx.PoolTimeout,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 async def _retry(coro_factory, attempts: int = 3, base_delay: float = 0.6):
@@ -82,6 +86,12 @@ class ResolutionPolicy(str, Enum):
     PRESERVE = "preserve"          # sizes must match; a mismatch is an error
     UPSCALE = "upscale"            # resize back up to the source size
     ALLOW_CHANGE = "allow_change"  # the operation's purpose IS changing size
+    # Stores whatever came back, but says so. For a supplier believed to
+    # preserve the frame on a path where a hard failure would be worse than a
+    # wrong size: a silent resolution change is exactly what hid the remove.bg
+    # preview-tier bug for weeks, and ALLOW_CHANGE cannot tell "expected to
+    # differ" from "nobody ever looked".
+    WARN = "warn"
 
 
 class StoredImage(NamedTuple):
@@ -137,13 +147,21 @@ async def finalize(output_url: str, *, source_size: Optional[tuple[int, int]] = 
                     f"model returned {got[0]}x{got[1]} for a "
                     f"{source_size[0]}x{source_size[1]} input"
                 )
-            # UPSCALE: the only path that re-encodes, and only because the
-            # pixels genuinely changed.
-            img = PILImage.open(io.BytesIO(data))
-            img = img.resize(source_size, PILImage.LANCZOS)
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            data, fmt = buf.getvalue(), "PNG"
+            elif policy is ResolutionPolicy.WARN:
+                # Stored as-is, but no longer silently: this is the signal that
+                # a supplier's behaviour has changed under us.
+                logger.warning(
+                    "supplier returned %dx%d for a %dx%d input; stored as-is",
+                    got[0], got[1], source_size[0], source_size[1],
+                )
+            else:
+                # UPSCALE: the only path that re-encodes, and only because the
+                # pixels genuinely changed.
+                img = PILImage.open(io.BytesIO(data))
+                img = img.resize(source_size, PILImage.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                data, fmt = buf.getvalue(), "PNG"
 
     ext, content_type = _EXT.get(fmt, ("png", "image/png"))
     url = await upload_bytes(data, f"{folder}/{uuid.uuid4().hex}.{ext}", content_type)
