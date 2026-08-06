@@ -274,9 +274,7 @@ function GroupLabel({ children, hint, className = "" }: {
 }) {
   return (
     <div className={`flex flex-col gap-0.5 border-t border-border pt-4 first:border-t-0 first:pt-0 ${className}`}>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {children}
-      </h3>
+      <h3 className="text-sm font-semibold text-foreground">{children}</h3>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -1351,28 +1349,45 @@ function ProjectSection() {
     <div className="flex flex-col gap-5">
       <SectionHeader icon={Globe} title={t("settings.project.title")} description={t("settings.project.subtitle")} />
 
-      {/* Which project you are editing is context for the entire panel, not a
-          field inside the form. As a Field it read as another thing to fill in,
-          and on a multi-project account nothing said which site the values
-          below belonged to. */}
+      {/* Master-detail. The project list IS the selector: picking one here
+          re-seeds the form below. There used to be two ways to choose -- this
+          list, buried under the form, and a dropdown above it -- which meant
+          two controls that had to agree and a list nobody scrolled to. */}
       {projects.length > 1 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
-          <label htmlFor="project-switcher" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("settings.project.switchProject")}
-          </label>
-          <select
-            id="project-switcher"
-            value={active.id}
-            onChange={(e) => setEditId(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {t("settings.project.projectCount", { count: projects.length })}
-          </span>
+        <div
+          role="tablist"
+          aria-label={t("settings.project.title")}
+          className="flex gap-2 overflow-x-auto pb-1"
+        >
+          {projects.map((p) => {
+            const selected = p.id === active.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setEditId(p.id)}
+                className={`group flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                  selected
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/40 hover:bg-muted/40"
+                }`}
+              >
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase ${
+                  selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}>
+                  {p.name.slice(0, 2)}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block truncate text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
+                    {p.name}
+                  </span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{p.domain}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -1568,7 +1583,11 @@ function ProjectSection() {
         </div>
       </Card>
 
-      {/* Your projects — list, rename, delete */}
+      {/* Rename and delete only. Choosing a project happens in the selector at
+          the top now; this card kept a second, competing list of every project
+          below the fold, so the two could disagree about which one was active
+          and the list was the one nobody saw. Destructive actions stay here,
+          deliberately away from the settings people edit daily. */}
       <Card className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -1581,7 +1600,7 @@ function ProjectSection() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {projects.map((p) => {
+          {projects.filter((p) => p.id === active.id).map((p) => {
             const isCurrent = p.id === currentProjectId;
             const isRenaming = renamingId === p.id;
             const isConfirming = confirmDeleteId === p.id;
