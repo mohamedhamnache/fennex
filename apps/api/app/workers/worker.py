@@ -17,6 +17,7 @@ from app.workers.tasks.keyword_tasks import run_keyword_research
 from app.workers.tasks.monitoring_tasks import run_competitor_monitor, run_market_monitor
 from app.workers.tasks.product3d_tasks import run_product_3d
 from app.workers.tasks.seo_tasks import run_rank_tracker
+from app.workers.tasks.store_tasks import sync_store_orders
 from app.services.admin.rollup import rollup_daily_job
 
 
@@ -51,6 +52,7 @@ class WorkerSettings:
         run_market_monitor,
         run_competitor_monitor,
         run_rank_tracker,
+        sync_store_orders,
         run_discovery,
         rollup_daily_job,
         run_product_3d,
@@ -82,6 +84,13 @@ class WorkerSettings:
         # for a live check. See tracked_cap_for / CRON_SERP_DEPTH for the two
         # other terms in that cost.
         cron(run_rank_tracker, weekday=0, hour=5, minute=30, run_at_startup=False),
+        # Store orders, daily. DAILY and not weekly like the rank tracker
+        # because this costs nothing -- Shopify's Orders API is free, so the
+        # frequency is bounded by our own worker time rather than by supplier
+        # spend. Runs before the 06:00 analytics sync so the morning dashboard
+        # is current, and re-attributes recent orders against anything
+        # published since. The Sync button remains for an immediate refresh.
+        cron(sync_store_orders, hour=5, minute=45, run_at_startup=False),
         # Roll usage_event -> usage_daily every 10 min so the admin usage
         # dashboards reflect activity within minutes, not next day. Idempotent
         # (delete-then-insert per day), so frequent runs are safe.
