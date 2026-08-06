@@ -58,7 +58,8 @@ function _redirectToLogin(): never {
   throw new ApiError(401, "Session expired");
 }
 
-async function request<T>(path: string, init: RequestInit = {}, _isRetry = false): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, _isRetry = false,
+                          asText = false): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -75,7 +76,7 @@ async function request<T>(path: string, init: RequestInit = {}, _isRetry = false
     }
     try {
       await _refreshPromise;
-      return request<T>(path, init, true);
+      return request<T>(path, init, true, asText);
     } catch {
       _redirectToLogin();
     }
@@ -96,11 +97,15 @@ async function request<T>(path: string, init: RequestInit = {}, _isRetry = false
     throw new ApiError(res.status, msg, detail);
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  return (asText ? res.text() : res.json()) as Promise<T>;
 }
 
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
+  /** For endpoints that return CSV or plain text. Same auth and refresh path
+   *  as every other call -- a bare fetch would skip the token refresh and log
+   *  the user out on an expired session. */
+  getText: (path: string) => request<string>(path, {}, false, true),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
@@ -2951,4 +2956,122 @@ export async function syncStoreOrders(projectId: string): Promise<{
   ok: boolean; synced: number; attributed: number; error?: string | null;
 }> {
   return apiClient.post(`/shopify/orders/sync?project_id=${projectId}`, {});
+}
+
+// ── Store analytics dashboard ────────────────────────────────────────────────
+
+/** Where a figure came from. Carried on every section and read by the UI to
+ *  badge it: "live" is measured from synced orders, "sample" is placeholder
+ *  data for a source not connected yet, "derived" is computed from live
+ *  figures (the forecast), "mixed" is a block containing both. */
+export type MetricSource = "live" | "sample" | "derived" | "mixed";
+
+export interface StoreKpi {
+  key: string;
+  value: number;
+  prev: number;
+  /** null when the comparison would be noise — too few orders, or no previous
+   *  period. Render a dash, never a 0% that looks measured. */
+  change: number | null;
+  unit: "money" | "int" | "pct" | "x";
+  source: MetricSource;
+  spark: number[];
+}
+
+export interface StoreSeriesPoint {
+  date: string;
+  revenue: number;
+  orders: number;
+  aov: number;
+  attributed: number;
+  ma: number;
+  net_sales: number;
+  profit: number;
+  prev_revenue: number | null;
+}
+
+export interface BreakdownRow {
+  label: string;
+  revenue: number;
+  orders: number;
+  share: number;
+}
+
+export interface FunnelStage {
+  stage: string; users: number; conv: number; dropoff: number; lost: number;
+}
+
+export interface StoreProductRow {
+  product: string; units: number; revenue: number; profit: number; margin: number;
+  inventory: number; conversion: number; refund_rate: number; trend: number;
+}
+
+export interface StoreInsight {
+  kind: string; severity: "good" | "bad" | "info"; impact: number;
+  source: MetricSource; text: string;
+}
+
+export interface StoreAlert {
+  kind: string; severity: "good" | "bad" | "warn"; source: MetricSource; text: string;
+}
+
+export interface StoreDashboardData {
+  currency: string;
+  range: { days: number; start: string; end: string; compare_start: string };
+  kpis: Record<string, StoreKpi>;
+  series: StoreSeriesPoint[];
+  funnel: { source: MetricSource; rows: FunnelStage[] };
+  breakdowns: Record<string, { source: MetricSource; rows: BreakdownRow[] }>;
+  customers: {
+    source: MetricSource; new: number; returning: number; repeat_rate: number;
+    ltv: number; revenue_per_customer: number; avg_days_between: number;
+    top: { label: string; orders: number; revenue: number }[];
+    cohorts: { cohort: string; size: number; cells: number[] }[];
+    growth: { date: string; new: number; returning: number }[];
+  };
+  products: {
+    source: MetricSource;
+    top: StoreProductRow[]; trending: StoreProductRow[]; worst: StoreProductRow[];
+  };
+  marketing: {
+    source: MetricSource; spend: number; ad_revenue: number; roas: number;
+    mer: number; cac: number;
+    campaigns: { label: string; spend: number; revenue: number; orders: number; roas: number }[];
+  };
+  live: {
+    source: MetricSource; visitors: number; checkouts: number; carts: number;
+    orders_today: number; revenue_today: number;
+    feed: { id: string; at: string | null; total: number; channel: string;
+            path: string | null; attributed: boolean }[];
+  };
+  operations: {
+    source: MetricSource;
+    low_stock: { product: string; stock: number; days_left: number }[];
+    out_of_stock: string[]; returns: number; refunds: number; refund_rate: number;
+    pending: number; unfulfilled: number; avg_fulfillment_hours: number;
+  };
+  geo: { source: MetricSource; rows: (BreakdownRow & { code: string; conversion: number })[] };
+  forecast: {
+    source: MetricSource; rows: { date: string; revenue: number }[];
+    projected_revenue: number; horizon_days: number;
+  };
+  content: {
+    source: MetricSource; revenue: number; share: number;
+    rows: { article_id: string; title: string; path: string | null;
+            orders: number; revenue: number }[];
+  };
+  insights: StoreInsight[];
+  alerts: StoreAlert[];
+  sources: Record<string, MetricSource>;
+}
+
+export async function getStoreDashboard(projectId: string, days = 30): Promise<StoreDashboardData> {
+  return apiClient.get<StoreDashboardData>(
+    `/shopify/analytics/dashboard?project_id=${projectId}&days=${days}`);
+}
+
+/** CSV of the daily series. Goes through apiClient so the auth header and
+ *  refresh flow are the same as every other call. */
+export async function exportStoreCsv(projectId: string, days = 30): Promise<string> {
+  return apiClient.getText(`/shopify/analytics/export?project_id=${projectId}&days=${days}`);
 }

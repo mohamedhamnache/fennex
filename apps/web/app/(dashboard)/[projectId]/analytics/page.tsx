@@ -74,7 +74,7 @@ import { FENNEX_AGENTS } from "@/lib/agents";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
-import { RevenuePanel } from "./RevenuePanel";
+import { StoreDashboard } from "./store/StoreDashboard";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/components/ui/Toast";
@@ -1665,33 +1665,13 @@ function PerformanceTab({ projectId }: { projectId: string }) {
  * Console says what got found, the store says what got bought. Stacking them
  * in one scroll made the revenue figures look like a footnote to the SEO ones.
  */
-function StoreWorkspace({ projectId, range, gscConnected }: {
-  projectId: string; range: AnalyticsRange; gscConnected: boolean;
+function StoreWorkspace({ projectId, gscConnected }: {
+  projectId: string; gscConnected: boolean;
 }) {
-  const { t } = useTranslation();
-  const days = range === "7d" ? 7 : range === "90d" ? 90 : 28;
-  return (
-    <div className="flex flex-col gap-5">
-      <RevenuePanel projectId={projectId} days={days} />
-      {/* Offered here, not assumed: a merchant reading store revenue is one
-          connection away from knowing which search brought the buyer, and this
-          is the only place that pairing is obvious. */}
-      {!gscConnected && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3">
-          <span className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Globe className="h-4 w-4 shrink-0" />
-            {t("analytics.source.alsoConnectGsc")}
-          </span>
-          <button
-            onClick={async () => { const r = await connectGsc(projectId); window.location.href = r.redirect_url; }}
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {t("analytics.connect")}
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  // The store dashboard owns its own date range: a merchant reading revenue
+  // thinks in Today / 7 / 30 / Quarter / Year, which does not map onto the
+  // Search Console windows the shell offers.
+  return <StoreDashboard projectId={projectId} gscConnected={gscConnected} />;
 }
 
 // ─── Analytics Studio shell ───────────────────────────────────────────────────
@@ -1853,7 +1833,10 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
           </div>
           )}
 
-          {/* Date range */}
+          {/* Date range. Hidden on the store view, which carries its own
+              Today / 7 / 30 / Quarter / Year control -- two date pickers on one
+              screen leave the reader unsure which one the numbers obey. */}
+          {active === "search" && (
           <div className="flex items-center gap-0.5 rounded-xl border border-border bg-muted/40 p-0.5">
             {(["7d", "28d", "90d"] as AnalyticsRange[]).map((r) => (
               <button
@@ -1868,6 +1851,7 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
               </button>
             ))}
           </div>
+          )}
 
           {/* Weekly digest and the copilot both read Search Console. */}
           {active === "search" && (
@@ -1932,7 +1916,7 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
       <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
           {active === "store" ? (
-            <StoreWorkspace projectId={projectId} range={range} gscConnected={gscConnected} />
+            <StoreWorkspace projectId={projectId} gscConnected={gscConnected} />
           ) : (
             <>
               {workspace === "pulse" && <OverviewTab projectId={projectId} range={range} />}

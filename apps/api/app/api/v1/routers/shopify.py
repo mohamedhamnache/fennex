@@ -232,6 +232,39 @@ async def shopify_revenue(project_id: uuid.UUID, current_user: CurrentUser, db: 
         project_id, current_user.org_id, db, days))
 
 
+@router.get("/analytics/dashboard")
+async def shopify_analytics_dashboard(project_id: uuid.UUID, current_user: CurrentUser, db: DB,
+                                      days: int = 30):
+    """The full store dashboard for one window.
+
+    Returned untyped on purpose: the payload is a dozen heterogeneous sections
+    whose shapes change as each real data source lands, and a Pydantic model
+    per section would be a second place to update for every change without
+    validating anything the service does not already guarantee.
+
+    Every section carries `source` ("live", "sample", "derived") and the payload
+    carries a `sources` map. The UI reads those to label figures -- see
+    store_analytics for what is measured and what is not.
+    """
+    from app.services import store_analytics
+    return await store_analytics.dashboard(project_id, current_user.org_id, db, days)
+
+
+@router.get("/analytics/export")
+async def shopify_analytics_export(project_id: uuid.UUID, current_user: CurrentUser, db: DB,
+                                   days: int = 30):
+    """The daily series as CSV, with sample columns named as such in the header
+    so the labelling survives leaving the dashboard."""
+    from fastapi.responses import Response
+    from app.services import store_analytics
+    data = await store_analytics.dashboard(project_id, current_user.org_id, db, days)
+    return Response(
+        content=store_analytics.to_csv(data),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="store-analytics-{days}d.csv"'},
+    )
+
+
 @router.get("/products", response_model=list[StoreProductOut])
 async def shopify_list_products(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
     return await shopify_service.list_products(project_id, current_user.org_id, db)
