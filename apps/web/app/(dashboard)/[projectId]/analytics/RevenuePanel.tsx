@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ShoppingBag, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { getStoreRevenue } from "@/lib/api";
+import { getStoreRevenue, getShopifyStatus } from "@/lib/api";
 
 /**
  * Revenue that started on published content.
@@ -18,14 +18,27 @@ import { getStoreRevenue } from "@/lib/api";
  */
 export function RevenuePanel({ projectId, days }: { projectId: string; days: number }) {
   const { t } = useTranslation();
+
+  // Gated on the CONNECTION, not on whether any orders came back. A connected
+  // store with a quiet month should still show its panel reading zero -- that
+  // is a real answer. Hiding on empty data instead would make the feature
+  // vanish exactly when a merchant most wants to know nothing sold.
+  const { data: status } = useQuery({
+    queryKey: ["shopify-status", projectId],
+    queryFn: () => getShopifyStatus(projectId),
+    retry: false,
+  });
+  const connected = !!status?.connected;
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["store-revenue", projectId, days],
     queryFn: () => getStoreRevenue(projectId, days),
+    enabled: connected,          // no store, no request
     retry: false,
   });
 
-  // No connected store is the normal case, not an error worth a red box.
-  if (isLoading || isError || !data || data.orders_total === 0) return null;
+  // An unconnected store is the normal case, not an error worth a red box.
+  if (!connected || isLoading || isError || !data) return null;
 
   const money = (n: number) =>
     new Intl.NumberFormat(undefined, {

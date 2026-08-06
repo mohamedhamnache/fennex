@@ -364,6 +364,12 @@ function OverviewSkeleton() {
 function OverviewTab({ projectId, range }: { projectId: string; range: AnalyticsRange }) {
   const { t } = useTranslation();
   const [compare, setCompare] = useState(false);
+  const { data: gscStatus } = useQuery({
+    queryKey: ["gsc-status", projectId],
+    queryFn: () => getGscStatus(projectId),
+    retry: false,
+  });
+  const gscConnected = !!gscStatus?.is_connected;
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ["analytics", "overview", projectId, range],
     queryFn: () => getAnalyticsOverview(projectId, range),
@@ -399,6 +405,20 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
 
   if (overviewLoading || trafficLoading) {
     return <OverviewSkeleton />;
+  }
+
+  // Search Console not connected: show the prompt to connect and nothing else.
+  // Rendering the KPI grid at zero next to a "connect your account" banner told
+  // the user their site had no clicks and no impressions, which is not what a
+  // missing connection means. An empty state that states a number is worse than
+  // no state at all.
+  if (!gscConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
+        <FennecMascot />
+        <p className="max-w-sm text-sm">{t("analytics.connectGscFirst")}</p>
+      </div>
+    );
   }
 
   if (!overview) {

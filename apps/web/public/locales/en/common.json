@@ -463,7 +463,8 @@
       "orderCount_one": "{{count}} order",
       "orderCount_other": "{{count}} orders",
       "caveat": "Counts orders whose session began on one of your pages. It shows where buying started, not what caused the sale — a reader who returns later and buys direct is not counted here, and a buyer who would have purchased anyway is."
-    }
+    },
+    "connectGscFirst": "Connect Google Search Console to see clicks, impressions and rankings for this project."
   },
   "seoHub": {
     "title": "Rank Tracker",

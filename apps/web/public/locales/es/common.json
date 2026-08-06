@@ -366,7 +366,8 @@
       "orderCount_one": "{{count}} pedido",
       "orderCount_other": "{{count}} pedidos",
       "caveat": "Cuenta los pedidos cuya sesión empezó en una de tus páginas. Muestra dónde empezó la compra, no qué la provocó: un lector que vuelve más tarde y compra directo no se cuenta, y alguien que habría comprado igualmente sí."
-    }
+    },
+    "connectGscFirst": "Conecta Google Search Console para ver clics, impresiones y posiciones de este proyecto."
   },
   "seoHub": {
     "title": "Rastreador de posiciones",

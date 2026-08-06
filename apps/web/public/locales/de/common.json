@@ -366,7 +366,8 @@
       "orderCount_one": "{{count}} Bestellung",
       "orderCount_other": "{{count}} Bestellungen",
       "caveat": "Zählt Bestellungen, deren Sitzung auf einer deiner Seiten begann. Zeigt, wo der Kauf startete — nicht, was ihn ausgelöst hat: Wer später direkt kauft, fehlt hier; wer ohnehin gekauft hätte, wird mitgezählt."
-    }
+    },
+    "connectGscFirst": "Verbinde Google Search Console, um Klicks, Impressionen und Rankings dieses Projekts zu sehen."
   },
   "seoHub": {
     "title": "Rank-Tracker",
