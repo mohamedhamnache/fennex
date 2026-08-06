@@ -1692,6 +1692,7 @@ const WORKSPACES: { key: Workspace; label: string; Icon: typeof Activity }[] = [
 export default function AnalyticsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
   const { t } = useTranslation();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const wsParam = searchParams.get("ws") as Workspace | null;
   const [workspace, setWorkspace] = useState<Workspace>(
@@ -1727,14 +1728,30 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
   const [sourcePicked, setSourcePicked] = useState(srcParam === "store" || srcParam === "search");
   useEffect(() => {
     if (!resolved || sourcePicked) return;
-    if (storeConnected && !gscConnected) setSource("store");
+    if (storeConnected && !gscConnected) {
+      setSource("store");
+      const p = new URLSearchParams(Array.from(searchParams.entries()));
+      p.set("source", "store");
+      router.replace(`/${projectId}/analytics?${p.toString()}`, { scroll: false });
+    }
     setSourcePicked(true);
-  }, [resolved, sourcePicked, storeConnected, gscConnected]);
+  }, [resolved, sourcePicked, storeConnected, gscConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Never leave the user on a dashboard whose source is gone (disconnected in
   // another tab, or a stale ?source=store link).
   const active: Source = source === "store" && resolved && !storeConnected ? "search" : source;
-  function pickSource(s: Source) { setSourcePicked(true); setSource(s); }
+
+  function pickSource(s: Source) {
+    setSourcePicked(true);
+    setSource(s);
+    // The choice goes in the URL, not just in state. Without this a refresh
+    // dropped the merchant back on Search Console -- and so did every link
+    // they shared of the store dashboard. Other params are preserved so the
+    // workspace and copilot flags survive the switch.
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.set("source", s);
+    router.replace(`/${projectId}/analytics?${params.toString()}`, { scroll: false });
+  }
   const [copilotOpen, setCopilotOpen] = useState(searchParams.get("copilot") === "1");
   const [digestSending, setDigestSending] = useState(false);
   const { success: toastSuccess, error: toastError } = useToast();
