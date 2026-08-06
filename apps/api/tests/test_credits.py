@@ -221,51 +221,45 @@ def test_plan_cogs_stays_within_margin_target():
 
 
 @pytest.mark.xfail(strict=True, reason=(
-    "KNOWN BREACH, awaiting a product decision. The real DataForSEO cost is "
-    "~$0.02 per request (read off the account dashboard 2026-08-06), not the "
-    "$0.0015 that was seeded. At that price one weekly rank-tracking pass costs "
-    "more than a whole month's SEO allowance on every tier -- $50/pass on Pro "
-    "($99/mo), $800/pass on Scale ($799/mo). This is not fixable by repricing a "
-    "weight: the keyword caps and the weekly cadence are together unaffordable. "
-    "Lower the caps, cut the frequency, or raise the prices."
+    "SCALE IS LOSS-MAKING ON SCHEDULED TRACKING, awaiting a product decision. "
+    "At 1,000 tracked keywords x 50 projects, weekly, at depth 20, the cron "
+    "costs $866/month against a $799 plan -- 108% of revenue before the "
+    "customer does anything. Every other tier is 30-44% and fine. Three levers, "
+    "all commercial: drop CRON_SERP_DEPTH to 10 (-> $433, 54%), move the cadence "
+    "to fortnightly (same effect), or cut Scale's project or keyword cap. "
+    "Doing two of the three brings it to ~27%."
 ))
-def test_scheduled_work_is_counted_against_plan_margin():
+def test_scheduled_tracking_cost_stays_within_plan_margin():
     """Cron spend is guaranteed COGS and must not stay invisible.
 
-    Rank tracking and backlink sync run on a schedule with bill_credits=False:
-    metered for cost, never charged to the customer. That is deliberate -- a
-    cron fan-out must not exhaust the bucket the customer's own work draws on --
-    but it means every plan carries supplier cost BEFORE the customer does
-    anything, and it scales with the plan's keyword cap rather than with usage.
+    Rank tracking runs weekly with bill_credits=False: metered for cost, never
+    charged. That is deliberate -- a cron fan-out must not exhaust the bucket
+    the customer's own work draws on -- but it means every plan carries
+    supplier cost before the customer does anything.
 
-    The allowance-based margin test above cannot see this: it prices what a
-    customer *could* consume, not what the platform spends on their behalf
-    whether they log in or not. Measured 2026-08-06, weekly rank checks alone:
+    The number that drives it is TRACKED_CAP (per project), NOT
+    PLAN_LIMITS[tier]["keywords"], which caps keyword RESEARCH results. An
+    earlier version of this test used the latter and overstated the exposure by
+    three orders of magnitude.
 
-        starter    500 keywords    $3.25/mo    11.2% of $29
-        pro      2,500 keywords   $16.24/mo    16.4% of $99
-        agency  10,000 keywords   $64.95/mo    21.7% of $299
-        scale   40,000 keywords  $259.80/mo    32.5% of $799
-
-    Scale is the tightest: a third of its revenue is committed before the first
-    request. This test pins that ratio so raising a keyword cap, or making the
-    cron more frequent, fails here instead of quietly eroding the margin.
+    DataForSEO bills $0.002 per 10-result page; the cron asks for depth 20.
     """
     from app.core.billing import PLAN_LIMITS, PLAN_PRICE_USD
+    from app.services.rank_tracking_service import tracked_cap_for, CRON_SERP_DEPTH
 
-    RANK_CHECK_USD = 0.02                    # measured on the DataForSEO dashboard
-    RUNS_PER_MONTH = 4.33                    # weekly cron
+    pages = max(1, -(-CRON_SERP_DEPTH // 10))
 
     for tier in ("starter", "pro", "agency", "scale"):
-        keywords = PLAN_LIMITS[tier]["keywords"]
-        assert keywords > 0, f"{tier} has an unbounded keyword cap; cron cost is unbounded"
-        monthly = keywords * RANK_CHECK_USD * RUNS_PER_MONTH
+        projects = PLAN_LIMITS[tier]["projects"]
+        if projects < 0:
+            continue                                       # contract-priced
+        monthly = tracked_cap_for(tier) * pages * 0.002 * 4.33 * projects
         share = monthly / PLAN_PRICE_USD[tier]
-        assert share <= 0.33, (
-            f"{tier}: scheduled rank tracking is {share:.1%} of plan price "
+        assert share <= 0.50, (
+            f"{tier}: scheduled tracking is {share:.0%} of plan price "
             f"(${monthly:.2f} of ${PLAN_PRICE_USD[tier]}) before the customer "
-            f"does anything. Lower the keyword cap, reduce cron frequency, or "
-            f"bill it."
+            f"does anything. Lower the tracked-keyword cap, cut the cadence, "
+            f"or reduce CRON_SERP_DEPTH."
         )
 
 

@@ -11,7 +11,29 @@ from app.services.monitoring_service import _create_alert as create_monitor_aler
 
 logger = logging.getLogger(__name__)
 
-TRACKED_CAP = 25
+# Tracked keywords PER PROJECT, by plan. Raised from a flat 25 on 2026-08-06.
+#
+# This is the number that drives scheduled SERP cost, and it is NOT
+# PLAN_LIMITS[tier]["keywords"], which caps keyword RESEARCH results. Confusing
+# the two overstated the cron exposure by three orders of magnitude.
+#
+# Monthly scheduled cost = cap x pages x $0.002 x 4.33 weeks x projects.
+# At CRON_SERP_DEPTH 20 (2 pages) that is $8.66 per 500-keyword project.
+# Raising the cap, the cadence, or the depth multiplies it directly.
+TRACKED_CAP_BY_PLAN: dict[str, int] = {
+    "free": 50,
+    "starter": 500,
+    "pro": 500,
+    "agency": 500,
+    "scale": 1000,
+    "enterprise": 1000,
+}
+TRACKED_CAP = 500   # fallback for an unknown tier
+
+
+def tracked_cap_for(plan_tier: str | None) -> int:
+    """Tracked-keyword ceiling for a plan, falling back to the default."""
+    return TRACKED_CAP_BY_PLAN.get(str(plan_tier or "").lower(), TRACKED_CAP)
 NOT_RANKED = 101.0
 
 
@@ -31,8 +53,13 @@ async def add_keyword(project, keyword: str, db: AsyncSession) -> TrackedKeyword
     count = (await db.execute(select(func.count()).select_from(TrackedKeyword).where(
         TrackedKeyword.project_id == project.id,
         TrackedKeyword.is_active.is_(True)))).scalar() or 0
-    if count >= TRACKED_CAP:
-        raise CapReached(TRACKED_CAP)
+    # The cap is per plan: every tracked keyword is a weekly SERP task the
+    # platform pays for whether the customer looks at it or not.
+    from app.models.organization import Organization
+    org = await db.get(Organization, project.org_id)
+    cap = tracked_cap_for(getattr(org, "plan_tier", None))
+    if count >= cap:
+        raise CapReached(cap)
     tk = TrackedKeyword(org_id=project.org_id, project_id=project.id, keyword=kw,
                         language=serp_service.language_for_project(project),
                         location_code=serp_service.location_for_project(project))

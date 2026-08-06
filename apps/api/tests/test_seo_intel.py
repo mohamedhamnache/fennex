@@ -269,10 +269,13 @@ async def test_fetch_serp_not_ranked_and_no_provider(db_session):
 async def test_tracking_cap_duplicate_and_snapshot_idempotency(db_session):
     from app.services import serp_service, rank_tracking_service as rts
     p = await _mk_project(db_session)
-    for i in range(25):
-        await rts.add_keyword(p, f"kw {i}", db_session)
+    # The cap is resolved from the org's plan now, not a flat 25, so fill until
+    # it trips rather than assuming a number.
+    i = 0
     with pytest.raises(rts.CapReached):
-        await rts.add_keyword(p, "kw 26", db_session)
+        for i in range(2000):
+            await rts.add_keyword(p, f"kw {i}", db_session)
+    assert i > 0, "the cap must trip after at least one keyword"
     with pytest.raises(rts.DuplicateKeyword):
         await rts.add_keyword(p, "kw 0", db_session)
     tk = (await db_session.execute(select(TrackedKeyword).where(
