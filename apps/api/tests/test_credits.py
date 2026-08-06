@@ -48,7 +48,7 @@ def test_seo_credits_weighted_by_unit():
     assert seo_credits_for("audit", 2) == 20
     assert seo_credits_for("audit", 1) == 10
     assert seo_credits_for("backlinks", 1) == 5
-    assert seo_credits_for("keyword_ideas", 1) == 15
+    assert seo_credits_for("keyword_ideas", 1) == 20
     assert seo_credits_for("rank_check", 1) == 2
     # unknown or missing unit falls back to 1x
     assert seo_credits_for("something_new", 4) == 4
@@ -197,8 +197,19 @@ def test_plan_cogs_stays_within_margin_target():
     worst_seo_cost_per_credit = max(
         cost / SEO_CREDIT_WEIGHT[unit] for unit, cost in SEO_UNIT_COST_USD.items()
     )
-    # keyword_ideas: $0.02 over 15 credits
-    assert abs(worst_seo_cost_per_credit - 0.02 / 15) < 1e-9
+    # keyword_ideas: $0.02 over 20 credits. It was 15 -- the only SEO unit
+    # priced BELOW its own supplier cost (19.05 credits of cost at
+    # CREDIT_MICROS) while every other unit billed 1.4x-2.1x. Repriced
+    # 2026-08-06; the assertion tracks the constant so a future reprice that
+    # drops a unit back under cost fails here.
+    assert abs(worst_seo_cost_per_credit - 0.02 / 20) < 1e-9
+
+    # No SEO unit may be sold below what it costs to buy.
+    for unit, cost in SEO_UNIT_COST_USD.items():
+        parity = cost / 0.00105
+        assert SEO_CREDIT_WEIGHT[unit] >= parity, (
+            f"{unit} bills {SEO_CREDIT_WEIGHT[unit]} credits but costs {parity:.2f}"
+        )
 
     for tier in ("starter", "pro", "agency", "scale"):
         cogs = (

@@ -117,10 +117,17 @@ SEO_CREDIT_WEIGHT: dict[str, int] = {
     # rank_check runs through the same fetch_serp chokepoint as `serp`, so it
     # is the same underlying task and must bill the same.
     "rank_check": 2,
-    "keyword_ideas": 15,
+    # 20,000 micro-$ per task = 19.05 credits of cost at CREDIT_MICROS. Was 15,
+    # the only SEO unit priced BELOW its own supplier cost while every other
+    # billed 1.4x-2.1x. Measured 2026-08-06; see migration u7seoprice3.
+    "keyword_ideas": 20,
     "backlinks": 5,
     "audit": 10,
-    # No live call site yet; left at the historical weight until one exists.
+    # No live call site, and no seeded cost_rate either -- so its cost is
+    # invisible and its price arbitrary. Left in place deliberately: removing the
+    # key would make seo_credits_for() fall back to a weight of 1 for it anyway,
+    # which is the same number with less of a paper trail. Seed a rate BEFORE
+    # wiring a caller.
     "keyword_analysis": 1,
 }
 

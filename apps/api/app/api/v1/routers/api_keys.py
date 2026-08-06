@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, HTTPException
@@ -5,6 +6,9 @@ from pydantic import BaseModel
 
 from app.core.dependencies import DB, CurrentUser
 from app.services.api_keys_service import create_key, delete_key, list_keys
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -24,6 +28,21 @@ async def test_dataforseo(current_user: CurrentUser, db: DB) -> dict:
         return {"ok": False, "error": "No SEO credentials are connected."}
     try:
         items = await provider.serp("seo", language_code="en", location_code=2840)
+        # A real, paid DataForSEO task. It went unmetered: the endpoint reaches
+        # the supplier directly rather than through fetch_serp, which is where
+        # every other SERP caller is billed. Recorded at cost but NOT charged to
+        # the customer -- verifying a credential you just typed should not spend
+        # your allowance, and the platform absorbing one task is the cheaper
+        # side of that trade than a user unable to tell a bad key from a bug.
+        try:
+            from app.core.database import async_session_factory
+            from app.services.metering import meter as _meter
+            async with async_session_factory() as _mdb:
+                await _meter.record_seo(_mdb, org_id=current_user.org_id, project_id=None,
+                                        unit="serp", count=1, feature="credential_test",
+                                        bill_credits=False)
+        except Exception:  # noqa: BLE001
+            logger.warning("credential-test metering failed", exc_info=True)
         return {"ok": True, "results": len(items or [])}
     except Exception as exc:   # noqa: BLE001
         return {"ok": False, "error": str(exc)[:300]}

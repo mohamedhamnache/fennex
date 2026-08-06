@@ -76,18 +76,51 @@ ALLOWLIST: dict[str, str] = {
     "app.services.image_service:generate_image_dalle": "meters via record_image",
     # ── batch ───────────────────────────────────────────────────────────────
     "app.services.batch.client:run_batched": "returns LLMUsage to call_llm_usage, which meters",
-    # ── SEO: a separate credit bucket, metered by its own path ──────────────
-    "app.services.seo_intel:_post": "meters via record_seo",
-    "app.services.seo_intel:_dfs_post": "meters via record_seo",
+    # ── SEO: a separate credit bucket, metered by its CALLERS ───────────────
+    # The provider is a thin HTTP client with no metering of its own; every
+    # caller records the task through record_seo. Listed individually so a NEW
+    # provider method cannot be added and left unbilled.
+    "app.integrations.seo_apis.dataforseo:__init__": "stores credentials; makes no call",
+    "app.integrations.seo_apis.dataforseo:get_keyword_ideas": "callers meter (keyword_tasks -> record_seo)",
+    "app.integrations.seo_apis.dataforseo:serp": "callers meter (serp_service.fetch_serp -> record_seo)",
+    "app.integrations.seo_apis.dataforseo:serp_batch": "caller meters count=len(keywords) (discovery/competitors)",
 }
 
 
-def _reaches_a_supplier(node: ast.AST, source: str) -> bool:
-    """True when this function body makes an outbound call we pay for."""
+def _names_a_supplier_host(node: ast.AST) -> bool:
+    """True when any string literal under this node names a host we pay."""
     for child in ast.walk(node):
         if isinstance(child, ast.Constant) and isinstance(child.value, str):
             if any(host in child.value for host in SUPPLIER_HOSTS):
                 return True
+    return False
+
+
+def _supplier_host_holders(tree: ast.AST) -> set[str]:
+    """Classes that hold a supplier host in a CLASS-LEVEL constant.
+
+    Found the hard way. `DataForSEOProvider` keeps its endpoint in
+    `BASE_URL = "https://api.dataforseo.com/v3"` and its methods build URLs with
+    `f"{self.BASE_URL}/..."`, so no method body contains a supplier literal and
+    a body-only scan declared the whole file clean. Every paid SEO call in the
+    product was invisible to this audit until the class itself was considered.
+    """
+    holders: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for stmt in node.body:
+            if isinstance(stmt, (ast.Assign, ast.AnnAssign)) and stmt.value is not None:
+                if _names_a_supplier_host(stmt.value):
+                    holders.add(node.name)
+    return holders
+
+
+def _reaches_a_supplier(node: ast.AST, source: str) -> bool:
+    """True when this function body makes an outbound call we pay for."""
+    if _names_a_supplier_host(node):
+        return True
+    for child in ast.walk(node):
         if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
             attr = child.func
             if isinstance(attr.value, ast.Attribute):
@@ -103,19 +136,27 @@ def find_unmetered_supplier_calls() -> list[str]:
     for path in sorted(APP_ROOT.rglob("*.py")):
         rel = path.relative_to(APP_ROOT.parent)
         module = str(rel.with_suffix("")).replace("/", ".")
+        # This module names every supplier host by definition.
+        if module == "app.core.metering_audit":
+            continue
         try:
             source = path.read_text(encoding="utf-8")
             tree = ast.parse(source)
         except (OSError, SyntaxError):
             continue
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            if not _reaches_a_supplier(node, source):
-                continue
-            key = f"{module}:{node.name}"
-            if key not in ALLOWLIST:
-                violations.append(f"{key} (line {node.lineno})")
+        holders = _supplier_host_holders(tree)
+        for parent in ast.walk(tree):
+            owner = parent.name if isinstance(parent, ast.ClassDef) else None
+            for node in ast.iter_child_nodes(parent):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                # A method of a class that holds a supplier endpoint reaches that
+                # supplier even if its own body only interpolates the constant.
+                if not (_reaches_a_supplier(node, source) or owner in holders):
+                    continue
+                key = f"{module}:{node.name}"
+                if key not in ALLOWLIST:
+                    violations.append(f"{key} (line {node.lineno})")
     return violations
 
 
