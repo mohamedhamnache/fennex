@@ -923,8 +923,8 @@
       }
     },
     "project": {
-      "title": "Proyecto",
-      "subtitle": "Gestiona el proyecto en el que trabaja el Pack",
+      "title": "Proyectos",
+      "subtitle": "Los sitios en los que trabaja la Manada. Cada uno mantiene su marca, idioma y automatizaciones.",
       "selectProject": "Proyecto",
       "name": "Nombre",
       "domain": "Dominio",
@@ -981,7 +981,14 @@
       "rankTracking": "Seguimiento semanal de posiciones",
       "rankTrackingHelp": "Comprueba cada semana la posición de este proyecto para sus palabras clave. Desactivado por defecto: consume créditos SEO de forma programada, se consulte o no el informe.",
       "rankTrackingCost_one": "Aproximadamente {{count}} crédito SEO por palabra clave y semana.",
-      "rankTrackingCost_other": "Aproximadamente {{count}} créditos SEO por palabra clave y semana."
+      "rankTrackingCost_other": "Aproximadamente {{count}} créditos SEO por palabra clave y semana.",
+      "sectionIdentity": "Identidad",
+      "sectionMarket": "Mercado e idioma",
+      "sectionAutomation": "Automatización",
+      "automationHelp": "Trabajo programado que se ejecuta sin que nadie lo pida.",
+      "switchProject": "Editando",
+      "projectCount_one": "{{count}} proyecto",
+      "projectCount_other": "{{count}} proyectos"
     },
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",
@@ -996,7 +1003,7 @@
       "appearance": "Apariencia",
       "organization": "Organización",
       "billing": "Facturación",
-      "project": "Proyecto",
+      "project": "Proyectos",
       "team": "Equipo",
       "brandKit": "Kit de marca",
       "aiKeys": "Claves IA",

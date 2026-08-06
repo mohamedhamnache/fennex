@@ -923,8 +923,8 @@
       }
     },
     "project": {
-      "title": "Projet",
-      "subtitle": "Gérez le projet sur lequel le Pack travaille",
+      "title": "Projets",
+      "subtitle": "Les sites sur lesquels la Meute travaille. Chacun garde sa marque, sa langue et ses automatisations.",
       "selectProject": "Projet",
       "name": "Nom",
       "domain": "Domaine",
@@ -981,7 +981,14 @@
       "rankTracking": "Suivi de position hebdomadaire",
       "rankTrackingHelp": "Vérifie chaque semaine le positionnement de ce projet sur ses mots-clés suivis. Désactivé par défaut : cela consomme des crédits SEO de façon planifiée, que le rapport soit consulté ou non.",
       "rankTrackingCost_one": "Environ {{count}} crédit SEO par mot-clé et par semaine.",
-      "rankTrackingCost_other": "Environ {{count}} crédits SEO par mot-clé et par semaine."
+      "rankTrackingCost_other": "Environ {{count}} crédits SEO par mot-clé et par semaine.",
+      "sectionIdentity": "Identité",
+      "sectionMarket": "Marché et langue",
+      "sectionAutomation": "Automatisation",
+      "automationHelp": "Tâches planifiées, exécutées sans que personne ne les demande.",
+      "switchProject": "Modification de",
+      "projectCount_one": "{{count}} projet",
+      "projectCount_other": "{{count}} projets"
     },
     "title": "Paramètres",
     "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",
@@ -996,7 +1003,7 @@
       "appearance": "Apparence",
       "organization": "Organisation",
       "billing": "Facturation",
-      "project": "Projet",
+      "project": "Projets",
       "team": "Équipe",
       "brandKit": "Kit de marque",
       "aiKeys": "Clés IA",

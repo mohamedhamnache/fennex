@@ -923,8 +923,8 @@
       }
     },
     "project": {
-      "title": "Projeto",
-      "subtitle": "Gerencie o projeto em que o Pack trabalha",
+      "title": "Projetos",
+      "subtitle": "Os sites em que a Matilha trabalha. Cada um mantém sua marca, idioma e automações.",
       "selectProject": "Projeto",
       "name": "Nome",
       "domain": "Domínio",
@@ -981,7 +981,14 @@
       "rankTracking": "Monitoramento semanal de posições",
       "rankTrackingHelp": "Verifica semanalmente onde este projeto se posiciona para suas palavras-chave. Desativado por padrão: consome créditos de SEO de forma programada, mesmo que ninguém abra o relatório.",
       "rankTrackingCost_one": "Cerca de {{count}} crédito de SEO por palavra-chave por semana.",
-      "rankTrackingCost_other": "Cerca de {{count}} créditos de SEO por palavra-chave por semana."
+      "rankTrackingCost_other": "Cerca de {{count}} créditos de SEO por palavra-chave por semana.",
+      "sectionIdentity": "Identidade",
+      "sectionMarket": "Mercado e idioma",
+      "sectionAutomation": "Automação",
+      "automationHelp": "Trabalho que roda em uma programação, sem ninguém pedir.",
+      "switchProject": "Editando",
+      "projectCount_one": "{{count}} projeto",
+      "projectCount_other": "{{count}} projetos"
     },
     "title": "Configurações",
     "subtitle": "Gerencie sua conta, espaço de trabalho e preferências.",
@@ -996,7 +1003,7 @@
       "appearance": "Aparência",
       "organization": "Organização",
       "billing": "Cobrança",
-      "project": "Projeto",
+      "project": "Projetos",
       "team": "Equipe",
       "brandKit": "Kit de marca",
       "aiKeys": "Chaves de IA",

@@ -1020,8 +1020,8 @@
       }
     },
     "project": {
-      "title": "Project",
-      "subtitle": "Manage the project the Pack works on",
+      "title": "Projects",
+      "subtitle": "The sites the Pack works on. Each keeps its own brand, language and automation.",
       "selectProject": "Project",
       "name": "Name",
       "domain": "Domain",
@@ -1078,7 +1078,14 @@
       "rankTracking": "Weekly rank tracking",
       "rankTrackingHelp": "Check where this project ranks for its tracked keywords, once a week. Off by default because it spends SEO credits on a schedule, whether or not anyone opens the report.",
       "rankTrackingCost_one": "About {{count}} SEO credit per keyword each week.",
-      "rankTrackingCost_other": "About {{count}} SEO credits per keyword each week."
+      "rankTrackingCost_other": "About {{count}} SEO credits per keyword each week.",
+      "sectionIdentity": "Identity",
+      "sectionMarket": "Market & language",
+      "sectionAutomation": "Automation",
+      "automationHelp": "Work that runs on a schedule, without anyone asking for it.",
+      "switchProject": "Editing",
+      "projectCount_one": "{{count}} project",
+      "projectCount_other": "{{count}} projects"
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",
@@ -1093,7 +1100,7 @@
       "appearance": "Appearance",
       "organization": "Organization",
       "billing": "Billing",
-      "project": "Project",
+      "project": "Projects",
       "team": "Team",
       "brandKit": "Brand Kit",
       "aiKeys": "AI Keys",

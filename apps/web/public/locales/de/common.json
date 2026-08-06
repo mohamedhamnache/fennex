@@ -923,8 +923,8 @@
       }
     },
     "project": {
-      "title": "Projekt",
-      "subtitle": "Verwalte das Projekt, an dem das Pack arbeitet",
+      "title": "Projekte",
+      "subtitle": "Die Websites, an denen das Rudel arbeitet. Jede behält eigene Marke, Sprache und Automatisierung.",
       "selectProject": "Projekt",
       "name": "Name",
       "domain": "Domain",
@@ -981,7 +981,14 @@
       "rankTracking": "Wöchentliches Ranking-Tracking",
       "rankTrackingHelp": "Prüft einmal pro Woche, wo dieses Projekt für seine Keywords rankt. Standardmäßig aus, weil es planmäßig SEO-Credits verbraucht — auch wenn niemand den Bericht öffnet.",
       "rankTrackingCost_one": "Etwa {{count}} SEO-Credit pro Keyword und Woche.",
-      "rankTrackingCost_other": "Etwa {{count}} SEO-Credits pro Keyword und Woche."
+      "rankTrackingCost_other": "Etwa {{count}} SEO-Credits pro Keyword und Woche.",
+      "sectionIdentity": "Identität",
+      "sectionMarket": "Markt und Sprache",
+      "sectionAutomation": "Automatisierung",
+      "automationHelp": "Arbeit, die planmäßig läuft, ohne dass jemand darum bittet.",
+      "switchProject": "Bearbeitung von",
+      "projectCount_one": "{{count}} Projekt",
+      "projectCount_other": "{{count}} Projekte"
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",
@@ -996,7 +1003,7 @@
       "appearance": "Darstellung",
       "organization": "Organisation",
       "billing": "Abrechnung",
-      "project": "Projekt",
+      "project": "Projekte",
       "team": "Team",
       "brandKit": "Marken-Kit",
       "aiKeys": "KI-Schlüssel",

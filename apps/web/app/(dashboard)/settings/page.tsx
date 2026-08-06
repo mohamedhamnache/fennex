@@ -263,6 +263,25 @@ function ErrorMsg({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-destructive font-medium">{children}</p>;
 }
 
+/** A labelled break between groups of related fields.
+ *
+ *  The project form was one flat list of eight controls, so nothing signalled
+ *  that language and country belong together, or that the two switches at the
+ *  bottom differ in kind from everything above them: they start work that runs
+ *  on a schedule and spends money without anyone asking. */
+function GroupLabel({ children, hint, className = "" }: {
+  children: React.ReactNode; hint?: string; className?: string;
+}) {
+  return (
+    <div className={`flex flex-col gap-0.5 border-t border-border pt-4 first:border-t-0 first:pt-0 ${className}`}>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {children}
+      </h3>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
@@ -1332,16 +1351,33 @@ function ProjectSection() {
     <div className="flex flex-col gap-5">
       <SectionHeader icon={Globe} title={t("settings.project.title")} description={t("settings.project.subtitle")} />
 
+      {/* Which project you are editing is context for the entire panel, not a
+          field inside the form. As a Field it read as another thing to fill in,
+          and on a multi-project account nothing said which site the values
+          below belonged to. */}
+      {projects.length > 1 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+          <label htmlFor="project-switcher" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("settings.project.switchProject")}
+          </label>
+          <select
+            id="project-switcher"
+            value={active.id}
+            onChange={(e) => setEditId(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {t("settings.project.projectCount", { count: projects.length })}
+          </span>
+        </div>
+      )}
+
       <Card className="flex flex-col gap-4 p-5">
-        {projects.length > 1 && (
-          <Field label={t("settings.project.selectProject")}>
-            <select value={active.id} onChange={(e) => setEditId(e.target.value)} className={SELECT_CLS}>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </Field>
-        )}
+        <GroupLabel>{t("settings.project.sectionIdentity")}</GroupLabel>
 
         <Field label={t("settings.project.name")}>
           <Input value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
@@ -1370,6 +1406,8 @@ function ProjectSection() {
             </span>
           </p>
         </Field>
+
+        <GroupLabel className="mt-2">{t("settings.project.sectionMarket")}</GroupLabel>
 
         <Field label={t("settings.project.language")} hint={t("settings.project.languageHint")}>
           <select value={form.locale} onChange={(e) => setForm((f) => ({ ...f, locale: e.target.value }))} className={SELECT_CLS}>
@@ -1401,6 +1439,10 @@ function ProjectSection() {
             ))}
           </select>
         </Field>
+
+        <GroupLabel className="mt-2" hint={t("settings.project.automationHelp")}>
+          {t("settings.project.sectionAutomation")}
+        </GroupLabel>
 
         <div className="flex items-center justify-between rounded-lg border border-border px-3.5 py-3">
           <div>
