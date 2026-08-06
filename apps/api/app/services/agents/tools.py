@@ -90,6 +90,28 @@ async def store_products(brief, db, inputs):
         return {"products": []}
 
 
+async def store_analytics(brief, db, inputs):
+    """Trading figures for the connected store.
+
+    A DATA tool, not an app tool: it reads our own store_orders table and never
+    calls Shopify, so it is cheap and safe to run automatically. Metrics we
+    cannot measure come back named but with no value -- see
+    store_agent_context for why a caveat would not be enough.
+    """
+    from app.services import store_agent_context
+    days = 30
+    raw = (inputs or {}).get("days")
+    try:
+        if raw:
+            days = max(1, min(int(str(raw).strip().rstrip("d")), 365))
+    except (TypeError, ValueError):
+        pass
+    try:
+        return await store_agent_context.build(brief.project_id, brief.org_id, db, days)
+    except Exception:
+        return {}
+
+
 async def article_context(brief, db, inputs):
     from app.models.article import Article
     from app.models.brand_voice import BrandVoice
@@ -133,6 +155,7 @@ TOOLS = {
     "crawl_competitor": crawl_competitor,
     "our_demand": our_demand,
     "store_products": store_products,
+    "store_analytics": store_analytics,
 }
 
 

@@ -47,13 +47,21 @@ class TestHired:
         the taxonomy can never be matched, so the employee is unreachable."""
         assert caps.unknown(registry.get("souk").capabilities) == []
 
-    def test_the_store_analytics_tool_is_gated_on_a_connected_store(self):
-        """Without an availability check the tool is offered to every project,
-        and an agent calls it on a store that does not exist."""
-        tool = toolbelt.get_tool("shopify.analytics")
-        assert tool is not None
-        assert tool.app == "shopify"
-        assert tool.availability is not None
+    def test_the_store_tool_resolves_in_the_registry_THE_RUNNER_USES(self):
+        """The bug this file exists to prevent a repeat of.
+
+        There are two tool registries: the legacy TOOLS dict that AgentRunner
+        drives skills through, and the newer toolbelt the agentic runtime uses.
+        store_analytics was registered only in the toolbelt, so every skill run
+        resolved nothing -- and run_tools swallows an unknown name, returning
+        {"ok": False, "data": None} with no error. Souk then told a merchant
+        with 48 synced orders that no store was connected.
+
+        Asserting BOTH registries is the point; either alone passes the bug.
+        """
+        from app.services.agents.tools import TOOLS as LEGACY
+        assert "store_analytics" in LEGACY
+        assert toolbelt.get_tool("store_analytics") is not None
 
 
 class TestRouting:
@@ -103,7 +111,7 @@ class TestNeverInventsANumber:
                 "revenue_by": {}, "daily_revenue": [], "observations": [],
                 "content_revenue": {}}
         data.update(over)
-        return {"shopify.analytics": {"data": data}}
+        return {"store_analytics": {"data": data}}
 
     def test_an_unmeasured_metric_reaches_the_model_without_a_value(self):
         """The core guarantee. A caveat is a sentence the model can drop; a
@@ -175,3 +183,78 @@ class TestContextBuilder:
         from app.services import store_agent_context
         src = inspect.getsource(store_agent_context.build)
         assert 'i["source"] == "live"' in src
+
+
+class TestNoSkillDeclaresAToolThatCannotResolve:
+    """The general case of the bug above, for the whole skill catalogue.
+
+    run_tools fails silently on an unknown name, so a typo or a tool registered
+    in the wrong place produces an agent that reasons from nothing and says so
+    confidently. Nothing else in the suite would notice.
+    """
+
+    def test_every_skill_tool_exists_in_the_legacy_registry(self):
+        from app.services.agents.registry import SKILLS
+        from app.services.agents.tools import TOOLS as LEGACY
+        broken = {k: [t for t in (s.tools or []) if t not in LEGACY]
+                  for k, s in SKILLS.items()}
+        broken = {k: v for k, v in broken.items() if v}
+        assert not broken, f"skills declaring unresolvable tools: {broken}"
+
+    def test_every_employee_allowed_tool_exists_in_the_toolbelt(self):
+        for e in registry.all_employees():
+            assert toolbelt.missing(e.allowed_tools) == [], \
+                f"{e.id} allows tools that do not exist: {toolbelt.missing(e.allowed_tools)}"
+
+
+class TestUnknownIsNotDirect:
+    """Found by running the agent for real, not by reading the code.
+
+    Every seeded order lacked a referrer, so the channel split read
+    "Direct: 100%". The agent called that over-reliance on direct traffic and
+    recommended buying ads -- a real budget decision taken on missing data.
+
+    "Direct" and "not recorded" are opposite facts that render identically.
+    A measured-LOOKING figure is not a measured one, and this is the second
+    door into the failure the whole agent is built to avoid.
+    """
+
+    def _dashboard(self, share, label="Direct"):
+        return {
+            "currency": "USD",
+            "range": {"days": 30, "start": "2026-07-08", "end": "2026-08-06",
+                      "compare_start": "2026-06-08"},
+            "kpis": {}, "series": [],
+            "breakdowns": {
+                "channel": {"source": "live",
+                            "rows": [{"label": label, "revenue": 100.0, "orders": 5,
+                                      "share": share}]},
+            },
+            "content": {"revenue": 0.0, "share": 0.0, "rows": []},
+            "forecast": {"rows": [], "projected_revenue": 0.0},
+            "insights": [],
+        }
+
+    async def _build(self, dashboard, monkeypatch):
+        from app.services import store_agent_context, store_analytics
+
+        async def fake(*a, **k):
+            return dashboard
+        monkeypatch.setattr(store_analytics, "dashboard", fake)
+        return await store_agent_context.build(uuid.uuid4(), uuid.uuid4(), None, 30)
+
+    async def test_an_all_direct_split_is_reported_as_unknown_not_as_a_channel(self, monkeypatch):
+        out = await self._build(self._dashboard(100.0), monkeypatch)
+        assert "channel" not in out["revenue_by"], "an all-Direct split must not read as a result"
+        note = next(u for u in out["unavailable"] if u["metric"] == "revenue_by_channel")
+        assert "unknown rather than direct" in note["needs"]
+
+    async def test_a_genuine_channel_mix_is_left_alone(self, monkeypatch):
+        """The guard must not fire on a real result -- a store where Direct is
+        merely the biggest channel still has a measured channel mix."""
+        d = self._dashboard(62.0)
+        d["breakdowns"]["channel"]["rows"].append(
+            {"label": "Organic search", "revenue": 60.0, "orders": 3, "share": 38.0})
+        out = await self._build(d, monkeypatch)
+        assert "channel" in out["revenue_by"]
+        assert len(out["revenue_by"]["channel"]) == 2

@@ -79,6 +79,22 @@ async def build(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession,
         for name, block in d["breakdowns"].items()
         if block["source"] == "live" and block["rows"]
     }
+
+    # A channel split that is 100% "Direct" almost never means every buyer typed
+    # the URL. It means no referrer was recorded -- and the two are opposite
+    # facts. A live agent read exactly this and recommended buying ads to fix
+    # "over-reliance on direct traffic", which is a real budget decision taken
+    # on missing data. Measured-looking is not the same as measured.
+    for dim in ("channel", "traffic_source"):
+        rows = breakdowns.get(dim) or []
+        if len(rows) == 1 and rows[0]["label"] == "Direct" and rows[0]["share_pct"] >= 99.5:
+            breakdowns.pop(dim, None)
+            unavailable.append({
+                "metric": f"revenue_by_{dim}",
+                "needs": ("nothing new -- but no order in this window carries a referrer, so "
+                          "attribution is unknown rather than direct. Do not read it as a "
+                          "channel result"),
+            })
     unavailable_dimensions = sorted(
         name for name, block in d["breakdowns"].items() if block["source"] != "live")
 

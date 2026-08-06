@@ -24,7 +24,7 @@ _NO_INVENTION = (
 
 def _store_block(td) -> str:
     """The store, rendered so measured and missing cannot be confused."""
-    d = (td.get("shopify.analytics") or {}).get("data") or {}
+    d = (td.get("store_analytics") or {}).get("data") or {}
     if not d:
         return ("STORE DATA: unavailable -- no store is connected, or it has no orders yet. "
                 "Say so plainly and give only advice that does not depend on figures.")
@@ -70,7 +70,7 @@ def _store_block(td) -> str:
 
 
 def _products_block(td) -> str:
-    p = (td.get("shopify.products") or {}).get("data") or {}
+    p = (td.get("store_products") or {}).get("data") or {}
     rows = p.get("products") or []
     if not rows:
         return ""
@@ -78,16 +78,25 @@ def _products_block(td) -> str:
             + "\n".join(f"  {r.get('title')} -- {r.get('price')}" for r in rows[:40]))
 
 
+# `impact` deliberately does NOT ask for a percentage range. A live run answered
+# "revenue growth by 20-30%" for a channel it had never measured -- a number
+# invented to fill the shape the format asked for. A merchant reads that as a
+# forecast. Impact is now what changes and which measured figure would move.
 _PRIORITY_FORMAT = (
     'Respond with ONLY JSON: {"situation": one paragraph on where the store stands, '
     '"findings": [{"severity": "critical"|"important"|"optimise", "problem": what is wrong, '
     '"evidence": the measured figure that shows it, "diagnosis": why it is happening, '
-    '"action": the exact thing to do, "impact": expected effect with a range, '
+    '"action": the exact thing to do -- name the page, the element, the copy, the offer, '
+    'the audience; a reader must be able to execute it without asking you anything, '
+    '"impact": which MEASURED figure this should move and in which direction, '
     '"effort": "hours"|"days"|"weeks"}], '
     '"blind_spots": [what you could not assess and the connector that would fix it], '
     '"this_week": [1-3 things to do first, most important first]}. '
     'Order findings by revenue impact. Three to six findings; fewer, specific findings beat '
-    'a long list. Never output a finding whose evidence is not a measured figure.'
+    'a long list. Never output a finding whose evidence is not a measured figure.\n'
+    'DO NOT PUT A PERCENTAGE ON AN OUTCOME YOU HAVE NOT MEASURED. "+20-30% revenue" for a '
+    'channel you have no data on is a fabricated forecast, and the merchant will budget '
+    'against it. Say which measured figure should move instead.'
 )
 
 
@@ -106,7 +115,7 @@ def _growth_audit_prompt(brief, inputs, td):
 
 GROWTH_AUDIT = Skill(
     key="souk.growth_audit", agent_id="souk", weight="medium",
-    tools=["shopify.analytics", "shopify.products"], build_prompt=_growth_audit_prompt,
+    tools=["store_analytics", "store_products"], build_prompt=_growth_audit_prompt,
     output="json", parse=parse_json, label="Growth audit",
     description="Find what limits growth now and rank the fixes by revenue impact.",
 )
@@ -136,7 +145,7 @@ def _cro_review_prompt(brief, inputs, td):
 
 CRO_REVIEW = Skill(
     key="souk.cro_review", agent_id="souk", weight="medium",
-    tools=["shopify.analytics", "shopify.products"], build_prompt=_cro_review_prompt,
+    tools=["store_analytics", "store_products"], build_prompt=_cro_review_prompt,
     output="json", parse=parse_json, label="Conversion review",
     description="Where the buying journey leaks, and the exact change at each step.",
 )
@@ -163,7 +172,7 @@ def _retention_prompt(brief, inputs, td):
 
 RETENTION_PLAN = Skill(
     key="souk.retention_plan", agent_id="souk", weight="light",
-    tools=["shopify.analytics"], build_prompt=_retention_prompt,
+    tools=["store_analytics"], build_prompt=_retention_prompt,
     output="json", parse=parse_json, label="Retention plan",
     description="Lifecycle flows and segments that raise repeat purchase rate.",
 )
@@ -189,7 +198,7 @@ def _merchandising_prompt(brief, inputs, td):
 
 MERCHANDISING = Skill(
     key="souk.merchandising", agent_id="souk", weight="light",
-    tools=["shopify.analytics", "shopify.products"], build_prompt=_merchandising_prompt,
+    tools=["store_analytics", "store_products"], build_prompt=_merchandising_prompt,
     output="json", parse=parse_json, label="Merchandising moves",
     description="What to push, bundle, reprice or retire, from what actually sells.",
 )

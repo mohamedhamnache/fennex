@@ -153,7 +153,7 @@ EMPLOYEE = Employee(
         ),
     ],
 
-    allowed_tools=["shopify.analytics", "shopify.products", "store_products",
+    allowed_tools=["store_analytics", "store_products",
                    "gsc_opportunities", "project_knowledge"],
     connected_apps=["shopify"],
     permissions=[P_READ_ANALYTICS, P_READ_PRODUCTS, P_READ_CONTENT],
