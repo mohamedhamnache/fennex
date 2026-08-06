@@ -1862,6 +1862,14 @@
           "s1": "Planifica la campaña de promo",
           "s2": "Diseña los visuales de promo",
           "s3": "Anúnciala en redes"
+        },
+        "grow": {
+          "title": "Aumentar los ingresos",
+          "subtitle": "Encuentra qué limita la tienda y corrígelo con contenido",
+          "s1": "Auditar la tienda y nombrar el límite",
+          "s2": "Encontrar la demanda que vale la pena captar",
+          "s3": "Escribir lo que convierte",
+          "s4": "Ponerlo ante los compradores"
         }
       },
       "freelancer": {
@@ -2368,7 +2376,8 @@
       "marketReport": "Generar informe de mercado",
       "defineIdealClient": "Definir cliente ideal",
       "planOutreach": "Planificar mi semana",
-      "testimonialContent": "Testimonio a contenido"
+      "testimonialContent": "Testimonio a contenido",
+      "auditStore": "Auditar mi tienda"
     }
   },
   "agentsRoster": {

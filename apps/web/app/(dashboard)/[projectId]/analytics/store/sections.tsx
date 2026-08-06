@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, CircleDot, Clock,
-  Lightbulb, PackageX, TrendingDown, TrendingUp,
+  Lightbulb, PackageX, Store, TrendingDown, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { FENNEX_AGENTS } from "@/lib/agents";
 import type { StoreDashboardData, StoreProductRow } from "@/lib/api";
 import { CohortHeatmap, CustomerGrowth, Funnel, GeoList, RankBars } from "./charts";
 import { DataTable, Section, Segmented, SourceBadge, Stat, type Fmt } from "./primitives";
@@ -16,7 +18,9 @@ import { DataTable, Section, Segmented, SourceBadge, Stat, type Fmt } from "./pr
    built on sample figures says so — the alternative is a plausible sentence
    the merchant acts on and later discovers was invented. */
 
-export function InsightsPanel({ data }: { data: StoreDashboardData }) {
+export function InsightsPanel({ data, projectId }: {
+  data: StoreDashboardData; projectId: string;
+}) {
   if (!data.insights.length) return null;
   const tone = {
     good: "text-emerald-500 bg-emerald-500/10",
@@ -24,8 +28,22 @@ export function InsightsPanel({ data }: { data: StoreDashboardData }) {
     info: "text-foreground/70 bg-muted",
   } as const;
   return (
-    <Section title="What changed" subtitle="Ranked by how much it moves the business"
-             id="insights">
+    <Section
+      title="What changed" subtitle="Ranked by how much it moves the business" id="insights"
+      /* These observations state what happened. Deciding what to DO about it is
+         Souk's job, and the handoff belongs here -- next to the finding -- not
+         in a menu the merchant has to go looking for. */
+      action={
+        <Link
+          href={`/${projectId}/chat?q=${encodeURIComponent(
+            "Audit my store and tell me the one thing limiting growth right now")}`}
+          className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+        >
+          <Store className="h-3.5 w-3.5" strokeWidth={1.9} />
+          Ask {FENNEX_AGENTS.souk.name}
+        </Link>
+      }
+    >
       <ul className="flex flex-col gap-2">
         {data.insights.map((ins, i) => {
           const Icon = ins.severity === "good" ? TrendingUp

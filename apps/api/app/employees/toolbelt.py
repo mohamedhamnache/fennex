@@ -521,6 +521,24 @@ async def _shopify_products(ctx, db, inputs):
     return {"products": [{"id": str(p.id), "title": p.title, "price": p.price} for p in rows][:50]}
 
 
+async def _store_analytics(ctx, db, inputs):
+    """Trading figures, with placeholders stripped rather than labelled.
+
+    See store_agent_context: metrics we cannot measure arrive named but with no
+    value, so an agent can say "connect X to see this" but cannot build a
+    recommendation on a number nobody measured.
+    """
+    from app.services import store_agent_context
+    days = 30
+    raw = (inputs or {}).get("query") or (inputs or {}).get("days")
+    try:
+        if raw:
+            days = max(1, min(int(str(raw).strip().rstrip("d")), 365))
+    except (TypeError, ValueError):
+        pass                                    # a non-numeric ask means "the usual window"
+    return await store_agent_context.build(ctx.project_id, ctx.org_id, db, days)
+
+
 async def _woo_products(ctx, db, inputs):
     from app.services import woocommerce_service
     return await woocommerce_service.sync_products(ctx.project_id, ctx.org_id, db)
@@ -559,6 +577,16 @@ def _register_app_tools() -> None:
         description="Read products from the connected Shopify store.",
         kind=KIND_APP, app="shopify", permission=P_READ_PRODUCTS,
         availability=_shopify_available, handler=_shopify_products))
+
+    register_tool(Tool(
+        name="shopify.analytics", label="Store trading figures",
+        description=(
+            "Revenue, orders, AOV, daily trend, channel mix, landing pages, campaigns "
+            "and content-attributed revenue for the connected store. Pass a number of "
+            "days (default 30). Metrics we cannot measure are returned named but "
+            "WITHOUT a value, under `unavailable` -- never invent one."),
+        kind=KIND_APP, app="shopify", permission=P_READ_ANALYTICS,
+        availability=_shopify_available, handler=_store_analytics))
 
     register_tool(Tool(
         name="woocommerce.products", label="WooCommerce catalogue",

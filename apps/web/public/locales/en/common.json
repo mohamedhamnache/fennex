@@ -1969,6 +1969,14 @@
           "s1": "Plan the promo campaign",
           "s2": "Design promo visuals",
           "s3": "Announce it across social"
+        },
+        "grow": {
+          "title": "Grow revenue",
+          "subtitle": "Find what limits the store, then fix it with content",
+          "s1": "Audit the store and name the constraint",
+          "s2": "Find the demand worth capturing",
+          "s3": "Write what converts",
+          "s4": "Put it in front of buyers"
         }
       },
       "freelancer": {
@@ -2456,7 +2464,8 @@
       "marketReport": "Generate a market report",
       "defineIdealClient": "Define ideal client",
       "planOutreach": "Plan my outreach week",
-      "testimonialContent": "Testimonial to content"
+      "testimonialContent": "Testimonial to content",
+      "auditStore": "Audit my store"
     }
   },
   "agentsRoster": {

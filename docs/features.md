@@ -111,8 +111,27 @@ decoration on top.
 
 ## 5. AI agents
 
-A named roster of specialised agents (Zerda, Sirocco, Dune, Mirage, Sable, Oasis, Nomad) wired to
-the tools above, with orchestration, telemetry, and an employee-chat surface.
+A named roster of specialised agents wired to the tools above, with orchestration, telemetry, and
+an employee-chat surface. The Router ranks on capability and confidence, never on names, so a new
+agent competes for work on equal terms the moment its file exists.
+
+| agent | role | reads |
+| --- | --- | --- |
+| Zerda | SEO & Market Strategist | Search Console, tracked keywords |
+| Sirocco | Creative Director | brand kit, campaign context |
+| Dune | Content Writer | briefs, brand voice, knowledge base |
+| Mirage | Image Artisan | images, brand kit |
+| Sable | Competitor Scout | competitor pages |
+| Oasis | Market Researcher | demand data |
+| Nomad | Outreach Agent | LinkedIn context, project profile |
+| **Souk** | **Ecommerce Growth Operator** | **store orders, catalogue** |
+
+**Souk** audits a connected Shopify store and answers in decisions rather than observations:
+growth audit, conversion review, retention plan, merchandising moves. It reads the store through
+`shopify.analytics`, which splits figures into *measured* and *unavailable* — and an unavailable
+metric arrives **named but with no value at all**. That is deliberate: a caveat is a sentence a
+model can drop, so a merchant could act on an invented ROAS. Souk can say "connect Meta Ads to
+see this"; it cannot quote a number nobody measured.
 
 ## 6. Billing and usage
 

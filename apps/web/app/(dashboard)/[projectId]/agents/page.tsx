@@ -27,6 +27,7 @@ function shortcut(employeeId: string, base: string): { key: string; href: string
     case "sable":   return { key: "scanCompetitor", href: `${base}/analytics?ws=competitors` };
     case "oasis":   return { key: "marketReport", href: `${base}/analytics?ws=market&oasis=1` };
     case "nomad":   return { key: "planOutreach", href: `${base}/agents/nomad` };
+    case "souk":    return { key: "auditStore", href: `${base}/analytics?source=store` };
     default:        return null;
   }
 }

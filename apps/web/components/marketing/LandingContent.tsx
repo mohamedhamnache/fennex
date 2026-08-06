@@ -22,9 +22,11 @@ const PACK_GRADIENT: Record<AgentId, string> = {
   sable: "from-stone-500 to-stone-700",
   oasis: "from-emerald-600 to-teal-600",
   nomad: "from-amber-600 to-red-500",
+  souk: "from-emerald-500 to-green-700",
 };
 
-const PACK_ORDER: AgentId[] = ["zerda", "dune", "mirage", "sirocco", "sable", "oasis", "nomad"];
+const PACK_ORDER: AgentId[] =
+  ["zerda", "dune", "mirage", "sirocco", "sable", "oasis", "nomad", "souk"];
 
 const LOOP: { n: string; icon: LucideIcon; key: string }[] = [
   { n: "01", icon: Search, key: "research" },

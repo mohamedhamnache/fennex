@@ -1862,6 +1862,14 @@
           "s1": "Promo-Kampagne planen",
           "s2": "Promo-Visuals gestalten",
           "s3": "Auf Social ankündigen"
+        },
+        "grow": {
+          "title": "Umsatz steigern",
+          "subtitle": "Finde die Bremse im Shop und löse sie mit Inhalten",
+          "s1": "Shop analysieren und die Bremse benennen",
+          "s2": "Die lohnende Nachfrage finden",
+          "s3": "Schreiben, was konvertiert",
+          "s4": "Vor die Käufer bringen"
         }
       },
       "freelancer": {
@@ -2368,7 +2376,8 @@
       "marketReport": "Marktbericht erstellen",
       "defineIdealClient": "Idealkunden definieren",
       "planOutreach": "Meine Woche planen",
-      "testimonialContent": "Testimonial zu Content"
+      "testimonialContent": "Testimonial zu Content",
+      "auditStore": "Shop analysieren"
     }
   },
   "agentsRoster": {

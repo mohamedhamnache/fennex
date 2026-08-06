@@ -1,12 +1,13 @@
 /** The Fennex Pack — named AI agent identities (frontend mirror of
  *  apps/api/app/agents/registry.py — keep both in sync). */
 import {
-  Radar, Wind, ScrollText, Wand2, Footprints, Palmtree, Compass,
+  Radar, Wind, ScrollText, Wand2, Footprints, Palmtree, Compass, Store,
   type LucideIcon,
 } from "lucide-react";
 import type { ProjectPersona } from "./api";
 
-export type AgentId = "zerda" | "sirocco" | "dune" | "mirage" | "sable" | "oasis" | "nomad";
+export type AgentId =
+  | "zerda" | "sirocco" | "dune" | "mirage" | "sable" | "oasis" | "nomad" | "souk";
 
 export interface FennexAgent {
   id: AgentId;
@@ -117,6 +118,21 @@ export const FENNEX_AGENTS: Record<AgentId, FennexAgent> = {
       "Outreach tips tuned to your niche and services",
     ],
     personaFit: ["freelancer", "creator"],
+  },
+  souk: {
+    id: "souk",
+    name: "Souk",
+    role: "Ecommerce Growth Operator",
+    tagline: "Reads your store like an operator, answers in decisions",
+    Icon: Store,
+    capabilities: [
+      "Audits the store and names the one thing limiting growth",
+      "Finds where the buying journey leaks, and the exact fix",
+      "Designs retention flows that raise repeat purchase rate",
+      "Says what to push, bundle, reprice or retire",
+      "Never builds advice on a figure nobody measured",
+    ],
+    personaFit: ["ecommerce"],
   },
 };
 

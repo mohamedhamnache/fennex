@@ -1,4 +1,6 @@
-from app.services.agents.skills import zerda, dune, sirocco, oasis, sable, mirage, nomad
+from app.services.agents.skills import (
+    zerda, dune, sirocco, oasis, sable, mirage, nomad, souk,
+)
 
 # Skills the campaign director may choose from when planning a campaign.
 _ALL = [
@@ -9,6 +11,7 @@ _ALL = [
     sable.COMPETITOR_SCAN,
     mirage.PRODUCT_SHOT,
     nomad.OUTREACH_PLAN, nomad.TESTIMONIAL_CONTENT,
+    souk.GROWTH_AUDIT, souk.CRO_REVIEW, souk.RETENTION_PLAN, souk.MERCHANDISING,
 ]
 
 # Resolvable by key but never offered to the director: these need inputs a

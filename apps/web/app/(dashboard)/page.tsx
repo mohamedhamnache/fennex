@@ -213,6 +213,7 @@ const PACK_GRADIENT: Record<AgentId, string> = {
   sable: "from-stone-500 to-stone-700",
   oasis: "from-emerald-600 to-teal-600",
   nomad: "from-amber-600 to-red-500",
+  souk: "from-emerald-500 to-green-700",
 };
 
 // Each agent's primary surface (routes verified to exist).
@@ -224,9 +225,11 @@ const PACK_ROUTE: Record<AgentId, string> = {
   sable: "content",
   oasis: "agents",
   nomad: "backlinks",
+  souk: "analytics?source=store",
 };
 
-const PACK_ORDER: AgentId[] = ["dune", "zerda", "sirocco", "mirage", "sable", "oasis", "nomad"];
+const PACK_ORDER: AgentId[] =
+  ["dune", "zerda", "sirocco", "mirage", "sable", "oasis", "nomad", "souk"];
 
 function PackStrip({ projectId }: { projectId: string }) {
   const { t } = useTranslation();

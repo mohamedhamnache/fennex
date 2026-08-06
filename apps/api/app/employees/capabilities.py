@@ -125,7 +125,31 @@ OPERATIONS = [
     _c("analytics.measure", "Measure performance", "Report on what the work achieved."),
 ]
 
-ALL: list[Capability] = SEO + CONTENT + MARKETING + CREATIVE + INTELLIGENCE + RESEARCH + GROWTH + OPERATIONS
+# --- Ecommerce (trading, conversion, retention, merchandising) ----------------
+# Its own domain rather than a subset of GROWTH: these read a store's orders and
+# catalogue, and an employee that cannot see those should never be selected for
+# them however good its growth capabilities are.
+ECOMMERCE = [
+    _c("ecommerce.growth_audit", "Growth audit",
+       "Find the constraint limiting store revenue and rank fixes by impact."),
+    _c("ecommerce.cro_review", "Conversion review",
+       "Locate friction across the buying journey and specify the change at each step."),
+    _c("ecommerce.retention_plan", "Retention plan",
+       "Lifecycle flows and segments that raise repeat purchase rate."),
+    _c("ecommerce.merchandising", "Merchandising",
+       "Decide what to push, bundle, reprice or retire from what actually sells."),
+    _c("ecommerce.offer_design", "Offer design",
+       "Bundles, upsells and promotions built around real basket behaviour."),
+    _c("ecommerce.channel_economics", "Channel economics",
+       "Judge which acquisition channels are profitable, not merely busy."),
+    _c("ecommerce.inventory_risk", "Inventory risk",
+       "Flag stock that will run out or tie up capital before it does."),
+    _c("ecommerce.customer_segmentation", "Customer segmentation",
+       "Split customers by value and behaviour into segments worth acting on."),
+]
+
+ALL: list[Capability] = (SEO + CONTENT + MARKETING + CREATIVE + INTELLIGENCE
+                         + RESEARCH + GROWTH + OPERATIONS + ECOMMERCE)
 BY_SLUG: dict[str, Capability] = {c.slug: c for c in ALL}
 
 

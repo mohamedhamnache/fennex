@@ -50,6 +50,7 @@ CONTRIBUTOR_FLOOR = 0.99
 _STAGE_ORDER = {
     "research": 10,    # ground truth first
     "intel": 20,       # then the competitive picture
+    "ecommerce": 25,   # what the store's own numbers say, before deciding
     "seo": 30,         # then the decision about what to make
     "content": 40,     # then the thing itself
     "copy": 45,

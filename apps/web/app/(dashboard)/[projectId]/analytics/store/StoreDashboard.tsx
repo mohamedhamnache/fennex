@@ -306,7 +306,7 @@ export function StoreDashboard({ projectId, gscConnected }: {
                   forecast={showForecast ? data.forecast.rows : undefined}
                 />
               </Section>
-              <InsightsPanel data={data} />
+              <InsightsPanel data={data} projectId={projectId} />
               {/* Content attribution sits on Overview: it is the one thing here
                   Shopify's own dashboard cannot tell the merchant. */}
               <ContentSection data={data} fmt={fmt} />

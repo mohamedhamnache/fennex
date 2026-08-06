@@ -150,9 +150,17 @@ recorded cost because `usage_events` denormalises `cost_micros` per row.
 | Product scene (flux-kontext-pro) | ~39 | 40,000 micro-$ |
 | Image to 3D (trellis) | ~34 | 35,000 micro-$ |
 | Convert to Canvas | ~40 | Florence-2 x2 + BiRefNet + LaMa, each at the floor |
-| SERP lookup | 2 SEO credits | weighted per task |
+| SERP lookup (live, depth 100) | 30 SEO credits | 3 per 10-result page, 10 pages |
+| SERP lookup (live, depth 10) | 3 SEO credits | DataForSEO bills per page, not per query |
+| Scheduled rank check (standard queue) | 1 SEO credit | ~5 min instead of ~6 s, a third of the cost |
+| Souk action (audit, CRO, retention, merchandising) | ~8-25 | agentic: several LLM turns per run |
+| Souk store read (`shopify.analytics`) | 0 | our own database, no supplier call |
 
 A masked edit costs the **sum** of its supplier calls — mask derivation *plus* the edit itself.
+
+Souk's actions are **agentic**: the model pulls store figures, reads them, and may go back for a
+breakdown before answering, so a run is several LLM turns rather than one. Reading the store
+itself is free — those numbers come from our own `store_orders` table, not from a supplier.
 
 ---
 

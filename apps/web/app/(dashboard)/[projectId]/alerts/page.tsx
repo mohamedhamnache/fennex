@@ -33,6 +33,7 @@ const KIND_GRADIENT: Record<AgentId, string> = {
   sable: "from-stone-500 to-stone-700",
   oasis: "from-emerald-600 to-teal-600",
   nomad: "from-amber-600 to-red-500",
+  souk: "from-emerald-500 to-green-700",
 };
 
 const SEVERITY_DOT: Record<Alert["severity"], string> = {

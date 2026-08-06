@@ -69,6 +69,15 @@ export const PERSONA_GOALS: Record<ProjectPersona, PlaybookGoal[]> = {
       { agent: "dune", route: "articles" },
       { agent: "sirocco", route: "social" },
     ]),
+    // Souk leads: the store's own numbers decide what is worth making before
+    // anyone writes a word. Placed second rather than made flagship so the
+    // default goal a merchant sees does not change under them.
+    goal("ecommerce", "grow", goalKey("ecommerce", "grow"), ["souk", "zerda", "dune", "sirocco"], [
+      { agent: "souk", route: "analytics?source=store" },
+      { agent: "zerda", route: "keywords" },
+      { agent: "dune", route: "articles" },
+      { agent: "sirocco", route: "campaigns" },
+    ]),
     goal("ecommerce", "catalog", goalKey("ecommerce", "catalog"), ["zerda", "dune"], [
       { agent: "zerda", route: "seo" },
       { agent: "dune", route: "articles" },

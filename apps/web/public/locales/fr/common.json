@@ -1862,6 +1862,14 @@
           "s1": "Planifier la campagne promo",
           "s2": "Concevoir les visuels promo",
           "s3": "L'annoncer sur les réseaux"
+        },
+        "grow": {
+          "title": "Augmenter le chiffre d'affaires",
+          "subtitle": "Trouver ce qui bloque la boutique, puis le corriger par le contenu",
+          "s1": "Auditer la boutique et nommer le blocage",
+          "s2": "Trouver la demande à capter",
+          "s3": "Écrire ce qui convertit",
+          "s4": "Le mettre devant les acheteurs"
         }
       },
       "freelancer": {
@@ -2368,7 +2376,8 @@
       "marketReport": "Générer un rapport de marché",
       "defineIdealClient": "Définir le client idéal",
       "planOutreach": "Planifier ma semaine",
-      "testimonialContent": "Témoignage en contenu"
+      "testimonialContent": "Témoignage en contenu",
+      "auditStore": "Auditer ma boutique"
     }
   },
   "agentsRoster": {
