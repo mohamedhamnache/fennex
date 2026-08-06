@@ -272,6 +272,7 @@
       <span class="grp">Product</span>
       <a href="#pack">The Fennex Pack</a>
       <a href="#features">Features</a>
+      <a href="#direction">Direction &amp; business</a>
       <a href="#credits">AI credits &amp; models</a>
       <a href="#compare">How it compares</a>
       <a href="#jasper">Fennex vs Jasper</a>
@@ -372,7 +373,7 @@ fennex/
 
       <h3 class="col">System diagram</h3>
       <div class="diagram full">
-        <div class="layer"><div class="node web"><b>Next.js Web</b><small>App Router · TanStack Query</small></div></div>
+        <div class="layer"><div class="node web"><b>Next.js Web</b><small>App Router · TanStack Query</small></div><div class="node web"><b>Admin console</b><small>internal · separate app</small></div></div>
         <div class="arrow">▼ &nbsp; HTTPS · JWT · SSE streaming</div>
         <div class="layer">
           <div class="node api"><b>FastAPI</b><small>REST · async</small></div>
@@ -490,10 +491,59 @@ fennex/
 
     <!-- COMPARISON -->
     <!-- AI CREDITS & MODELS -->
+    <!-- DIRECTION & BUSINESS -->
+    <section id="direction">
+      <div class="col">
+        <p class="eyebrow">Where this is going</p>
+        <h2><span class="n">05</span> Direction &amp; business</h2>
+        <p class="sub">The north star, who it is for, how it makes money, and the sequence that gets there.</p>
+      </div>
+
+      <div class="note info col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span class="b">North star:</span><span>An enterprise marketing operations platform fused with an AI SEO content studio — a <b>virtual agency of AI experts</b> that helps enterprises and individuals create content (text, image, and in time video), build their brand, and distribute it, all <b>guided by SEO and ranking</b>. The product proposes the right tools for each project and each persona.</span></div>
+
+      <p class="col"><b>The one-line strategy.</b> Tell Fennex your goal and who you are — it assembles the right expert agents and tools, produces content that ranks and converts, and publishes it where your audience is.</p>
+
+      <h3 class="col">The wedge</h3>
+      <p class="col">Fennex sits between two established markets: Jasper-style marketing operations and Surfer/Semrush-style SEO. The wedge is combining them with <b>honest, real-data grounding</b> — scores computed from live SERP and Search Console data rather than asserted by a model — and an <b>agent team that executes the work</b> rather than only advising. See <a href="#compare">How it compares</a> and <a href="#jasper">Fennex vs Jasper</a> for the detail.</p>
+
+      <h3 class="col">Personas and their squads</h3>
+      <p class="col">The core UX promise is a persona-driven workspace: onboarding detects the persona and goal, then surfaces a tailored home, a recommended squad and pre-shaped workflows.</p>
+      <table class="tbl col">
+        <tr><th>Persona</th><th>Primary goal</th><th>Squad</th><th>Signature tools</th><th>North-star metric</th></tr>
+        <tr><td><b>Creator / influencer</b></td><td>Grow audience with great content</td><td>Sirocco · Mirage · Dune</td><td>Image studio, trends, social studio &amp; calendar</td><td>Reach &amp; engagement per post</td></tr>
+        <tr><td><b>E-commerce seller</b></td><td>Product content that sells and ranks</td><td>Mirage · Dune · Zerda</td><td>Store sync, product-image studio, SEO descriptions</td><td>Product-page conversion &amp; organic traffic</td></tr>
+        <tr><td><b>Freelancer / agency</b></td><td>Win and service clients</td><td>Zerda · Dune · Nomad</td><td>Audits, outreach, multi-project workspaces</td><td>Clients served per hour</td></tr>
+        <tr><td><b>Enterprise</b></td><td>Brand governance at volume</td><td>The full Pack</td><td>Brand voice, approvals, GEO, reporting</td><td>Share of AI and search answers</td></tr>
+      </table>
+
+      <h3 class="col">How it makes money</h3>
+      <div class="grid g2 col">
+        <div class="card"><h4>Subscription</h4><p>Five paid tiers from $29 to $799, plus custom enterprise. Each carries plan limits on projects, articles, images, social posts, keywords, seats, audits and backlinks.</p></div>
+        <div class="card"><h4>Metered resale</h4><p>Fennex buys supplier capacity and resells it as credits at <b>$0.00105 of cost per credit</b>, holding roughly <b>80–82% gross margin</b> on allowance even if a customer consumes all of it. Full detail in <a href="#credits">AI credits &amp; models</a>.</p></div>
+      </div>
+      <p class="col">The margin depends on two disciplines the codebase enforces rather than assumes: every paid supplier call is metered — asserted at startup and in CI — and pricing floors bill cheap operations as operations rather than at cost. A single unmetered call path silently converts revenue into supplier spend, which is why the audit exists.</p>
+
+      <h3 class="col">The roadmap</h3>
+      <p class="col">Eight phases, sequenced by dependency and return rather than by appetite.</p>
+      <table class="tbl col">
+        <tr><th>Phase</th><th>What it delivers</th><th>Size</th></tr>
+        <tr><td>1 · Persona-guided platform</td><td>Onboarding detects persona and goal; integration hub</td><td>L</td></tr>
+        <tr><td>2 · E-commerce vertical</td><td>Shopify and WooCommerce as first-class surfaces</td><td>L</td></tr>
+        <tr><td>3 · Social distribution</td><td>Real OAuth publishing and the influencer studio</td><td>M/L</td></tr>
+        <tr><td>4 · Freelancer vertical</td><td>Outreach, audits-as-deliverables, client workspaces</td><td>M</td></tr>
+        <tr><td>5 · The virtual agency</td><td>Orchestration that makes the Pack feel like a team</td><td>XL</td></tr>
+        <tr><td>6 · Video &amp; multi-format</td><td>Beyond text and image</td><td>XL</td></tr>
+        <tr><td>7 · GEO &amp; brand governance</td><td>Ranking inside AI answers; enterprise pull</td><td>L</td></tr>
+        <tr><td>8 · Enterprise &amp; ecosystem</td><td>Procurement, compliance, third-party surface</td><td>L/XL</td></tr>
+      </table>
+
+      <div class="note warn col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="b">Honest status:</span><span>Phases are a plan, not a shipped state. Social <b>posts</b> are live but real OAuth publishing is still pending; personas exist in the data model with per-agent fit, and the tailored experience is only partly wired. Everything in <a href="#features">Features</a> is built and running today — the roadmap above is what is not.</span></div>
+    </section>
+
     <section id="credits">
       <div class="col">
         <p class="eyebrow">Unit economics</p>
-        <h2><span class="n">05</span> AI credits &amp; models</h2>
+        <h2><span class="n">06</span> AI credits &amp; models</h2>
         <p class="sub">Fennex buys supplier capacity and resells it as credits. Every figure below is read from <code>credits.py</code> and the <code>cost_rates</code> table.</p>
       </div>
 
@@ -606,7 +656,7 @@ fennex/
     <section id="compare">
       <div class="col">
         <p class="eyebrow">Positioning</p>
-        <h2><span class="n">06</span> How Fennex compares</h2>
+        <h2><span class="n">07</span> How Fennex compares</h2>
         <p class="sub">A balanced, grouped feature comparison &mdash; including where Fennex leads <em>and</em> where dedicated tools still do more. Marks reflect each product's typical, publicly-described feature set.</p>
       </div>
 
@@ -690,7 +740,7 @@ fennex/
     <section id="jasper">
       <div class="col">
         <p class="eyebrow">Head to head</p>
-        <h2><span class="n">07</span> Fennex vs Jasper &mdash; in depth</h2>
+        <h2><span class="n">08</span> Fennex vs Jasper &mdash; in depth</h2>
         <p class="sub">Jasper (2026) is a mature <b>enterprise marketing platform</b>: Jasper&nbsp;IQ brand intelligence, 100+ agents, content pipelines, GEO/AI-search optimization and a 1000+ integration ecosystem. Fennex is an <b>all-in-one AI SEO &amp; content studio</b> that owns the SEO stack natively and hands you control. Here is an honest, feature-by-feature read.</p>
       </div>
 
@@ -802,7 +852,7 @@ fennex/
     <section id="technologies">
       <div class="col">
         <p class="eyebrow">The stack</p>
-        <h2><span class="n">08</span> Technologies</h2>
+        <h2><span class="n">09</span> Technologies</h2>
         <p class="sub">Modern, typed and async end to end.</p>
       </div>
 
@@ -845,7 +895,7 @@ fennex/
     <section id="local">
       <div class="col">
         <p class="eyebrow">Get running</p>
-        <h2><span class="n">09</span> Local development</h2>
+        <h2><span class="n">10</span> Local development</h2>
         <p class="sub">The full stack runs in Docker in a couple of commands.</p>
       </div>
 
@@ -884,7 +934,7 @@ docker compose exec web npx tsc --noEmit</pre></div>
     <section id="costs">
       <div class="col">
         <p class="eyebrow">Choosing a host</p>
-        <h2><span class="n">10</span> Deployment &amp; cost</h2>
+        <h2><span class="n">11</span> Deployment &amp; cost</h2>
         <p class="sub">Three ways to run Fennex. Fixed infrastructure only — supplier spend is identical on all three, and larger.</p>
       </div>
 
@@ -928,7 +978,7 @@ docker compose exec web npx tsc --noEmit</pre></div>
     <section id="deploy-vercel">
       <div class="col">
         <p class="eyebrow">Go live · path A · from $67/mo</p>
-        <h2><span class="n">11</span> Deploy · Vercel + Railway</h2>
+        <h2><span class="n">12</span> Deploy · Vercel + Railway</h2>
         <p class="sub">The fastest path to production, and where most deployments should stay until traffic justifies moving. About two hours end to end.</p>
       </div>
 
@@ -967,7 +1017,7 @@ docker compose exec web npx tsc --noEmit</pre></div>
     <section id="deploy-vercel-aws">
       <div class="col">
         <p class="eyebrow">Go live · path B · from $205/mo</p>
-        <h2><span class="n">12</span> Deploy · Vercel + AWS</h2>
+        <h2><span class="n">13</span> Deploy · Vercel + AWS</h2>
         <p class="sub">Vercel keeps the frontend simple; AWS gives the backend multi-AZ, real autoscaling and S3 beside the compute that writes it. Roughly a day.</p>
       </div>
 
@@ -1019,7 +1069,7 @@ docker compose exec web npx tsc --noEmit</pre></div>
     <section id="deploy-aws">
       <div class="col">
         <p class="eyebrow">Go live · path C · from $245/mo</p>
-        <h2><span class="n">13</span> Deploy · Full AWS</h2>
+        <h2><span class="n">14</span> Deploy · Full AWS</h2>
         <p class="sub">Everything in one account and one VPC, frontend included. Choose it for a reason that is not cost — it is the most expensive option at every volume.</p>
       </div>
 
@@ -1040,7 +1090,8 @@ docker compose exec web npx tsc --noEmit</pre></div>
         <tr><td>Crawler</td><td>ECS Fargate</td><td>From <code>services/crawler</code>.</td></tr>
         <tr><td>Database</td><td>RDS for PostgreSQL</td><td>Enable the <code>vector</code> extension.</td></tr>
         <tr><td>Cache / queue</td><td>ElastiCache for Redis</td><td>Used by arq and caching.</td></tr>
-        <tr><td>Object storage</td><td>S3</td><td>Generated images &amp; assets (boto3).</td></tr>
+        <tr><td>Object storage</td><td>S3</td><td>Generated images &amp; assets. <code>S3_ENDPOINT_URL</code> lets R2 or MinIO stand in.</td></tr>
+        <tr><td>Admin console</td><td>ECS Fargate <em>or</em> a second Vercel project</td><td>Internal staff app from <code>apps/admin</code>; restrict by IP or SSO.</td></tr>
         <tr><td>Secrets</td><td>Secrets Manager / SSM</td><td>Injected into ECS task definitions.</td></tr>
         <tr><td>Registry</td><td>ECR</td><td>Stores the built images.</td></tr>
       </table>
@@ -1074,7 +1125,7 @@ docker push &lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/fennex-api:latest<
     <section id="env">
       <div class="col">
         <p class="eyebrow">Configuration</p>
-        <h2><span class="n">14</span> Environment reference</h2>
+        <h2><span class="n">15</span> Environment reference</h2>
         <p class="sub">Core variables. AI provider keys are added per-organization inside the app (encrypted), not as global env.</p>
       </div>
       <table class="tbl col">
