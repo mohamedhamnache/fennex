@@ -27,6 +27,11 @@ export interface RoutingCandidate {
 }
 
 export interface RoutingInfo {
+  /** Which model actually answered. Carried on the message so the cost of a
+   *  reply is visible beside the reply -- the agentic runtime picks its own
+   *  model, so this is reported from its telemetry rather than assumed. */
+  model?: string;
+  provider?: string;
   mode: "single" | "team" | "clarify";
   intent: {
     capabilities: string[];

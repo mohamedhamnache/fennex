@@ -807,6 +807,11 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                              for t in turns)
         user = f"CONVERSATION SO FAR:\n{rendered}\n\nLATEST MESSAGE: {message}"
 
+    # What the user is charged for. Surfaced on the message so the cost of an
+    # answer is visible where the answer is, rather than only in an admin
+    # report -- a reseller decides whether a reply was worth its model.
+    used_model, used_provider = model, provider
+
     chunks: list[str] = []
     try:
         if action is not None and action.agentic:
@@ -828,6 +833,11 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                     yield {"type": "tool", "employeeId": employee.id,
                            "tool": event["tool"]}
                 elif event["type"] == "telemetry":
+                    # The runtime chose its own model; this is the only place
+                    # that reports which one actually answered.
+                    m = (event.get("metrics") or {})
+                    used_model = m.get("model_id") or m.get("model") or used_model
+                    used_provider = m.get("provider") or used_provider
                     yield event
                 elif event["type"] == "error":
                     raise RuntimeError(event.get("message") or "stream failed")
@@ -847,7 +857,8 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
     text = "".join(chunks).strip()
     row = await add_message(
         convo, db, role="employee", employee_id=employee.id, content=text,
-        routing=decision.to_dict() if announce else None,
+        routing={**(decision.to_dict() if announce else {}),
+                 "model": used_model, "provider": used_provider},
         confidence=decision.confidence if announce else None,
         structured={"actionId": decision.action_id} if decision.action_id else None)
 

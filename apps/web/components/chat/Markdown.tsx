@@ -50,9 +50,28 @@ function renderBlocks(text: string) {
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
+    // Soft line breaks, as GitHub renders comments. Strict markdown joins
+    // consecutive lines into one paragraph, and models write line-per-item
+    // constantly -- a competitor list came back as name / "Position: 1" /
+    // "Description: ..." on separate lines and collapsed into a wall of text.
+    // A "Label: value" line is given its own line and its label is emphasised,
+    // because that shape is a field, not a sentence.
     out.push(
       <p key={`p-${out.length}`} className="mb-2 text-xs leading-relaxed text-foreground">
-        {inline(paragraph.join(" "))}
+        {paragraph.map((lineText, li) => {
+          const field = /^([A-Z][\w .'-]{1,28}):\s+(.+)$/.exec(lineText);
+          return (
+            <Fragment key={li}>
+              {li > 0 && <br />}
+              {field
+                ? <>
+                    <span className="text-muted-foreground">{field[1]}: </span>
+                    {inline(field[2])}
+                  </>
+                : inline(lineText)}
+            </Fragment>
+          );
+        })}
       </p>,
     );
     paragraph = [];

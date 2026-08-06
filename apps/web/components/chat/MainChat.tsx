@@ -808,7 +808,13 @@ function MessageRow({
     return <ArtifactCard message={message} employee={employee} projectId={projectId} />;
   }
   if (!employee) return <UnknownBubble content={message.content} />;
-  return <EmployeeBubble employee={employee} content={message.content} />;
+  return (
+    <EmployeeBubble
+      employee={employee}
+      content={message.content}
+      model={message.routing?.model ?? undefined}
+    />
+  );
 }
 
 function UserBubble({ content }: { content: string }) {
@@ -830,8 +836,8 @@ function UnknownBubble({ content }: { content: string }) {
 }
 
 function EmployeeBubble({
-  employee, content, streaming = false,
-}: { employee: Employee; content: string; streaming?: boolean }) {
+  employee, content, streaming = false, model,
+}: { employee: Employee; content: string; streaming?: boolean; model?: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const Icon = employeeIcon(employee.icon);
@@ -856,6 +862,16 @@ function EmployeeBubble({
         <p className="mb-1 flex items-baseline gap-2">
           <span className="font-display text-xs font-bold text-foreground">{employee.name}</span>
           <span className="text-[10px] text-muted-foreground">{employee.role}</span>
+          {/* Which model answered. A reseller pays per reply, so the cost of an
+              answer belongs beside the answer rather than only in a report. */}
+          {model && !streaming && (
+            <span
+              title={`Answered by ${model}`}
+              className="rounded border border-border px-1.5 py-px font-mono text-[9px] text-muted-foreground"
+            >
+              {model}
+            </span>
+          )}
           {!streaming && content && (
             <button
               type="button"
