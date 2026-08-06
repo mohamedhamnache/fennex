@@ -16,6 +16,7 @@ import { SeoPanel } from "@/components/studio/edit/SeoPanel";
 import { ScorePanel } from "@/components/studio/edit/ScorePanel";
 import { ExportModal } from "@/components/studio/edit/ExportModal";
 import { rasterizeScene } from "@/components/studio/edit/scene/rasterize";
+import { burnSizeError, type BurnSize } from "@/components/studio/edit/burnResolution";
 import { measureTextLayer, textMetrics } from "@/components/studio/edit/scene/measure";
 
 export default function EditPage({
@@ -386,7 +387,15 @@ export default function EditPage({
     setAppliedTemplate(null);
   }
 
-  async function handleBurnLayers() {
+  /**
+   * Flatten the composition, optionally at a size other than the source's.
+   *
+   * `target` is only possible because the composition is resolution
+   * independent -- every layer field is a percentage of the canvas, resolved
+   * at paint time. Passing a different size here is the whole mechanism;
+   * rasterizeScene already accepted one, nothing was asking.
+   */
+  async function handleBurnLayers(target?: BurnSize) {
     if (layers.length === 0) return;
     setIsBurning(true);
     setBurnError(null);
@@ -394,8 +403,20 @@ export default function EditPage({
     try {
       const baseUrl = displayImage?.image_url ?? "";
       const baseImg = baseUrl ? await loadImg(baseUrl) : null;
-      const width = baseImg?.naturalWidth ?? 1024;
-      const height = baseImg?.naturalHeight ?? 1024;
+      const source = {
+        width: baseImg?.naturalWidth ?? 1024,
+        height: baseImg?.naturalHeight ?? 1024,
+      };
+      const chosen = target ?? source;
+      // Refused rather than attempted: past this a tab does not degrade, it
+      // dies, and the user loses the composition they were working on.
+      const sizeError = burnSizeError(chosen);
+      if (sizeError) {
+        setBurnError(t(`imageEdit.${sizeError}`));
+        setIsBurning(false);
+        return;
+      }
+      const { width, height } = chosen;
 
       // The preview renders this same layer list at the DISPLAYED size; this
       // renders it at the image's NATURAL size. That only produces the same
@@ -669,6 +690,9 @@ export default function EditPage({
                 onSetLayers={setLayers}
                 onRemoveLayer={handleRemoveLayer}
                 onBurnLayers={handleBurnLayers}
+                burnSource={displayImage?.width && displayImage?.height
+                  ? { width: displayImage.width, height: displayImage.height }
+                  : undefined}
                 onSelectLayer={setSelectedLayerId}
                 onUpdateLayer={handleUpdateLayer}
                 onMoveLayerUp={handleMoveLayerUp}

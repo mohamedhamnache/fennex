@@ -1421,6 +1421,21 @@
       "body": "Este modelo coloca o assunto com o fundo removido — uma etapa de IA que custa {{count}} créditos.",
       "confirm": "Recortar e aplicar",
       "cancel": "Cancelar"
+    },
+    "burn": "Fundir na imagem",
+    "burning": "Salvando...",
+    "burnSizeLabel": "Tamanho de saída",
+    "burnSizePhotoNote": "Texto e formas ficam mais nítidos. A foto é ampliada, sem ganhar detalhe.",
+    "burnSizeInvalid": "Esse tamanho não é válido.",
+    "burnSizeTooSmall": "Esse tamanho é pequeno demais.",
+    "burnSizeTooWide": "Mais largo do que um navegador consegue renderizar — escolha um tamanho menor.",
+    "burnSizeTooLarge": "Esse tamanho é grande demais para renderizar aqui — escolha um menor.",
+    "burnSize": {
+      "matchSource": "Igual à origem",
+      "double": "2x",
+      "square": "Quadrado",
+      "story": "Story",
+      "wide": "Largo"
     }
   },
   "mirage": {

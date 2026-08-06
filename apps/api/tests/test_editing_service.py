@@ -674,6 +674,8 @@ async def test_cheap_cutout_uses_replicate_and_meters_it():
     run = AsyncMock(return_value="https://replicate/cutout.png")
     fin = AsyncMock(return_value=_stored("https://cdn.test/c.png", 800, 800))
     with patch("app.services.editing_service._replicate_run", run), \
+         patch("app.services.editing_service._download",
+               AsyncMock(return_value=_png_bytes((800, 800)))), \
          patch("app.services.editing_service.finalize", fin):
         out = await editing_service.remove_background_cheap("https://cdn.test/in.jpg")
 
@@ -687,7 +689,9 @@ async def test_cheap_cutout_uses_replicate_and_meters_it():
         "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc"
     )
     assert params["image"] == "https://cdn.test/in.jpg"
-    # The model returns the subject's bounding box, not the source frame, so
-    # asserting PRESERVE would fail every call -- the same defect that broke
-    # generate_shadow until a real prediction caught it.
-    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.ALLOW_CHANGE
+    # The frame is now MEASURED and reported. This path used to pass
+    # ALLOW_CHANGE with no source_size at all, so nothing was ever compared --
+    # and "expected to differ" was indistinguishable from "nobody looked",
+    # which is what let remove.bg return quarter-megapixel images for weeks.
+    assert fin.call_args.kwargs["source_size"] == (800, 800)
+    assert fin.call_args.kwargs["policy"] is ResolutionPolicy.WARN

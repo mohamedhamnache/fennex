@@ -24,6 +24,11 @@ async def lifespan(app: FastAPI):
     from app.services.providers import catalog
     async with async_session_factory() as db:
         await catalog.refresh_snapshot(db)
+    # Billing invariant: nothing may spend a supplier's money without recording
+    # it. Logged, never fatal -- see the docstring for why an outage is the
+    # wrong response to a margin finding.
+    from app.core.metering_audit import assert_supplier_calls_are_metered
+    assert_supplier_calls_are_metered()
     if not (settings.OPENAI_API_KEY or settings.ANTHROPIC_API_KEY or settings.GOOGLE_API_KEY):
         logger.warning(
             "No platform LLM key configured (OPENAI_API_KEY/ANTHROPIC_API_KEY/GOOGLE_API_KEY). "

@@ -1518,6 +1518,21 @@
       "body": "This template places the subject with its background removed — an AI step that costs {{count}} credits.",
       "confirm": "Cut out and apply",
       "cancel": "Cancel"
+    },
+    "burn": "Burn into image",
+    "burning": "Saving...",
+    "burnSizeLabel": "Output size",
+    "burnSizePhotoNote": "Type and shapes get sharper. The photo is enlarged, so it won't gain detail.",
+    "burnSizeInvalid": "That size isn't valid.",
+    "burnSizeTooSmall": "That size is too small.",
+    "burnSizeTooWide": "That's wider than a browser can render — pick a smaller size.",
+    "burnSizeTooLarge": "That size is too large to render here — pick a smaller one.",
+    "burnSize": {
+      "matchSource": "Match source",
+      "double": "2x",
+      "square": "Square",
+      "story": "Story",
+      "wide": "Wide"
     }
   },
   "mirage": {
