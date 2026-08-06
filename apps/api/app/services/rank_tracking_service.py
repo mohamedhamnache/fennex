@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 # At CRON_SERP_DEPTH 20 (2 pages) that is $8.66 per 500-keyword project.
 # Raising the cap, the cadence, or the depth multiplies it directly.
 TRACKED_CAP_BY_PLAN: dict[str, int] = {
-    "free": 50,
-    "starter": 500,
-    "pro": 500,
-    "agency": 500,
+    "free": 10,
+    "starter": 50,
+    "pro": 100,
+    "agency": 250,
     "scale": 500,
     "enterprise": 1000,
 }
@@ -103,14 +103,16 @@ USER_SERP_DEPTH = 100
 
 async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession,
                            bill_credits: bool = True,
-                           depth: int = USER_SERP_DEPTH) -> SerpSnapshot | None:
+                           depth: int = USER_SERP_DEPTH,
+                           standard_queue: bool = False) -> SerpSnapshot | None:
     today = date.today()
     existing = (await db.execute(select(SerpSnapshot).where(
         SerpSnapshot.tracked_keyword_id == tk.id, SerpSnapshot.date == today))).scalars().first()
     if existing is not None:
         return None
     res = await serp_service.fetch_serp(project, tk.keyword, db, unit="rank_check",
-                                        bill_credits=bill_credits, depth=depth)
+                                        bill_credits=bill_credits, depth=depth,
+                                        standard_queue=standard_queue)
     if res is None:
         return None
     snap = SerpSnapshot(org_id=project.org_id, project_id=project.id, tracked_keyword_id=tk.id,
@@ -149,13 +151,15 @@ async def snapshot_keyword(project, tk: TrackedKeyword, db: AsyncSession,
 
 
 async def snapshot_project(project, db: AsyncSession, bill_credits: bool = True,
-                           depth: int = USER_SERP_DEPTH) -> int:
+                           depth: int = USER_SERP_DEPTH,
+                           standard_queue: bool = False) -> int:
     tks = (await db.execute(select(TrackedKeyword).where(
         TrackedKeyword.project_id == project.id, TrackedKeyword.is_active.is_(True),
     ))).scalars().all()
     count = 0
     for tk in tks:
-        snap = await snapshot_keyword(project, tk, db, bill_credits=bill_credits, depth=depth)
+        snap = await snapshot_keyword(project, tk, db, bill_credits=bill_credits,
+                                      depth=depth, standard_queue=standard_queue)
         if snap is not None:
             count += 1
     return count

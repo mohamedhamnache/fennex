@@ -346,16 +346,31 @@ async def test_snapshot_gain_and_first_snapshot_silent(db_session):
     assert g.severity == "info"
 
 
+async def _mark_active(db, project):
+    """Give a project a recent non-cron usage event.
+
+    run_rank_tracker skips projects dormant for 30 days, judged from the usage
+    ledger with the cron's own events excluded. A test project has no history,
+    so without this it looks abandoned and is correctly skipped.
+    """
+    from app.models.usage_event import UsageEvent
+    db.add(UsageEvent(org_id=project.org_id, project_id=project.id, kind="seo",
+                      provider="dataforseo", feature="serp", seo_unit="serp",
+                      seo_count=1, cost_micros=0))
+    await db.commit()
+
+
 @pytest.mark.asyncio
 async def test_rank_tracker_cron_isolates_and_filters(db_session):
     from app.workers.tasks import seo_tasks
     p_ok = await _mk_project(db_session)
     from app.services import rank_tracking_service as rts
     await rts.add_keyword(p_ok, "kw", db_session)
+    await _mark_active(db_session, p_ok)
     await _mk_project(db_session)  # no tracked keywords -> skipped
     calls = []
 
-    async def fake_snapshot_project(project, db, bill_credits=True, depth=100):
+    async def fake_snapshot_project(project, db, bill_credits=True, depth=100, standard_queue=False):
         calls.append(project.id)
         raise RuntimeError("boom")
 
@@ -377,9 +392,10 @@ async def test_rank_tracker_cron_does_not_bill_seo_credits(db_session):
     from app.services import rank_tracking_service as rts
     p_ok = await _mk_project(db_session)
     await rts.add_keyword(p_ok, "kw", db_session)
+    await _mark_active(db_session, p_ok)
     calls = []
 
-    async def fake_snapshot_project(project, db, bill_credits=True, depth=100):
+    async def fake_snapshot_project(project, db, bill_credits=True, depth=100, standard_queue=False):
         calls.append(bill_credits)
         return 0
 

@@ -84,6 +84,7 @@ ALLOWLIST: dict[str, str] = {
     "app.integrations.seo_apis.dataforseo:get_keyword_ideas": "callers meter (keyword_tasks -> record_seo)",
     "app.integrations.seo_apis.dataforseo:serp": "callers meter (serp_service.fetch_serp -> record_seo)",
     "app.integrations.seo_apis.dataforseo:serp_batch": "caller meters count=len(keywords) (discovery/competitors)",
+    "app.integrations.seo_apis.dataforseo:serp_standard": "callers meter (fetch_serp -> record_seo, serp_standard unit)",
 }
 
 

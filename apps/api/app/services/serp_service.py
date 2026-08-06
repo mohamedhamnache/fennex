@@ -56,7 +56,8 @@ SERP_DEPTH_COST_USD = {10: 0.002, 20: 0.004, 30: 0.006, 50: 0.010, 100: 0.020}
 
 
 async def fetch_serp(project, keyword: str, db, unit: str = "serp",
-                     bill_credits: bool = True, depth: int = 100) -> dict | None:
+                     bill_credits: bool = True, depth: int = 100,
+                     standard_queue: bool = False) -> dict | None:
     """Fetch and normalize a live SERP. This is the shared chokepoint for every
     caller that needs one keyword's SERP (rank tracking, content scoring,
     plagiarism-adjacent research, agent tools) -- so metering lives here rather
@@ -69,7 +70,16 @@ async def fetch_serp(project, keyword: str, db, unit: str = "serp",
     if provider is None:
         return None
     pages = max(1, -(-depth // 10))   # DataForSEO bills per 10-result page
-    items = await provider.serp(keyword, depth=depth,
+    # Standard queue is 70% cheaper and ~5 minutes slower -- correct for
+    # scheduled work, wrong for anything a user is waiting on. The unit differs
+    # so the two are priced apart in cost_rates.
+    if standard_queue and hasattr(provider, "serp_standard"):
+        unit = f"{unit}_standard"
+        items = await provider.serp_standard(
+            keyword, depth=depth, language_code=language_for_project(project),
+            location_code=location_for_project(project))
+    else:
+        items = await provider.serp(keyword, depth=depth,
                                 language_code=language_for_project(project),
                                 location_code=location_for_project(project))
 

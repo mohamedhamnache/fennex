@@ -123,6 +123,10 @@ SEO_CREDIT_WEIGHT: dict[str, int] = {
     # rank_check runs through the same fetch_serp chokepoint as `serp`, so it
     # is the same underlying task and must bill the same.
     "rank_check": 3,
+    # Standard queue: $0.0006 per page against Live's $0.002. Same 1.5x-ish
+    # markup band, on a third of the cost.
+    "serp_standard": 1,
+    "rank_check_standard": 1,
     # 20,000 micro-$ per task = 19.05 credits of cost at CREDIT_MICROS. Was 15,
     # the only SEO unit priced BELOW its own supplier cost while every other
     # billed 1.4x-2.1x. Measured 2026-08-06; see migration u7seoprice3.
