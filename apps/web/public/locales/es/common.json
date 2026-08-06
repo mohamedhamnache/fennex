@@ -977,7 +977,11 @@
       "deleteError": "No se pudo eliminar el proyecto. Inténtalo de nuevo.",
       "renameSaved": "Proyecto renombrado",
       "renameError": "No se pudo renombrar el proyecto. Inténtalo de nuevo.",
-      "lastProjectHint": "Necesitas al menos un proyecto: este es el último."
+      "lastProjectHint": "Necesitas al menos un proyecto: este es el último.",
+      "rankTracking": "Seguimiento semanal de posiciones",
+      "rankTrackingHelp": "Comprueba cada semana la posición de este proyecto para sus palabras clave. Desactivado por defecto: consume créditos SEO de forma programada, se consulte o no el informe.",
+      "rankTrackingCost_one": "Aproximadamente {{count}} crédito SEO por palabra clave y semana.",
+      "rankTrackingCost_other": "Aproximadamente {{count}} créditos SEO por palabra clave y semana."
     },
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta, tu espacio de trabajo y tus preferencias.",

@@ -223,3 +223,19 @@ export const PROMPT_REPHRASE_CREDIT_COST = Math.max(
  * charge and is unchanged by this feature.
  */
 export const ATTACHMENT_INTERPRET_CREDIT_COST = llmCredits(1850, 250);
+
+/**
+ * SEO credits a week of scheduled rank tracking spends, per tracked keyword.
+ *
+ * The cron asks the Standard queue for depth 10 -- one 10-result page, which
+ * DataForSEO bills at $0.0006 -- and `rank_check_standard` is weighted at 1
+ * credit per page (apps/api/app/core/credits.py::SEO_CREDIT_WEIGHT).
+ *
+ * So the monthly cost of enabling it is roughly:
+ *     tracked keywords x 1 credit x 4.33 weeks
+ *
+ * Shown beside the toggle because this is the only setting in the product that
+ * starts spending on a schedule. Everything else bills when a user asks for it;
+ * this bills whether or not anyone looks at the result.
+ */
+export const RANK_TRACKING_WEEKLY_CREDITS = 1;

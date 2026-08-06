@@ -977,7 +977,11 @@
       "deleteError": "Projekt konnte nicht gelöscht werden. Erneut versuchen.",
       "renameSaved": "Projekt umbenannt",
       "renameError": "Projekt konnte nicht umbenannt werden. Erneut versuchen.",
-      "lastProjectHint": "Sie brauchen mindestens ein Projekt – dies ist Ihr letztes."
+      "lastProjectHint": "Sie brauchen mindestens ein Projekt – dies ist Ihr letztes.",
+      "rankTracking": "Wöchentliches Ranking-Tracking",
+      "rankTrackingHelp": "Prüft einmal pro Woche, wo dieses Projekt für seine Keywords rankt. Standardmäßig aus, weil es planmäßig SEO-Credits verbraucht — auch wenn niemand den Bericht öffnet.",
+      "rankTrackingCost_one": "Etwa {{count}} SEO-Credit pro Keyword und Woche.",
+      "rankTrackingCost_other": "Etwa {{count}} SEO-Credits pro Keyword und Woche."
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",

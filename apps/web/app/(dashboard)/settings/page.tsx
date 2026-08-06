@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { RANK_TRACKING_WEEKLY_CREDITS } from "@/lib/creditCosts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -1248,7 +1249,7 @@ function ProjectSection() {
   const [form, setForm] = useState({
     name: "", domain: "", locale: "en", target_country: "", industry: "",
     description: "", persona: "" as ProjectPersona | "",
-    autopilot_enabled: false, theme: "desert",
+    autopilot_enabled: false, rank_tracking_enabled: false, theme: "desert",
   });
 
   // Re-seed the form whenever the selected project changes.
@@ -1263,6 +1264,7 @@ function ProjectSection() {
         description: active.description ?? "",
         persona: active.persona ?? "",
         autopilot_enabled: active.autopilot_enabled ?? false,
+        rank_tracking_enabled: active.rank_tracking_enabled ?? false,
         theme: active.theme || "desert",
       });
     }
@@ -1286,6 +1288,7 @@ function ProjectSection() {
         description: form.description.trim() || null,
         persona: form.persona || undefined,
         autopilot_enabled: form.autopilot_enabled,
+        rank_tracking_enabled: form.rank_tracking_enabled,
         theme: form.theme,
       }),
     onSuccess: () => {
@@ -1412,6 +1415,34 @@ function ProjectSection() {
             className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${form.autopilot_enabled ? "bg-primary" : "bg-muted"}`}
           >
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.autopilot_enabled ? "left-[22px]" : "left-0.5"}`} />
+          </button>
+        </div>
+
+        {/* Scheduled rank tracking. The cost line is not decoration: turning
+            this on starts spending SEO credits every week, for every tracked
+            keyword, whether or not anyone looks at the result. A user who
+            flips it without knowing that finds their balance drained. */}
+        <div className="flex items-start justify-between gap-4 py-3 border-t border-border">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">{t("settings.project.rankTracking")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              {t("settings.project.rankTrackingHelp")}
+            </p>
+            {form.rank_tracking_enabled && (
+              <p className="text-xs text-muted-foreground mt-1.5 tabular-nums">
+                {t("settings.project.rankTrackingCost", { count: RANK_TRACKING_WEEKLY_CREDITS })}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.rank_tracking_enabled}
+            aria-label={t("settings.project.rankTracking")}
+            onClick={() => setForm((f) => ({ ...f, rank_tracking_enabled: !f.rank_tracking_enabled }))}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${form.rank_tracking_enabled ? "bg-primary" : "bg-muted"}`}
+          >
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.rank_tracking_enabled ? "left-[22px]" : "left-0.5"}`} />
           </button>
         </div>
 

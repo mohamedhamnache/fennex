@@ -189,6 +189,9 @@ export interface Project {
   persona?: ProjectPersona | null;
   persona_data?: Record<string, unknown> | null;
   autopilot_enabled: boolean;
+  /** Weekly rank tracking. Opt-in per project: it spends SEO credits every
+   *  week for every tracked keyword, so it is never on by default. */
+  rank_tracking_enabled: boolean;
   theme?: string | null;
   created_at: string;
 }
@@ -240,7 +243,7 @@ export async function listProjects(): Promise<Project[]> {
 
 export async function updateProject(
   projectId: string,
-  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "description" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled" | "theme">>,
+  patch: Partial<Pick<Project, "name" | "domain" | "locale" | "description" | "target_country" | "industry" | "persona" | "persona_data" | "autopilot_enabled" | "rank_tracking_enabled" | "theme">>,
 ): Promise<Project> {
   return apiClient.put<Project>(`/projects/${projectId}`, patch);
 }

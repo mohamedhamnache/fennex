@@ -1074,7 +1074,11 @@
       "deleteError": "Could not delete project. Try again.",
       "renameSaved": "Project renamed",
       "renameError": "Could not rename project. Try again.",
-      "lastProjectHint": "You need at least one project — this is your last one."
+      "lastProjectHint": "You need at least one project — this is your last one.",
+      "rankTracking": "Weekly rank tracking",
+      "rankTrackingHelp": "Check where this project ranks for its tracked keywords, once a week. Off by default because it spends SEO credits on a schedule, whether or not anyone opens the report.",
+      "rankTrackingCost_one": "About {{count}} SEO credit per keyword each week.",
+      "rankTrackingCost_other": "About {{count}} SEO credits per keyword each week."
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",
