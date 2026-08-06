@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowRight, EyeOff, Flame, Lightbulb, Loader2, Package,
-  Store, Users, Zap,
+  Tent, Users, Zap,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -25,7 +25,7 @@ import { FENNEX_AGENTS } from "@/lib/agents";
 type ActionKey = "growth_audit" | "cro_review" | "retention_plan" | "merchandising";
 
 const ACTIONS: {
-  key: ActionKey; label: string; question: string; capability: string; Icon: typeof Store;
+  key: ActionKey; label: string; question: string; capability: string; Icon: typeof Tent;
 }[] = [
   { key: "growth_audit", label: "What's limiting growth?",
     question: "Audit my store and name the one thing limiting growth right now.",
@@ -79,7 +79,7 @@ export function SoukPanel({ projectId }: { projectId: string }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 text-white">
-            <Store className="h-4.5 w-4.5" strokeWidth={1.9} />
+            <Tent className="h-4.5 w-4.5" strokeWidth={1.9} />
           </span>
           <div>
             <p className="text-sm font-semibold text-foreground">{agent.name}</p>

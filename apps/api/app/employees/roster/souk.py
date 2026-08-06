@@ -51,7 +51,7 @@ EMPLOYEE = _Souk(
     department="Growth",
     description="Runs the store like an operator, not a report: finds what limits "
                 "growth and says what to do about it this week.",
-    icon="store",
+    icon="tent",
     avatar="/employees/souk.png",
     version="1.0.0",
 

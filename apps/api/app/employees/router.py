@@ -181,7 +181,8 @@ async def understand(message: str, ctx, history: Optional[list[dict]] = None) ->
         user += f"\n\nRECENT:\n{recent}"
 
     try:
-        raw = await call_llm(provider, model, ctx.keys[provider], system, user, locale=ctx.locale)
+        raw = await call_llm(provider, model, ctx.keys[provider], system, user,
+                             locale=ctx.locale, feature="classification")
         parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
         wanted = order_capabilities(
             [c for c in parsed.get("capabilities", []) if c in known])[:8]

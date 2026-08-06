@@ -1,7 +1,7 @@
 /** The Fennex Pack — named AI agent identities (frontend mirror of
  *  apps/api/app/agents/registry.py — keep both in sync). */
 import {
-  Radar, Wind, ScrollText, Wand2, Footprints, Palmtree, Compass, Store,
+  Radar, Wind, ScrollText, Wand2, Footprints, Palmtree, Compass, Tent,
   type LucideIcon,
 } from "lucide-react";
 import type { ProjectPersona } from "./api";
@@ -124,7 +124,7 @@ export const FENNEX_AGENTS: Record<AgentId, FennexAgent> = {
     name: "Souk",
     role: "Ecommerce Growth Operator",
     tagline: "Reads your store like an operator, answers in decisions",
-    Icon: Store,
+    Icon: Tent,
     capabilities: [
       "Audits the store and names the one thing limiting growth",
       "Finds where the buying journey leaks, and the exact fix",

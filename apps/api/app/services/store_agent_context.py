@@ -97,8 +97,13 @@ async def build(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession,
         "unavailable": unavailable,
         "unavailable_dimensions": unavailable_dimensions,
         "revenue_by": breakdowns,
+        # The last fortnight, not the whole window. Thirty days of per-day rows
+        # was 1,653 of this payload's 3,814 characters -- 43% of everything the
+        # agent reads, spent on a granularity it uses to spot a trend or an
+        # outlier, both of which fourteen points show as well as thirty. The
+        # shape of the period is already summarised in `observations`.
         "daily_revenue": [{"date": p["date"], "revenue": p["revenue"], "orders": p["orders"]}
-                          for p in d["series"]],
+                          for p in d["series"][-14:]],
         "content_revenue": {
             "revenue": d["content"]["revenue"],
             "share_pct": d["content"]["share"],

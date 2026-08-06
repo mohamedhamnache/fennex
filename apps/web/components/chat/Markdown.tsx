@@ -2,6 +2,8 @@
 
 import { Fragment } from "react";
 
+import { ChatChart, parseChartSpec } from "./ChatChart";
+
 /** A focused markdown renderer for employee deliverables.
  *
  *  Reports and plans arrive as markdown with headings, tables, lists and links
@@ -43,7 +45,55 @@ function renderBlocks(text: string) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    if (!trimmed) { flushParagraph(); flushList(); continue; }
+    if (!trimmed) {
+      flushParagraph();
+      // A blank line does NOT end a list when the next content line continues
+      // it. Markdown calls that a loose list and models write them constantly;
+      // breaking on the blank line started a fresh <ol> per item, so a
+      // numbered list rendered as "1." over and over.
+      const next = lines.slice(i + 1).find((l) => l.trim());
+      const continues = next !== undefined && list !== null
+        && (list.ordered ? /^\d+[.)]\s+/ : /^[-*+]\s+/).test(next.trim());
+      if (!continues) flushList();
+      continue;
+    }
+
+    // ```chart — a small JSON spec an agent asked to be drawn. Handled before
+    // any other block so its JSON is never mistaken for a table or a list.
+    if (trimmed.startsWith("```chart")) {
+      flushParagraph(); flushList();
+      const body: string[] = [];
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        body.push(lines[i]);
+        i += 1;
+      }
+      const spec = parseChartSpec(body.join("\n"));
+      // A malformed spec renders as nothing rather than as raw JSON: the
+      // reader gains nothing from seeing the agent's failed attempt, and the
+      // prose around it still carries the point.
+      if (spec) out.push(<ChatChart key={`c-${out.length}`} spec={spec} />);
+      continue;
+    }
+
+    // > callout — the one line the reader must not miss. Agents mark at most
+    // one per answer; the styling is what makes that restraint worth having.
+    if (trimmed.startsWith("> ")) {
+      flushParagraph(); flushList();
+      const quote: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("> ")) {
+        quote.push(lines[i].trim().slice(2));
+        i += 1;
+      }
+      i -= 1;
+      out.push(
+        <p key={`q-${out.length}`}
+           className="mb-2 rounded-lg border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs leading-relaxed text-foreground">
+          {inline(quote.join(" "))}
+        </p>,
+      );
+      continue;
+    }
 
     // A table needs its separator row to be a table at all.
     if (trimmed.startsWith("|") && /^\|[\s:|-]+\|?$/.test((lines[i + 1] ?? "").trim())) {
@@ -193,7 +243,18 @@ export function markdownToHtml(text: string): string {
 
   for (let i = 0; i < lines.length; i += 1) {
     const trimmed = lines[i].trim();
-    if (!trimmed) { flushParagraph(); flushList(); continue; }
+    if (!trimmed) {
+      flushParagraph();
+      // A blank line does NOT end a list when the next content line continues
+      // it. Markdown calls that a loose list and models write them constantly;
+      // breaking on the blank line started a fresh <ol> per item, so a
+      // numbered list rendered as "1." over and over.
+      const next = lines.slice(i + 1).find((l) => l.trim());
+      const continues = next !== undefined && list !== null
+        && (list.ordered ? /^\d+[.)]\s+/ : /^[-*+]\s+/).test(next.trim());
+      if (!continues) flushList();
+      continue;
+    }
 
     if (trimmed.startsWith("|") && /^\|[\s:|-]+\|?$/.test((lines[i + 1] ?? "").trim())) {
       flushParagraph(); flushList();

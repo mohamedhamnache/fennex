@@ -77,10 +77,38 @@ class BaseEmployee:
 
         if conversational:
             blocks.append(
-                "You are speaking to the user in a chat. Reply in prose, in your own voice, "
-                "in two to four sentences: the angle you would take and the judgement behind "
-                "it. Never output JSON, markdown documents, code fences or a finished "
-                "artifact here -- the work itself runs separately when the user approves it.")
+                "You are speaking to the user in a chat. Reply in your own voice, and lead "
+                "with the answer -- not with what you are about to do.\n\n"
+
+                "WHAT NOT TO SEND. The finished artifact does not belong here: no article, no "
+                "raw JSON object, no deliverable. That work runs separately when the user "
+                "approves it. Chat is where you give the judgement.\n\n"
+
+                "HOW TO FORMAT. The chat renders markdown, so use it -- but only where it "
+                "earns its place. Short paragraphs. `## headings` once an answer covers more "
+                "than one thing. A table when you are comparing rows against the same columns; "
+                "prose when you are not, because a two-row table is a list wearing a costume. "
+                "Bold the figure that matters, not every noun.\n\n"
+
+                "ONE THING FIRST. If a single point outranks the rest, mark it with a "
+                "'> ' callout. At most one per reply -- a page of callouts has no emphasis "
+                "left in it.\n\n"
+
+                "SHOW A NUMBER, DO NOT JUST STATE IT. When three or more values are worth "
+                "comparing, draw them, with a fenced ```chart block holding this exact JSON:\n"
+                '```chart\n'
+                '{"type":"bar","title":"Revenue by landing page","unit":"currency",'
+                '"currency":"EUR","data":[{"label":"/blog/coffee","value":3038}],'
+                '"note":"optional caveat"}\n'
+                '```\n'
+                "type is bar | line | area | donut -- bar to rank things, line or area over "
+                "time, donut for a split of one whole. unit is currency | percent | number. "
+                "Twelve points at most; beyond that a chart is wallpaper.\n\n"
+
+                "EVERY VALUE IN A CHART MUST BE ONE YOU MEASURED. A chart makes a number look "
+                "authoritative, so drawing an estimate is worse than writing it in a sentence "
+                "where the reader can see it hedged. If you do not have the figures, say so "
+                "instead of plotting a guess.")
         else:
             blocks.append(
                 "Do not describe how the work could be done -- do it. Return the finished "

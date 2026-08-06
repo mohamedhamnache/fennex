@@ -18,6 +18,7 @@ import {
 } from "@/lib/chat";
 import { listProjects } from "@/lib/api";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
+import { Markdown } from "./Markdown";
 import { WorkflowCard, type StepState } from "./WorkflowCard";
 import { ArtifactCard } from "./ArtifactCard";
 import { FollowOnCard } from "./FollowOnCard";
@@ -868,8 +869,13 @@ function EmployeeBubble({
             </button>
           )}
         </p>
-        <div className="whitespace-pre-wrap rounded-2xl rounded-tl-md border border-border bg-card px-4 py-2.5 text-sm leading-relaxed text-foreground">
-          {content}
+        <div className="rounded-2xl rounded-tl-md border border-border bg-card px-4 py-2.5 text-sm leading-relaxed text-foreground">
+          {/* Raw while streaming, markdown once complete. A partial table or an
+              unterminated code fence reflows on every token if parsed live,
+              which reads as the answer rewriting itself. */}
+          {streaming
+            ? <span className="whitespace-pre-wrap">{content}</span>
+            : <Markdown text={content} />}
           {streaming && (
             <span aria-hidden className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse-dot bg-primary" />
           )}
