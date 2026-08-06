@@ -238,7 +238,7 @@ def _serp_items(project_domain_rank: int | None = 3, n: int = 12):
 
 class _FakeProvider:
     def __init__(self, items): self._items = items
-    async def serp(self, keyword, language_code="en", location_code=2840): return self._items
+    async def serp(self, keyword, language_code="en", location_code=2840, depth: int = 100): return self._items
 
 
 @pytest.mark.asyncio
