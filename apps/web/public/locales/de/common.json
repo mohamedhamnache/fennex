@@ -1421,6 +1421,21 @@
       "body": "Diese Vorlage platziert das Motiv mit entferntem Hintergrund — ein KI-Schritt, der {{count}} Credits kostet.",
       "confirm": "Freistellen und anwenden",
       "cancel": "Abbrechen"
+    },
+    "burn": "In das Bild einbrennen",
+    "burning": "Wird gespeichert...",
+    "burnSizeLabel": "Ausgabegröße",
+    "burnSizePhotoNote": "Text und Formen werden schärfer. Das Foto wird vergrößert, gewinnt aber keine Details.",
+    "burnSizeInvalid": "Diese Größe ist ungültig.",
+    "burnSizeTooSmall": "Diese Größe ist zu klein.",
+    "burnSizeTooWide": "Breiter als ein Browser rendern kann — wähle eine kleinere Größe.",
+    "burnSizeTooLarge": "Diese Größe ist zu groß zum Rendern — wähle eine kleinere.",
+    "burnSize": {
+      "matchSource": "Wie Original",
+      "double": "2x",
+      "square": "Quadrat",
+      "story": "Story",
+      "wide": "Breit"
     }
   },
   "mirage": {

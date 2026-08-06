@@ -1421,6 +1421,21 @@
       "body": "Esta plantilla coloca el sujeto con el fondo eliminado — un paso de IA que cuesta {{count}} créditos.",
       "confirm": "Recortar y aplicar",
       "cancel": "Cancelar"
+    },
+    "burn": "Fusionar en la imagen",
+    "burning": "Guardando...",
+    "burnSizeLabel": "Tamaño de salida",
+    "burnSizePhotoNote": "El texto y las formas ganan nitidez. La foto se amplía, sin ganar detalle.",
+    "burnSizeInvalid": "Ese tamaño no es válido.",
+    "burnSizeTooSmall": "Ese tamaño es demasiado pequeño.",
+    "burnSizeTooWide": "Más ancho de lo que un navegador puede renderizar — elige un tamaño menor.",
+    "burnSizeTooLarge": "Ese tamaño es demasiado grande para renderizar aquí — elige uno menor.",
+    "burnSize": {
+      "matchSource": "Igual al origen",
+      "double": "2x",
+      "square": "Cuadrado",
+      "story": "Historia",
+      "wide": "Ancho"
     }
   },
   "mirage": {

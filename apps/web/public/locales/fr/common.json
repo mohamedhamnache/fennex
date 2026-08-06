@@ -1421,6 +1421,21 @@
       "body": "Ce modèle place le sujet avec son arrière-plan supprimé — une étape IA qui coûte {{count}} crédits.",
       "confirm": "Détourer et appliquer",
       "cancel": "Annuler"
+    },
+    "burn": "Aplatir dans l'image",
+    "burning": "Enregistrement...",
+    "burnSizeLabel": "Taille de sortie",
+    "burnSizePhotoNote": "Le texte et les formes gagnent en netteté. La photo est agrandie, sans gain de détail.",
+    "burnSizeInvalid": "Cette taille n'est pas valide.",
+    "burnSizeTooSmall": "Cette taille est trop petite.",
+    "burnSizeTooWide": "Plus large que ce qu'un navigateur peut rendre — choisissez une taille plus petite.",
+    "burnSizeTooLarge": "Taille trop grande pour être rendue ici — choisissez-en une plus petite.",
+    "burnSize": {
+      "matchSource": "Taille source",
+      "double": "2x",
+      "square": "Carré",
+      "story": "Story",
+      "wide": "Large"
     }
   },
   "mirage": {

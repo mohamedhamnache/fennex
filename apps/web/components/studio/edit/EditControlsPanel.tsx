@@ -11,6 +11,8 @@ import {
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
 } from "lucide-react";
 import { editImage, getImage, listImages, uploadImage, decomposeImage, getBrandKit, removeBackgroundCheap, type GeneratedImage, type DecomposeResult, type InpaintMethod } from "@/lib/api";
+import { BurnSizePicker } from "./BurnSizePicker";
+import type { BurnSize } from "./burnResolution";
 import { CUTOUT_CREDIT_COST } from "@/lib/creditCosts";
 import { cn } from "@/lib/cn";
 import { Histogram } from "./Histogram";
@@ -56,7 +58,9 @@ interface EditControlsPanelProps {
   onAddImageLayer: (imageUrl: string, name: string, aspectRatio: number, widthPct?: number) => void;
   onSetLayers: (layers: Layer[]) => void;
   onRemoveLayer: (id: string) => void;
-  onBurnLayers: () => void;
+  onBurnLayers: (target?: BurnSize) => void;
+  /** The source photograph's real size, for the output-size choices. */
+  burnSource?: BurnSize;
   onSelectLayer: (id: string | null) => void;
   onUpdateLayer: (id: string, patch: Partial<TextLayer> | Partial<ImageLayer>) => void;
   onMoveLayerUp: (id: string) => void;
@@ -308,6 +312,7 @@ export function EditControlsPanel({
   onSetLayers,
   onRemoveLayer,
   onBurnLayers,
+  burnSource,
   onSelectLayer,
   onUpdateLayer,
   onMoveLayerUp,
@@ -445,6 +450,14 @@ export function EditControlsPanel({
     templateBrandKit &&
     ((templateBrandKit.colors?.length ?? 0) > 0 || templateBrandKit.primary_font || templateBrandKit.secondary_font)
   );
+
+  // Output size for flattening. Follows the source whenever the picture
+  // changes, so a choice made for a previous image is never silently applied
+  // to this one.
+  const [burnSize, setBurnSize] = useState<BurnSize>(burnSource ?? { width: 1024, height: 1024 });
+  useEffect(() => {
+    if (burnSource) setBurnSize(burnSource);
+  }, [burnSource?.width, burnSource?.height]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Convert to canvas decompose state
   const [decomposeResult, setDecomposeResult] = useState<DecomposeResult | null>(null);
@@ -2564,27 +2577,37 @@ export function EditControlsPanel({
         {/* Footer */}
         <div className="shrink-0 border-t border-border p-4 flex flex-col gap-2">
           {tool === "text" ? (
-            <button
-              type="button"
-              disabled={layers.length === 0 || isBurning}
-              onClick={onBurnLayers}
-              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isBurning ? "Saving..." : "Burn into image"}
-            </button>
+            <>
+              {burnSource && layers.length > 0 && (
+                <BurnSizePicker source={burnSource} value={burnSize}
+                                onChange={setBurnSize} disabled={isBurning} />
+              )}
+              <button
+                type="button"
+                disabled={layers.length === 0 || isBurning}
+                onClick={() => onBurnLayers(burnSize)}
+                className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBurning ? t("imageEdit.burning") : t("imageEdit.burn")}
+              </button>
+            </>
           ) : tool === "add_image" || tool === "convert_canvas" || tool === "templates" || tool === "shapes" ? (
             layers.length > 0 ? (
               <>
                 {burnError && (
                   <p className="text-xs text-destructive leading-relaxed">{burnError}</p>
                 )}
+                {burnSource && (
+                  <BurnSizePicker source={burnSource} value={burnSize}
+                                  onChange={setBurnSize} disabled={isBurning} />
+                )}
                 <button
                   type="button"
                   disabled={isBurning}
-                  onClick={onBurnLayers}
+                  onClick={() => onBurnLayers(burnSize)}
                   className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isBurning ? "Saving..." : "Burn into image"}
+                  {isBurning ? t("imageEdit.burning") : t("imageEdit.burn")}
                 </button>
               </>
             ) : (
