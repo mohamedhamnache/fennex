@@ -1085,7 +1085,9 @@
       "automationHelp": "Work that runs on a schedule, without anyone asking for it.",
       "switchProject": "Editing",
       "projectCount_one": "{{count}} project",
-      "projectCount_other": "{{count}} projects"
+      "projectCount_other": "{{count}} projects",
+      "searchProjects": "Search projects by name or domain",
+      "noMatches": "No project matches that."
     },
     "title": "Settings",
     "subtitle": "Manage your account, workspace, and preferences.",

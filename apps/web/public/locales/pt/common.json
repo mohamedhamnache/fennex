@@ -988,7 +988,9 @@
       "automationHelp": "Trabalho que roda em uma programação, sem ninguém pedir.",
       "switchProject": "Editando",
       "projectCount_one": "{{count}} projeto",
-      "projectCount_other": "{{count}} projetos"
+      "projectCount_other": "{{count}} projetos",
+      "searchProjects": "Buscar por nome ou domínio",
+      "noMatches": "Nenhum projeto corresponde."
     },
     "title": "Configurações",
     "subtitle": "Gerencie sua conta, espaço de trabalho e preferências.",

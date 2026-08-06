@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Building2, KeyRound, Share2, Users,
   Trash2, Plus, Eye, EyeOff, Link2, Link2Off,
-  UserX, UserPlus, Copy, Check, ChevronRight,
+  UserX, UserPlus, Copy, Check, ChevronRight, ChevronDown,
   Shield, AtSign, Calendar, CreditCard, Palette, Globe,
   Sun, Moon, Monitor, Search, Brush, Settings as SettingsIcon,
   FileText, Image as ImageIcon, Gauge, Mic2, Sparkles, Star,
@@ -24,7 +24,7 @@ import {
   listSocialConnections, upsertSocialConnection, deleteSocialConnection, type SocialConnection,
   listOrgMembers, inviteMember, updateMemberRole, deactivateMember, type OrgMember,
   createCheckoutSession, createPortalSession, getBillingUsage, getUsageSummary,
-  listProjects, updateProject, deleteProject, type ProjectPersona,
+  listProjects, updateProject, deleteProject, type ProjectPersona, type Project,
   getOrganization, updateOrganization,
 } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -261,6 +261,106 @@ function Input({ type = "text", placeholder, value, onChange, className = "" }: 
 
 function ErrorMsg({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-destructive font-medium">{children}</p>;
+}
+
+/** Project switcher that scales past a handful.
+ *
+ *  Cards in a scrolling row broke down at more than five or six projects, and a
+ *  bare <select> offers no way to find one by name once a list is long. This
+ *  keeps the current project permanently visible and puts search on the rest. */
+function ProjectPicker({ projects, activeId, onSelect, label, searchLabel, emptyLabel, countLabel }: {
+  projects: Project[]; activeId: string; onSelect: (id: string) => void;
+  label: string; searchLabel: string; emptyLabel: string; countLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const boxRef = useRef<HTMLDivElement>(null);
+  const active = projects.find((p) => p.id === activeId);
+
+  // Close on outside click and on Escape, so the popover never strands focus.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const needle = q.trim().toLowerCase();
+  const shown = needle
+    ? projects.filter((p) => `${p.name} ${p.domain}`.toLowerCase().includes(needle))
+    : projects;
+
+  return (
+    <div ref={boxRef} className="relative">
+      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => { setOpen((o) => !o); setQ(""); }}
+        className="flex w-full items-center gap-3 rounded-xl border border-border bg-background px-3.5 py-3 text-left transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[11px] font-bold uppercase text-primary">
+          {(active?.name ?? "?").slice(0, 2)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">{active?.name}</span>
+          <span className="block truncate text-xs text-muted-foreground">{active?.domain}</span>
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{countLabel}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="popover absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg animate-scale-in">
+          <div className="border-b border-border p-2">
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={searchLabel}
+              aria-label={searchLabel}
+              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+          <ul role="listbox" className="max-h-72 overflow-y-auto p-1.5">
+            {shown.length === 0 && (
+              <li className="px-3 py-6 text-center text-sm text-muted-foreground">{emptyLabel}</li>
+            )}
+            {shown.map((p) => {
+              const selected = p.id === activeId;
+              return (
+                <li key={p.id} role="option" aria-selected={selected}>
+                  <button
+                    type="button"
+                    onClick={() => { onSelect(p.id); setOpen(false); }}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                      selected ? "bg-primary/10" : "hover:bg-muted"
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-sm ${selected ? "font-semibold text-primary" : "text-foreground"}`}>
+                        {p.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{p.domain}</span>
+                    </span>
+                    {selected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** A labelled break between groups of related fields.
@@ -1349,46 +1449,21 @@ function ProjectSection() {
     <div className="flex flex-col gap-5">
       <SectionHeader icon={Globe} title={t("settings.project.title")} description={t("settings.project.subtitle")} />
 
-      {/* Master-detail. The project list IS the selector: picking one here
-          re-seeds the form below. There used to be two ways to choose -- this
-          list, buried under the form, and a dropdown above it -- which meant
-          two controls that had to agree and a list nobody scrolled to. */}
+      {/* One control that scales. A row of cards scrolled sideways the moment
+          an account had more than a handful of projects, and a plain <select>
+          gives no way to find one by name in a long list. This is the pattern
+          that survives both: current project always visible, everything else
+          one click and a keystroke away. */}
       {projects.length > 1 && (
-        <div
-          role="tablist"
-          aria-label={t("settings.project.title")}
-          className="flex gap-2 overflow-x-auto pb-1"
-        >
-          {projects.map((p) => {
-            const selected = p.id === active.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setEditId(p.id)}
-                className={`group flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
-                  selected
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/40 hover:bg-muted/40"
-                }`}
-              >
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase ${
-                  selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}>
-                  {p.name.slice(0, 2)}
-                </span>
-                <span className="min-w-0">
-                  <span className={`block truncate text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
-                    {p.name}
-                  </span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{p.domain}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <ProjectPicker
+          projects={projects}
+          activeId={active.id}
+          onSelect={setEditId}
+          label={t("settings.project.switchProject")}
+          searchLabel={t("settings.project.searchProjects")}
+          emptyLabel={t("settings.project.noMatches")}
+          countLabel={t("settings.project.projectCount", { count: projects.length })}
+        />
       )}
 
       <Card className="flex flex-col gap-4 p-5">
@@ -1459,17 +1534,17 @@ function ProjectSection() {
           {t("settings.project.sectionAutomation")}
         </GroupLabel>
 
-        <div className="flex items-center justify-between rounded-lg border border-border px-3.5 py-3">
-          <div>
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border px-3.5 py-3">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">{t("settings.project.autopilot")}</p>
-            <p className="text-xs text-muted-foreground">{t("settings.project.autopilotHint")}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{t("settings.project.autopilotHint")}</p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={form.autopilot_enabled}
             onClick={() => setForm((f) => ({ ...f, autopilot_enabled: !f.autopilot_enabled }))}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${form.autopilot_enabled ? "bg-primary" : "bg-muted"}`}
+            className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors ${form.autopilot_enabled ? "bg-primary" : "bg-muted"}`}
           >
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.autopilot_enabled ? "left-[22px]" : "left-0.5"}`} />
           </button>
@@ -1479,10 +1554,10 @@ function ProjectSection() {
             this on starts spending SEO credits every week, for every tracked
             keyword, whether or not anyone looks at the result. A user who
             flips it without knowing that finds their balance drained. */}
-        <div className="flex items-start justify-between gap-4 py-3 border-t border-border">
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border px-3.5 py-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">{t("settings.project.rankTracking")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            <p className="text-sm font-medium text-foreground">{t("settings.project.rankTracking")}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
               {t("settings.project.rankTrackingHelp")}
             </p>
             {form.rank_tracking_enabled && (
@@ -1497,7 +1572,7 @@ function ProjectSection() {
             aria-checked={form.rank_tracking_enabled}
             aria-label={t("settings.project.rankTracking")}
             onClick={() => setForm((f) => ({ ...f, rank_tracking_enabled: !f.rank_tracking_enabled }))}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${form.rank_tracking_enabled ? "bg-primary" : "bg-muted"}`}
+            className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${form.rank_tracking_enabled ? "bg-primary" : "bg-muted"}`}
           >
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.rank_tracking_enabled ? "left-[22px]" : "left-0.5"}`} />
           </button>

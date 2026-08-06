@@ -988,7 +988,9 @@
       "automationHelp": "Arbeit, die planmäßig läuft, ohne dass jemand darum bittet.",
       "switchProject": "Bearbeitung von",
       "projectCount_one": "{{count}} Projekt",
-      "projectCount_other": "{{count}} Projekte"
+      "projectCount_other": "{{count}} Projekte",
+      "searchProjects": "Nach Name oder Domain suchen",
+      "noMatches": "Kein Projekt passt dazu."
     },
     "title": "Einstellungen",
     "subtitle": "Verwalte dein Konto, deinen Arbeitsbereich und deine Präferenzen.",

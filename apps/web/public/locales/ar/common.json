@@ -996,7 +996,9 @@
       "projectCount_two": "مشروعان",
       "projectCount_few": "{{count}} مشاريع",
       "projectCount_many": "{{count}} مشروعًا",
-      "projectCount_other": "{{count}} مشروع"
+      "projectCount_other": "{{count}} مشروع",
+      "searchProjects": "ابحث بالاسم أو النطاق",
+      "noMatches": "لا يوجد مشروع مطابق."
     },
     "title": "الإعدادات",
     "subtitle": "أدر حسابك ومساحة عملك وتفضيلاتك.",

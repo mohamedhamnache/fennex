@@ -988,7 +988,9 @@
       "automationHelp": "Tâches planifiées, exécutées sans que personne ne les demande.",
       "switchProject": "Modification de",
       "projectCount_one": "{{count}} projet",
-      "projectCount_other": "{{count}} projets"
+      "projectCount_other": "{{count}} projets",
+      "searchProjects": "Rechercher par nom ou domaine",
+      "noMatches": "Aucun projet ne correspond."
     },
     "title": "Paramètres",
     "subtitle": "Gérez votre compte, votre espace de travail et vos préférences.",
