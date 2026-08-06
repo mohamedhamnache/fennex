@@ -72,7 +72,18 @@ class Settings(BaseSettings):
     # Shopify OAuth ("Connect with Shopify" one-click install — a single Fennex-owned app)
     SHOPIFY_APP_CLIENT_ID: str = ""
     SHOPIFY_APP_CLIENT_SECRET: str = ""
-    SHOPIFY_APP_SCOPES: str = "read_products,write_products,write_files"
+    # read_orders is here from the start ON PURPOSE. Adding a scope later forces
+    # every already-connected merchant to re-authorise, and a store that has not
+    # reconnected is a store whose sync silently stops. Requesting it before the
+    # first merchant connects costs a string; requesting it after costs a
+    # support incident per store.
+    #
+    # read_orders covers the last 60 days. Anything older needs read_all_orders,
+    # which requires Shopify's app review -- calendar time, not engineering time,
+    # so start that early if year-over-year revenue matters.
+    SHOPIFY_APP_SCOPES: str = (
+        "read_products,write_products,write_files,read_orders,read_analytics"
+    )
     SHOPIFY_REDIRECT_URI: str = "http://localhost:8000/api/v1/shopify/oauth/callback"
 
     # Frontend base URL (used for OAuth redirects back to the app)
