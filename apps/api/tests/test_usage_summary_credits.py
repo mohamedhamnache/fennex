@@ -114,9 +114,9 @@ async def test_usage_summary_reports_both_buckets(client, db, org, auth_headers)
 
     # AI credits come from the ai_credits_used counter, NOT derived from cost
     assert body["credits_used"] == 1_000
-    assert body["credits_allowance"] == 5_000
-    assert body["credits_remaining"] == 4_000
+    assert body["credits_allowance"] == 3_000   # starter, repriced 2026-08-06
+    assert body["credits_remaining"] == 2_000   # 3,000 allowance - 1,000 used
 
     assert body["seo_credits_used"] == 90
-    assert body["seo_credits_allowance"] == 1_500  # SEO_PLAN_CREDITS["starter"]
-    assert body["seo_credits_remaining"] == 1_410
+    assert body["seo_credits_allowance"] == 1_000  # SEO_PLAN_CREDITS["starter"]
+    assert body["seo_credits_remaining"] == 910

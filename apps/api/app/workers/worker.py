@@ -74,7 +74,14 @@ class WorkerSettings:
         cron(run_market_monitor, weekday=0, hour=7, minute=0, run_at_startup=False),
         cron(run_competitor_monitor, weekday=1, hour=7, minute=0, run_at_startup=False),
         # Zerda's daily SERP rank tracker, ahead of the 06:00 analytics sync
-        cron(run_rank_tracker, hour=5, minute=30, run_at_startup=False),
+        # WEEKLY, not daily. Omitting `weekday` makes arq run a cron every day,
+        # and this one fans out one paid SERP task per tracked keyword per
+        # project -- so it was billing ~30 passes a month instead of ~4.3, a 7x
+        # multiplier nobody had costed. Rank positions do not move enough
+        # day-to-day to justify it; a user-initiated refresh is always available
+        # for a live check. See tracked_cap_for / CRON_SERP_DEPTH for the two
+        # other terms in that cost.
+        cron(run_rank_tracker, weekday=0, hour=5, minute=30, run_at_startup=False),
         # Roll usage_event -> usage_daily every 10 min so the admin usage
         # dashboards reflect activity within minutes, not next day. Idempotent
         # (delete-then-insert per day), so frequent runs are safe.

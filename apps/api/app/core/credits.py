@@ -31,10 +31,10 @@ CREDIT_MICROS = 1_050  # $0.00105 of supplier cost per AI credit
 
 PLAN_CREDITS: dict[str, int] = {
     "free": 200,
-    "starter": 5_000,
-    "pro": 18_000,
-    "agency": 55_000,
-    "scale": 150_000,
+    "starter": 3_000,
+    "pro": 10_000,
+    "agency": 30_000,
+    "scale": 70_000,
     # Enterprise is custom-priced and absent from PLAN_PRICE_USD. It still needs
     # an explicit entry: the allowance lookup falls back to `free`, so without
     # one an enterprise org would be hard-stopped after ~$0.21 of spend.
@@ -146,10 +146,10 @@ SEO_CREDIT_WEIGHT: dict[str, int] = {
 # runs a month to 20.
 SEO_PLAN_CREDITS: dict[str, int] = {
     "free": 100,
-    "starter": 1_500,
-    "pro": 7_500,
-    "agency": 20_000,
-    "scale": 60_000,
+    "starter": 1_000,
+    "pro": 3_000,
+    "agency": 8_000,
+    "scale": 15_000,
     # See the note on PLAN_CREDITS["enterprise"]. Must stay above `scale`.
     "enterprise": 250_000,
 }

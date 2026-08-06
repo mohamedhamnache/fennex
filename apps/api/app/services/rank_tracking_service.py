@@ -25,7 +25,7 @@ TRACKED_CAP_BY_PLAN: dict[str, int] = {
     "starter": 500,
     "pro": 500,
     "agency": 500,
-    "scale": 1000,
+    "scale": 500,
     "enterprise": 1000,
 }
 TRACKED_CAP = 500   # fallback for an unknown tier
@@ -93,11 +93,11 @@ def _fmt_pos(v: float | None) -> str:
 # not. At the Scale cap that is the difference between ~$693/month and
 # ~$3,464/month against a $799 plan.
 #
-# The trade is real and deliberate: a keyword ranking outside the top 20 now
+# The trade is real and deliberate: a keyword ranking outside the top 10 now
 # reports as unranked on the scheduled pass. A user-initiated refresh still
 # asks for the full 100, so a deep position is always one click away -- the
 # depth is only reduced where nobody asked for the result.
-CRON_SERP_DEPTH = 20
+CRON_SERP_DEPTH = 10
 USER_SERP_DEPTH = 100
 
 
