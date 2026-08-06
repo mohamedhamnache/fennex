@@ -1,3 +1,4 @@
+import pytest
 from app.core.credits import (
     AI_KINDS,
     CREDIT_MICROS,
@@ -219,6 +220,15 @@ def test_plan_cogs_stays_within_margin_target():
         assert cogs <= PLAN_PRICE_USD[tier] * 0.32, (tier, cogs)
 
 
+@pytest.mark.xfail(strict=True, reason=(
+    "KNOWN BREACH, awaiting a product decision. The real DataForSEO cost is "
+    "~$0.02 per request (read off the account dashboard 2026-08-06), not the "
+    "$0.0015 that was seeded. At that price one weekly rank-tracking pass costs "
+    "more than a whole month's SEO allowance on every tier -- $50/pass on Pro "
+    "($99/mo), $800/pass on Scale ($799/mo). This is not fixable by repricing a "
+    "weight: the keyword caps and the weekly cadence are together unaffordable. "
+    "Lower the caps, cut the frequency, or raise the prices."
+))
 def test_scheduled_work_is_counted_against_plan_margin():
     """Cron spend is guaranteed COGS and must not stay invisible.
 
@@ -243,7 +253,7 @@ def test_scheduled_work_is_counted_against_plan_margin():
     """
     from app.core.billing import PLAN_LIMITS, PLAN_PRICE_USD
 
-    RANK_CHECK_USD = 1500 / 1_000_000        # cost_rates: dataforseo/rank_check
+    RANK_CHECK_USD = 0.02                    # measured on the DataForSEO dashboard
     RUNS_PER_MONTH = 4.33                    # weekly cron
 
     for tier in ("starter", "pro", "agency", "scale"):
