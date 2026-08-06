@@ -375,7 +375,7 @@
       "fromContent": "{{value}} aus Inhalten",
       "storeTotal": "{{value}} Shop gesamt",
       "trend": "Umsatzverlauf",
-      "mockNotice": "Beispieldaten — Shop noch nicht verbunden",
+      "mockNotice": "Beispieldaten — Sitzungen, Kunden und Produkte stammen noch nicht aus deinem Shop",
       "byProduct": "Umsatz nach Produkt",
       "kpiSessions": "Sitzungen",
       "kpiConversion": "Conversion",
@@ -385,9 +385,18 @@
       "kpiRepeat": "Wiederkaufrate",
       "kpiRepeatSub": "{{count}} wiederkehrend",
       "fromContentCount": "{{count}} aus Inhalten",
-      "noOrders": "Für diesen Zeitraum wurden noch keine Bestellungen synchronisiert. Verbinde deinen Shop oder starte eine Synchronisierung."
+      "noOrders": "Für diesen Zeitraum wurden noch keine Bestellungen synchronisiert. Verbinde deinen Shop oder starte eine Synchronisierung.",
+      "errorTitle": "Shop-Daten nicht verfügbar",
+      "errorBody": "Die Umsatzzahlen konnten nicht geladen werden. Prüfe die Shop-Verbindung und versuche es erneut."
     },
-    "connectGscFirst": "Verbinde Google Search Console, um Klicks, Impressionen und Rankings dieses Projekts zu sehen."
+    "connectGscFirst": "Verbinde Google Search Console, um Klicks, Impressionen und Rankings dieses Projekts zu sehen.",
+    "source": {
+      "search": "Suche",
+      "store": "Shop",
+      "searchSub": "Echte Search-Console-Daten · Marktanalyse · KI-Copilot",
+      "storeSub": "Umsatz aus deinem verbundenen Shop, verknüpft mit dem Inhalt, auf dem der Besuch begann",
+      "alsoConnectGsc": "Verbinde die Search Console, um zu sehen, wonach Käufer gesucht haben."
+    }
   },
   "seoHub": {
     "title": "Rank-Tracker",

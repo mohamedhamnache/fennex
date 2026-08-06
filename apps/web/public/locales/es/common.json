@@ -375,7 +375,7 @@
       "fromContent": "{{value}} desde contenido",
       "storeTotal": "{{value}} total tienda",
       "trend": "Ingresos en el tiempo",
-      "mockNotice": "Datos de ejemplo — tienda aún no conectada",
+      "mockNotice": "Datos de muestra — sesiones, clientes y productos aún no provienen de tu tienda",
       "byProduct": "Ingresos por producto",
       "kpiSessions": "Sesiones",
       "kpiConversion": "Conversión",
@@ -385,9 +385,18 @@
       "kpiRepeat": "Tasa de recompra",
       "kpiRepeatSub": "{{count}} recurrentes",
       "fromContentCount": "{{count}} desde contenido",
-      "noOrders": "Aún no hay pedidos sincronizados para este periodo. Conecta tu tienda o ejecuta una sincronización."
+      "noOrders": "Aún no hay pedidos sincronizados para este periodo. Conecta tu tienda o ejecuta una sincronización.",
+      "errorTitle": "Datos de la tienda no disponibles",
+      "errorBody": "No se pudieron cargar los ingresos. Revisa la conexión con la tienda e inténtalo de nuevo."
     },
-    "connectGscFirst": "Conecta Google Search Console para ver clics, impresiones y posiciones de este proyecto."
+    "connectGscFirst": "Conecta Google Search Console para ver clics, impresiones y posiciones de este proyecto.",
+    "source": {
+      "search": "Búsqueda",
+      "store": "Tienda",
+      "searchSub": "Datos reales de Search Console · inteligencia de mercado · copiloto de IA",
+      "storeSub": "Ingresos de tu tienda conectada, unidos al contenido donde empezó la visita",
+      "alsoConnectGsc": "Conecta Search Console para ver qué buscaron tus compradores."
+    }
   },
   "seoHub": {
     "title": "Rastreador de posiciones",

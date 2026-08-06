@@ -44,6 +44,7 @@ import {
   getTopQueries,
   getContentPerformance,
   getGscStatus,
+  getShopifyStatus,
   connectGsc,
   disconnectGsc,
   getGscSites,
@@ -364,9 +365,11 @@ function OverviewSkeleton() {
 function OverviewTab({ projectId, range }: { projectId: string; range: AnalyticsRange }) {
   const { t } = useTranslation();
   const [compare, setCompare] = useState(false);
+  // Same cache key the shell and the banner use, so the three read one fetch.
   const { data: gscStatus } = useQuery({
-    queryKey: ["gsc-status", projectId],
+    queryKey: ["analytics", "gsc-status", projectId],
     queryFn: () => getGscStatus(projectId),
+    staleTime: 30_000,
     retry: false,
   });
   const gscConnected = !!gscStatus?.is_connected;
@@ -412,20 +415,11 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
   // the user their site had no clicks and no impressions, which is not what a
   // missing connection means. An empty state that states a number is worse than
   // no state at all.
-  const rangeDays = range === "7d" ? 7 : range === "90d" ? 90 : 28;
-
   if (!gscConnected) {
     return (
-      <div className="flex flex-col gap-5">
-        {/* Shopify is a separate source with its own gate. A merchant who has
-            connected a store but not Search Console still has revenue worth
-            reading, and hiding it behind the GSC gate made it invisible for a
-            reason that has nothing to do with Shopify. */}
-        <RevenuePanel projectId={projectId} days={rangeDays} />
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
-          <FennecMascot />
-          <p className="max-w-sm text-sm">{t("analytics.connectGscFirst")}</p>
-        </div>
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
+        <FennecMascot />
+        <p className="max-w-sm text-sm">{t("analytics.connectGscFirst")}</p>
       </div>
     );
   }
@@ -492,11 +486,6 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
           />
         </div>
       </div>
-
-      {/* Revenue sits directly under the Search Console figures: clicks answer
-          what got found, this answers what got bought, and the pair is the
-          point. */}
-      <RevenuePanel projectId={projectId} days={rangeDays} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card className="p-5">
@@ -1666,7 +1655,49 @@ function PerformanceTab({ projectId }: { projectId: string }) {
   );
 }
 
+// ─── Store workspace ─────────────────────────────────────────────────────────
+
+/**
+ * Everything that comes from the connected store.
+ *
+ * Kept as its own dashboard rather than a panel inside Pulse because the two
+ * sources answer different questions and are read by different people: Search
+ * Console says what got found, the store says what got bought. Stacking them
+ * in one scroll made the revenue figures look like a footnote to the SEO ones.
+ */
+function StoreWorkspace({ projectId, range, gscConnected }: {
+  projectId: string; range: AnalyticsRange; gscConnected: boolean;
+}) {
+  const { t } = useTranslation();
+  const days = range === "7d" ? 7 : range === "90d" ? 90 : 28;
+  return (
+    <div className="flex flex-col gap-5">
+      <RevenuePanel projectId={projectId} days={days} />
+      {/* Offered here, not assumed: a merchant reading store revenue is one
+          connection away from knowing which search brought the buyer, and this
+          is the only place that pairing is obvious. */}
+      {!gscConnected && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3">
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Globe className="h-4 w-4 shrink-0" />
+            {t("analytics.source.alsoConnectGsc")}
+          </span>
+          <button
+            onClick={async () => { const r = await connectGsc(projectId); window.location.href = r.redirect_url; }}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            {t("analytics.connect")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Analytics Studio shell ───────────────────────────────────────────────────
+
+/** Which connected system the studio is reading from. */
+type Source = "search" | "store";
 
 type Workspace = "pulse" | "growth" | "market" | "competitors" | "performance";
 
@@ -1680,6 +1711,7 @@ const WORKSPACES: { key: Workspace; label: string; Icon: typeof Activity }[] = [
 
 export default function AnalyticsPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const wsParam = searchParams.get("ws") as Workspace | null;
   const [workspace, setWorkspace] = useState<Workspace>(
@@ -1687,6 +1719,42 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
   );
   const [range, setRange] = useState<AnalyticsRange>("28d");
   const [persona, setPersona] = useState<Persona>("creator");
+
+  // Which sources this project actually has. Both are read here rather than
+  // inside the panels so the shell can decide what to show: a studio that
+  // renders SEO chrome for a merchant with no Search Console -- or hides
+  // revenue behind a Search Console gate -- is answering a question nobody
+  // asked. `undefined` means "not known yet", which is not the same as "off".
+  const { data: gscStatus } = useQuery({
+    queryKey: ["analytics", "gsc-status", projectId],
+    queryFn: () => getGscStatus(projectId), staleTime: 30_000, retry: false,
+  });
+  const { data: shopStatus } = useQuery({
+    queryKey: ["shopify-status", projectId],
+    queryFn: () => getShopifyStatus(projectId), staleTime: 30_000, retry: false,
+  });
+  const gscConnected = !!gscStatus?.is_connected;
+  const storeConnected = !!shopStatus?.connected;
+  const bothConnected = gscConnected && storeConnected;
+  const resolved = gscStatus !== undefined && shopStatus !== undefined;
+
+  const srcParam = searchParams.get("source");
+  const [source, setSource] = useState<Source>(srcParam === "store" ? "store" : "search");
+
+  // A store-only project opens on the store. Doing this once statuses land --
+  // rather than defaulting on every render -- keeps a later click from being
+  // overridden, and keeps the switch off the screen until it is truthful.
+  const [sourcePicked, setSourcePicked] = useState(srcParam === "store" || srcParam === "search");
+  useEffect(() => {
+    if (!resolved || sourcePicked) return;
+    if (storeConnected && !gscConnected) setSource("store");
+    setSourcePicked(true);
+  }, [resolved, sourcePicked, storeConnected, gscConnected]);
+
+  // Never leave the user on a dashboard whose source is gone (disconnected in
+  // another tab, or a stale ?source=store link).
+  const active: Source = source === "store" && resolved && !storeConnected ? "search" : source;
+  function pickSource(s: Source) { setSourcePicked(true); setSource(s); }
   const [copilotOpen, setCopilotOpen] = useState(searchParams.get("copilot") === "1");
   const [digestSending, setDigestSending] = useState(false);
   const { success: toastSuccess, error: toastError } = useToast();
@@ -1731,12 +1799,42 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground leading-tight">Analytics Studio</h1>
-            <p className="text-xs text-muted-foreground leading-tight">Real Search Console data · market intelligence · AI copilot</p>
+            <p className="text-xs text-muted-foreground leading-tight">
+              {active === "store" ? t("analytics.source.storeSub") : t("analytics.source.searchSub")}
+            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Persona switcher */}
+          {/* Source switcher. Shown only when both are connected -- with one
+              source there is nothing to switch between, and a control with a
+              single option is noise that implies a missing feature. */}
+          {bothConnected && (
+            <div className="flex items-center gap-0.5 rounded-xl border border-border bg-muted/40 p-0.5">
+              {([
+                { key: "search" as const, label: t("analytics.source.search"), Icon: Globe },
+                { key: "store" as const, label: t("analytics.source.store"), Icon: ShoppingBag },
+              ]).map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => pickSource(key)}
+                  aria-pressed={active === key}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                    active === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Persona switcher. It shapes Market and the copilot, neither of
+              which the store dashboard shows, so it is hidden there rather
+              than left as a control with no visible effect. */}
+          {active === "search" && (
           <div className="flex items-center gap-0.5 rounded-xl border border-border bg-muted/40 p-0.5">
             {PERSONAS.map(({ id, label, Icon }) => (
               <button
@@ -1753,6 +1851,7 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
               </button>
             ))}
           </div>
+          )}
 
           {/* Date range */}
           <div className="flex items-center gap-0.5 rounded-xl border border-border bg-muted/40 p-0.5">
@@ -1770,7 +1869,9 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
             ))}
           </div>
 
-          {/* Weekly digest */}
+          {/* Weekly digest and the copilot both read Search Console. */}
+          {active === "search" && (
+          <>
           <button
             onClick={emailDigest}
             disabled={digestSending}
@@ -1794,12 +1895,18 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
             <Sparkles className="h-3.5 w-3.5" strokeWidth={1.9} />
             {FENNEX_AGENTS.zerda.name}
           </button>
+          </>
+          )}
         </div>
       </div>
 
-      <GscBanner projectId={projectId} />
+      {/* The Search Console banner belongs to the Search dashboard. Left on the
+          store view it read as a defect on a page that has nothing to do with
+          Google. */}
+      {active === "search" && <GscBanner projectId={projectId} />}
 
       {/* ── Workspace nav ── */}
+      {active === "search" && (
       <div className="flex items-center gap-1 overflow-x-auto border-b border-border">
         {WORKSPACES.map(({ key, label, Icon }) => {
           const active = workspace === key;
@@ -1819,18 +1926,25 @@ export default function AnalyticsPage({ params }: { params: { projectId: string 
           );
         })}
       </div>
+      )}
 
       {/* ── Content + Copilot side panel ── */}
       <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
-          {workspace === "pulse" && <OverviewTab projectId={projectId} range={range} />}
-          {workspace === "growth" && <OpportunitiesTab projectId={projectId} />}
-          {workspace === "market" && <MarketTab projectId={projectId} persona={persona} />}
-          {workspace === "competitors" && <CompetitorsTab projectId={projectId} />}
-          {workspace === "performance" && <PerformanceTab projectId={projectId} />}
+          {active === "store" ? (
+            <StoreWorkspace projectId={projectId} range={range} gscConnected={gscConnected} />
+          ) : (
+            <>
+              {workspace === "pulse" && <OverviewTab projectId={projectId} range={range} />}
+              {workspace === "growth" && <OpportunitiesTab projectId={projectId} />}
+              {workspace === "market" && <MarketTab projectId={projectId} persona={persona} />}
+              {workspace === "competitors" && <CompetitorsTab projectId={projectId} />}
+              {workspace === "performance" && <PerformanceTab projectId={projectId} />}
+            </>
+          )}
         </div>
 
-        {copilotOpen && (
+        {active === "search" && copilotOpen && (
           <>
             {/* Mobile backdrop */}
             <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm xl:hidden" onClick={() => setCopilotOpen(false)} />

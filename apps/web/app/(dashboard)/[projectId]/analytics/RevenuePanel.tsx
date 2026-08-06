@@ -27,6 +27,7 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
   const { data: status } = useQuery({
     queryKey: ["shopify-status", projectId],
     queryFn: () => getShopifyStatus(projectId),
+    staleTime: 30_000,
     retry: false,
   });
   const connected = !!status?.connected;
@@ -39,7 +40,28 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
   });
 
   // An unconnected store is the normal case, not an error worth a red box.
-  if (!connected || isLoading || isError || !data) return null;
+  if (!connected) return null;
+
+  // This panel is now a dashboard of its own, so the in-between states have to
+  // be visible: returning null while loading left the whole view blank, which
+  // is indistinguishable from a broken page.
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="h-32 animate-pulse rounded-xl border border-border bg-muted/30" />
+        <div className="h-64 animate-pulse rounded-xl border border-border bg-muted/30" />
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <Card className="flex flex-col items-center gap-2 p-10 text-center">
+        <p className="text-sm font-medium text-foreground">{t("analytics.revenue.errorTitle")}</p>
+        <p className="max-w-sm text-xs text-muted-foreground">{t("analytics.revenue.errorBody")}</p>
+      </Card>
+    );
+  }
 
   // Connected but nothing synced yet. The KPI block would otherwise render
   // $0 revenue, 0 orders and 0% share -- which reads as "your content earns

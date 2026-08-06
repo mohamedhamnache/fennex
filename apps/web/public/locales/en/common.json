@@ -472,7 +472,7 @@
       "fromContent": "{{value}} from content",
       "storeTotal": "{{value}} store total",
       "trend": "Revenue over time",
-      "mockNotice": "Sample data — not yet connected to your store",
+      "mockNotice": "Sample data — sessions, customers and product mix do not come from your store yet",
       "byProduct": "Revenue by product",
       "kpiSessions": "Sessions",
       "kpiConversion": "Conversion",
@@ -482,9 +482,18 @@
       "kpiRepeat": "Repeat rate",
       "kpiRepeatSub": "{{count}} returning",
       "fromContentCount": "{{count}} from content",
-      "noOrders": "No orders synced yet for this period. Connect your store or run a sync to see revenue from content."
+      "noOrders": "No orders synced yet for this period. Connect your store or run a sync to see revenue from content.",
+      "errorTitle": "Store data unavailable",
+      "errorBody": "The revenue figures could not be loaded. Check the store connection, then try again."
     },
-    "connectGscFirst": "Connect Google Search Console to see clicks, impressions and rankings for this project."
+    "connectGscFirst": "Connect Google Search Console to see clicks, impressions and rankings for this project.",
+    "source": {
+      "search": "Search",
+      "store": "Store",
+      "searchSub": "Real Search Console data · market intelligence · AI copilot",
+      "storeSub": "Revenue from your connected store, joined to the content it started on",
+      "alsoConnectGsc": "Connect Search Console to see what people searched before they bought."
+    }
   },
   "seoHub": {
     "title": "Rank Tracker",

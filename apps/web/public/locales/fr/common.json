@@ -375,7 +375,7 @@
       "fromContent": "{{value}} via le contenu",
       "storeTotal": "{{value}} total boutique",
       "trend": "Revenus dans le temps",
-      "mockNotice": "Données d'exemple — boutique pas encore connectée",
+      "mockNotice": "Données d'exemple — sessions, clients et produits ne proviennent pas encore de votre boutique",
       "byProduct": "Revenus par produit",
       "kpiSessions": "Sessions",
       "kpiConversion": "Conversion",
@@ -385,9 +385,18 @@
       "kpiRepeat": "Taux de retour",
       "kpiRepeatSub": "{{count}} clients fidèles",
       "fromContentCount": "{{count}} via le contenu",
-      "noOrders": "Aucune commande synchronisée pour cette période. Connectez votre boutique ou lancez une synchronisation."
+      "noOrders": "Aucune commande synchronisée pour cette période. Connectez votre boutique ou lancez une synchronisation.",
+      "errorTitle": "Données de la boutique indisponibles",
+      "errorBody": "Impossible de charger les revenus. Vérifiez la connexion à la boutique, puis réessayez."
     },
-    "connectGscFirst": "Connectez Google Search Console pour voir les clics, impressions et positions de ce projet."
+    "connectGscFirst": "Connectez Google Search Console pour voir les clics, impressions et positions de ce projet.",
+    "source": {
+      "search": "Recherche",
+      "store": "Boutique",
+      "searchSub": "Données Search Console réelles · intelligence de marché · copilote IA",
+      "storeSub": "Revenus de votre boutique connectée, reliés au contenu à l'origine de la visite",
+      "alsoConnectGsc": "Connectez Search Console pour voir ce que vos acheteurs ont recherché."
+    }
   },
   "seoHub": {
     "title": "Suivi de classement",
