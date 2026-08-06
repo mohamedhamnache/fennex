@@ -376,7 +376,18 @@
       "ofStore": "من {{value}} إجمالًا",
       "shareSub": "من إيرادات المتجر",
       "fromContent": "{{value}} من المحتوى",
-      "storeTotal": "{{value}} إجمالي المتجر"
+      "storeTotal": "{{value}} إجمالي المتجر",
+      "trend": "الإيرادات عبر الزمن",
+      "mockNotice": "بيانات تجريبية — المتجر غير متصل بعد",
+      "byProduct": "الإيرادات حسب المنتج",
+      "kpiSessions": "الجلسات",
+      "kpiConversion": "التحويل",
+      "kpiConversionSub": "طلبات لكل جلسة",
+      "kpiNew": "عملاء جدد",
+      "kpiNewSub": "أول عملية شراء",
+      "kpiRepeat": "معدل التكرار",
+      "kpiRepeatSub": "{{count}} عائدون",
+      "fromContentCount": "{{count}} من المحتوى"
     },
     "connectGscFirst": "اربط Google Search Console لعرض النقرات والظهور والترتيب لهذا المشروع."
   },

@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.publishing import PublishJob
 from app.models.store_order import StoreOrder
+from app.services import store_mock
 from app.services.shopify_service import SHOPIFY_API_VERSION, get_credentials
 
 logger = logging.getLogger(__name__)
@@ -184,7 +185,7 @@ async def revenue_summary(project_id: uuid.UUID, db: AsyncSession, days: int = 3
     a poor result -- most sales never begin on an article -- but a number shown
     without its denominator invites the reader to assume it is one.
     """
-    from sqlalchemy import func
+    from sqlalchemy import func, case
     from app.models.article import Article
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
@@ -214,6 +215,23 @@ async def revenue_summary(project_id: uuid.UUID, db: AsyncSession, days: int = 3
         .limit(20)
     )).all()
 
+    # Daily series for the trend chart. Real data -- attributed and total per
+    # day, so the chart shows the gap rather than one line without context.
+    day = func.date(StoreOrder.ordered_at)
+    daily = (await db.execute(
+        select(
+            day.label("d"),
+            func.coalesce(func.sum(StoreOrder.total_price), 0),
+            func.coalesce(func.sum(
+                case((StoreOrder.attributed_article_id.isnot(None), StoreOrder.total_price),
+                     else_=0)), 0),
+        ).where(*base).group_by(day).order_by(day)
+    )).all()
+    series = [
+        {"date": str(r[0]), "revenue": float(r[1] or 0), "attributed": float(r[2] or 0)}
+        for r in daily
+    ]
+
     currency = (await db.execute(
         select(StoreOrder.currency).where(*base, StoreOrder.currency.isnot(None)).limit(1)
     )).scalar()
@@ -234,6 +252,14 @@ async def revenue_summary(project_id: uuid.UUID, db: AsyncSession, days: int = 3
         "revenue_total": float(totals[1] or 0),
         "orders_attributed": attr[0] or 0,
         "revenue_attributed": float(attr[1] or 0),
+        # Sections with no data source yet. Flagged so the UI can label them:
+        # a dashboard showing invented numbers without saying so is the one
+        # failure this must not cause. See store_mock for what each needs.
+        "series": series,
+        "is_mock": True,
+        "products": store_mock.mock_products(str(project_id), currency or "USD"),
+        "customers": store_mock.mock_customers(str(project_id)),
+        "traffic": store_mock.mock_traffic(str(project_id), totals[0] or 0),
         "articles": [
             {"article_id": str(r[0]), "title": r[1], "path": r[2],
              "orders": r[3], "revenue": float(r[4] or 0)}

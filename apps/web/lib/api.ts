@@ -2929,6 +2929,13 @@ export interface RevenueSummary {
   revenue_attributed: number;
   aov_total: number;
   aov_attributed: number;
+  series: { date: string; revenue: number; attributed: number }[];
+  /** True while products, customers and traffic are placeholders. The UI must
+   *  label them: showing invented numbers unmarked is the one failure to avoid. */
+  is_mock: boolean;
+  products: { product: string; units: number; revenue: number; currency: string | null }[];
+  customers: { new: number; returning: number; repeat_rate: number };
+  traffic: { sessions: number; conversion_rate: number; sessions_from_content: number };
   articles: RevenueArticle[];
 }
 

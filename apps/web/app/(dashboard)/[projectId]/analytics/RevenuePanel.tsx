@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ShoppingBag, ExternalLink } from "lucide-react";
+import { ShoppingBag, ExternalLink, Users, MousePointerClick, Package, FlaskConical } from "lucide-react";
+import { RevenueTrend, ProductBars } from "./StoreCharts";
 import { Card } from "@/components/ui/Card";
 import { getStoreRevenue, getShopifyStatus } from "@/lib/api";
 
@@ -46,6 +47,13 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
       currency: data.currency || "USD",
       maximumFractionDigits: 0,
     }).format(n);
+
+  const moneyShort = (n: number) =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency", currency: data.currency || "USD",
+      notation: "compact", maximumFractionDigits: 1,
+    }).format(n);
+  const fmt = (n: number) => new Intl.NumberFormat().format(n);
 
   const share = data.revenue_total > 0
     ? Math.round((data.revenue_attributed / data.revenue_total) * 100)
@@ -96,6 +104,46 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
           <span>{t("analytics.revenue.storeTotal", { value: money(data.revenue_total) })}</span>
         </div>
       </div>
+
+      {data.series.length > 1 && (
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <p className="text-sm font-semibold text-foreground">{t("analytics.revenue.trend")}</p>
+          <RevenueTrend data={data.series} money={moneyShort} />
+        </div>
+      )}
+
+      {/* Everything below needs data the orders sync does not collect yet, so
+          it is labelled. A dashboard that shows invented numbers without
+          saying so is worse than one that shows nothing. */}
+      {data.is_mock && (
+        <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <FlaskConical className="h-3.5 w-3.5" />
+            {t("analytics.revenue.mockNotice")}
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Kpi label={t("analytics.revenue.kpiSessions")} value={fmt(data.traffic.sessions)}
+                 sub={t("analytics.revenue.fromContentCount", { count: data.traffic.sessions_from_content })} />
+            <Kpi label={t("analytics.revenue.kpiConversion")} value={`${data.traffic.conversion_rate}%`}
+                 sub={t("analytics.revenue.kpiConversionSub")} />
+            <Kpi label={t("analytics.revenue.kpiNew")} value={fmt(data.customers.new)}
+                 sub={t("analytics.revenue.kpiNewSub")} />
+            <Kpi label={t("analytics.revenue.kpiRepeat")} value={`${data.customers.repeat_rate}%`}
+                 sub={t("analytics.revenue.kpiRepeatSub", { count: data.customers.returning })} />
+          </div>
+
+          {data.products.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                {t("analytics.revenue.byProduct")}
+              </p>
+              <ProductBars data={data.products} money={moneyShort} />
+            </div>
+          )}
+        </div>
+      )}
 
       {data.articles.length > 0 && (
         <div className="flex flex-col gap-1.5 border-t border-border pt-4">

@@ -373,7 +373,18 @@
       "ofStore": "von {{value}} gesamt",
       "shareSub": "des Shop-Umsatzes",
       "fromContent": "{{value}} aus Inhalten",
-      "storeTotal": "{{value}} Shop gesamt"
+      "storeTotal": "{{value}} Shop gesamt",
+      "trend": "Umsatzverlauf",
+      "mockNotice": "Beispieldaten — Shop noch nicht verbunden",
+      "byProduct": "Umsatz nach Produkt",
+      "kpiSessions": "Sitzungen",
+      "kpiConversion": "Conversion",
+      "kpiConversionSub": "Bestellungen pro Sitzung",
+      "kpiNew": "Neue Kunden",
+      "kpiNewSub": "Erstkauf",
+      "kpiRepeat": "Wiederkaufrate",
+      "kpiRepeatSub": "{{count}} wiederkehrend",
+      "fromContentCount": "{{count}} aus Inhalten"
     },
     "connectGscFirst": "Verbinde Google Search Console, um Klicks, Impressionen und Rankings dieses Projekts zu sehen."
   },

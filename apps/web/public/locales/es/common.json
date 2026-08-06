@@ -373,7 +373,18 @@
       "ofStore": "de {{value}} en total",
       "shareSub": "de los ingresos de la tienda",
       "fromContent": "{{value}} desde contenido",
-      "storeTotal": "{{value}} total tienda"
+      "storeTotal": "{{value}} total tienda",
+      "trend": "Ingresos en el tiempo",
+      "mockNotice": "Datos de ejemplo — tienda aún no conectada",
+      "byProduct": "Ingresos por producto",
+      "kpiSessions": "Sesiones",
+      "kpiConversion": "Conversión",
+      "kpiConversionSub": "pedidos por sesión",
+      "kpiNew": "Clientes nuevos",
+      "kpiNewSub": "primera compra",
+      "kpiRepeat": "Tasa de recompra",
+      "kpiRepeatSub": "{{count}} recurrentes",
+      "fromContentCount": "{{count}} desde contenido"
     },
     "connectGscFirst": "Conecta Google Search Console para ver clics, impresiones y posiciones de este proyecto."
   },

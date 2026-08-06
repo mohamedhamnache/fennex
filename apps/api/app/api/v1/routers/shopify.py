@@ -182,6 +182,25 @@ class RevenueArticle(BaseModel):
     revenue: float
 
 
+class ProductRow(BaseModel):
+    product: str
+    units: int
+    revenue: float
+    currency: str | None = None
+
+
+class CustomerSplit(BaseModel):
+    new: int = 0
+    returning: int = 0
+    repeat_rate: float = 0
+
+
+class TrafficStats(BaseModel):
+    sessions: int = 0
+    conversion_rate: float = 0
+    sessions_from_content: int = 0
+
+
 class RevenueSummary(BaseModel):
     window_days: int
     currency: str | None = None
@@ -192,6 +211,12 @@ class RevenueSummary(BaseModel):
     aov_total: float = 0
     aov_attributed: float = 0
     articles: list[RevenueArticle] = []
+    # True while products/customers/traffic are placeholders. The UI must say so.
+    series: list[dict] = []
+    is_mock: bool = False
+    products: list[ProductRow] = []
+    customers: CustomerSplit = CustomerSplit()
+    traffic: TrafficStats = TrafficStats()
 
 
 @router.get("/orders/revenue", response_model=RevenueSummary)

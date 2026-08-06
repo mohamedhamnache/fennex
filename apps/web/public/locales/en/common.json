@@ -470,7 +470,18 @@
       "ofStore": "of {{value}} store-wide",
       "shareSub": "of store revenue",
       "fromContent": "{{value}} from content",
-      "storeTotal": "{{value}} store total"
+      "storeTotal": "{{value}} store total",
+      "trend": "Revenue over time",
+      "mockNotice": "Sample data — not yet connected to your store",
+      "byProduct": "Revenue by product",
+      "kpiSessions": "Sessions",
+      "kpiConversion": "Conversion",
+      "kpiConversionSub": "orders per session",
+      "kpiNew": "New customers",
+      "kpiNewSub": "first purchase",
+      "kpiRepeat": "Repeat rate",
+      "kpiRepeatSub": "{{count}} returning",
+      "fromContentCount": "{{count}} from content"
     },
     "connectGscFirst": "Connect Google Search Console to see clicks, impressions and rankings for this project."
   },
