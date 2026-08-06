@@ -35,8 +35,28 @@ def _project_domain(project) -> str:
     return _norm_domain(dom)
 
 
+# DataForSEO bills the Live SERP method per PAGE, not per request: $0.002 covers
+# the first 10 results and each further page costs the same again. Verified
+# against their pricing FAQ and the account dashboard on 2026-08-06.
+#
+#     depth  10  = 1 page   = $0.002      depth  50 = 5 pages  = $0.010
+#     depth  20  = 2 pages  = $0.004      depth 100 = 10 pages = $0.020
+#
+# The provider's own default is 100, so every caller that omitted `depth` was
+# silently buying ten pages -- 10x the base price -- which is why serp cost was
+# modelled at $0.0015 and really ran at $0.020. discovery/competitors.py already
+# passed SERP_DEPTH=10 for exactly this reason; that knowledge never reached the
+# chokepoint every other caller goes through.
+#
+# Kept at 100 so rank tracking can still find a position outside the top 10:
+# lowering it is a PRODUCT decision (a keyword ranking 40th becomes "not
+# ranked"), not a refactor. It is now a parameter so that decision can be made
+# per caller instead of inherited by accident.
+SERP_DEPTH_COST_USD = {10: 0.002, 20: 0.004, 30: 0.006, 50: 0.010, 100: 0.020}
+
+
 async def fetch_serp(project, keyword: str, db, unit: str = "serp",
-                     bill_credits: bool = True) -> dict | None:
+                     bill_credits: bool = True, depth: int = 100) -> dict | None:
     """Fetch and normalize a live SERP. This is the shared chokepoint for every
     caller that needs one keyword's SERP (rank tracking, content scoring,
     plagiarism-adjacent research, agent tools) -- so metering lives here rather
@@ -48,7 +68,8 @@ async def fetch_serp(project, keyword: str, db, unit: str = "serp",
     provider = await get_seo_provider_for_org(project.org_id, db)
     if provider is None:
         return None
-    items = await provider.serp(keyword, language_code=language_for_project(project),
+    items = await provider.serp(keyword, depth=depth,
+                                language_code=language_for_project(project),
                                 location_code=location_for_project(project))
 
     # Best-effort metering: attribute to the project's org. Isolated session so a
