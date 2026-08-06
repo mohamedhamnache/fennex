@@ -189,6 +189,8 @@ class RevenueSummary(BaseModel):
     revenue_total: float
     orders_attributed: int
     revenue_attributed: float
+    aov_total: float = 0
+    aov_attributed: float = 0
     articles: list[RevenueArticle] = []
 
 

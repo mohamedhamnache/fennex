@@ -365,7 +365,15 @@
       "byArticle": "Por artigo",
       "orderCount_one": "{{count}} pedido",
       "orderCount_other": "{{count}} pedidos",
-      "caveat": "Conta pedidos cuja sessão começou em uma de suas páginas. Mostra onde a compra começou, não o que a causou: quem volta depois e compra direto não é contado, e quem compraria de qualquer forma é."
+      "caveat": "Conta pedidos cuja sessão começou em uma de suas páginas. Mostra onde a compra começou, não o que a causou: quem volta depois e compra direto não é contado, e quem compraria de qualquer forma é.",
+      "kpiRevenue": "Receita",
+      "kpiOrders": "Pedidos",
+      "kpiAov": "Ticket médio",
+      "kpiShare": "Parcela",
+      "ofStore": "de {{value}} no total",
+      "shareSub": "da receita da loja",
+      "fromContent": "{{value}} via conteúdo",
+      "storeTotal": "{{value}} total da loja"
     },
     "connectGscFirst": "Conecte o Google Search Console para ver cliques, impressões e posições deste projeto."
   },

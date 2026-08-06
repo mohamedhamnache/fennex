@@ -365,7 +365,15 @@
       "byArticle": "Par article",
       "orderCount_one": "{{count}} commande",
       "orderCount_other": "{{count}} commandes",
-      "caveat": "Compte les commandes dont la session a commencé sur une de vos pages. Indique où l'achat a démarré, pas ce qui l'a provoqué : un lecteur qui revient plus tard et achète en direct n'est pas compté, et un acheteur qui aurait acheté de toute façon l'est."
+      "caveat": "Compte les commandes dont la session a commencé sur une de vos pages. Indique où l'achat a démarré, pas ce qui l'a provoqué : un lecteur qui revient plus tard et achète en direct n'est pas compté, et un acheteur qui aurait acheté de toute façon l'est.",
+      "kpiRevenue": "Revenus",
+      "kpiOrders": "Commandes",
+      "kpiAov": "Panier moyen",
+      "kpiShare": "Part",
+      "ofStore": "sur {{value}} au total",
+      "shareSub": "des revenus de la boutique",
+      "fromContent": "{{value}} via le contenu",
+      "storeTotal": "{{value}} total boutique"
     },
     "connectGscFirst": "Connectez Google Search Console pour voir les clics, impressions et positions de ce projet."
   },

@@ -412,11 +412,20 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
   // the user their site had no clicks and no impressions, which is not what a
   // missing connection means. An empty state that states a number is worse than
   // no state at all.
+  const rangeDays = range === "7d" ? 7 : range === "90d" ? 90 : 28;
+
   if (!gscConnected) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
-        <FennecMascot />
-        <p className="max-w-sm text-sm">{t("analytics.connectGscFirst")}</p>
+      <div className="flex flex-col gap-5">
+        {/* Shopify is a separate source with its own gate. A merchant who has
+            connected a store but not Search Console still has revenue worth
+            reading, and hiding it behind the GSC gate made it invisible for a
+            reason that has nothing to do with Shopify. */}
+        <RevenuePanel projectId={projectId} days={rangeDays} />
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
+          <FennecMascot />
+          <p className="max-w-sm text-sm">{t("analytics.connectGscFirst")}</p>
+        </div>
       </div>
     );
   }
@@ -486,8 +495,8 @@ function OverviewTab({ projectId, range }: { projectId: string; range: Analytics
 
       {/* Revenue sits directly under the Search Console figures: clicks answer
           what got found, this answers what got bought, and the pair is the
-          point. Renders nothing when no store is connected. */}
-      <RevenuePanel projectId={projectId} days={range === "7d" ? 7 : range === "90d" ? 90 : 28} />
+          point. */}
+      <RevenuePanel projectId={projectId} days={rangeDays} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card className="p-5">

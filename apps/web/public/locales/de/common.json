@@ -365,7 +365,15 @@
       "byArticle": "Nach Artikel",
       "orderCount_one": "{{count}} Bestellung",
       "orderCount_other": "{{count}} Bestellungen",
-      "caveat": "Zählt Bestellungen, deren Sitzung auf einer deiner Seiten begann. Zeigt, wo der Kauf startete — nicht, was ihn ausgelöst hat: Wer später direkt kauft, fehlt hier; wer ohnehin gekauft hätte, wird mitgezählt."
+      "caveat": "Zählt Bestellungen, deren Sitzung auf einer deiner Seiten begann. Zeigt, wo der Kauf startete — nicht, was ihn ausgelöst hat: Wer später direkt kauft, fehlt hier; wer ohnehin gekauft hätte, wird mitgezählt.",
+      "kpiRevenue": "Umsatz",
+      "kpiOrders": "Bestellungen",
+      "kpiAov": "Ø Bestellwert",
+      "kpiShare": "Anteil",
+      "ofStore": "von {{value}} gesamt",
+      "shareSub": "des Shop-Umsatzes",
+      "fromContent": "{{value}} aus Inhalten",
+      "storeTotal": "{{value}} Shop gesamt"
     },
     "connectGscFirst": "Verbinde Google Search Console, um Klicks, Impressionen und Rankings dieses Projekts zu sehen."
   },

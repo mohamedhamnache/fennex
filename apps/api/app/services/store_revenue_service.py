@@ -218,9 +218,18 @@ async def revenue_summary(project_id: uuid.UUID, db: AsyncSession, days: int = 3
         select(StoreOrder.currency).where(*base, StoreOrder.currency.isnot(None)).limit(1)
     )).scalar()
 
+    # Average order value, and the split between orders that began on our
+    # content and everything else. AOV is the number a store owner actually
+    # manages against, and comparing the two AOVs answers a question the raw
+    # totals cannot: whether content brings BIGGER baskets, not just more.
+    aov_total = float(totals[1] or 0) / totals[0] if totals[0] else 0.0
+    aov_attr = float(attr[1] or 0) / attr[0] if attr[0] else 0.0
+
     return {
         "window_days": days,
         "currency": currency,
+        "aov_total": round(aov_total, 2),
+        "aov_attributed": round(aov_attr, 2),
         "orders_total": totals[0] or 0,
         "revenue_total": float(totals[1] or 0),
         "orders_attributed": attr[0] or 0,

@@ -2927,6 +2927,8 @@ export interface RevenueSummary {
   revenue_total: number;
   orders_attributed: number;
   revenue_attributed: number;
+  aov_total: number;
+  aov_attributed: number;
   articles: RevenueArticle[];
 }
 

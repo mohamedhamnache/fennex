@@ -462,7 +462,15 @@
       "byArticle": "By article",
       "orderCount_one": "{{count}} order",
       "orderCount_other": "{{count}} orders",
-      "caveat": "Counts orders whose session began on one of your pages. It shows where buying started, not what caused the sale — a reader who returns later and buys direct is not counted here, and a buyer who would have purchased anyway is."
+      "caveat": "Counts orders whose session began on one of your pages. It shows where buying started, not what caused the sale — a reader who returns later and buys direct is not counted here, and a buyer who would have purchased anyway is.",
+      "kpiRevenue": "Revenue",
+      "kpiOrders": "Orders",
+      "kpiAov": "Avg order",
+      "kpiShare": "Share",
+      "ofStore": "of {{value}} store-wide",
+      "shareSub": "of store revenue",
+      "fromContent": "{{value}} from content",
+      "storeTotal": "{{value}} store total"
     },
     "connectGscFirst": "Connect Google Search Console to see clicks, impressions and rankings for this project."
   },

@@ -51,8 +51,10 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
     ? Math.round((data.revenue_attributed / data.revenue_total) * 100)
     : 0;
 
+  const bar = Math.max(2, Math.min(100, share));
+
   return (
-    <Card className="flex flex-col gap-4 p-5">
+    <Card className="flex flex-col gap-5 p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/12 text-emerald-500">
@@ -68,69 +70,99 @@ export function RevenuePanel({ projectId, days }: { projectId: string; days: num
         </span>
       </div>
 
-      {/* The share and its denominator, never one without the other. */}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-2xl font-bold tabular-nums text-foreground">
-          {money(data.revenue_attributed)}
-        </span>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          {t("analytics.revenue.ofTotal", { total: money(data.revenue_total), share })}
-        </span>
+      {/* Four numbers a store owner manages against. Each attributed figure is
+          shown against its store-wide counterpart rather than alone: "£4,934"
+          reads as everything, "£4,934 of £7,014" reads as what it is. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label={t("analytics.revenue.kpiRevenue")} value={money(data.revenue_attributed)}
+             sub={t("analytics.revenue.ofStore", { value: money(data.revenue_total) })} accent />
+        <Kpi label={t("analytics.revenue.kpiOrders")} value={String(data.orders_attributed)}
+             sub={t("analytics.revenue.ofStore", { value: String(data.orders_total) })} />
+        <Kpi label={t("analytics.revenue.kpiAov")} value={money(data.aov_attributed)}
+             sub={t("analytics.revenue.ofStore", { value: money(data.aov_total) })} />
+        <Kpi label={t("analytics.revenue.kpiShare")} value={`${share}%`}
+             sub={t("analytics.revenue.shareSub")} />
       </div>
-      <p className="text-xs text-muted-foreground tabular-nums">
-        {t("analytics.revenue.orders", {
-          attributed: data.orders_attributed, total: data.orders_total,
-        })}
-      </p>
+
+      {/* The share as a bar, because a proportion is easier to judge than to
+          read. Labelled at both ends so it is never a decorative stripe. */}
+      <div className="flex flex-col gap-1.5">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-emerald-500 transition-all"
+               style={{ width: `${bar}%` }} />
+        </div>
+        <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+          <span>{t("analytics.revenue.fromContent", { value: money(data.revenue_attributed) })}</span>
+          <span>{t("analytics.revenue.storeTotal", { value: money(data.revenue_total) })}</span>
+        </div>
+      </div>
 
       {data.articles.length > 0 && (
-        <div className="flex flex-col gap-1.5 border-t border-border pt-3">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col gap-1.5 border-t border-border pt-4">
+          <p className="text-sm font-semibold text-foreground">
             {t("analytics.revenue.byArticle")}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-sm">
               <colgroup>
-                {/* The title is the column worth reading; the two numeric ones
-                    need only enough for their digits. Without this the title
-                    collapsed to "Créez un …" while the counts kept room they
-                    did not use. */}
                 <col />
-                <col className="w-24" />
-                <col className="w-24" />
+                <col className="w-28" />
+                <col className="w-28" />
               </colgroup>
               <tbody>
-                {data.articles.slice(0, 8).map((a) => (
-                  <tr key={a.article_id} className="border-b border-border/60 last:border-b-0">
-                    <td className="py-2 pr-3">
-                      <span className="block truncate font-medium text-foreground">{a.title}</span>
-                      {a.path && (
-                        <span className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                          {a.path}
+                {data.articles.slice(0, 8).map((a) => {
+                  const pct = data.revenue_attributed > 0
+                    ? Math.round((a.revenue / data.revenue_attributed) * 100) : 0;
+                  return (
+                    <tr key={a.article_id} className="border-b border-border/60 last:border-b-0">
+                      <td className="py-2.5 pr-3">
+                        <span className="block truncate font-medium text-foreground">{a.title}</span>
+                        {a.path && (
+                          <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                            {a.path}
+                          </span>
+                        )}
+                        {/* Each article against the content total, so one big
+                            earner is visible at a glance rather than inferred. */}
+                        <span className="mt-1.5 block h-1 w-full overflow-hidden rounded-full bg-muted">
+                          <span className="block h-full rounded-full bg-emerald-500/70"
+                                style={{ width: `${Math.max(2, pct)}%` }} />
                         </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap py-2 pr-3 text-right text-xs text-muted-foreground tabular-nums">
-                      {t("analytics.revenue.orderCount", { count: a.orders })}
-                    </td>
-                    <td className="whitespace-nowrap py-2 text-right font-semibold tabular-nums text-foreground">
-                      {money(a.revenue)}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="whitespace-nowrap py-2.5 pr-3 text-right align-top text-xs text-muted-foreground tabular-nums">
+                        {t("analytics.revenue.orderCount", { count: a.orders })}
+                      </td>
+                      <td className="whitespace-nowrap py-2.5 text-right align-top font-semibold tabular-nums text-foreground">
+                        {money(a.revenue)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Said plainly rather than buried in a tooltip. This is last-touch on
-          entry: it credits where a buying session STARTED, which is not the
-          same as what caused the sale, and it is wrong in both directions. */}
       <p className="border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
         {t("analytics.revenue.caveat")}
       </p>
     </Card>
+  );
+}
+
+/** One KPI: the attributed figure, with the store-wide number under it. */
+function Kpi({ label, value, sub, accent = false }: {
+  label: string; value: string; sub: string; accent?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/25 px-3.5 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-xl font-bold tabular-nums ${accent ? "text-emerald-500" : "text-foreground"}`}>
+        {value}
+      </p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{sub}</p>
+    </div>
   );
 }
