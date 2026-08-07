@@ -46,10 +46,37 @@ const MONOCHROME = new Set([
   "x", "threads", "notion", "github", "vercel", "ghost", "canva", "openai",
 ]);
 
+// The brand's own domain, for the fallback below. Only where it cannot be
+// guessed from the app key.
+const DOMAIN: Record<string, string> = {
+  "google-search-console": "google.com",
+  "google-analytics": "google.com",
+  "google-drive": "google.com",
+  "google-ads": "google.com",
+  "meta-ads": "meta.com",
+  "tiktok-ads": "tiktok.com",
+  gmail: "gmail.com",
+  notion: "notion.so",
+  x: "x.com",
+  threads: "threads.net",
+  woocommerce: "woocommerce.com",
+  klaviyo: "klaviyo.com",
+  canva: "canva.com",
+  slack: "slack.com",
+  linkedin: "linkedin.com",
+};
+
 export function ConnectorLogo({ app, label, className }: {
   app: string; label: string; className?: string;
 }) {
-  const [failed, setFailed] = useState(false);
+  // Three steps, not two. Simple Icons has no mark for Canva, LinkedIn, Slack
+  // or Klaviyo -- it removes logos at a brand's request -- but that is about
+  // SIMPLE ICONS redistributing the SVG, not about whether an integrations
+  // directory may show a partner's logo. Showing it is what brand guidelines
+  // exist to permit. So a missing mark now falls through to the brand's own
+  // favicon before it gives up and draws letters.
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const failed = step === 2;
   const slug = SLUG[app] ?? app.replace(/[^a-z0-9]/gi, "").toLowerCase();
 
   // FIVE OF THESE HAVE NO MARK, and not because the slug is wrong. Simple
@@ -86,16 +113,25 @@ export function ConnectorLogo({ app, label, className }: {
       </span>
     );
   }
+  const domain = DOMAIN[app] ?? `${app.replace(/[^a-z0-9-]/gi, "")}.com`;
+  const src = step === 0
+    ? `https://cdn.simpleicons.org/${slug}`
+    : `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+
   return (
     <span className={cn("flex items-center justify-center rounded-lg bg-muted/60 p-1.5", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`https://cdn.simpleicons.org/${slug}`}
+        key={src}                   /* a new src must re-attempt, not reuse the failed node */
+        src={src}
         alt=""                      /* decorative: the label is always beside it */
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={() => setStep((n) => (n === 0 ? 1 : 2))}
         className={cn("h-full w-full object-contain",
-                      MONOCHROME.has(app) && "dark:invert")}
+                      // Only the flat SVG marks need inverting. A favicon is
+                      // already full-colour artwork and inverting it would
+                      // turn the brand's own logo into a negative.
+                      step === 0 && MONOCHROME.has(app) && "dark:invert")}
       />
     </span>
   );
