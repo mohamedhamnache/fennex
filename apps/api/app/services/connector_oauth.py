@@ -87,6 +87,20 @@ def _providers() -> dict[str, OAuthProvider]:
             client_id=getattr(settings, "STRIPE_CONNECT_CLIENT_ID", "") or "",
             client_secret=getattr(settings, "STRIPE_SECRET_KEY", "") or "",
         ),
+        "gmail": OAuthProvider(
+            app="gmail",
+            authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
+            token_url="https://oauth2.googleapis.com/token",
+            # send only. Reading a user's mail is not something this product
+            # needs, and asking for it would fail review and deserve to.
+            scopes="https://www.googleapis.com/auth/gmail.send",
+            client_id=getattr(settings, "GOOGLE_CLIENT_ID", "") or "",
+            client_secret=getattr(settings, "GOOGLE_CLIENT_SECRET", "") or "",
+            # Google returns a refresh token only with these two, and only on
+            # the first consent -- without them the connection dies silently
+            # when the access token expires an hour later.
+            extra_authorize={"access_type": "offline", "prompt": "consent"},
+        ),
         "shopify": OAuthProvider(
             app="shopify",
             # Per-shop, so the URL is completed in start() from the shop domain.

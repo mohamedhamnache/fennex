@@ -120,33 +120,6 @@ export default function CompanyPage({ params }: { params: { projectId: string } 
         )}
       </header>
 
-      {/* Delegate a goal -- the Orchestrator, made visible */}
-      {employees.length > 0 && (
-        <DelegatePanel projectId={projectId} persona={persona} employees={employees} />
-      )}
-
-      {/* Run the full campaign engine */}
-      <Link
-        href={`${base}/campaigns`}
-        className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-primary/[0.03] to-transparent p-5 transition-colors hover:border-primary/40"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-70"
-          style={{ background: "radial-gradient(520px 160px at 8% -40%, hsl(var(--primary) / 0.16), transparent 60%)" }}
-        />
-        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-white shadow-sm">
-          <Megaphone className="h-5 w-5" strokeWidth={1.8} />
-        </div>
-        <div className="relative min-w-0 flex-1">
-          <p className="text-sm font-bold text-foreground">{t("agentsPage.squad.title")}</p>
-          <p className="text-xs text-muted-foreground">{t("agentsPage.squad.desc")}</p>
-        </div>
-        <span className="relative flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition-transform group-hover:translate-x-0.5">
-          {t("agentsPage.squad.cta")} <ArrowRight className="h-3.5 w-3.5" />
-        </span>
-      </Link>
-
       {/* States */}
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -219,6 +192,24 @@ export default function CompanyPage({ params }: { params: { projectId: string } 
 
           {view === "team" && (
             <section className="animate-fade-in">
+              {/* Delegate a goal -- the Orchestrator, made visible */}
+                      {employees.length > 0 && (
+                <DelegatePanel projectId={projectId} persona={persona} employees={employees} />
+              )}
+
+                      {/* Run the full campaign engine */}
+              <Link
+                href={`${base}/campaigns`}
+                className="group flex items-center gap-2.5 rounded-xl border border-border px-3.5 py-2.5 text-xs transition-colors hover:border-primary/30 hover:bg-accent"
+              >
+                <Megaphone className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.9} />
+                <span className="min-w-0 flex-1">
+                  <span className="font-semibold text-foreground">{t("agentsPage.squad.title")}</span>
+                  <span className="ml-1.5 text-muted-foreground">{t("agentsPage.squad.desc")}</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </Link>
+
               <div
                 role="tablist"
                 aria-label={t("company.filterLabel")}
