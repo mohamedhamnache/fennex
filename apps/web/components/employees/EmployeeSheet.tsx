@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Boxes, Brain, Database, Plug, Quote, Target, Wrench, X,
@@ -20,6 +21,14 @@ export function EmployeeSheet({
 }) {
   const { t } = useTranslation();
 
+  // Portals render on the client only; without this the markup differs between
+  // server and client and React discards the tree on hydration. Declared with
+  // the other hooks, ABOVE the early return -- a hook after a conditional
+  // return changes the hook count between renders and React tears the tree
+  // down entirely.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Escape closes, and the body must not scroll behind the panel.
   useEffect(() => {
     if (!employee) return;
@@ -33,7 +42,7 @@ export function EmployeeSheet({
     };
   }, [employee, onClose]);
 
-  if (!employee) return null;
+  if (!employee || !mounted) return null;
 
   const Icon = employeeIcon(employee.icon);
   const accent = departmentAccent(employee.department);
@@ -44,8 +53,8 @@ export function EmployeeSheet({
     ),
   );
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex justify-end">
       <button
         type="button"
         aria-label={t("common.close")}
@@ -57,7 +66,7 @@ export function EmployeeSheet({
         role="dialog"
         aria-modal="true"
         aria-label={employee.name}
-        className="relative flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-border bg-card shadow-2xl animate-slide-in-right"
+        className="relative flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-border bg-card shadow-2xl animate-slide-in-right sm:max-w-xl"
       >
         {/* Identity */}
         <header className="sticky top-0 z-10 flex items-start gap-3 border-b border-border bg-card/95 px-6 py-5 backdrop-blur">
@@ -234,7 +243,8 @@ export function EmployeeSheet({
           </Section>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
