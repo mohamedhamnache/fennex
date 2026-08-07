@@ -46,7 +46,15 @@ async def _persist_shot(prompt_text, campaign, brief, db):
     from app.services.llm_service import get_org_llm_keys
 
     prompt = (prompt_text or "Professional product shot").strip()[:900]
-    source_url, source_title = await _source_product_image(brief, db)
+
+    # An image the user attached wins over the catalogue: they pointed at a
+    # specific photo, and guessing a different product from the store would be
+    # answering a question they did not ask.
+    attached = ((getattr(brief, "runtime", None) or {}).get("attachment") or {}).get("url")
+    if attached:
+        source_url, source_title = attached, "the image you attached"
+    else:
+        source_url, source_title = await _source_product_image(brief, db)
 
     # The studio's path, reused rather than reimplemented: same model, same
     # metered chokepoint (_replicate_run, which applies MIN_REPLICATE_CREDITS),

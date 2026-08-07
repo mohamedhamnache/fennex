@@ -270,12 +270,21 @@ async def run_action(convo: Conversation, employee_id: str, action_id: str, db,
 
 
 async def run_turn(convo: Conversation, message: str, db,
-                   user_id=None) -> AsyncIterator[dict]:
+                   user_id=None, attachment_image_id=None) -> AsyncIterator[dict]:
     """Handle one user message end to end, yielding UI events as they happen."""
     past = await history(convo.id, db)
-    await add_message(convo, db, role="user", content=message)
+
+    # Resolved here, once, and scoped to the conversation's org -- an image id
+    # arrives from the client and is guessable, so a bare lookup would let a
+    # caller pull another organisation's image into their own prompt.
+    attachment = await _resolve_attachment(attachment_image_id, convo, db)
+    await add_message(convo, db, role="user", content=message,
+                      structured={"attachment": attachment} if attachment else None)
 
     ctx = await _build_context(convo, message, db)
+    # Every employee sees it, not just the image ones: a user who attaches a
+    # product photo and asks Souk about it should not be told to attach it.
+    ctx.runtime["attachment"] = attachment
     if not ctx.available_providers():
         yield {"type": "error",
                "message": "No AI key configured. Add an Anthropic or OpenAI key in Settings."}
@@ -816,6 +825,17 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                              for t in turns)
         user = f"CONVERSATION SO FAR:\n{rendered}\n\nLATEST MESSAGE: {message}"
 
+    attached = (ctx.runtime or {}).get("attachment")
+    if attached:
+        user += (f"\n\nTHE USER ATTACHED AN IMAGE: {attached['url']}"
+                 f" ({attached.get('width')}x{attached.get('height')}).\n"
+                 "It is theirs and it is the subject of this message. You CANNOT see its "
+                 "contents -- you have the URL, not the pixels -- so never describe it and "
+                 "never apologise for not seeing it. Say what you can do WITH it: an image "
+                 "employee can restyle, re-scene or edit it, and a product shot will use it "
+                 "as the source. Never ask them to attach an image they have already "
+                 "attached.")
+
     # What the user is charged for. Surfaced on the message so the cost of an
     # answer is visible where the answer is, rather than only in an admin
     # report -- a reseller decides whether a reply was worth its model.
@@ -1061,6 +1081,13 @@ async def _assistant_reply(convo: Conversation, ctx: WorkContext, db, message: s
         f"THE TEAM BEHIND YOU:\n{roster}"
     )
 
+    attached = (ctx.runtime or {}).get("attachment")
+    if attached:
+        system += ("\n\nTHE USER ATTACHED AN IMAGE. You cannot see its contents, only that "
+                   "it exists. Do not describe it and do not apologise -- say what the team "
+                   "can do with it (restyle it, re-scene it, use it as the source for a "
+                   "product shot) and offer that.")
+
     providers = ctx.available_providers()
     if not providers:
         row = await add_message(convo, db, role="assistant", content=(
@@ -1115,3 +1142,20 @@ async def _message_cost(db, provider: str, model: str,
     except Exception:  # noqa: BLE001 - a price is never worth failing a reply
         logger.exception("could not price a chat message")
         return {}
+
+
+async def _resolve_attachment(image_id, convo: Conversation, db) -> dict | None:
+    """The attached image, if it belongs to this conversation's organisation."""
+    if not image_id:
+        return None
+    from sqlalchemy import select
+    from app.models.image import GeneratedImage
+
+    row = (await db.execute(
+        select(GeneratedImage.id, GeneratedImage.image_url,
+               GeneratedImage.width, GeneratedImage.height)
+        .where(GeneratedImage.id == image_id, GeneratedImage.org_id == convo.org_id)
+    )).first()
+    if row is None or not row[1]:
+        return None
+    return {"imageId": str(row[0]), "url": row[1], "width": row[2], "height": row[3]}

@@ -36,6 +36,10 @@ class ChatRequest(BaseModel):
     # provider this organisation has configured.
     model_provider: str | None = None
     model_id: str | None = None
+    # An image the user attached to this message. Sent as an id, never a URL:
+    # the id is checked against the caller's org before anything reads it, so
+    # a guessed id cannot pull another organisation's image into a prompt.
+    attachment_image_id: uuid.UUID | None = None
 
 
 class ApprovalDecision(BaseModel):
@@ -134,7 +138,8 @@ async def chat_stream(
                     yield _sse({"type": "error", "message": "Conversation not found"})
                     return
                 async for event in employee_chat.run_turn(
-                        thread, body.message.strip(), session, user_id=user_id):
+                        thread, body.message.strip(), session, user_id=user_id,
+                        attachment_image_id=body.attachment_image_id):
                     yield _sse(event)
         except Exception as exc:   # noqa: BLE001
             logger.exception("chat turn failed")

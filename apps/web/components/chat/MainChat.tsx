@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowDown, ArrowRight, Check, ChevronDown, Copy, CornerDownLeft, Cpu,
   History, Loader2, Send, Sparkles, Square, Trash2, X,
+  Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -18,6 +19,8 @@ import {
 } from "@/lib/chat";
 import { listProjects } from "@/lib/api";
 import { departmentAccent, employeeIcon, listEmployees, type Employee } from "@/lib/employees";
+import { uploadImage } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 import { Markdown } from "./Markdown";
 import { WorkflowCard, type StepState } from "./WorkflowCard";
 import { ArtifactCard } from "./ArtifactCard";
@@ -53,6 +56,7 @@ export function MainChat({ projectId }: { projectId: string }) {
   const [model, setModel] = useState<ChatModel | null>(null);
   // Follow-on suggestions the user waved away; kept out of the way.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [attachment, setAttachment] = useState<{ id: string; url: string } | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
   // Read inside the streaming callback, so it must not go stale.
   const activeStepRef = useRef<{ messageId: string; index: number } | null>(null);
@@ -226,28 +230,36 @@ export function MainChat({ projectId }: { projectId: string }) {
 
   const submit = useCallback(() => {
     const text = input.trim();
-    if (!text || busy) return;
+    // An image on its own is a valid message: "what do you think of this?"
+    if ((!text && !attachment) || busy) return;
     setInput("");
+    setAttachment(null);
     setBusy(true);
     setTeam(null);
     setActiveTools([]);
     setMessages((prev) => [...prev, {
       id: `local-${Date.now()}`, seq: prev.length + 1, role: "user", employeeId: null,
       event: null, content: text, routing: null, confidence: null, artifactType: null,
-      artifactIds: null, structured: null, error: null,
+      artifactIds: null,
+      // The optimistic message must carry the attachment too, or the thumbnail
+      // the user just saw disappears the instant they press enter and only
+      // returns on reload.
+      structured: attachment ? { attachment: { url: attachment.url } } : null,
+      error: null,
       createdAt: new Date().toISOString(),
     }]);
     const { cancel, done } = sendMessage(
       {
         message: text, project_id: projectId, conversation_id: conversationId,
         model_provider: model?.provider ?? null, model_id: model?.id ?? null,
+        attachment_image_id: attachment?.id ?? null,
       },
       handleEvent,
     );
     cancelRef.current = cancel;
     // A brand-new thread needs to appear in the history list.
     if (!conversationId) done.then(() => conversations.refetch());
-  }, [input, busy, projectId, conversationId, handleEvent, conversations, model]);
+  }, [input, busy, projectId, conversationId, handleEvent, conversations, model, attachment]);
 
   /** Validate a proposed action -- and actually run it. */
   const approve = useCallback((approvalId: string) => {
@@ -437,6 +449,10 @@ export function MainChat({ projectId }: { projectId: string }) {
           onSubmit={submit}
           onStop={stop}
           busy={busy}
+          projectId={projectId}
+          attachment={attachment}
+          onAttach={setAttachment}
+          onClearAttach={() => setAttachment(null)}
         />
       </div>
     </div>
@@ -742,7 +758,7 @@ function MessageRow({
   busy: boolean;
   decisions: Record<string, string>;
 }) {
-  if (message.role === "user") return <UserBubble content={message.content} />;
+  if (message.role === "user") return <UserBubble content={message.content} attachment={(message.structured as { attachment?: { url: string } } | null)?.attachment} />;
   if (message.role === "approval") {
     const structured = (message.structured ?? {}) as {
       approvalId?: string;
@@ -828,12 +844,25 @@ function MessageRow({
   );
 }
 
-function UserBubble({ content }: { content: string }) {
+function UserBubble({ content, attachment }: {
+  content: string;
+  attachment?: { url: string; width?: number; height?: number } | null;
+}) {
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
-        {content}
-      </div>
+    <div className="flex flex-col items-end gap-1.5">
+      {attachment?.url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={attachment.url}
+          alt="Attached"
+          className="max-h-56 max-w-[70%] rounded-2xl rounded-br-md border border-border object-contain"
+        />
+      )}
+      {content && (
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+          {content}
+        </div>
+      )}
     </div>
   );
 }
@@ -1351,18 +1380,85 @@ function EmptyState({
 // --- composer -----------------------------------------------------------------
 
 function Composer({
-  value, onChange, onSubmit, onStop, busy,
+  value, onChange, onSubmit, onStop, busy, projectId, attachment, onAttach, onClearAttach,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
   onStop: () => void;
   busy: boolean;
+  projectId: string;
+  attachment: { id: string; url: string } | null;
+  onAttach: (a: { id: string; url: string }) => void;
+  onClearAttach: () => void;
 }) {
   const { t } = useTranslation();
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { error: toastError } = useToast();
+
+  const take = useCallback(async (file: File | null | undefined) => {
+    if (!file || uploading) return;
+    // Images only for now: the agents have a vision path, not a document one,
+    // and accepting a PDF we cannot read would be a promise the system does
+    // not keep.
+    if (!file.type.startsWith("image/")) {
+      toastError("Images only", { message: "Attach a PNG, JPG or WebP." });
+      return;
+    }
+    setUploading(true);
+    try {
+      const img = await uploadImage(projectId, file);
+      if (img?.id && img.image_url) onAttach({ id: img.id, url: img.image_url });
+    } catch (e) {
+      toastError("Upload failed", { message: e instanceof Error ? e.message : "Try again." });
+    } finally {
+      setUploading(false);
+    }
+  }, [projectId, uploading, onAttach, toastError]);
+
   return (
-    <div className="border-t border-border bg-card/30 px-4 py-3 sm:px-6">
+    <div
+      className={cn("border-t border-border bg-card/30 px-4 py-3 sm:px-6",
+                    dragging && "bg-primary/5 ring-1 ring-inset ring-primary/40")}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); take(e.dataTransfer.files?.[0]); }}
+    >
+      {attachment && (
+        <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2">
+          <span className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={attachment.url} alt="Attached"
+                 className="h-14 w-14 rounded-lg border border-border object-cover" />
+            <button
+              type="button"
+              onClick={onClearAttach}
+              aria-label="Remove attachment"
+              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+          <span className="text-xs text-muted-foreground">Attached — the team will work from this.</span>
+        </div>
+      )}
       <div className="mx-auto flex max-w-3xl items-end gap-2">
+        <input
+          ref={fileRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { take(e.target.files?.[0]); e.target.value = ""; }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy || uploading}
+          aria-label="Attach an image"
+          title="Attach an image"
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-default disabled:opacity-50"
+        >
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+        </button>
         <label htmlFor="main-chat-input" className="sr-only">{t("chat.inputLabel")}</label>
         <textarea
           id="main-chat-input"
@@ -1374,6 +1470,12 @@ function Composer({
               e.preventDefault();
               onSubmit();
             }
+          }}
+          onPaste={(e) => {
+            // Paste is how people actually move a screenshot into a chat.
+            const file = Array.from(e.clipboardData?.items ?? [])
+              .find((i) => i.type.startsWith("image/"))?.getAsFile();
+            if (file) { e.preventDefault(); take(file); }
           }}
           placeholder={t("chat.placeholder")}
           className="max-h-40 min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"

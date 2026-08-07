@@ -135,6 +135,9 @@ export function sendMessage(
     conversation_id?: string | null;
     model_provider?: string | null;
     model_id?: string | null;
+    /** An image the user attached. Sent as an id, never a URL: the server
+     *  checks it against their organisation before any prompt reads it. */
+    attachment_image_id?: string | null;
   },
   onEvent: (event: ChatEvent) => void,
 ): { done: Promise<void>; cancel: () => void } {
