@@ -54,6 +54,11 @@ def _build_actions() -> dict[str, ActionDef]:
                   "Facebook, TikTok) from the chosen angle, saved as social drafts.",
                   {"topic": "optional post topic", "platforms": "optional list of networks, e.g. [linkedin, instagram]"},
                   ex.exec_sirocco_multi_network_social),
+        ActionDef("souk.store_audit", "souk", "Audit the store",
+                  "Read the store's real orders and report what is measurably working, "
+                  "what is not, and what cannot be seen. Best as the FIRST step of an "
+                  "ecommerce campaign -- everything after it is grounded in the result.",
+                  {}, ex.exec_souk_store_audit),
         ActionDef("oasis.define_icp", "oasis", "Define ideal client profile",
                   "Define 2-4 ideal client segments (pains, channels, angle) to target the campaign — best as an "
                   "early step for freelancer/company goals.",

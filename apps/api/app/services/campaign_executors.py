@@ -249,3 +249,41 @@ async def exec_oasis_define_icp(campaign, step, context: CampaignContext, db) ->
     names = ", ".join(s.get("name", "") for s in segments[:3])
     return StepResult(summary=f"Defined {len(segments)} ideal client segments: {names}.",
                       artifact_type="research", structured={"segments": segments})
+
+
+async def exec_souk_store_audit(campaign, step, context: CampaignContext, db) -> StepResult:
+    """Souk reads the store's own numbers and says what to act on.
+
+    No LLM: store_analytics already derives the figures and build_insights
+    already turns them into observations, and both are restricted to what real
+    orders show. Paying a model to restate them would add cost and a chance to
+    invent, in exchange for nothing.
+    """
+    from app.services import store_agent_context
+
+    ctx = await store_agent_context.build(campaign.project_id, campaign.org_id, db)
+    measured = ctx.get("measured") or {}
+    if not measured:
+        # An honest empty result, not a failure: a store with no synced orders
+        # has nothing to audit, and saying so is the useful answer.
+        return StepResult(
+            summary="No orders are synced for this store yet, so there is nothing "
+                    "measured to audit. Connect the store or run a sync first.",
+            artifact_type="report",
+            structured={"measured": {}, "blind": [u.get("metric") for u in ctx.get("unavailable", [])]})
+
+    lines = ["What the store's own orders show:"]
+    for key, value in measured.items():
+        shown = value.get("value") if isinstance(value, dict) else value
+        change = value.get("change_pct") if isinstance(value, dict) else None
+        lines.append(f"- {key}: {shown}" + (f" ({change:+.1f}%)" if isinstance(change, (int, float)) else ""))
+    for observation in (ctx.get("observations") or [])[:5]:
+        lines.append(f"- {observation}")
+    blind = [u.get("metric") for u in (ctx.get("unavailable") or [])]
+    if blind:
+        lines.append("Not visible without another connector: " + ", ".join(blind))
+
+    return StepResult(summary="\n".join(lines)[:1200], artifact_type="report",
+                      structured={"measured": measured, "blind": blind,
+                                  "observations": ctx.get("observations") or [],
+                                  "revenue_by": ctx.get("revenue_by") or {}})

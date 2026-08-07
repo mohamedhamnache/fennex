@@ -56,7 +56,9 @@ FEATURE_POLICY: dict[str, FeaturePolicy] = {
     "competitor_gap": FeaturePolicy(_STANDARD, 4096),
     "agent_reasoning": FeaturePolicy(_STANDARD, 4096),
     "employee_chat": FeaturePolicy(_STANDARD, 4096),
-    "campaign_plan": FeaturePolicy(_STANDARD, 4096, cascade=True),
+    # Same correction as campaign_strategy: measured at 7.31 credits on gpt-4o
+    # for a call that picks steps from a fixed catalogue of nine actions.
+    "campaign_plan": FeaturePolicy(_CHEAP, 4096, cascade=True),
     # The campaign OS. All four start CHEAP and escalate only on a failed
     # validation, which is what the cascade is for.
     #

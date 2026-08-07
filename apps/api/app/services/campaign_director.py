@@ -1,11 +1,14 @@
 """Sirocco, the campaign director — designs a plan over the fixed action catalog."""
 import json
+import logging
 import re
 
 from app.agents.registry import agent_persona
 from app.services.ai_analytics_service import project_profile
 from app.services.campaign_catalog import ACTIONS
 from app.services.llm_service import call_llm, get_org_llm_keys, project_locale
+
+logger = logging.getLogger(__name__)
 
 _PROVIDERS = [("anthropic", "claude-opus-4-8"), ("openai", "gpt-4o")]
 _MAX_STEPS = 8
@@ -19,7 +22,7 @@ _PERSONA_FLOWS: dict[str, list[str]] = {
         "sirocco.generate_visual", "sirocco.multi_network_social",
     ],
     "ecommerce": [
-        "oasis.market_report", "zerda.pick_angle", "dune.write_article",
+        "souk.store_audit", "zerda.pick_angle", "dune.write_article",
         "sirocco.generate_visual", "sirocco.multi_network_social",
     ],
     "freelancer": [
@@ -56,7 +59,17 @@ def _fallback_plan(persona: str) -> dict:
     return _plan_from_keys(_flow_for(persona), "A complete campaign: research, angle, content, visual and distribution.")
 
 
-async def draft_plan(project_id, org_id, goal: str, persona: str, db) -> dict:
+async def draft_plan(project_id, org_id, goal: str, persona: str, db,
+                     *, campaign=None) -> dict:
+    """Design the agent playbook.
+
+    `campaign` is optional and is what stops every plan looking the same. The
+    persona flow alone produced an identical five steps for every ecommerce
+    campaign, because persona is the one input that does not change between
+    them. The campaign's objective, channels, offer and audience do -- so when
+    they are available the planner is told about them and the plan follows the
+    work rather than the category.
+    """
     keys = await get_org_llm_keys(org_id, db)
     pm = next(((p, m) for p, m in _PROVIDERS if p in keys), None)
     if pm is None:
@@ -76,16 +89,48 @@ async def draft_plan(project_id, org_id, goal: str, persona: str, db) -> dict:
         "at least one DISTRIBUTION step so the work reaches an audience. Pick and ORDER steps ONLY from the "
         "ACTION CATALOG (earlier outputs feed later steps). Aim for 5-7 steps. Respond with ONLY JSON: "
         '{"summary": str, "steps": [{"agent", "action", "brief", "why"}]}. Max 8 steps.\n\n'
-        f"RECOMMENDED SHAPE for a {persona} goal (adapt as needed): {recommended}\n\n"
+        "Design the plan for THIS campaign. Two campaigns with different "
+        "objectives, channels or offers should not produce the same steps -- if "
+        "they do, you have described the category instead of the work. Let the "
+        "campaign's own channels decide what has to be produced.\n"
+        f"A generic {persona} flow, for reference only, NOT a template to copy: "
+        f"{recommended}\n\n"
         "ACTION CATALOG:\n" + _catalog_text()
     )
     user = f"GOAL: {goal}\nPERSONA: {persona}" + (f"\nCLIENT PROFILE: {profile}" if profile else "")
-    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user, locale=await project_locale(project_id, db))
+    if campaign is not None:
+        details = []
+        if campaign.objective:
+            details.append(f"OBJECTIVE: {campaign.objective}")
+        if campaign.brief_summary:
+            details.append(f"STRATEGY: {campaign.brief_summary}")
+        offer = campaign.offer or {}
+        if offer.get("type") and offer["type"] != "none":
+            details.append(f"OFFER: {offer.get('value', '')} {offer.get('description', '')}".strip())
+        audience = campaign.audience or {}
+        if audience.get("label"):
+            details.append(f"AUDIENCE: {audience['label']} — {audience.get('definition', '')}")
+        if campaign.product_ids:
+            details.append(f"PRODUCTS IN SCOPE: {len(campaign.product_ids)} selected")
+        channels = getattr(campaign, "_channel_keys", None)
+        if channels:
+            details.append("CHANNELS THIS CAMPAIGN RUNS ON: " + ", ".join(channels)
+                           + ". Build steps that FEED these channels -- a step whose "
+                             "output no selected channel can use is wasted work.")
+        if details:
+            user += "\n\nTHIS SPECIFIC CAMPAIGN:\n" + "\n".join(details)
+    raw = await call_llm(pm[0], pm[1], keys[pm[0]], system, user,
+                         locale=await project_locale(project_id, db),
+                         feature="campaign_plan",
+                         meter={"db": db, "org_id": org_id, "project_id": project_id,
+                                "feature": "campaign_plan"})
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     try:
         parsed = json.loads(cleaned)
         steps_in = parsed.get("steps", [])
     except Exception:
+        logger.warning("campaign director returned unparseable JSON; using the %s "
+                       "fallback flow. First 200 chars: %s", persona, cleaned[:200])
         return _fallback_plan(persona)
 
     steps = []
@@ -106,6 +151,9 @@ async def draft_plan(project_id, org_id, goal: str, persona: str, db) -> dict:
     has_create = any(a in seen for a in ("dune.write_article", "sirocco.generate_visual"))
     has_distribute = any(a in seen for a in ("sirocco.multi_network_social", "nomad.social_posts"))
     if not steps or not has_create or not has_distribute:
+        logger.warning("campaign director plan rejected (steps=%d create=%s distribute=%s); "
+                       "using the %s fallback flow", len(steps), has_create, has_distribute,
+                       persona)
         return _fallback_plan(persona)
 
     return {"summary": str(parsed.get("summary", ""))[:600], "steps": steps}

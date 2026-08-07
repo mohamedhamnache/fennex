@@ -1024,8 +1024,15 @@ async def build_playbook(campaign_id: uuid.UUID, current_user: CurrentUser, db: 
     if any(s.status in ("running", "completed") for s in existing):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "This playbook has already run. Cancel it before rebuilding.")
+    # The planner needs the channels to build steps that feed them, and they
+    # live on their own rows -- attached here rather than queried inside the
+    # director, which has no business knowing this schema.
+    chans = (await db.execute(select(CampaignChannel).where(
+        CampaignChannel.campaign_id == c.id))).scalars().all()
+    c._channel_keys = [x.channel for x in chans]
     try:
-        plan = await draft_plan(c.project_id, current_user.org_id, c.goal, c.persona, db)
+        plan = await draft_plan(c.project_id, current_user.org_id, c.goal, c.persona, db,
+                                campaign=c)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
 
