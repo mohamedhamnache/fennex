@@ -79,7 +79,7 @@ export default function CampaignDetailPage({ params }: {
   // campaign the strategy engine created.
   const TABS: [Tab, typeof Target, string][] = [
     ["plan", Target, t("campaigns.tab.plan", { defaultValue: "Plan" })],
-    ["work", Layers, t("campaigns.tab.work", { defaultValue: "The work" })],
+    ["work", Layers, t("campaigns.tab.work", { defaultValue: "Work" })],
     ["launch", Rocket, t("campaigns.tab.launch", { defaultValue: "Launch" })],
     ["results", BarChart3, t("campaigns.tab.results", { defaultValue: "Results" })],
   ];
@@ -144,12 +144,16 @@ export default function CampaignDetailPage({ params }: {
       <NextStep campaign={campaign} onGo={setTab} />
 
       {tab === "plan" && (
-        <div className="flex flex-col gap-8">
-          <BriefTab campaign={campaign} projectId={projectId} />
-          <TeamTab campaign={campaign}>
-            <AgentsTab campaign={campaign} projectId={projectId}
-                       selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
-          </TeamTab>
+        <div className="flex flex-col gap-10">
+          <Stage n={1} title={t("campaigns.plan.what", { defaultValue: "What this campaign is" })}>
+            <BriefTab campaign={campaign} projectId={projectId} />
+          </Stage>
+          <Stage n={2} title={t("campaigns.plan.who", { defaultValue: "Who is doing it" })}>
+            <TeamTab campaign={campaign}>
+              <AgentsTab campaign={campaign} projectId={projectId}
+                         selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
+            </TeamTab>
+          </Stage>
         </div>
       )}
       {tab === "work" && (
@@ -177,6 +181,32 @@ export default function CampaignDetailPage({ params }: {
  * reachable through the tabs -- this only removes the need to work out which
  * tab, which is the part that made the tool feel like work.
  */
+/**
+ * A numbered stage heading.
+ *
+ * The plan was three sections of identical weight with nothing saying how they
+ * related, so it read as a pile rather than a sequence. Numbering is used here
+ * because the content genuinely is ordered -- you cannot assign the work before
+ * you know what the work is -- which is the only case where numbering carries
+ * information rather than decorating.
+ */
+function Stage({ n, title, children }: {
+  n: number; title: string; children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/8 text-[10px] font-semibold tabular-nums text-muted-foreground">
+          {n}
+        </span>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <span aria-hidden className="h-px min-w-0 flex-1 bg-border" />
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function NextStep({ campaign, onGo }: { campaign: Campaign; onGo: (tab: Tab) => void }) {
   const { t } = useTranslation();
 
@@ -286,34 +316,37 @@ function BriefTab({ campaign, projectId }: { campaign: Campaign; projectId: stri
           </div>
         )}
 
-        {strategy?.assumptions?.length ? (
-          <Section
-            title={t("campaigns.brief.assumptions", { defaultValue: "What this plan assumes" })}
-            description={t("campaigns.brief.assumptionsHint", {
-              defaultValue: "Estimates, not measurements. Each one says what it rests on.",
-            })}
-          >
-            <ul className="flex flex-col gap-2 border-l-2 border-border pl-4">
-              {strategy.assumptions.map((a, i) => (
-                <Assumption key={i} claim={a.claim} restsOn={a.rests_on} />
-              ))}
-            </ul>
-          </Section>
-        ) : null}
-
-        {strategy?.cannot_see?.length ? (
-          <Section
-            title={t("campaigns.brief.blind", { defaultValue: "What the plan could not see" })}
-            description={t("campaigns.brief.blindHint", {
-              defaultValue: "These were unavailable when the strategy was written, so nothing in it depends on them.",
-            })}
-          >
-            <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3">
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                {strategy.cannot_see.join(", ")}
-              </p>
+        {(strategy?.assumptions?.length || strategy?.cannot_see?.length) ? (
+          <details className="group rounded-xl border border-border">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 p-3 text-xs font-medium text-foreground">
+              {t("campaigns.brief.restsOn", { defaultValue: "What this plan rests on" })}
+              <span className="text-[11px] text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <div className="flex flex-col gap-4 border-t border-border p-3.5">
+              {strategy?.assumptions?.length ? (
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("campaigns.brief.assumptions", { defaultValue: "What this plan assumes" })}
+                  </p>
+                  <ul className="flex flex-col gap-2 border-l-2 border-border pl-4">
+                    {strategy.assumptions.map((a, i) => (
+                      <Assumption key={i} claim={a.claim} restsOn={a.rests_on} />
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {strategy?.cannot_see?.length ? (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("campaigns.brief.blind", { defaultValue: "What the plan could not see" })}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    {strategy.cannot_see.join(", ")}
+                  </p>
+                </div>
+              ) : null}
             </div>
-          </Section>
+          </details>
         ) : null}
 
         <button onClick={() => replan.mutate()} disabled={replan.isPending}

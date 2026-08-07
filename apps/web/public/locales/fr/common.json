@@ -1395,7 +1395,7 @@
       "agents": "Agents",
       "team": "Équipe",
       "plan": "Plan",
-      "work": "Le travail",
+      "work": "Travail",
       "results": "Résultats"
     },
     "brief": {
@@ -1417,7 +1417,8 @@
       "audienceReady": "Prête à transmettre à {{app}}. Fennex ne détient pas lui-même la liste de clients.",
       "audienceUnresolvable": "Fennex ne stocke aucune donnée client. Connectez Klaviyo, Mailchimp, Shopify ou Meta Ads pour construire cette audience à partir de vraies personnes.",
       "team": "Sur cette campagne",
-      "planning": "planification"
+      "planning": "planification",
+      "restsOn": "Sur quoi ce plan repose"
     },
     "channels": {
       "title": "Canaux",
@@ -1617,6 +1618,10 @@
       "content": "Votre équipe est prête à rédiger. Rien n'a encore été produit.",
       "approvals": "{{n}} action(s) attendent votre approbation avant toute diffusion.",
       "launch": "Le travail est fait. Vérifiez ce qui reste et mettez-la en ligne."
+    },
+    "plan": {
+      "what": "Ce qu'est cette campagne",
+      "who": "Qui la réalise"
     }
   },
   "autopilot": {
