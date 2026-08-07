@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle, Check, Loader2, Plug, Plus, RefreshCw, Trash2, X,
+  AlertTriangle, Check, Loader2, Plug, Plus, RefreshCw, Search, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  connectConnector, disconnectConnector, listConnectors, testConnector,
-  toggleConnector, type ConnectorInfo,
+  disconnectConnector, listConnectors, startConnectorOAuth,
+  testConnector, toggleConnector, type ConnectorInfo,
 } from "@/lib/connectors";
 import { departmentAccent, employeeIcon } from "@/lib/employees";
+import { ConnectorLogo } from "@/components/integrations/ConnectorLogo";
 
 /** Connect the tools the employees work through.
  *
@@ -21,7 +22,6 @@ import { departmentAccent, employeeIcon } from "@/lib/employees";
 export function ConnectorsPanel() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["connectors"], queryFn: listConnectors, staleTime: 30_000,
@@ -31,11 +31,45 @@ export function ConnectorsPanel() {
   const connectors = data?.connectors ?? [];
   const live = connectors.filter((c) => c.connected).length;
 
+  // Same control as the integrations page: 29 connectors is a directory, and
+  // in a directory people type rather than scan. Matching agent names too --
+  // "what can Souk reach?" is a real way to look.
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return connectors;
+    return connectors.filter((c) =>
+      c.label.toLowerCase().includes(q)
+      || (c.category ?? "").toLowerCase().includes(q)
+      || (c.description ?? "").toLowerCase().includes(q)
+      || c.usedBy.some((e) => e.name.toLowerCase().includes(q)));
+  }, [connectors, query]);
+
+  const connectedCount = connectors.filter((c) => c.connected).length;
+
+  const [category, setCategory] = useState<string | null>(null);
+
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    filtered.forEach((c) => {
+      const k = c.category || "Other";
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  const visible = useMemo(() => filtered
+    .filter((c) => !category || (c.category || "Other") === category)
+    // Connected first: what is already working should not be hunted for.
+    .sort((a, b) => Number(b.connected) - Number(a.connected)
+      || a.label.localeCompare(b.label)),
+  [filtered, category]);
+
   return (
     <section className="glass overflow-hidden">
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/12 text-primary">
-          <Plug className="h-4 w-4" strokeWidth={1.8} />
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Plug className="h-4 w-4" strokeWidth={1.9} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-sm font-bold text-foreground">
@@ -50,45 +84,106 @@ export function ConnectorsPanel() {
         )}
       </header>
 
+      {/* Search sits above the groups, and the count answers "how much of this
+          is actually wired up" without counting badges by eye. */}
+      {connectors.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("connectors.searchPlaceholder")}
+              aria-label={t("connectors.searchPlaceholder")}
+              className="w-full rounded-lg border border-border bg-background py-1.5 pl-9 pr-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+            />
+            {query && (
+              <button onClick={() => setQuery("")} aria-label={t("common.clear")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+            {connectedCount}/{connectors.length} {t("connectors.connectedCount")}
+          </span>
+        </div>
+      )}
+
+      {!isLoading && !visible.length && query && (
+        <p className="px-5 py-10 text-center text-xs text-muted-foreground">
+          {t("company.noMatch", { query })}
+        </p>
+      )}
+
       {isLoading && (
         <p className="flex items-center justify-center gap-2 py-10 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" /> {t("connectors.loading")}
         </p>
       )}
 
-      <div className="divide-y divide-border">
-        {connectors.map((connector) => (
-          <ConnectorRow
-            key={connector.app}
-            connector={connector}
-            editing={editing === connector.app}
-            onEdit={() => setEditing(editing === connector.app ? null : connector.app)}
-            onDone={() => { setEditing(null); refresh(); }}
+      {/* Grouped, and connected first inside each group. A flat list of 29
+          rows ran nearly four screens with no landmarks -- the reader had to
+          hold "am I past Social yet?" in their head. Categories give the eye
+          somewhere to stop. */}
+      <div className="px-5 py-3">
+        <div role="tablist" aria-label={t("connectors.title")} className="mb-3 flex flex-wrap gap-1.5">
+          <CategoryChip
+            active={category === null}
+            onClick={() => setCategory(null)}
+            label={t("company.allDepartments")}
+            count={filtered.length}
           />
-        ))}
+          {categories.map(([name, count]) => (
+            <CategoryChip
+              key={name}
+              active={category === name}
+              onClick={() => setCategory(name)}
+              label={name}
+              count={count}
+            />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((connector) => (
+            <ConnectorRow key={connector.app} connector={connector} onDone={refresh} />
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
 function ConnectorRow({
-  connector, editing, onEdit, onDone,
+  connector, onDone,
 }: {
   connector: ConnectorInfo;
-  editing: boolean;
-  onEdit: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const [url, setUrl] = useState(connector.url);
-  const [token, setToken] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const connect = useMutation({
-    mutationFn: () => connectConnector({
-      app: connector.app, url, token: token || undefined,
-    }),
-    onSuccess: () => { setToken(""); onDone(); },
+  const oauth = useMutation({
+    mutationFn: () => startConnectorOAuth(connector.app),
+    onSuccess: (r) => {
+      if (r.ok && r.redirect_url) {
+        // A full navigation, not a popup: the provider owns its consent screen
+        // and several refuse to render inside a frame.
+        window.location.href = r.redirect_url;
+        return;
+      }
+      setError(
+        r.error === "not_configured"
+          ? `${connector.label} is not set up yet. Its OAuth client ID and secret need to be configured before anyone can connect it.`
+          : r.error === "shop_required"
+            ? `${connector.label} needs a shop domain, which this panel does not ask for yet.`
+            : `Could not start the connection${r.error ? ` (${r.error})` : ""}.`,
+      );
+    },
+    onError: () => setError("Could not reach the server. Try again."),
   });
+
   const check = useMutation({ mutationFn: () => testConnector(connector.app), onSuccess: onDone });
   const toggle = useMutation({
     mutationFn: () => toggleConnector(connector.app, !connector.enabled), onSuccess: onDone,
@@ -100,25 +195,25 @@ function ConnectorRow({
   const failing = connector.connected && connector.lastStatus === "error";
 
   return (
-    <div className="px-5 py-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <span className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold uppercase",
-          connector.connected
-            ? failing ? "bg-destructive/12 text-destructive" : "bg-success/12 text-success"
-            : "bg-muted text-muted-foreground",
-        )}>
-          {connector.label.slice(0, 2)}
-        </span>
+    <div className={cn(
+      "flex flex-col gap-2.5 rounded-xl border p-3.5 transition-colors",
+      connector.connected
+        ? failing ? "border-destructive/30 bg-destructive/[0.03]" : "border-success/30 bg-success/[0.03]"
+        : "border-border hover:border-foreground/15",
+    )}>
+      <div className="flex items-start gap-2.5">
+        <ConnectorLogo app={connector.app} label={connector.label} className="h-9 w-9 shrink-0" />
 
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-semibold text-foreground">{connector.label}</span>
+            <span className="truncate text-xs font-semibold text-foreground">{connector.label}</span>
             <StatusPill connector={connector} />
-            <span className="rounded-full bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-              {connector.permission}
-            </span>
           </p>
+          {connector.description && (
+            <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+              {connector.description}
+            </p>
+          )}
 
           {/* Who this actually unlocks. */}
           {connector.usedBy.length > 0 ? (
@@ -156,8 +251,9 @@ function ConnectorRow({
             </p>
           )}
         </div>
+      </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
           {connector.connected && (
             <>
               <button
@@ -186,77 +282,35 @@ function ConnectorRow({
               </button>
             </>
           )}
+
+      {/* One click, always. The manual URL-and-token form is gone: asking a
+          user to find an MCP endpoint, mint a bearer token and scope it
+          correctly is asking them to do the integration by hand, and it was
+          the only path on offer for every connector.
+
+          When a provider has no client credentials configured the button still
+          appears and says so on click, rather than the card hiding the feature
+          entirely -- an explained gap is more useful than an absence the user
+          has to guess at. */}
+        {!connector.connected && (
           <button
             type="button"
-            onClick={onEdit}
-            disabled={connector.fromEnvironment}
-            title={connector.fromEnvironment ? t("connectors.fromEnv") : undefined}
-            className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-              connector.connected
-                ? "border border-border text-foreground hover:bg-accent"
-                : "btn-primary",
-            )}
+            onClick={() => oauth.mutate()}
+            disabled={oauth.isPending}
+            className="btn-primary flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-default disabled:opacity-60"
           >
-            {editing ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-            {connector.connected ? t("connectors.edit") : t("connectors.connect")}
+            {oauth.isPending
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Plus className="h-3.5 w-3.5" />}
+            {oauth.isPending ? t("connectors.connecting") : t("connectors.connect")}
           </button>
-        </div>
+        )}
       </div>
 
-      {editing && (
-        <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3 animate-slide-up">
-          <label className="block text-[10px] font-semibold text-muted-foreground" htmlFor={`url-${connector.app}`}>
-            {t("connectors.url")}
-          </label>
-          <input
-            id={`url-${connector.app}`}
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://mcp.example.com/sse"
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
-          />
-
-          <label className="mt-2.5 block text-[10px] font-semibold text-muted-foreground" htmlFor={`token-${connector.app}`}>
-            {t("connectors.token")}
-            {connector.hasToken && (
-              <span className="ml-1 font-normal text-muted-foreground/70">
-                {t("connectors.tokenStored")}
-              </span>
-            )}
-          </label>
-          <input
-            id={`token-${connector.app}`}
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={connector.hasToken ? "••••••••" : t("connectors.tokenPlaceholder")}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
-          />
-
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => connect.mutate()}
-              disabled={!url.trim() || connect.isPending}
-              className="btn-primary flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-            >
-              {connect.isPending
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Check className="h-3 w-3" />}
-              {t("connectors.saveAndTest")}
-            </button>
-            {connect.isError && (
-              <span className="text-[10px] text-destructive">{t("connectors.failed")}</span>
-            )}
-            {connect.data?.test && !connect.data.test.ok && (
-              <span className="text-[10px] text-destructive">{connect.data.test.error}</span>
-            )}
-          </div>
-          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-            {t("connectors.hint")}
-          </p>
-        </div>
+      {error && (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-[10px] leading-relaxed text-destructive">
+          {error}
+        </p>
       )}
     </div>
   );
@@ -299,5 +353,31 @@ function StatusPill({ connector }: { connector: ConnectorInfo }) {
         ? t("connectors.status.connectedWithTools", { count: Number(connector.toolCount) })
         : t("connectors.status.connected")}
     </span>
+  );
+}
+
+/** A category filter. Mirrors the team view's department chips so the two
+ *  directories on this page behave identically -- learning one teaches the
+ *  other. */
+function CategoryChip({ active, onClick, label, count }: {
+  active: boolean; onClick: () => void; label: string; count: number;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active
+          ? "border-foreground/20 bg-foreground/5 text-foreground"
+          : "border-border text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+      <span className="tabular-nums opacity-60">{count}</span>
+    </button>
   );
 }

@@ -65,7 +65,8 @@
     "previousPage": "← Précédent",
     "nextPage": "Suivant →",
     "page": "Page {{n}}",
-    "close": "Fermer"
+    "close": "Fermer",
+    "clear": "Effacer"
   },
   "auth": {
     "welcomeBack": "Bon retour",
@@ -966,7 +967,7 @@
     },
     "project": {
       "title": "Projets",
-      "subtitle": "Les sites sur lesquels la Meute travaille. Chacun garde sa marque, sa langue et ses automatisations.",
+      "subtitle": "Les sites sur lesquels l'équipe travaille. Chacun garde sa marque, sa langue et ses automatisations.",
       "selectProject": "Projet",
       "name": "Nom",
       "domain": "Domaine",
@@ -2178,7 +2179,7 @@
       "reveal": "Afficher",
       "hide": "Masquer",
       "connectAndTest": "Connecter et tester",
-      "connected": "Connecte",
+      "connected": "Connectée",
       "disconnect": "Deconnecter",
       "testFailed": "Identifiants refuses. Verifiez-les sur le tableau de bord DataForSEO.",
       "saveFailed": "Impossible d'enregistrer les identifiants.",
@@ -2350,14 +2351,14 @@
     "addVisual": "Ajouter un visuel"
   },
   "agentsPage": {
-    "title": "La meute Fennex",
+    "title": "L'équipe Fennex",
     "subtitle": "Votre équipe IA — sept spécialistes, chacun ancré dans vos données réelles",
     "subtitleTuned": " · recommandations adaptées à votre profil",
     "recommended": "Recommandé pour vous",
     "comingSoon": "Bientôt",
     "squad": {
-      "title": "Rassemblez la meute",
-      "desc": "Un objectif en entrée — la meute planifie et exécute une campagne coordonnée, avec passages de relais et salle de projet en direct.",
+      "title": "Mobilisez l'équipe",
+      "desc": "Un objectif en entrée — l'équipe planifie et exécute une campagne coordonnée, avec passages de relais et salle de projet en direct.",
       "cta": "Lancer une campagne"
     },
     "actions": {
@@ -2535,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "La Meute",
+      "pack": "L'équipe",
       "how": "Fonctionnement",
       "features": "Fonctionnalités",
       "results": "Résultats",
@@ -2546,10 +2547,10 @@
     "hero": {
       "badge": "Une agence marketing virtuelle d'agents IA",
       "titleA": "Développez votre trafic organique avec une",
-      "titleHi": "meute de spécialistes IA",
+      "titleHi": "équipe de spécialistes IA",
       "subtitle": "Sept agents nommés recherchent vos mots-clés, rédigent des articles qui se classent, créent les visuels, publient partout et mesurent ce qui fonctionne — pour une croissance qui se cumule en pilote automatique.",
       "ctaPrimary": "Commencer gratuitement — sans carte",
-      "ctaSecondary": "Découvrir la meute",
+      "ctaSecondary": "Découvrir l'équipe",
       "trial": "Essai gratuit de 14 jours",
       "keys": "Utilisez vos propres clés IA",
       "cancel": "Annulable à tout moment"
@@ -2558,10 +2559,10 @@
       "title": "S'intègre aux outils que vous utilisez déjà pour publier"
     },
     "pack": {
-      "badge": "La Meute Fennex",
+      "badge": "L'équipe Fennex",
       "title": "Sept spécialistes, un objectif commun",
       "subtitle": "Chaque agent a un nom, un métier et la mémoire de votre projet. Ils se transmettent le travail comme une vraie équipe — sans prompts à surveiller.",
-      "ctaTitle": "Mettez la meute au travail",
+      "ctaTitle": "Mettez l'équipe au travail",
       "ctaBody": "Créez votre espace de travail et laissez les agents démarrer votre premier projet dès aujourd'hui.",
       "ctaLink": "Commencer"
     },
@@ -2618,7 +2619,7 @@
     "results": {
       "teams": "Équipes qui grandissent avec Fennex",
       "views": "Vues organiques générées",
-      "agents": "Spécialistes IA dans votre meute",
+      "agents": "Spécialistes IA dans votre équipe",
       "draft": "Brouillon d'article moyen",
       "quote": "On a vraiment l'impression d'embaucher une petite agence. Fennex a trouvé les mots-clés, rédigé les articles, les a publiés, puis nous a dit lesquels fonctionnaient. Notre trafic organique a triplé en un trimestre.",
       "author": "Maya Lindqvist",
@@ -2662,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Votre meute est prête à passer à l'action",
+      "title": "Votre équipe est prête à passer à l'action",
       "body": "Commencez gratuitement aujourd'hui. Connectez un site, choisissez un mot-clé et regardez sept spécialistes IA en faire du contenu qui se classe.",
       "primary": "Commencer gratuitement",
       "signIn": "Se connecter",
@@ -2763,23 +2764,62 @@
     "sheet": {
       "goals": "Objectifs permanents",
       "actions": "Ce qu'il sait faire",
-      "capabilities": "Competences",
+      "capabilities": "Compétences",
       "tools": "Outils",
-      "apps": "Apps connectees",
-      "knowledge": "Connaissances et memoire",
-      "memoryScope": "Portee memoire",
+      "apps": "Apps connectées",
+      "knowledge": "Données qu'il exploite",
+      "memoryScope": "Portée mémoire",
       "sources": "Sources",
-      "io": "Entree / sortie",
+      "io": "Entrée / sortie",
       "permissions": "Permissions",
       "needsApproval": "Validation requise",
-      "connected": "Connecte",
-      "notConnected": "Non connecte",
+      "connected": "Connectée",
+      "notConnected": "Non connectée",
       "plannedHint": "Prevu -- aucune action associee",
       "plannedNote": "{{count}} competence declaree n'est pas encore reliee a une action.",
-      "plannedNote_plural": "{{count}} competences declarees ne sont pas encore reliees a une action."
+      "plannedNote_plural": "{{count}} competences declarees ne sont pas encore reliees a une action.",
+      "tabs": {
+        "overview": "Aperçu",
+        "access": "Accès"
+      },
+      "canAct": "Peut agir",
+      "canRead": "Peut lire",
+      "readOnly": "Lecture seule — ne modifie rien",
+      "memoryTitle": "Mémoire et contexte",
+      "alwaysKnows": "Sait avant de commencer"
     },
     "filterLabel": "Filtrer par departement",
-    "allDepartments": "Tous"
+    "allDepartments": "Tous",
+    "searchPlaceholder": "Rechercher un agent, un rôle ou une capacité",
+    "views": {
+      "team": "Équipe",
+      "connectors": "Connecteurs",
+      "knowledge": "Connaissances"
+    },
+    "noMatch": "Aucun résultat pour « {{query}} ».",
+    "permission": {
+      "read_analytics": "Lire vos données d'analyse et de recherche",
+      "read_content": "Lire vos articles et documents",
+      "read_products": "Lire votre catalogue produits",
+      "read_competitors": "Lire les pages concurrentes fournies",
+      "write_content": "Rédiger et modifier des articles",
+      "write_images": "Générer et modifier des images",
+      "write_social": "Rédiger et programmer des posts",
+      "publish_external": "Publier sur vos sites connectés",
+      "send_email": "Envoyer des e-mails en votre nom",
+      "spend_credits": "Dépenser des crédits IA"
+    },
+    "scopeExplain": {
+      "self": "Ne se souvient que de son propre travail. Rien n'est transmis aux autres.",
+      "department": "Partage ce qu'il apprend avec son département, pas toute l'entreprise.",
+      "project": "Se souvient à l'échelle du projet. Ce qu'il apprend sert à tous ceux qui y travaillent.",
+      "org": "Se souvient à l'échelle de toute votre organisation."
+    },
+    "context": {
+      "brand": "Votre marque : le projet, sa vision, ses produits, son audience et son ton.",
+      "published": "Ce que vous avez déjà publié, pour ne pas reproposer ce qui existe.",
+      "memory": "Ce que lui et ses collègues ont appris précédemment, dans la portée ci-dessus."
+    }
   },
   "chat": {
     "title": "Assistant Fennex",
@@ -2918,13 +2958,16 @@
     "fromEnv": "Configure par votre deploiement",
     "hint": "Le serveur est contacte des l'enregistrement : une URL erronee apparait ici plutot qu'en pleine conversation.",
     "status": {
-      "connected": "Connecte",
+      "connected": "Connecté",
       "connectedWithTools": "{{count}} outils",
-      "notConnected": "Non connecte",
+      "notConnected": "Non connecté",
       "paused": "Suspendu",
       "failing": "En echec",
       "environment": "Environnement"
-    }
+    },
+    "connecting": "Connexion…",
+    "searchPlaceholder": "Rechercher un connecteur ou un agent",
+    "connectedCount": "connectés"
   },
   "knowledge": {
     "title": "Ce que l'equipe sait",

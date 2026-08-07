@@ -65,7 +65,8 @@
     "previousPage": "← Anterior",
     "nextPage": "Siguiente →",
     "page": "Página {{n}}",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "clear": "Borrar"
   },
   "auth": {
     "welcomeBack": "Bienvenido de nuevo",
@@ -966,7 +967,7 @@
     },
     "project": {
       "title": "Proyectos",
-      "subtitle": "Los sitios en los que trabaja la Manada. Cada uno mantiene su marca, idioma y automatizaciones.",
+      "subtitle": "Los sitios en los que trabaja el equipo. Cada uno mantiene su marca, idioma y automatizaciones.",
       "selectProject": "Proyecto",
       "name": "Nombre",
       "domain": "Dominio",
@@ -2350,14 +2351,14 @@
     "addVisual": "Añadir visual"
   },
   "agentsPage": {
-    "title": "La manada Fennex",
+    "title": "El equipo Fennex",
     "subtitle": "Tu equipo de IA — siete especialistas, cada uno anclado en tus datos reales",
     "subtitleTuned": " · recomendaciones ajustadas a tu perfil",
     "recommended": "Recomendado para ti",
     "comingSoon": "Próximamente",
     "squad": {
-      "title": "Reúne a la manada",
-      "desc": "Un objetivo de entrada — la manada planifica y ejecuta una campaña coordinada, con relevos y sala de proyecto en vivo.",
+      "title": "Reúne al equipo",
+      "desc": "Un objetivo de entrada — el equipo planifica y ejecuta una campaña coordinada, con relevos y sala de proyecto en vivo.",
       "cta": "Lanzar una campaña"
     },
     "actions": {
@@ -2535,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "La Manada",
+      "pack": "El equipo",
       "how": "Cómo funciona",
       "features": "Funciones",
       "results": "Resultados",
@@ -2546,10 +2547,10 @@
     "hero": {
       "badge": "Una agencia de marketing virtual de agentes de IA",
       "titleA": "Haz crecer tu tráfico orgánico con una",
-      "titleHi": "manada de especialistas en IA",
+      "titleHi": "equipo de especialistas en IA",
       "subtitle": "Siete agentes con nombre investigan tus palabras clave, escriben artículos que posicionan, diseñan los visuales, publican en todas partes y miden lo que funciona — para que tu crecimiento se acumule en piloto automático.",
       "ctaPrimary": "Empieza gratis — sin tarjeta",
-      "ctaSecondary": "Conoce la manada",
+      "ctaSecondary": "Conoce el equipo",
       "trial": "Prueba gratis de 14 días",
       "keys": "Usa tus propias claves de IA",
       "cancel": "Cancela cuando quieras"
@@ -2558,10 +2559,10 @@
       "title": "Se integra con las herramientas con las que ya publicas"
     },
     "pack": {
-      "badge": "La Manada Fennex",
+      "badge": "El equipo Fennex",
       "title": "Siete especialistas, un objetivo común",
       "subtitle": "Cada agente tiene un nombre, un oficio y memoria de tu proyecto. Se pasan el trabajo entre ellos como un equipo real — sin prompts que vigilar.",
-      "ctaTitle": "Pon a trabajar a la manada",
+      "ctaTitle": "Pon a trabajar a el equipo",
       "ctaBody": "Crea tu espacio de trabajo y deja que los agentes empiecen tu primer proyecto hoy mismo.",
       "ctaLink": "Empezar"
     },
@@ -2618,7 +2619,7 @@
     "results": {
       "teams": "Equipos que crecen con Fennex",
       "views": "Vistas orgánicas generadas",
-      "agents": "Especialistas en IA en tu manada",
+      "agents": "Especialistas en IA en tu equipo",
       "draft": "Borrador de artículo promedio",
       "quote": "De verdad se siente como contratar una pequeña agencia. Fennex encontró las palabras clave, escribió los artículos, los publicó y luego nos dijo cuáles funcionaban. Nuestro tráfico orgánico se triplicó en un trimestre.",
       "author": "Maya Lindqvist",
@@ -2662,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Tu manada está lista para actuar",
+      "title": "Tu equipo está lista para actuar",
       "body": "Empieza gratis hoy. Conecta un sitio, elige una palabra clave y mira cómo siete especialistas en IA la convierten en contenido que posiciona.",
       "primary": "Empezar gratis",
       "signIn": "Iniciar sesión",
@@ -2766,7 +2767,7 @@
       "capabilities": "Habilidades",
       "tools": "Herramientas",
       "apps": "Apps conectadas",
-      "knowledge": "Conocimiento y memoria",
+      "knowledge": "Datos que utiliza",
       "memoryScope": "Alcance de memoria",
       "sources": "Fuentes",
       "io": "Entrada / salida",
@@ -2776,10 +2777,49 @@
       "notConnected": "No conectado",
       "plannedHint": "Previsto -- sin accion asociada",
       "plannedNote": "{{count}} habilidad declarada aun no esta ligada a una accion.",
-      "plannedNote_plural": "{{count}} habilidades declaradas aun no estan ligadas a una accion."
+      "plannedNote_plural": "{{count}} habilidades declaradas aun no estan ligadas a una accion.",
+      "tabs": {
+        "overview": "Resumen",
+        "access": "Acceso"
+      },
+      "canAct": "Puede actuar",
+      "canRead": "Puede leer",
+      "readOnly": "Solo lectura — no modifica nada",
+      "memoryTitle": "Memoria y contexto",
+      "alwaysKnows": "Sabe antes de empezar"
     },
     "filterLabel": "Filtrar por departamento",
-    "allDepartments": "Todos"
+    "allDepartments": "Todos",
+    "searchPlaceholder": "Busca un agente, un rol o una capacidad",
+    "views": {
+      "team": "Equipo",
+      "connectors": "Conectores",
+      "knowledge": "Conocimiento"
+    },
+    "noMatch": "Nada coincide con «{{query}}».",
+    "permission": {
+      "read_analytics": "Leer tus datos de analítica y búsqueda",
+      "read_content": "Leer tus artículos y documentos",
+      "read_products": "Leer tu catálogo de productos",
+      "read_competitors": "Leer páginas de la competencia indicadas",
+      "write_content": "Escribir y editar artículos",
+      "write_images": "Generar y editar imágenes",
+      "write_social": "Redactar y programar publicaciones",
+      "publish_external": "Publicar en tus sitios conectados",
+      "send_email": "Enviar correos en tu nombre",
+      "spend_credits": "Gastar créditos de IA"
+    },
+    "scopeExplain": {
+      "self": "Solo recuerda su propio trabajo. Nada llega a otros empleados.",
+      "department": "Comparte lo aprendido con su departamento, no con toda la empresa.",
+      "project": "Recuerda a nivel de proyecto. Lo aprendido sirve a todos los que trabajan en él.",
+      "org": "Recuerda en todos los proyectos de tu organización."
+    },
+    "context": {
+      "brand": "Tu marca: el proyecto, su visión, productos, audiencia y tono.",
+      "published": "Lo que ya has publicado, para no proponer lo que existe.",
+      "memory": "Lo aprendido en ejecuciones anteriores, dentro del alcance anterior."
+    }
   },
   "chat": {
     "title": "Asistente Fennex",
@@ -2924,7 +2964,10 @@
       "paused": "Pausado",
       "failing": "Con fallos",
       "environment": "Del entorno"
-    }
+    },
+    "connecting": "Conectando…",
+    "searchPlaceholder": "Buscar un conector o un agente",
+    "connectedCount": "conectados"
   },
   "knowledge": {
     "title": "Lo que el equipo sabe",

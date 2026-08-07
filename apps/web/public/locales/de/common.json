@@ -65,7 +65,8 @@
     "previousPage": "← Zurück",
     "nextPage": "Weiter →",
     "page": "Seite {{n}}",
-    "close": "Schließen"
+    "close": "Schließen",
+    "clear": "Löschen"
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",
@@ -966,7 +967,7 @@
     },
     "project": {
       "title": "Projekte",
-      "subtitle": "Die Websites, an denen das Rudel arbeitet. Jede behält eigene Marke, Sprache und Automatisierung.",
+      "subtitle": "Die Websites, an denen das Team arbeitet. Jede behält eigene Marke, Sprache und Automatisierung.",
       "selectProject": "Projekt",
       "name": "Name",
       "domain": "Domain",
@@ -2350,14 +2351,14 @@
     "addVisual": "Visual hinzufügen"
   },
   "agentsPage": {
-    "title": "Das Fennex-Rudel",
+    "title": "Das Fennex-Team",
     "subtitle": "Dein KI-Team — sieben Spezialisten, alle in deinen echten Daten verankert",
     "subtitleTuned": " · Empfehlungen auf dein Profil abgestimmt",
     "recommended": "Für dich empfohlen",
     "comingSoon": "Demnächst",
     "squad": {
-      "title": "Versammle das Rudel",
-      "desc": "Ein Ziel rein — das Rudel plant und fährt gemeinsam eine koordinierte Kampagne, mit Übergaben und einem Live-Projektraum.",
+      "title": "Stell das Team zusammen",
+      "desc": "Ein Ziel rein — das Team plant und fährt gemeinsam eine koordinierte Kampagne, mit Übergaben und einem Live-Projektraum.",
       "cta": "Kampagne starten"
     },
     "actions": {
@@ -2535,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "Das Rudel",
+      "pack": "Das Team",
       "how": "So funktioniert's",
       "features": "Funktionen",
       "results": "Ergebnisse",
@@ -2546,10 +2547,10 @@
     "hero": {
       "badge": "Eine virtuelle Marketingagentur aus KI-Agenten",
       "titleA": "Steigere deinen organischen Traffic mit einem",
-      "titleHi": "Rudel aus KI-Spezialisten",
+      "titleHi": "Team aus KI-Spezialisten",
       "subtitle": "Sieben benannte Agenten recherchieren deine Keywords, schreiben rankende Artikel, gestalten die Visuals, veröffentlichen überall und messen, was wirkt — damit dein Wachstum automatisch zunimmt.",
       "ctaPrimary": "Kostenlos starten — ohne Karte",
-      "ctaSecondary": "Das Rudel kennenlernen",
+      "ctaSecondary": "Das Team kennenlernen",
       "trial": "14 Tage kostenlos testen",
       "keys": "Nutze deine eigenen KI-Schlüssel",
       "cancel": "Jederzeit kündbar"
@@ -2558,10 +2559,10 @@
       "title": "Fügt sich in die Tools ein, mit denen du bereits veröffentlichst"
     },
     "pack": {
-      "badge": "Das Fennex-Rudel",
+      "badge": "Das Fennex-Team",
       "title": "Sieben Spezialisten, ein gemeinsames Ziel",
       "subtitle": "Jeder Agent hat einen Namen, ein Handwerk und ein Gedächtnis für dein Projekt. Sie geben die Arbeit weiter wie ein echtes Team — keine Prompts zu überwachen.",
-      "ctaTitle": "Setze das Rudel ein",
+      "ctaTitle": "Setze das Team ein",
       "ctaBody": "Richte deinen Arbeitsbereich ein und lass die Agenten noch heute mit deinem ersten Projekt beginnen.",
       "ctaLink": "Loslegen"
     },
@@ -2618,7 +2619,7 @@
     "results": {
       "teams": "Teams, die mit Fennex wachsen",
       "views": "Erzeugte organische Aufrufe",
-      "agents": "KI-Spezialisten in deinem Rudel",
+      "agents": "KI-Spezialisten in deinem Team",
       "draft": "Durchschnittlicher Artikelentwurf",
       "quote": "Es fühlt sich wirklich an, als hätte man eine kleine Agentur engagiert. Fennex fand die Keywords, schrieb die Beiträge, veröffentlichte sie und sagte uns dann, welche funktionierten. Unser organischer Traffic hat sich in einem Quartal verdreifacht.",
       "author": "Maya Lindqvist",
@@ -2662,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Dein Rudel ist startklar",
+      "title": "Dein Team ist startklar",
       "body": "Starte heute kostenlos. Verbinde eine Website, wähle ein Keyword und sieh zu, wie sieben KI-Spezialisten daraus rankenden Content machen.",
       "primary": "Kostenlos loslegen",
       "signIn": "Anmelden",
@@ -2766,7 +2767,7 @@
       "capabilities": "Faehigkeiten",
       "tools": "Werkzeuge",
       "apps": "Verbundene Apps",
-      "knowledge": "Wissen und Gedaechtnis",
+      "knowledge": "Genutzte Daten",
       "memoryScope": "Gedaechtnisbereich",
       "sources": "Quellen",
       "io": "Eingabe / Ausgabe",
@@ -2776,10 +2777,49 @@
       "notConnected": "Nicht verbunden",
       "plannedHint": "Geplant -- keine Aktion hinterlegt",
       "plannedNote": "{{count}} Faehigkeit ist deklariert, aber noch keiner Aktion zugeordnet.",
-      "plannedNote_plural": "{{count}} Faehigkeiten sind deklariert, aber noch keiner Aktion zugeordnet."
+      "plannedNote_plural": "{{count}} Faehigkeiten sind deklariert, aber noch keiner Aktion zugeordnet.",
+      "tabs": {
+        "overview": "Überblick",
+        "access": "Zugriff"
+      },
+      "canAct": "Kann handeln",
+      "canRead": "Kann lesen",
+      "readOnly": "Nur lesend — ändert nichts",
+      "memoryTitle": "Gedächtnis und Kontext",
+      "alwaysKnows": "Weiß vor dem Start"
     },
     "filterLabel": "Nach Abteilung filtern",
-    "allDepartments": "Alle"
+    "allDepartments": "Alle",
+    "searchPlaceholder": "Team, Rolle oder Fähigkeit suchen",
+    "views": {
+      "team": "Team",
+      "connectors": "Konnektoren",
+      "knowledge": "Wissen"
+    },
+    "noMatch": "Nichts passt zu „{{query}}“.",
+    "permission": {
+      "read_analytics": "Deine Analyse- und Suchdaten lesen",
+      "read_content": "Deine Artikel und Dokumente lesen",
+      "read_products": "Deinen Produktkatalog lesen",
+      "read_competitors": "Angegebene Wettbewerberseiten lesen",
+      "write_content": "Artikel schreiben und bearbeiten",
+      "write_images": "Bilder erzeugen und bearbeiten",
+      "write_social": "Social Posts verfassen und planen",
+      "publish_external": "Auf deinen verbundenen Seiten veröffentlichen",
+      "send_email": "In deinem Namen E-Mails senden",
+      "spend_credits": "KI-Credits ausgeben"
+    },
+    "scopeExplain": {
+      "self": "Erinnert nur die eigene Arbeit. Nichts davon erreicht andere.",
+      "department": "Teilt Gelerntes mit der eigenen Abteilung, nicht dem ganzen Unternehmen.",
+      "project": "Erinnert projektweit. Gelerntes steht allen im Projekt zur Verfügung.",
+      "org": "Erinnert über alle Projekte deiner Organisation hinweg."
+    },
+    "context": {
+      "brand": "Deine Marke: Projekt, Vision, Produkte, Zielgruppe und Tonalität.",
+      "published": "Was bereits veröffentlicht ist, damit nichts doppelt vorgeschlagen wird.",
+      "memory": "Was es und seine Kollegen zuvor gelernt haben, im obigen Rahmen."
+    }
   },
   "chat": {
     "title": "Fennex Assistent",
@@ -2924,7 +2964,10 @@
       "paused": "Pausiert",
       "failing": "Fehlerhaft",
       "environment": "Aus der Umgebung"
-    }
+    },
+    "connecting": "Verbinden…",
+    "searchPlaceholder": "Konnektor oder Agent suchen",
+    "connectedCount": "verbunden"
   },
   "knowledge": {
     "title": "Was das Team weiss",

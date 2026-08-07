@@ -65,7 +65,8 @@
     "previousPage": "← Anterior",
     "nextPage": "Próximo →",
     "page": "Página {{n}}",
-    "close": "Fechar"
+    "close": "Fechar",
+    "clear": "Limpar"
   },
   "auth": {
     "welcomeBack": "Bem-vindo de volta",
@@ -966,7 +967,7 @@
     },
     "project": {
       "title": "Projetos",
-      "subtitle": "Os sites em que a Matilha trabalha. Cada um mantém sua marca, idioma e automações.",
+      "subtitle": "Os sites em que a equipa trabalha. Cada um mantém sua marca, idioma e automações.",
       "selectProject": "Projeto",
       "name": "Nome",
       "domain": "Domínio",
@@ -2350,14 +2351,14 @@
     "addVisual": "Adicionar visual"
   },
   "agentsPage": {
-    "title": "A matilha Fennex",
+    "title": "A equipa Fennex",
     "subtitle": "Sua equipe de IA — sete especialistas, cada um ancorado nos seus dados reais",
     "subtitleTuned": " · recomendações ajustadas ao seu perfil",
     "recommended": "Recomendado para você",
     "comingSoon": "Em breve",
     "squad": {
-      "title": "Reúna a matilha",
-      "desc": "Um objetivo de entrada — a matilha planeja e executa uma campanha coordenada, com passagens de bastão e uma sala de projeto ao vivo.",
+      "title": "Reúna a equipa",
+      "desc": "Um objetivo de entrada — a equipa planeja e executa uma campanha coordenada, com passagens de bastão e uma sala de projeto ao vivo.",
       "cta": "Rodar uma campanha"
     },
     "actions": {
@@ -2535,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "A Matilha",
+      "pack": "A equipa",
       "how": "Como funciona",
       "features": "Recursos",
       "results": "Resultados",
@@ -2546,10 +2547,10 @@
     "hero": {
       "badge": "Uma agência de marketing virtual de agentes de IA",
       "titleA": "Faça crescer o tráfego orgânico com uma",
-      "titleHi": "matilha de especialistas em IA",
+      "titleHi": "equipa de especialistas em IA",
       "subtitle": "Sete agentes com nome pesquisam suas palavras-chave, escrevem artigos que ranqueiam, criam os visuais, publicam em todo lugar e medem o que funciona — para que seu crescimento se acumule no piloto automático.",
       "ctaPrimary": "Comece grátis — sem cartão",
-      "ctaSecondary": "Conheça a matilha",
+      "ctaSecondary": "Conheça a equipa",
       "trial": "Teste grátis de 14 dias",
       "keys": "Use suas próprias chaves de IA",
       "cancel": "Cancele quando quiser"
@@ -2558,10 +2559,10 @@
       "title": "Integra-se às ferramentas com que você já publica"
     },
     "pack": {
-      "badge": "A Matilha Fennex",
+      "badge": "A equipa Fennex",
       "title": "Sete especialistas, um objetivo em comum",
       "subtitle": "Cada agente tem um nome, um ofício e memória do seu projeto. Eles passam o trabalho entre si como uma equipe de verdade — sem prompts para vigiar.",
-      "ctaTitle": "Coloque a matilha para trabalhar",
+      "ctaTitle": "Coloque a equipa para trabalhar",
       "ctaBody": "Crie seu espaço de trabalho e deixe os agentes começarem seu primeiro projeto hoje mesmo.",
       "ctaLink": "Começar"
     },
@@ -2618,7 +2619,7 @@
     "results": {
       "teams": "Equipes crescendo com a Fennex",
       "views": "Visualizações orgânicas geradas",
-      "agents": "Especialistas em IA na sua matilha",
+      "agents": "Especialistas em IA na sua equipa",
       "draft": "Rascunho médio de artigo",
       "quote": "Realmente parece contratar uma pequena agência. A Fennex encontrou as palavras-chave, escreveu os posts, publicou e depois nos disse quais estavam funcionando. Nosso tráfego orgânico triplicou em um trimestre.",
       "author": "Maya Lindqvist",
@@ -2662,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Sua matilha está pronta para agir",
+      "title": "Sua equipa está pronta para agir",
       "body": "Comece grátis hoje. Conecte um site, escolha uma palavra-chave e veja sete especialistas em IA transformá-la em conteúdo que ranqueia.",
       "primary": "Começar grátis",
       "signIn": "Entrar",
@@ -2766,7 +2767,7 @@
       "capabilities": "Competencias",
       "tools": "Ferramentas",
       "apps": "Apps ligadas",
-      "knowledge": "Conhecimento e memoria",
+      "knowledge": "Dados que utiliza",
       "memoryScope": "Ambito de memoria",
       "sources": "Fontes",
       "io": "Entrada / saida",
@@ -2776,10 +2777,49 @@
       "notConnected": "Nao ligado",
       "plannedHint": "Previsto -- sem acao associada",
       "plannedNote": "{{count}} competencia declarada ainda nao esta ligada a uma acao.",
-      "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao."
+      "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao.",
+      "tabs": {
+        "overview": "Resumo",
+        "access": "Acesso"
+      },
+      "canAct": "Pode agir",
+      "canRead": "Pode ler",
+      "readOnly": "Apenas leitura — não altera nada",
+      "memoryTitle": "Memória e contexto",
+      "alwaysKnows": "Sabe antes de começar"
     },
     "filterLabel": "Filtrar por departamento",
-    "allDepartments": "Todos"
+    "allDepartments": "Todos",
+    "searchPlaceholder": "Procurar um agente, função ou capacidade",
+    "views": {
+      "team": "Equipa",
+      "connectors": "Conectores",
+      "knowledge": "Conhecimento"
+    },
+    "noMatch": "Nada corresponde a «{{query}}».",
+    "permission": {
+      "read_analytics": "Ler os teus dados de análise e pesquisa",
+      "read_content": "Ler os teus artigos e documentos",
+      "read_products": "Ler o teu catálogo de produtos",
+      "read_competitors": "Ler páginas de concorrentes indicadas",
+      "write_content": "Escrever e editar artigos",
+      "write_images": "Gerar e editar imagens",
+      "write_social": "Redigir e agendar publicações",
+      "publish_external": "Publicar nos teus sites ligados",
+      "send_email": "Enviar e-mails em teu nome",
+      "spend_credits": "Gastar créditos de IA"
+    },
+    "scopeExplain": {
+      "self": "Só recorda o seu próprio trabalho. Nada chega aos outros.",
+      "department": "Partilha o que aprende com o seu departamento, não com toda a empresa.",
+      "project": "Recorda ao nível do projeto. O que aprende serve todos os que nele trabalham.",
+      "org": "Recorda em todos os projetos da tua organização."
+    },
+    "context": {
+      "brand": "A tua marca: o projeto, visão, produtos, público e tom.",
+      "published": "O que já publicaste, para não propor o que existe.",
+      "memory": "O que ele e os colegas aprenderam antes, dentro do âmbito acima."
+    }
   },
   "chat": {
     "title": "Assistente Fennex",
@@ -2924,7 +2964,10 @@
       "paused": "Pausado",
       "failing": "Com falhas",
       "environment": "Do ambiente"
-    }
+    },
+    "connecting": "A ligar…",
+    "searchPlaceholder": "Procurar um conector ou agente",
+    "connectedCount": "ligados"
   },
   "knowledge": {
     "title": "O que a equipa sabe",

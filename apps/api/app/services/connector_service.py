@@ -43,6 +43,11 @@ async def get_connector(org_id: uuid.UUID, app: str, db) -> Optional[Connector]:
     )).scalars().first()
 
 
+def _oauth_available() -> set:
+    from app.services import connector_oauth
+    return set(connector_oauth.available())
+
+
 async def catalogue(org_id: uuid.UUID, db) -> list[dict]:
     """Every connectable tool, its state, and who would gain from it.
 
@@ -63,6 +68,19 @@ async def catalogue(org_id: uuid.UUID, db) -> list[dict]:
         out.append({
             "app": app,
             "label": server.label,
+            # Category and description come from the catalogue rather than a
+            # second table in the UI: one source, so a connector added to the
+            # roster cannot appear ungrouped or unexplained.
+            "category": server.category,
+            "description": server.description,
+            # Names the metered native tool when one already reaches this app.
+            # MCP would otherwise be a second, unmetered route to the same paid
+            # API, and the UI must say which path is live.
+            "nativeTool": server.native_tool,
+            # One-click is only offered when the provider's client credentials
+            # are actually configured. A Connect button that dead-ends after
+            # the redirect is worse than none.
+            "oauth": app in _oauth_available(),
             "permission": server.permission,
             "transport": server.transport,
             # An env-configured server stays supported so existing deployments
@@ -103,6 +121,33 @@ async def connect(org_id: uuid.UUID, app: str, url: str, token: Optional[str],
     row.last_error = None
     await db.commit()
     await db.refresh(row)
+    return row
+
+
+async def save_oauth_token(org_id: uuid.UUID, app: str, token: str, db,
+                           label: Optional[str] = None) -> Connector:
+    """Store a token obtained through the OAuth flow.
+
+    Separate from connect() on purpose: connect() requires a server URL because
+    a hand-configured MCP server has one, while an OAuth connector is
+    identified by its provider and the URL comes from the catalogue. Forcing a
+    URL here would mean inventing one.
+    """
+    if app not in mcp_layer.CATALOGUE:
+        raise ValueError(f"Unknown connector: {app}")
+    row = await get_connector(org_id, app, db)
+    if row is None:
+        row = Connector(org_id=org_id, app=app)
+        db.add(row)
+    row.encrypted_token = encrypt_value(token.strip())
+    row.url = row.url or (mcp_layer.CATALOGUE[app].url or "")
+    row.enabled = True
+    row.last_status = "ok"
+    row.last_error = None
+    await db.commit()
+    await db.refresh(row)
+    logger.info("connected %s for org %s via oauth%s", app, org_id,
+                f" ({label})" if label else "")
     return row
 
 
