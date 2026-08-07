@@ -200,7 +200,10 @@ EMPLOYEE = _Souk(
     supported_inputs=["text", "goal"],
     supported_outputs=["audit", "action-plan", "brief"],
 
-    consumes=["intel.competitor_scan", "research.market_report"],
+    # intel.competitor_scan is not a slug -- the capability is
+    # intel.competitor_analysis. Nothing validated this, which is what
+    # employees/coherence.py now exists to catch.
+    consumes=["intel.competitor_analysis", "research.market_report"],
     # What the company does NEXT with a finding, offered as buttons after Souk
     # answers. These are the executable follow-ups: an audit that ends in
     # "your product copy is thin" should hand the writing to Dune and the

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { getImage } from "@/lib/api";
 import {
   ArrowUpRight, Bookmark, BookmarkCheck, Check, ChevronDown, Copy, Download,
   EyeOff, FileText, Image as ImageIcon, Megaphone, Printer, Share2, Sparkles,
@@ -19,6 +21,50 @@ import { printDocument } from "@/lib/printDocument";
  *
  *  A result is not chat text -- it is a saved record. This card makes that
  *  concrete: what was made, how many, and a link straight to it. */
+
+/** A generated image, shown rather than described.
+ *
+ *  The card used to say "1 image" with a link to the library. An image is the
+ *  one artifact whose whole value is visible at a glance, and sending the user
+ *  to another page to see what an agent just made is the opposite of a chat.
+ *  The link stays, on the image itself, for editing.
+ */
+function ImageArtifact({ ids, projectId }: { ids: string[]; projectId: string }) {
+  const { data } = useQuery({
+    queryKey: ["chat-images", ids],
+    queryFn: async () => Promise.all(ids.slice(0, 4).map((id) => getImage(id))),
+    enabled: ids.length > 0,
+    staleTime: 300_000,
+    retry: false,
+  });
+  const shots = (data ?? []).filter((i) => i?.image_url);
+  if (!shots.length) return null;
+  return (
+    <div className={cn("grid gap-2 p-2", shots.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+      {shots.map((img) => (
+        <Link
+          key={img.id}
+          href={`/${projectId}/images/edit/${img.id}`}
+          className="group/img relative block overflow-hidden rounded-xl border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={img.image_url ?? ""}
+            alt={img.prompt?.slice(0, 120) ?? "Generated image"}
+            loading="lazy"
+            className="w-full bg-muted/30 object-cover transition-transform duration-300 group-hover/img:scale-[1.02]"
+            style={{ aspectRatio: img.width && img.height ? `${img.width}/${img.height}` : "1/1" }}
+          />
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-2.5 py-1.5 text-[10px] font-medium text-white opacity-0 transition-opacity group-hover/img:opacity-100">
+            <span className="truncate">{img.width}×{img.height}</span>
+            <span className="shrink-0">Edit →</span>
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function ArtifactCard({
   message, employee, projectId,
 }: { message: ChatMessage; employee?: Employee; projectId: string }) {
@@ -55,6 +101,12 @@ export function ArtifactCard({
             <span className="text-[10px] text-muted-foreground">{structured.label}</span>
           )}
         </p>
+
+        {kind === "image" && ids.length > 0 && (
+          <div className="mb-2 overflow-hidden rounded-2xl rounded-tl-md border border-border bg-card">
+            <ImageArtifact ids={ids} projectId={projectId} />
+          </div>
+        )}
 
         <div className={cn(
           "overflow-hidden rounded-2xl rounded-tl-md border",
