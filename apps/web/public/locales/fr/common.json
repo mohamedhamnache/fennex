@@ -967,7 +967,7 @@
     },
     "project": {
       "title": "Projets",
-      "subtitle": "Les sites sur lesquels la Meute travaille. Chacun garde sa marque, sa langue et ses automatisations.",
+      "subtitle": "Les sites sur lesquels l'équipe travaille. Chacun garde sa marque, sa langue et ses automatisations.",
       "selectProject": "Projet",
       "name": "Nom",
       "domain": "Domaine",
@@ -2351,14 +2351,14 @@
     "addVisual": "Ajouter un visuel"
   },
   "agentsPage": {
-    "title": "La meute Fennex",
+    "title": "L'équipe Fennex",
     "subtitle": "Votre équipe IA — sept spécialistes, chacun ancré dans vos données réelles",
     "subtitleTuned": " · recommandations adaptées à votre profil",
     "recommended": "Recommandé pour vous",
     "comingSoon": "Bientôt",
     "squad": {
-      "title": "Rassemblez la meute",
-      "desc": "Un objectif en entrée — la meute planifie et exécute une campagne coordonnée, avec passages de relais et salle de projet en direct.",
+      "title": "Mobilisez l'équipe",
+      "desc": "Un objectif en entrée — l'équipe planifie et exécute une campagne coordonnée, avec passages de relais et salle de projet en direct.",
       "cta": "Lancer une campagne"
     },
     "actions": {
@@ -2536,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "La Meute",
+      "pack": "L'équipe",
       "how": "Fonctionnement",
       "features": "Fonctionnalités",
       "results": "Résultats",
@@ -2547,10 +2547,10 @@
     "hero": {
       "badge": "Une agence marketing virtuelle d'agents IA",
       "titleA": "Développez votre trafic organique avec une",
-      "titleHi": "meute de spécialistes IA",
+      "titleHi": "équipe de spécialistes IA",
       "subtitle": "Sept agents nommés recherchent vos mots-clés, rédigent des articles qui se classent, créent les visuels, publient partout et mesurent ce qui fonctionne — pour une croissance qui se cumule en pilote automatique.",
       "ctaPrimary": "Commencer gratuitement — sans carte",
-      "ctaSecondary": "Découvrir la meute",
+      "ctaSecondary": "Découvrir l'équipe",
       "trial": "Essai gratuit de 14 jours",
       "keys": "Utilisez vos propres clés IA",
       "cancel": "Annulable à tout moment"
@@ -2559,10 +2559,10 @@
       "title": "S'intègre aux outils que vous utilisez déjà pour publier"
     },
     "pack": {
-      "badge": "La Meute Fennex",
+      "badge": "L'équipe Fennex",
       "title": "Sept spécialistes, un objectif commun",
       "subtitle": "Chaque agent a un nom, un métier et la mémoire de votre projet. Ils se transmettent le travail comme une vraie équipe — sans prompts à surveiller.",
-      "ctaTitle": "Mettez la meute au travail",
+      "ctaTitle": "Mettez l'équipe au travail",
       "ctaBody": "Créez votre espace de travail et laissez les agents démarrer votre premier projet dès aujourd'hui.",
       "ctaLink": "Commencer"
     },
@@ -2619,7 +2619,7 @@
     "results": {
       "teams": "Équipes qui grandissent avec Fennex",
       "views": "Vues organiques générées",
-      "agents": "Spécialistes IA dans votre meute",
+      "agents": "Spécialistes IA dans votre équipe",
       "draft": "Brouillon d'article moyen",
       "quote": "On a vraiment l'impression d'embaucher une petite agence. Fennex a trouvé les mots-clés, rédigé les articles, les a publiés, puis nous a dit lesquels fonctionnaient. Notre trafic organique a triplé en un trimestre.",
       "author": "Maya Lindqvist",
@@ -2663,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Votre meute est prête à passer à l'action",
+      "title": "Votre équipe est prête à passer à l'action",
       "body": "Commencez gratuitement aujourd'hui. Connectez un site, choisissez un mot-clé et regardez sept spécialistes IA en faire du contenu qui se classe.",
       "primary": "Commencer gratuitement",
       "signIn": "Se connecter",

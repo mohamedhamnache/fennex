@@ -967,7 +967,7 @@
     },
     "project": {
       "title": "Projekte",
-      "subtitle": "Die Websites, an denen das Rudel arbeitet. Jede behält eigene Marke, Sprache und Automatisierung.",
+      "subtitle": "Die Websites, an denen das Team arbeitet. Jede behält eigene Marke, Sprache und Automatisierung.",
       "selectProject": "Projekt",
       "name": "Name",
       "domain": "Domain",
@@ -2351,14 +2351,14 @@
     "addVisual": "Visual hinzufügen"
   },
   "agentsPage": {
-    "title": "Das Fennex-Rudel",
+    "title": "Das Fennex-Team",
     "subtitle": "Dein KI-Team — sieben Spezialisten, alle in deinen echten Daten verankert",
     "subtitleTuned": " · Empfehlungen auf dein Profil abgestimmt",
     "recommended": "Für dich empfohlen",
     "comingSoon": "Demnächst",
     "squad": {
-      "title": "Versammle das Rudel",
-      "desc": "Ein Ziel rein — das Rudel plant und fährt gemeinsam eine koordinierte Kampagne, mit Übergaben und einem Live-Projektraum.",
+      "title": "Stell das Team zusammen",
+      "desc": "Ein Ziel rein — das Team plant und fährt gemeinsam eine koordinierte Kampagne, mit Übergaben und einem Live-Projektraum.",
       "cta": "Kampagne starten"
     },
     "actions": {
@@ -2536,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "Das Rudel",
+      "pack": "Das Team",
       "how": "So funktioniert's",
       "features": "Funktionen",
       "results": "Ergebnisse",
@@ -2547,10 +2547,10 @@
     "hero": {
       "badge": "Eine virtuelle Marketingagentur aus KI-Agenten",
       "titleA": "Steigere deinen organischen Traffic mit einem",
-      "titleHi": "Rudel aus KI-Spezialisten",
+      "titleHi": "Team aus KI-Spezialisten",
       "subtitle": "Sieben benannte Agenten recherchieren deine Keywords, schreiben rankende Artikel, gestalten die Visuals, veröffentlichen überall und messen, was wirkt — damit dein Wachstum automatisch zunimmt.",
       "ctaPrimary": "Kostenlos starten — ohne Karte",
-      "ctaSecondary": "Das Rudel kennenlernen",
+      "ctaSecondary": "Das Team kennenlernen",
       "trial": "14 Tage kostenlos testen",
       "keys": "Nutze deine eigenen KI-Schlüssel",
       "cancel": "Jederzeit kündbar"
@@ -2559,10 +2559,10 @@
       "title": "Fügt sich in die Tools ein, mit denen du bereits veröffentlichst"
     },
     "pack": {
-      "badge": "Das Fennex-Rudel",
+      "badge": "Das Fennex-Team",
       "title": "Sieben Spezialisten, ein gemeinsames Ziel",
       "subtitle": "Jeder Agent hat einen Namen, ein Handwerk und ein Gedächtnis für dein Projekt. Sie geben die Arbeit weiter wie ein echtes Team — keine Prompts zu überwachen.",
-      "ctaTitle": "Setze das Rudel ein",
+      "ctaTitle": "Setze das Team ein",
       "ctaBody": "Richte deinen Arbeitsbereich ein und lass die Agenten noch heute mit deinem ersten Projekt beginnen.",
       "ctaLink": "Loslegen"
     },
@@ -2619,7 +2619,7 @@
     "results": {
       "teams": "Teams, die mit Fennex wachsen",
       "views": "Erzeugte organische Aufrufe",
-      "agents": "KI-Spezialisten in deinem Rudel",
+      "agents": "KI-Spezialisten in deinem Team",
       "draft": "Durchschnittlicher Artikelentwurf",
       "quote": "Es fühlt sich wirklich an, als hätte man eine kleine Agentur engagiert. Fennex fand die Keywords, schrieb die Beiträge, veröffentlichte sie und sagte uns dann, welche funktionierten. Unser organischer Traffic hat sich in einem Quartal verdreifacht.",
       "author": "Maya Lindqvist",
@@ -2663,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Dein Rudel ist startklar",
+      "title": "Dein Team ist startklar",
       "body": "Starte heute kostenlos. Verbinde eine Website, wähle ein Keyword und sieh zu, wie sieben KI-Spezialisten daraus rankenden Content machen.",
       "primary": "Kostenlos loslegen",
       "signIn": "Anmelden",

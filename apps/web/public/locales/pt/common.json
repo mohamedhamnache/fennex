@@ -967,7 +967,7 @@
     },
     "project": {
       "title": "Projetos",
-      "subtitle": "Os sites em que a Matilha trabalha. Cada um mantém sua marca, idioma e automações.",
+      "subtitle": "Os sites em que a equipa trabalha. Cada um mantém sua marca, idioma e automações.",
       "selectProject": "Projeto",
       "name": "Nome",
       "domain": "Domínio",
@@ -2351,14 +2351,14 @@
     "addVisual": "Adicionar visual"
   },
   "agentsPage": {
-    "title": "A matilha Fennex",
+    "title": "A equipa Fennex",
     "subtitle": "Sua equipe de IA — sete especialistas, cada um ancorado nos seus dados reais",
     "subtitleTuned": " · recomendações ajustadas ao seu perfil",
     "recommended": "Recomendado para você",
     "comingSoon": "Em breve",
     "squad": {
-      "title": "Reúna a matilha",
-      "desc": "Um objetivo de entrada — a matilha planeja e executa uma campanha coordenada, com passagens de bastão e uma sala de projeto ao vivo.",
+      "title": "Reúna a equipa",
+      "desc": "Um objetivo de entrada — a equipa planeja e executa uma campanha coordenada, com passagens de bastão e uma sala de projeto ao vivo.",
       "cta": "Rodar uma campanha"
     },
     "actions": {
@@ -2536,7 +2536,7 @@
   },
   "landing": {
     "nav": {
-      "pack": "A Matilha",
+      "pack": "A equipa",
       "how": "Como funciona",
       "features": "Recursos",
       "results": "Resultados",
@@ -2547,10 +2547,10 @@
     "hero": {
       "badge": "Uma agência de marketing virtual de agentes de IA",
       "titleA": "Faça crescer o tráfego orgânico com uma",
-      "titleHi": "matilha de especialistas em IA",
+      "titleHi": "equipa de especialistas em IA",
       "subtitle": "Sete agentes com nome pesquisam suas palavras-chave, escrevem artigos que ranqueiam, criam os visuais, publicam em todo lugar e medem o que funciona — para que seu crescimento se acumule no piloto automático.",
       "ctaPrimary": "Comece grátis — sem cartão",
-      "ctaSecondary": "Conheça a matilha",
+      "ctaSecondary": "Conheça a equipa",
       "trial": "Teste grátis de 14 dias",
       "keys": "Use suas próprias chaves de IA",
       "cancel": "Cancele quando quiser"
@@ -2559,10 +2559,10 @@
       "title": "Integra-se às ferramentas com que você já publica"
     },
     "pack": {
-      "badge": "A Matilha Fennex",
+      "badge": "A equipa Fennex",
       "title": "Sete especialistas, um objetivo em comum",
       "subtitle": "Cada agente tem um nome, um ofício e memória do seu projeto. Eles passam o trabalho entre si como uma equipe de verdade — sem prompts para vigiar.",
-      "ctaTitle": "Coloque a matilha para trabalhar",
+      "ctaTitle": "Coloque a equipa para trabalhar",
       "ctaBody": "Crie seu espaço de trabalho e deixe os agentes começarem seu primeiro projeto hoje mesmo.",
       "ctaLink": "Começar"
     },
@@ -2619,7 +2619,7 @@
     "results": {
       "teams": "Equipes crescendo com a Fennex",
       "views": "Visualizações orgânicas geradas",
-      "agents": "Especialistas em IA na sua matilha",
+      "agents": "Especialistas em IA na sua equipa",
       "draft": "Rascunho médio de artigo",
       "quote": "Realmente parece contratar uma pequena agência. A Fennex encontrou as palavras-chave, escreveu os posts, publicou e depois nos disse quais estavam funcionando. Nosso tráfego orgânico triplicou em um trimestre.",
       "author": "Maya Lindqvist",
@@ -2663,7 +2663,7 @@
       }
     },
     "cta": {
-      "title": "Sua matilha está pronta para agir",
+      "title": "Sua equipa está pronta para agir",
       "body": "Comece grátis hoje. Conecte um site, escolha uma palavra-chave e veja sete especialistas em IA transformá-la em conteúdo que ranqueia.",
       "primary": "Começar grátis",
       "signIn": "Entrar",

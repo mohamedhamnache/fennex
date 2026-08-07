@@ -191,7 +191,7 @@ export default function CompanyPage({ params }: { params: { projectId: string } 
           </div>
 
           {view === "team" && (
-            <section className="animate-fade-in">
+            <section className="flex animate-fade-in flex-col gap-5">
               {/* Delegate a goal -- the Orchestrator, made visible */}
                       {employees.length > 0 && (
                 <DelegatePanel projectId={projectId} persona={persona} employees={employees} />
@@ -213,7 +213,7 @@ export default function CompanyPage({ params }: { params: { projectId: string } 
               <div
                 role="tablist"
                 aria-label={t("company.filterLabel")}
-                className="mb-4 flex flex-wrap gap-1.5"
+                className="flex flex-wrap gap-1.5"
               >
                 <FilterChip
                   active={department === null}
