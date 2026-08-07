@@ -2777,7 +2777,11 @@
       "notConnected": "Nao ligado",
       "plannedHint": "Previsto -- sem acao associada",
       "plannedNote": "{{count}} competencia declarada ainda nao esta ligada a uma acao.",
-      "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao."
+      "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao.",
+      "tabs": {
+        "overview": "Resumo",
+        "access": "Acesso"
+      }
     },
     "filterLabel": "Filtrar por departamento",
     "allDepartments": "Todos",

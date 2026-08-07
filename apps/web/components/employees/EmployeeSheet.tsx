@@ -28,6 +28,10 @@ export function EmployeeSheet({
   // down entirely.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const [tab, setTab] = useState<"overview" | "actions" | "capabilities" | "access">("overview");
+  // Reopening on a different employee must start at the top, not wherever the
+  // last one was left.
+  useEffect(() => { setTab("overview"); }, [employee?.id]);
 
   // Escape closes, and the body must not scroll behind the panel.
   useEffect(() => {
@@ -78,8 +82,22 @@ export function EmployeeSheet({
               {employee.name}
             </h2>
             <p className="text-xs font-medium text-primary">{employee.role}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {employee.department} · v{employee.version} · {t(`company.status.${employee.status}`)}
+            <p className="flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted-foreground">
+              {employee.department}
+              <span aria-hidden>·</span>
+              v{employee.version}
+              <span aria-hidden>·</span>
+              {/* Health as a dot beside the status word, not a paragraph buried
+                  below the fold: whether this employee can work at all is the
+                  first thing worth knowing about it. */}
+              <span className={cn(
+                "inline-flex items-center gap-1 font-medium",
+                health && !health.ok ? "text-warning" : "text-success",
+              )}>
+                <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full",
+                  health && !health.ok ? "bg-warning" : "bg-success")} />
+                {t(`company.status.${employee.status}`)}
+              </span>
             </p>
           </div>
           <button
@@ -90,16 +108,57 @@ export function EmployeeSheet({
           >
             <X className="h-4 w-4" />
           </button>
-        </header>
+          </header>
+
+        {/* What this employee IS, in four numbers. A reader deciding whether to
+            delegate here wants scale before prose -- how much it can do, and
+            how much of that is real work rather than a declaration. */}
+        <dl className="grid grid-cols-4 gap-px border-b border-border bg-border">
+          <Stat n={employee.actions.length} label={t("company.sheet.actions")} />
+          <Stat n={employee.capabilities.length} label={t("company.sheet.capabilities")} />
+          <Stat n={employee.allowedTools?.length ?? 0} label={t("company.sheet.tools")} />
+          <Stat n={employee.connectedApps?.length ?? 0} label={t("company.sheet.apps")} />
+        </dl>
+
+        {/* Four views instead of one 300-line scroll. Someone opening this
+            panel has one question -- what can it do, or what can it reach --
+            and had to scroll past everything else to answer either. */}
+        <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-6">
+          {([
+            { key: "overview" as const, label: t("company.sheet.tabs.overview") },
+            { key: "actions" as const, label: t("company.sheet.actions") },
+            { key: "capabilities" as const, label: t("company.sheet.capabilities") },
+            { key: "access" as const, label: t("company.sheet.tabs.access") },
+          ]).map(({ key, label }) => {
+            const on = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                aria-current={on ? "page" : undefined}
+                className={cn(
+                  "relative shrink-0 cursor-pointer px-2.5 py-2.5 text-xs font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  on ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+                {on && <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-primary" />}
+              </button>
+            );
+          })}
+        </div>
 
         <div className="flex flex-col gap-6 px-6 py-6">
+          {tab === "overview" && (<>
           {health && !health.ok && (
             <p className="rounded-xl bg-warning/10 px-3 py-2 text-xs text-warning">
               {health.detail}
             </p>
           )}
 
-          <p className="text-sm leading-relaxed text-muted-foreground">{employee.description}</p>
+          <p className="text-sm leading-relaxed text-foreground">{employee.description}</p>
 
           {employee.personality && (
             <blockquote className="relative rounded-xl border border-border bg-muted/40 p-4 pl-9 text-xs italic leading-relaxed text-muted-foreground">
@@ -121,7 +180,9 @@ export function EmployeeSheet({
             </Section>
           )}
 
-          {/* Actions -- the assignable units of work */}
+          </>)}
+
+          {tab === "actions" && (
           <Section icon={Boxes} title={t("company.sheet.actions")}>
             <div className="flex flex-col gap-2">
               {employee.actions.map((a) => (
@@ -155,7 +216,9 @@ export function EmployeeSheet({
             </div>
           </Section>
 
-          {/* Capabilities, grouped by domain */}
+          )}
+
+          {tab === "capabilities" && (
           <Section icon={Brain} title={t("company.sheet.capabilities")}>
             <div className="flex flex-col gap-3">
               {Object.entries(byDomain).map(([domain, slugs]) => (
@@ -180,7 +243,9 @@ export function EmployeeSheet({
               </p>
             )}
           </Section>
+          )}
 
+          {tab === "access" && (<>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {employee.allowedTools.length > 0 && (
               <Section icon={Wrench} title={t("company.sheet.tools")}>
@@ -241,6 +306,7 @@ export function EmployeeSheet({
               </Row>
             </dl>
           </Section>
+          </>)}
         </div>
       </aside>
     </div>,
@@ -295,4 +361,15 @@ function groupByDomain(slugs: string[]): Record<string, string[]> {
     (acc[domain] ??= []).push(slug);
     return acc;
   }, {});
+}
+
+/** One number from the employee's own declaration. Reads as scale at a glance;
+ *  the tabs below carry the detail. */
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center bg-card px-2 py-3">
+      <dt className="order-2 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="order-1 font-display text-lg font-bold tabular-nums text-foreground">{n}</dd>
+    </div>
+  );
 }

@@ -2777,7 +2777,11 @@
       "notConnected": "No conectado",
       "plannedHint": "Previsto -- sin accion asociada",
       "plannedNote": "{{count}} habilidad declarada aun no esta ligada a una accion.",
-      "plannedNote_plural": "{{count}} habilidades declaradas aun no estan ligadas a una accion."
+      "plannedNote_plural": "{{count}} habilidades declaradas aun no estan ligadas a una accion.",
+      "tabs": {
+        "overview": "Resumen",
+        "access": "Acceso"
+      }
     },
     "filterLabel": "Filtrar por departamento",
     "allDepartments": "Todos",

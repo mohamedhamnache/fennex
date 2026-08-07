@@ -2777,7 +2777,11 @@
       "notConnected": "Nicht verbunden",
       "plannedHint": "Geplant -- keine Aktion hinterlegt",
       "plannedNote": "{{count}} Faehigkeit ist deklariert, aber noch keiner Aktion zugeordnet.",
-      "plannedNote_plural": "{{count}} Faehigkeiten sind deklariert, aber noch keiner Aktion zugeordnet."
+      "plannedNote_plural": "{{count}} Faehigkeiten sind deklariert, aber noch keiner Aktion zugeordnet.",
+      "tabs": {
+        "overview": "Überblick",
+        "access": "Zugriff"
+      }
     },
     "filterLabel": "Nach Abteilung filtern",
     "allDepartments": "Alle",

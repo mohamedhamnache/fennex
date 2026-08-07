@@ -2777,7 +2777,11 @@
       "notConnected": "Non connecte",
       "plannedHint": "Prevu -- aucune action associee",
       "plannedNote": "{{count}} competence declaree n'est pas encore reliee a une action.",
-      "plannedNote_plural": "{{count}} competences declarees ne sont pas encore reliees a une action."
+      "plannedNote_plural": "{{count}} competences declarees ne sont pas encore reliees a une action.",
+      "tabs": {
+        "overview": "Aperçu",
+        "access": "Accès"
+      }
     },
     "filterLabel": "Filtrer par departement",
     "allDepartments": "Tous",

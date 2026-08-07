@@ -2850,7 +2850,11 @@
       "notConnected": "Not connected",
       "plannedHint": "Planned -- no action bound yet",
       "plannedNote": "{{count}} skill is declared but not yet wired to an action.",
-      "plannedNote_plural": "{{count}} skills are declared but not yet wired to an action."
+      "plannedNote_plural": "{{count}} skills are declared but not yet wired to an action.",
+      "tabs": {
+        "overview": "Overview",
+        "access": "Access"
+      }
     },
     "filterLabel": "Filter by department",
     "allDepartments": "All",

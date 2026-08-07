@@ -2796,7 +2796,11 @@
       "notConnected": "غير متصل",
       "plannedHint": "مخطط -- لا يوجد إجراء مرتبط",
       "plannedNote": "{{count}} مهارة معلنة لم تُربط بعد بإجراء.",
-      "plannedNote_plural": "{{count}} مهارات معلنة لم تُربط بعد بإجراء."
+      "plannedNote_plural": "{{count}} مهارات معلنة لم تُربط بعد بإجراء.",
+      "tabs": {
+        "overview": "نظرة عامة",
+        "access": "الوصول"
+      }
     },
     "filterLabel": "تصفية حسب القسم",
     "allDepartments": "الكل",
