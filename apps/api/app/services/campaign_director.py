@@ -45,6 +45,23 @@ def _catalog_text() -> str:
     return "\n".join(lines)
 
 
+def _resolve_action(name: str) -> str | None:
+    """Match a proposed action to a catalogue key, prefix or not.
+
+    The model names steps by their bare verb -- "store_audit" rather than
+    "souk.store_audit" -- and an exact match dropped every one of them, which
+    produced a plan of zero steps and a silent fall back to the persona flow.
+    The intent is unambiguous when the suffix is unique, so it is honoured;
+    when two agents share a verb it is refused rather than guessed, because
+    picking the wrong agent silently is worse than rejecting the step.
+    """
+    name = (name or "").strip()
+    if name in ACTIONS:
+        return name
+    matches = [k for k in ACTIONS if k.rsplit(".", 1)[-1] == name]
+    return matches[0] if len(matches) == 1 else None
+
+
 def _flow_for(persona: str) -> list[str]:
     return [k for k in _PERSONA_FLOWS.get(persona, _DEFAULT_FLOW) if k in ACTIONS]
 
@@ -136,8 +153,11 @@ async def draft_plan(project_id, org_id, goal: str, persona: str, db,
     steps = []
     seen = set()
     for s in steps_in:
-        action = str(s.get("action", ""))
-        if action not in ACTIONS:
+        action = _resolve_action(str(s.get("action", "")))
+        if action is None:
+            # Silently dropping these is how a plan became "steps=0" with nothing
+            # saying which names were refused.
+            logger.warning("campaign director proposed unknown action %r", s.get("action"))
             continue
         adef = ACTIONS[action]
         brief_in = s.get("brief") or {}
@@ -148,8 +168,11 @@ async def draft_plan(project_id, org_id, goal: str, persona: str, db,
             break
 
     # Guard against a thin plan: ensure the campaign both creates and distributes.
-    has_create = any(a in seen for a in ("dune.write_article", "sirocco.generate_visual"))
-    has_distribute = any(a in seen for a in ("sirocco.multi_network_social", "nomad.social_posts"))
+    has_create = any(a in seen for a in (
+        "dune.write_article", "sirocco.generate_visual", "dune.email_sequence",
+        "souk.product_descriptions"))
+    has_distribute = any(a in seen for a in (
+        "sirocco.multi_network_social", "nomad.social_posts", "dune.email_sequence"))
     if not steps or not has_create or not has_distribute:
         logger.warning("campaign director plan rejected (steps=%d create=%s distribute=%s); "
                        "using the %s fallback flow", len(steps), has_create, has_distribute,

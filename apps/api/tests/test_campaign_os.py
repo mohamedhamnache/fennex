@@ -232,3 +232,51 @@ def test_template_timelines_are_relative_to_launch():
         for offset, title, _owner in t.timeline:
             assert isinstance(offset, int)
             assert title
+
+
+# ── the playbook ──────────────────────────────────────────────────────────────
+
+def test_bare_action_names_resolve_to_catalogue_keys():
+    """The planner names steps by their verb, not by agent.verb.
+
+    An exact-match dropped every step it proposed, which produced a plan of zero
+    steps and a silent fall back to the persona's hardcoded flow -- so three
+    different campaigns returned byte-identical playbooks and nothing said why.
+    """
+    from app.services.campaign_director import _resolve_action
+
+    assert _resolve_action("store_audit") == "souk.store_audit"
+    assert _resolve_action("souk.store_audit") == "souk.store_audit"
+    assert _resolve_action("email_sequence") == "dune.email_sequence"
+    assert _resolve_action("not_a_real_action") is None
+    assert _resolve_action("") is None
+
+
+def test_ambiguous_action_suffix_is_refused_not_guessed():
+    """Two agents sharing a verb must not be resolved by luck.
+
+    Picking the wrong agent silently is worse than rejecting the step: the
+    campaign runs, produces the wrong artifact, and nothing in the plan says so.
+    """
+    from app.services import campaign_director
+    from app.services.campaign_catalog import ActionDef
+
+    real = campaign_director.ACTIONS
+    fake = dict(real)
+    fake["dune.audit"] = ActionDef("dune.audit", "dune", "x", "x", {}, lambda: None)
+    fake["souk.audit"] = ActionDef("souk.audit", "souk", "x", "x", {}, lambda: None)
+    campaign_director.ACTIONS = fake
+    try:
+        assert campaign_director._resolve_action("audit") is None
+    finally:
+        campaign_director.ACTIONS = real
+
+
+def test_every_catalogue_action_has_an_executor():
+    """A registered action with no callable executor fails only at run time,
+    halfway through a campaign the merchant is watching."""
+    from app.services.campaign_catalog import ACTIONS
+
+    for key, action in ACTIONS.items():
+        assert callable(action.executor), f"{key} has no executor"
+        assert action.agent, f"{key} has no agent"

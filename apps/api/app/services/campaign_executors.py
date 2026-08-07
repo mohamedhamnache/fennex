@@ -287,3 +287,151 @@ async def exec_souk_store_audit(campaign, step, context: CampaignContext, db) ->
                       structured={"measured": measured, "blind": blind,
                                   "observations": ctx.get("observations") or [],
                                   "revenue_by": ctx.get("revenue_by") or {}})
+
+
+# ── ecommerce actions ─────────────────────────────────────────────────────────
+#
+# The catalogue was nine generic content actions, so an ecommerce playbook was a
+# blog playbook with a different label -- and every campaign of that persona
+# produced the same five steps because there was nothing else to choose. These
+# are the work an ecommerce campaign actually does.
+#
+# All three run on the cheap band through the cascade, and all three refuse to
+# invent: an offer is designed from measured figures or declared un-grounded, a
+# product description is written from the product row or not at all.
+
+async def _cheap_json(campaign, db, *, feature: str, system: str, user: str,
+                      required: tuple[str, ...]) -> dict:
+    """One cheap, metered, structurally validated generation."""
+    from app.services.agents.cascade import call_with_cascade, validators
+
+    keys = await get_org_llm_keys(campaign.org_id, db)
+    if not keys:
+        raise RuntimeError("No AI key configured.")
+    raw = await call_with_cascade(
+        keys=keys, feature=feature, system_prompt=system, user_prompt=user,
+        tier="balanced", weight="light",
+        locale=await project_locale(campaign.project_id, db),
+        validate=validators.json_object(required),
+        meter={"db": db, "org_id": campaign.org_id, "project_id": campaign.project_id,
+               "feature": feature},
+    )
+    return json.loads(re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", raw or ""))
+
+
+async def exec_souk_offer_design(campaign, step, context: CampaignContext, db) -> StepResult:
+    """Design the offer from what the store's orders show.
+
+    An offer is a margin decision, so it is built on AOV and revenue that were
+    actually measured -- and when nothing was measured it says so instead of
+    proposing a discount against an imagined baseline.
+    """
+    from app.services import store_agent_context
+
+    ctx = await store_agent_context.build(campaign.project_id, campaign.org_id, db)
+    measured = ctx.get("measured") or {}
+    grounded = bool(measured)
+
+    facts = "\n".join(
+        f"  {k}: {v.get('value') if isinstance(v, dict) else v}" for k, v in measured.items()
+    ) or "  Nothing. No orders are synced, so there is no baseline."
+
+    data = await _cheap_json(
+        campaign, db, feature="campaign_content", required=("offers",),
+        system=("You design ecommerce offers. An offer is a margin decision: never "
+                "propose a discount depth without saying what it costs, and never "
+                "state a figure you were not given. If no figures were given, say the "
+                "recommendation is un-grounded and keep it conservative.\n"
+                'Respond with ONLY JSON: {"offers": [{"type": "discount|bundle|'
+                'free_shipping|gift", "value": "...", "description": "...", '
+                '"why": "...", "risk": "what it costs you"}], "recommended": 0}'),
+        user=f"CAMPAIGN GOAL: {campaign.goal}\nOBJECTIVE: {campaign.objective or 'not set'}\n"
+             f"WHAT THE STORE MEASURED:\n{facts}")
+
+    offers = [o for o in (data.get("offers") or []) if isinstance(o, dict)][:3]
+    if not offers:
+        raise RuntimeError("No usable offer was produced.")
+    pick = offers[min(int(data.get("recommended") or 0), len(offers) - 1)]
+    lines = [f"Recommended: {pick.get('value', '')} — {pick.get('description', '')}",
+             f"Why: {pick.get('why', '')}", f"Costs you: {pick.get('risk', '')}"]
+    if not grounded:
+        lines.append("Un-grounded: no orders are synced, so this rests on no baseline.")
+    return StepResult(summary="\n".join(lines)[:900], artifact_type="report",
+                      structured={"offers": offers, "recommended": pick, "grounded": grounded})
+
+
+async def exec_souk_product_descriptions(campaign, step, context: CampaignContext, db) -> StepResult:
+    """Rewrite the campaign's products, from the product rows and nothing else."""
+    from app.models.store_product import StoreProduct
+
+    stmt = select(StoreProduct).where(
+        StoreProduct.project_id == campaign.project_id,
+        StoreProduct.org_id == campaign.org_id)
+    if campaign.product_ids:
+        stmt = stmt.where(StoreProduct.external_id.in_([str(x) for x in campaign.product_ids]))
+    products = list((await db.execute(stmt.limit(6))).scalars().all())
+    if not products:
+        # Not an error: a store with nothing synced has nothing to rewrite, and
+        # inventing a product is the one thing this must never do.
+        return StepResult(
+            summary="No products are synced for this store, so there is nothing to "
+                    "rewrite. Connect the store or run a product sync first.",
+            artifact_type="report", structured={"products": []})
+
+    listing = "\n".join(
+        f"- [{p.external_id}] {p.title}" + (f" ({p.price})" if p.price else "")
+        + (f": {(p.description or '')[:180]}" if p.description else "")
+        for p in products)
+
+    data = await _cheap_json(
+        campaign, db, feature="campaign_content", required=("products",),
+        system=("You rewrite ecommerce product descriptions. Use ONLY the facts in "
+                "each product's existing title, price and description. Never invent an "
+                "ingredient, a material, a certification, a review or a claim about "
+                "results.\n"
+                'Respond with ONLY JSON: {"products": [{"id": "...", "title": "...", '
+                '"description": "..."}]}'),
+        user=f"BRAND GOAL: {campaign.goal}\n\nPRODUCTS:\n{listing}")
+
+    rows = [r for r in (data.get("products") or []) if isinstance(r, dict)]
+    known = {p.external_id for p in products}
+    rows = [r for r in rows if str(r.get("id")) in known]   # no invented products
+    if not rows:
+        raise RuntimeError("No usable product copy was produced.")
+    return StepResult(
+        summary=f"Rewrote {len(rows)} product description(s): "
+                + ", ".join(str(r.get("title", ""))[:40] for r in rows[:4]),
+        artifact_type="report", structured={"products": rows})
+
+
+async def exec_dune_email_sequence(campaign, step, context: CampaignContext, db) -> StepResult:
+    """A three-email sequence built on the campaign's own offer.
+
+    Announce, remind, last call. The offer is passed as a fact the copy may not
+    restate in its own terms -- the same rule the content studio runs on, so an
+    email and an Instagram caption cannot disagree about the deal.
+    """
+    offer = campaign.offer or {}
+    offer_line = (f"{offer.get('value', '')} — {offer.get('description', '')}".strip()
+                  if offer.get("type") and offer["type"] != "none"
+                  else "No offer. Do not invent a discount, a deadline or free shipping.")
+
+    data = await _cheap_json(
+        campaign, db, feature="campaign_content", required=("emails",),
+        system=("You write ecommerce email sequences. Three emails: an announcement, "
+                "a reminder for people who did not open, and a last call. State the "
+                "offer exactly as given and never reword its terms. Never invent "
+                "scarcity, a customer count or a testimonial.\n"
+                'Respond with ONLY JSON: {"emails": [{"role": "announce|remind|'
+                'last_call", "subject": "...", "preview": "...", "body": "...", '
+                '"cta": "..."}]}'),
+        user=f"CAMPAIGN: {campaign.name or campaign.goal[:80]}\n"
+             f"GOAL: {campaign.goal}\nOFFER: {offer_line}\n"
+             f"AUDIENCE: {(campaign.audience or {}).get('label', 'not defined')}")
+
+    emails = [e for e in (data.get("emails") or []) if isinstance(e, dict)][:3]
+    if not emails:
+        raise RuntimeError("No usable email sequence was produced.")
+    return StepResult(
+        summary="Email sequence: " + " / ".join(str(e.get("subject", ""))[:44] for e in emails),
+        artifact_type="social", structured={"emails": emails})

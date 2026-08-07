@@ -59,6 +59,20 @@ def _build_actions() -> dict[str, ActionDef]:
                   "what is not, and what cannot be seen. Best as the FIRST step of an "
                   "ecommerce campaign -- everything after it is grounded in the result.",
                   {}, ex.exec_souk_store_audit),
+        ActionDef("souk.offer_design", "souk", "Design the offer",
+                  "Work out what to offer -- discount, bundle, free shipping or gift -- "
+                  "from the store's measured AOV and revenue, with what each one costs. "
+                  "Use when the campaign needs an offer and none is set.",
+                  {}, ex.exec_souk_offer_design),
+        ActionDef("souk.product_descriptions", "souk", "Rewrite product descriptions",
+                  "Rewrite the campaign's product descriptions from the real product "
+                  "rows. Use for a launch, a collection push or a clearance where the "
+                  "listings themselves are the conversion surface.",
+                  {}, ex.exec_souk_product_descriptions),
+        ActionDef("dune.email_sequence", "dune", "Write the email sequence",
+                  "Write announce / remind / last-call emails around the campaign's "
+                  "offer. Use whenever the campaign runs on email.",
+                  {}, ex.exec_dune_email_sequence),
         ActionDef("oasis.define_icp", "oasis", "Define ideal client profile",
                   "Define 2-4 ideal client segments (pains, channels, angle) to target the campaign — best as an "
                   "early step for freelancer/company goals.",
