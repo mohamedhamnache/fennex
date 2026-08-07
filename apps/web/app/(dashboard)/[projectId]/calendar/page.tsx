@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   ChevronLeft, ChevronRight, CalendarDays, Plus, FileText, Share2,
   Image as ImageIcon, LayoutGrid, List, Clock, CalendarClock, CheckCircle2,
-  CircleDashed, GripVertical, type LucideIcon,
+  CircleDashed, GripVertical, Megaphone, type LucideIcon,
 } from "lucide-react";
 import {
   listCalendar, updateCalendarEntry,
@@ -22,6 +22,9 @@ const TYPE_META: Record<CalendarContentType, { Icon: LucideIcon; chip: string; s
   article: { Icon: FileText, chip: "border-primary/25 bg-primary/12 text-primary", solid: "bg-primary" },
   social: { Icon: Share2, chip: "border-sky-500/25 bg-sky-500/12 text-sky-500", solid: "bg-sky-500" },
   banner: { Icon: ImageIcon, chip: "border-violet-500/25 bg-violet-500/12 text-violet-500", solid: "bg-violet-500" },
+  // A campaign step, mirrored from its timeline. Deliberately the quietest of
+  // the four: it is context for the week, not a thing to publish.
+  campaign_task: { Icon: Megaphone, chip: "border-border bg-muted text-muted-foreground", solid: "bg-muted-foreground/50" },
 };
 
 const STATE_DOT: Record<CalendarState, string> = {
@@ -156,7 +159,7 @@ export default function CalendarPage({ params }: { params: { projectId: string }
 
   // ── Entry chip (shared by month + agenda) ──
   function EntryChip({ entry, compact }: { entry: CalendarEntry; compact?: boolean }) {
-    const meta = TYPE_META[entry.content_type];
+    const meta = TYPE_META[entry.content_type] ?? TYPE_META.article;
     return (
       <div
         draggable
@@ -257,7 +260,7 @@ export default function CalendarPage({ params }: { params: { projectId: string }
             {t("calendar.allTypes")}
           </button>
           {TYPES.map((tp) => {
-            const meta = TYPE_META[tp];
+            const meta = TYPE_META[tp] ?? TYPE_META.article;
             const active = typeFilter === tp;
             return (
               <button
@@ -383,7 +386,7 @@ export default function CalendarPage({ params }: { params: { projectId: string }
                       <span className="h-px flex-1 bg-border" />
                     </div>
                     {items.map((e) => {
-                      const meta = TYPE_META[e.content_type];
+                      const meta = TYPE_META[e.content_type] ?? TYPE_META.article;
                       return (
                         <button
                           key={e.id}

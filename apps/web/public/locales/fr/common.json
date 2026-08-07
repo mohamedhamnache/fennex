@@ -1563,7 +1563,8 @@
       "pieces": "Éléments produits",
       "selected": "{{n}} retenus",
       "agentSteps": "Étapes agents terminées",
-      "artifacts": "Livrables"
+      "artifacts": "Livrables",
+      "piecesShort": "éléments"
     },
     "measuredBy": {
       "revenue": "Mesurée par les commandes dont l'URL d'arrivée portait le tag de la campagne.",
@@ -3037,7 +3038,10 @@
     "dragHint": "Glissez une entrée vers un autre jour pour la reprogrammer.",
     "rescheduled": "Reprogrammé",
     "scheduledCount": "{{count}} planifié(s)",
-    "noPast": "Choisissez une date à venir."
+    "noPast": "Choisissez une date à venir.",
+    "type": {
+      "campaign_task": "Étape de campagne"
+    }
   },
   "company": {
     "title": "Votre entreprise IA",

@@ -13,7 +13,7 @@ import {
 } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import { statusBadgeClass, STATUS_ORDER } from "@/lib/campaignStatus";
+import { STATUS_ORDER, STATUS_RAIL, statusBadgeClass } from "@/lib/campaignStatus";
 import { Metric, Section, Unavailable, money } from "@/components/campaigns/CampaignPrimitives";
 import { CreateCampaign } from "@/components/campaigns/CreateCampaign";
 
@@ -224,16 +224,16 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
           </div>
 
           {isLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 3 }, (_, i) => (
-                <div key={i} className="h-36 animate-pulse rounded-xl border border-border bg-muted/30" />
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="h-[74px] animate-pulse rounded-xl border border-border bg-muted/30" />
               ))}
             </div>
           ) : !shown.length ? (
             <EmptyState onCreate={() => setCreating(true)} hasAny={(overview?.total ?? 0) > 0}
                         sells={sells} />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="flex flex-col gap-2">
               {shown.map((c) => <CampaignCard key={c.id} campaign={c} projectId={projectId} sells={sells} />)}
             </div>
           )}
@@ -273,73 +273,87 @@ function CampaignCard({ campaign: c, projectId, sells }: {
   const { t } = useTranslation();
   const revenue = c.performance?.revenue ?? 0;
   const orders = c.performance?.orders ?? 0;
+  const live = c.status === "running" || c.status === "scheduled";
 
   return (
-    <Link href={`/${projectId}/campaigns/${c.id}`}
-          className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-      <Card className="flex h-full flex-col gap-3 p-4 transition-colors group-hover:border-foreground/15">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{c.name}</p>
+    <Link
+      href={`/${projectId}/campaigns/${c.id}`}
+      className="group flex items-stretch gap-0 overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {/* A status rail rather than a badge in the corner: state is the thing you
+          scan a list for, and colour down the edge reads at a glance without
+          spending a word. */}
+      <span aria-hidden className={cn("w-1 shrink-0", STATUS_RAIL[c.status] ?? "bg-border")} />
+
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 p-3.5">
+        <div className="min-w-[180px] flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">{c.name}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+            <span className={cn("font-medium", live && "text-primary")}>
+              {t(`campaigns.status.${c.status}`, { defaultValue: c.status })}
+            </span>
             {c.objective && (
-              <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <>
+                <span aria-hidden>·</span>
                 {t(`campaigns.objective.${c.objective}`, { defaultValue: c.objective })}
-              </p>
+              </>
             )}
-          </div>
-          <span className={statusBadgeClass(c.status)}>
-            {t(`campaigns.status.${c.status}`, { defaultValue: c.status })}
-          </span>
-        </div>
-
-        {c.brief_summary && (
-          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-            {c.brief_summary}
+            {c.starts_on && (<><span aria-hidden>·</span>{c.starts_on}</>)}
           </p>
-        )}
+        </div>
 
-        <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
-          <div>
-            {sells ? (
-              <>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {t("campaigns.kpi.attributed", { defaultValue: "Attributed" })}
-                </p>
-                <p className="text-sm font-semibold tabular-nums text-foreground">
-                  {money(revenue, c.budget.currency ?? "EUR")}
-                  <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                    {t("campaigns.ordersCount", { defaultValue: "{{n}} orders", n: orders })}
-                  </span>
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {t("campaigns.kpi.team", { defaultValue: "Team" })}
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  {c.team?.length
-                    ? c.team.map((m) => m.name).slice(0, 3).join(", ")
-                    : t("campaigns.kpi.noTeam", { defaultValue: "Not assigned yet" })}
-                </p>
-              </>
+        {/* Who is doing it. On a list of campaigns this is the question the
+            feature is about, so it sits in the row rather than one level in. */}
+        {c.team?.length ? (
+          <div className="hidden min-w-[120px] shrink-0 flex-col gap-0.5 sm:flex">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t("campaigns.kpi.team", { defaultValue: "Team" })}
+            </span>
+            <span className="truncate text-[11px] text-foreground">
+              {c.team.map((m) => m.name).slice(0, 2).join(", ")}
+              {c.team.length > 2 && ` +${c.team.length - 2}`}
+            </span>
+          </div>
+        ) : null}
+
+        {c.channels?.length ? (
+          <div className="hidden shrink-0 flex-wrap gap-1 md:flex">
+            {c.channels.slice(0, 3).map((ch) => (
+              <span key={ch.id}
+                    className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                {t(`campaigns.channel.${ch.channel}`, { defaultValue: ch.channel })}
+              </span>
+            ))}
+            {c.channels.length > 3 && (
+              <span className="self-center text-[10px] text-muted-foreground">
+                +{c.channels.length - 3}
+              </span>
             )}
           </div>
-          {c.channels?.length ? (
-            <div className="flex flex-wrap justify-end gap-1">
-              {c.channels.slice(0, 3).map((ch) => (
-                <span key={ch.id}
-                      className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {t(`campaigns.channel.${ch.channel}`, { defaultValue: ch.channel })}
-                </span>
-              ))}
-              {c.channels.length > 3 && (
-                <span className="text-[10px] text-muted-foreground">+{c.channels.length - 3}</span>
-              )}
-            </div>
-          ) : null}
+        ) : null}
+
+        <div className="shrink-0 text-right">
+          {sells ? (
+            <>
+              <p className="text-sm font-semibold tabular-nums text-foreground">
+                {money(revenue, c.budget.currency ?? "EUR")}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("campaigns.ordersCount", { defaultValue: "{{n}} orders", n: orders })}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold tabular-nums text-foreground">
+                {c.team?.reduce((n, m) => n + m.produced, 0) ?? 0}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("campaigns.work.piecesShort", { defaultValue: "pieces" })}
+              </p>
+            </>
+          )}
         </div>
-      </Card>
+      </div>
     </Link>
   );
 }

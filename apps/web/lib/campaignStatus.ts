@@ -43,3 +43,25 @@ export const STATUS_ORDER: CampaignStatus[] = [
   "running", "scheduled", "ready", "planning", "draft",
   "paused", "completed", "failed", "archived",
 ];
+
+/**
+ * The colour of a campaign's status rail.
+ *
+ * A four-pixel stripe down the edge of a row, rather than a badge in the
+ * corner: state is what a person scans a list for, and colour at the edge is
+ * read before any word in the row. Deliberately quiet for everything that is
+ * not live or broken — a list of drafts should not look like a list of alarms.
+ */
+export const STATUS_RAIL: Record<CampaignStatus, string> = {
+  draft: "bg-border",
+  planning: "bg-border",
+  ready: "bg-foreground/25",
+  scheduled: "bg-primary/50",
+  running: "bg-primary",
+  paused: "bg-warning",
+  completed: "bg-success",
+  archived: "bg-border",
+  failed: "bg-destructive",
+  planned: "bg-border",
+  cancelled: "bg-border",
+};

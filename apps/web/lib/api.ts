@@ -2364,7 +2364,10 @@ export async function decomposeImage(
 
 // ── Unified Content Calendar ──────────────────────────────────────────────────
 
-export type CalendarContentType = "article" | "social" | "banner";
+/** A calendar entry's kind. `campaign_task` is a step mirrored from a campaign
+ *  timeline -- it appears alongside content but can never be published, because
+ *  "produce the creative" is a plan, not a payload. */
+export type CalendarContentType = "article" | "social" | "banner" | "campaign_task";
 export type CalendarState = "planned" | "scheduled" | "publishing" | "published" | "failed";
 
 export interface CalendarEntry {

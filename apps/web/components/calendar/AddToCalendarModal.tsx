@@ -21,7 +21,17 @@ interface AddToCalendarModalProps {
   onClose: () => void;
 }
 
-const TYPE_ICON: Record<CalendarContentType, React.ElementType> = {
+// Only the types a person can ADD from here. A campaign step arrives by being
+// mirrored from its campaign's timeline and has nothing to attach, so offering
+// it in this picker would be offering an action that cannot complete.
+// Only the types a person can ADD from here. A campaign step arrives by being
+// mirrored from its campaign's timeline and has nothing to attach, so offering
+// it in this picker would be offering an action that cannot complete.
+type AddableType = Extract<CalendarContentType, "article" | "social" | "banner">;
+
+const ADDABLE: AddableType[] = ["article", "social", "banner"];
+
+const TYPE_ICON: Record<AddableType, React.ElementType> = {
   article: FileText,
   social: Share2,
   banner: ImageIcon,
@@ -156,7 +166,7 @@ export function AddToCalendarModal({ projectId, defaultDate, onClose }: AddToCal
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div className="grid grid-cols-3 gap-2">
-            {(["article", "social", "banner"] as CalendarContentType[]).map((type) => {
+            {ADDABLE.map((type) => {
               const Icon = TYPE_ICON[type];
               return (
                 <button
