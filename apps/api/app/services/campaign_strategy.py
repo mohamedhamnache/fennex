@@ -63,7 +63,7 @@ async def _products(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession,
         StoreProduct.project_id == project_id, StoreProduct.org_id == org_id
     ).limit(limit))).scalars().all()
     return [{"id": p.external_id, "title": p.title, "price": p.price,
-             "type": p.product_type, "status": p.status} for p in rows]
+             "handle": p.handle, "status": p.status} for p in rows]
 
 
 async def _learnings(project_id: uuid.UUID, db: AsyncSession, limit: int = 12) -> list[str]:
@@ -238,6 +238,10 @@ Respond with ONLY a JSON object:
 
 async def draft(project_id: uuid.UUID, org_id: uuid.UUID, goal: str,
                 objective: str, db: AsyncSession, *, hint: dict | None = None) -> dict:
+    # `hint` carries constraints the merchant already set -- budget, dates,
+    # products. A strategy that ignores them proposes a plan against a budget
+    # the campaign does not have, and the assumptions block then explains a
+    # figure that appears nowhere on screen.
     """Design a campaign from the store's own numbers.
 
     Raises ValueError when no AI key is configured -- the caller turns that into
@@ -253,9 +257,10 @@ async def draft(project_id: uuid.UUID, org_id: uuid.UUID, goal: str,
     user = (f"OBJECTIVE: {objective} — {brief}\n"
             f"WHAT THE MERCHANT ASKED FOR: {goal}\n")
     if hint:
-        extras = "\n".join(f"{k}: {v}" for k, v in hint.items() if v)
+        extras = "\n".join(f"  {k}: {v}" for k, v in hint.items() if v)
         if extras:
-            user += f"CONSTRAINTS THEY GAVE:\n{extras}\n"
+            user += ("CONSTRAINTS THEY ALREADY SET. Plan within these -- do not "
+                     f"propose a different budget or different dates:\n{extras}\n")
     user += "\n" + _context_prompt(ctx)
 
     raw = await call_with_cascade(
@@ -310,6 +315,13 @@ def _sanitise(plan: dict, ctx: dict) -> dict:
                          "owner": str(t.get("owner") or "")[:30],
                          "channel": str(t.get("channel") or "")[:30],
                          "detail": str(t.get("detail") or "")[:600]})
+    if len(timeline) < 3:
+        from app.services.campaign_templates import _LAUNCH_TIMELINE
+        have = {t["title"].lower() for t in timeline}
+        for offset, title, owner in _LAUNCH_TIMELINE:
+            if title.lower() not in have:
+                timeline.append({"day_offset": offset, "title": title,
+                                 "owner": owner, "channel": "", "detail": ""})
     plan["timeline"] = sorted(timeline, key=lambda x: x["day_offset"])
 
     # The blanks the model was told about, echoed back so the UI can show what
