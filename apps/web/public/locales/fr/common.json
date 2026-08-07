@@ -1426,20 +1426,31 @@
       "notConnected": "non connecté",
       "via": "Publie via {{app}}",
       "manualHint": "Fennex l'écrit, vous l'envoyez",
-      "connectHint": "Le contenu est préparé. Connectez {{apps}} pour publier automatiquement."
+      "connectHint": "Le contenu est préparé. Connectez {{apps}} pour publier automatiquement.",
+      "ownedBy": "{{name}} le rédige",
+      "assign": "Affecter un agent"
     },
     "content": {
       "write": "Rédiger le contenu",
       "more": "Rédiger plus",
-      "refine": "Affiner"
+      "refine": "Affiner",
+      "count": "{{n}} éléments",
+      "none": "Rien de rédigé",
+      "emptyKind": "Rien de rédigé pour ceci.",
+      "writeMissing": "Rédiger les {{n}} manquants",
+      "askOwner": "Demander à {{name}} de le rédiger",
+      "choose": "Choisir celui-ci",
+      "chosen": "Retenu"
     },
     "timeline": {
       "title": "Calendrier",
-      "subtitle": "Des jours relatifs au lancement : le plan tient quelle que soit la date.",
+      "subtitle": "Des jours relatifs au lancement : le plan tient quelle que soit la date. Glissez une étape pour la déplacer.",
       "launch": "Lancement",
       "addPlaceholder": "Ajouter une étape",
       "day": "Jour",
-      "move": "Déplacer l'étape"
+      "move": "Déplacer l'étape",
+      "earlier": "Plus tôt",
+      "later": "Plus tard"
     },
     "launch": {
       "title": "Avant de lancer",
@@ -1500,7 +1511,9 @@
     "agents": {
       "title": "Playbook des agents",
       "subtitle": "Les étapes que vos agents exécutent pour produire le travail de cette campagne.",
-      "run": "Lancer le playbook"
+      "run": "Lancer le playbook",
+      "build": "Construire le playbook",
+      "emptyBody": "Pas encore de playbook. Le brief dit quoi produire et qui en est responsable ; le playbook est la séquence que vos agents exécutent pour le produire réellement — recherche, angle, rédaction, visuel, diffusion."
     },
     "calendar": {
       "title": "Programmé",

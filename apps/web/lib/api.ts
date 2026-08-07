@@ -2806,6 +2806,10 @@ export async function addCampaignChannel(id: string, channel: string,
                                          extra: Record<string, unknown> = {}): Promise<CampaignChannelRow> {
   return apiClient.post<CampaignChannelRow>(`/campaigns/${id}/channels`, { channel, ...extra });
 }
+export async function patchCampaignChannel(id: string, channelId: string,
+                                           body: Record<string, unknown>): Promise<CampaignChannelRow> {
+  return apiClient.patch<CampaignChannelRow>(`/campaigns/${id}/channels/${channelId}`, body);
+}
 export async function removeCampaignChannel(id: string, channelId: string): Promise<void> {
   return apiClient.delete<void>(`/campaigns/${id}/channels/${channelId}`);
 }

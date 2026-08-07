@@ -24,11 +24,10 @@ from app.core.dependencies import CurrentUser, DB
 from app.models.campaign import (Campaign, CampaignApproval, CampaignAsset,
                                  CampaignChannel, CampaignExperiment, CampaignLearning,
                                  CampaignStep, CampaignTask)
-from app.services import (campaign_analyst, campaign_audience, campaign_channels,
-                          campaign_content, campaign_metrics, campaign_readiness,
-                          campaign_personas, campaign_strategy, campaign_team,
-                          campaign_templates,
-                          campaign_tracking)
+from app.services import (campaign_analyst, campaign_audience, campaign_calendar_sync,
+                          campaign_channels, campaign_content, campaign_metrics,
+                          campaign_personas, campaign_readiness, campaign_strategy,
+                          campaign_team, campaign_templates, campaign_tracking)
 from app.services.campaign_director import draft_plan
 
 router = APIRouter()
@@ -555,6 +554,11 @@ async def patch_campaign(campaign_id: uuid.UUID, body: CampaignPatch,
     data = body.model_dump(exclude_unset=True)
     for field, value in data.items():
         setattr(c, field, value)
+    if "starts_on" in data:
+        # The whole timeline is relative to the start, so moving it moves every
+        # mirrored entry rather than leaving them at the old dates.
+        await db.flush()
+        await campaign_calendar_sync.sync_quietly(c.id, db)
     # The slug is deliberately not patchable. See campaign_tracking's docstring:
     # changing it after launch does not move the attributed revenue, it removes
     # it from both the old tag and the new.
@@ -703,6 +707,8 @@ async def add_task(campaign_id: uuid.UUID, body: TaskBody,
     row = CampaignTask(campaign_id=c.id, title=body.title, day_offset=body.day_offset,
                        detail=body.detail, owner=body.owner, channel=body.channel)
     db.add(row)
+    await db.flush()
+    await campaign_calendar_sync.sync_quietly(c.id, db)
     await db.commit()
     return _task(row)
 
@@ -714,6 +720,8 @@ async def patch_task(campaign_id: uuid.UUID, task_id: uuid.UUID, body: TaskBody,
     row = await _child(CampaignTask, task_id, c, db)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(row, field, value)
+    await db.flush()
+    await campaign_calendar_sync.sync_quietly(c.id, db)
     await db.commit()
     return _task(row)
 
@@ -723,6 +731,8 @@ async def delete_task(campaign_id: uuid.UUID, task_id: uuid.UUID,
                       current_user: CurrentUser, db: DB):
     c = await _load(campaign_id, current_user.org_id, db)
     await db.delete(await _child(CampaignTask, task_id, c, db))
+    await db.flush()
+    await campaign_calendar_sync.sync_quietly(c.id, db)
     await db.commit()
 
 
@@ -739,6 +749,15 @@ async def tracking(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB,
         proj = await db.get(Project, c.project_id)
         base_url = getattr(proj, "domain", "") or getattr(proj, "url", "") or ""
     return campaign_tracking.plan_for(c, chans, base_url)
+
+
+@router.post("/{campaign_id}/calendar-sync")
+async def calendar_sync(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Mirror this campaign's timeline onto the content calendar."""
+    c = await _load(campaign_id, current_user.org_id, db)
+    written = await campaign_calendar_sync.sync(c, db)
+    await db.commit()
+    return {"entries": written, "starts_on": c.starts_on.isoformat() if c.starts_on else None}
 
 
 @router.get("/{campaign_id}/readiness")
@@ -866,6 +885,8 @@ async def launch(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
         # external platform was called -- that happens when a connector exists,
         # and the channel's external_ref stays null until it does.
         ch_row.status = "live"
+    await db.flush()
+    await campaign_calendar_sync.sync_quietly(c.id, db)
     await db.commit()
     return await _full(c, db)
 
@@ -984,6 +1005,39 @@ async def enqueue_campaign(campaign_id: str) -> None:
         await pool.enqueue_job("run_campaign", campaign_id)
     finally:
         await pool.aclose()
+
+
+@router.post("/{campaign_id}/playbook", status_code=201)
+async def build_playbook(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Draft the agent steps that will produce this campaign's work.
+
+    Every campaign can have one, not just the ones the autopilot created. The
+    strategy says WHAT to make and who owns it; the playbook is the sequence the
+    agents actually run to make it -- research, angle, write, visual, distribute.
+    Splitting them was an accident of history, not a design.
+
+    Re-running replaces the steps, which is why it is refused once the playbook
+    has started: rewriting a plan mid-run would orphan the work in flight.
+    """
+    c = await _load(campaign_id, current_user.org_id, db)
+    existing = await _steps(campaign_id, db)
+    if any(s.status in ("running", "completed") for s in existing):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "This playbook has already run. Cancel it before rebuilding.")
+    try:
+        plan = await draft_plan(c.project_id, current_user.org_id, c.goal, c.persona, db)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+
+    for step in existing:
+        await db.delete(step)
+    c.director_summary = plan.get("summary")
+    for i, step in enumerate(plan["steps"]):
+        db.add(CampaignStep(campaign_id=c.id, order=i, agent=step["agent"],
+                            action=step["action"], brief=step.get("brief") or {},
+                            why=step.get("why"), status="pending"))
+    await db.commit()
+    return await _full(c, db)
 
 
 @router.patch("/{campaign_id}/plan")

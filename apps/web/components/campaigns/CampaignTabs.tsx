@@ -10,9 +10,11 @@ import {
   addCampaignChannel, analyseCampaign, campaignChannels, campaignPerformance,
   campaignReadiness, campaignScore, campaignSignals, campaignTracking,
   decideCampaignApproval, deleteCampaignTask, generateCampaignContent,
-  launchCampaign, refineCampaignAsset, removeCampaignChannel, saveCampaignTask,
-  sendCampaignForReview, type Campaign, type CampaignAsset,
+  deleteCampaignAsset, launchCampaign, patchCampaignAsset, patchCampaignChannel,
+  refineCampaignAsset, removeCampaignChannel, saveCampaignTask, sendCampaignForReview,
+  type Campaign, type CampaignAsset, type ChannelInfo,
 } from "@/lib/api";
+import { listEmployees } from "@/lib/employees";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -37,6 +39,8 @@ export function ChannelsTab({ campaign, projectId }: { campaign: Campaign; proje
   const { t } = useTranslation();
   const toast = useToast();
   const refresh = useRefresh(campaign.id, projectId);
+  const rows = campaign.channels ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(rows[0]?.id ?? null);
   const [adding, setAdding] = useState(false);
 
   const { data: catalogue = [] } = useQuery({
@@ -47,129 +51,175 @@ export function ChannelsTab({ campaign, projectId }: { campaign: Campaign; proje
 
   const add = useMutation({
     mutationFn: (channel: string) => addCampaignChannel(campaign.id, channel),
-    onSuccess: () => { refresh(); setAdding(false); },
+    onSuccess: (row) => { refresh(); setAdding(false); setSelectedId(row.id); },
     onError: (e: Error) => toast.error(e.message),
   });
   const remove = useMutation({
     mutationFn: (id: string) => removeCampaignChannel(campaign.id, id),
-    onSuccess: refresh,
+    onSuccess: () => { refresh(); setSelectedId(null); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const onCampaign = new Set((campaign.channels ?? []).map((c) => c.channel));
+  const onCampaign = new Set(rows.map((c) => c.channel));
   const available = catalogue.filter((c) => !onCampaign.has(c.key));
+  const selected = rows.find((r) => r.id === selectedId) ?? rows[0] ?? null;
+  const assets = (campaign.assets ?? []);
+
+  if (!rows.length) {
+    return (
+      <Section title={t("campaigns.channels.title", { defaultValue: "Channels" })}>
+        <AddChannel available={available} onAdd={(k) => add.mutate(k)} busy={add.isPending} open />
+        <p className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">
+          {t("campaigns.channels.empty", {
+            defaultValue: "No channels yet. A campaign needs at least one to launch.",
+          })}
+        </p>
+      </Section>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-5">
-      <Section
-        title={t("campaigns.channels.title", { defaultValue: "Channels" })}
-        description={t("campaigns.channels.subtitle", {
-          defaultValue: "Every channel shares this campaign's tracking tag, so their orders roll up to one number.",
-        })}
-        action={
-          <button onClick={() => setAdding((v) => !v)}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-foreground hover:border-foreground/20">
-            <Plus className="h-3 w-3" />
-            {t("campaigns.channels.add", { defaultValue: "Add channel" })}
-          </button>
-        }
-      >
-        {adding && (
-          <div className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-muted/20 p-3">
-            {available.map((c) => (
-              <button key={c.key} onClick={() => add.mutate(c.key)} disabled={add.isPending}
-                      className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] text-foreground hover:border-foreground/20 disabled:opacity-50">
-                {t(`campaigns.channel.${c.key}`, { defaultValue: c.label })}
-                {!c.executable && (
-                  <span className="ml-1.5 text-muted-foreground">
-                    {c.manualOnly
-                      ? t("campaigns.channels.manual", { defaultValue: "manual" })
-                      : t("campaigns.channels.notConnected", { defaultValue: "not connected" })}
-                  </span>
-                )}
-              </button>
-            ))}
-            {!available.length && (
-              <p className="text-[11px] text-muted-foreground">
-                {t("campaigns.channels.allAdded", { defaultValue: "Every channel is already on this campaign." })}
+    /* A list of stacked cards made every channel compete for the same space and
+       buried the content inside collapsed sections. This is a workspace: pick a
+       channel on the left, work on it on the right. The left rail also shows
+       who owns each channel and how much is written, so the next thing to do is
+       visible without opening anything. */
+    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <aside className="flex flex-col gap-2">
+        {rows.map((row) => {
+          const info = catalogue.find((c) => c.key === row.channel);
+          const owner = (campaign.team ?? []).find((m) => m.channels.includes(row.channel));
+          const OwnerIcon = employeeIcon(owner?.icon ?? "");
+          const written = assets.filter((a) => a.channel_id === row.id).length;
+          const active = selected?.id === row.id;
+          return (
+            <button
+              key={row.id}
+              onClick={() => setSelectedId(row.id)}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "cursor-pointer rounded-xl border p-3 text-left transition-colors",
+                active ? "border-primary/40 bg-primary/5" : "border-border hover:border-foreground/15",
+              )}
+            >
+              <p className="flex items-center justify-between gap-2 text-xs font-semibold text-foreground">
+                {t(`campaigns.channel.${row.channel}`, { defaultValue: info?.label ?? row.channel })}
+                <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full",
+                                    info?.executable ? "bg-success" : "bg-muted-foreground/40")} />
               </p>
-            )}
-          </div>
-        )}
+              {owner && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <OwnerIcon className="h-2.5 w-2.5" strokeWidth={2.2} />
+                  {owner.name}
+                </p>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {written
+                  ? t("campaigns.content.count", { defaultValue: "{{n}} pieces", n: written })
+                  : t("campaigns.content.none", { defaultValue: "Nothing written" })}
+              </p>
+            </button>
+          );
+        })}
+        <button onClick={() => setAdding((v) => !v)}
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-border p-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <Plus className="h-3 w-3" />
+          {t("campaigns.channels.add", { defaultValue: "Add channel" })}
+        </button>
+        {adding && <AddChannel available={available} onAdd={(k) => add.mutate(k)} busy={add.isPending} open />}
+      </aside>
 
-        <div className="flex flex-col gap-3">
-          {(campaign.channels ?? []).map((row) => {
-            const info = catalogue.find((c) => c.key === row.channel);
-            return (
-              <ChannelCard
-                key={row.id}
-                campaign={campaign}
-                projectId={projectId}
-                row={row}
-                info={info}
-                onRemove={() => remove.mutate(row.id)}
-              />
-            );
-          })}
-          {!(campaign.channels ?? []).length && (
-            <p className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">
-              {t("campaigns.channels.empty", { defaultValue: "No channels yet. A campaign needs at least one to launch." })}
-            </p>
-          )}
-        </div>
-      </Section>
+      {selected && (
+        <ChannelWorkspace
+          key={selected.id}
+          campaign={campaign}
+          projectId={projectId}
+          row={selected}
+          info={catalogue.find((c) => c.key === selected.channel)}
+          onRemove={() => remove.mutate(selected.id)}
+        />
+      )}
     </div>
   );
 }
 
-function ChannelCard({ campaign, projectId, row, info, onRemove }: {
+function AddChannel({ available, onAdd, busy, open }: {
+  available: { key: string; label: string; executable: boolean; manualOnly: boolean }[];
+  onAdd: (key: string) => void; busy: boolean; open?: boolean;
+}) {
+  const { t } = useTranslation();
+  if (!open) return null;
+  if (!available.length) {
+    return (
+      <p className="rounded-xl border border-dashed border-border p-3 text-[11px] text-muted-foreground">
+        {t("campaigns.channels.allAdded", { defaultValue: "Every channel is already on this campaign." })}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-muted/20 p-2.5">
+      {available.map((c) => (
+        <button key={c.key} onClick={() => onAdd(c.key)} disabled={busy}
+                className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] text-foreground hover:border-foreground/20 disabled:opacity-50">
+          {t(`campaigns.channel.${c.key}`, { defaultValue: c.label })}
+          {!c.executable && (
+            <span className="ml-1.5 text-muted-foreground">
+              {c.manualOnly
+                ? t("campaigns.channels.manual", { defaultValue: "manual" })
+                : t("campaigns.channels.notConnected", { defaultValue: "not connected" })}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChannelWorkspace({ campaign, projectId, row, info, onRemove }: {
   campaign: Campaign; projectId: string;
   row: NonNullable<Campaign["channels"]>[number];
-  info?: { label: string; executable: boolean; manualOnly: boolean; executor: string | null;
-           contentKinds: string[]; connectOneOf: { app: string; label: string }[] };
+  info?: ChannelInfo;
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
   const refresh = useRefresh(campaign.id, projectId);
   const assets = (campaign.assets ?? []).filter((a) => a.channel_id === row.id);
-  // Who owns this channel's work, from the team the API already computed.
   const owner = (campaign.team ?? []).find((m) => m.channels.includes(row.channel));
   const OwnerIcon = employeeIcon(owner?.icon ?? "");
 
+  // One kind at a time. Six kinds x three variants on one screen is eighteen
+  // blocks of prose nobody reads; a person is choosing a headline OR a subject
+  // line, never both at once.
+  const kinds = info?.contentKinds ?? [];
+  const written = new Set(assets.map((a) => a.kind));
+  const [kind, setKind] = useState<string>(kinds.find((k) => written.has(k)) ?? kinds[0] ?? "");
+
   const generate = useMutation({
-    mutationFn: () => generateCampaignContent(campaign.id, row.id, info?.contentKinds ?? []),
+    mutationFn: (only: string[]) => generateCampaignContent(campaign.id, row.id, only),
     onSuccess: refresh,
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const byKind = new Map<string, CampaignAsset[]>();
-  for (const a of assets) {
-    byKind.set(a.kind, [...(byKind.get(a.kind) ?? []), a]);
-  }
+  const shown = assets.filter((a) => a.kind === kind);
+  const missing = kinds.filter((k) => !written.has(k));
 
   return (
-    <Card className="flex flex-col gap-3 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+    <div className="flex min-w-0 flex-col gap-4">
+      <Card className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
             {t(`campaigns.channel.${row.channel}`, { defaultValue: info?.label ?? row.channel })}
             {row.role && (
               <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                 {t(`campaigns.role.${row.role}`, { defaultValue: row.role })}
               </span>
             )}
-            {owner && (
-              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                <OwnerIcon className="h-2.5 w-2.5" strokeWidth={2.2} />
-                {owner.name}
-              </span>
-            )}
-          </p>
-          {/* Executability is the honest half: a channel with no connector still
-              produces content, it just leaves by hand. Say which it is. */}
-          <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Plug className="h-3 w-3" strokeWidth={2} />
+            <OwnerPicker campaign={campaign} projectId={projectId} row={row}
+                         currentId={owner?.id ?? (row.config as { owner?: string } | null)?.owner ?? null} />
+          </h3>
+          <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            <Plug className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} />
             {info?.executable
               ? t("campaigns.channels.via", { defaultValue: "Publishes through {{app}}", app: info.executor })
               : info?.manualOnly
@@ -180,53 +230,172 @@ function ChannelCard({ campaign, projectId, row, info, onRemove }: {
                   })}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => generate.mutate()} disabled={generate.isPending}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+        <button onClick={onRemove} aria-label={t("common.remove", { defaultValue: "Remove" })}
+                className="cursor-pointer rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </Card>
+
+      {kinds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {kinds.map((k) => (
+            <button
+              key={k}
+              onClick={() => setKind(k)}
+              aria-pressed={kind === k}
+              className={cn(
+                "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                kind === k ? "border-foreground/25 bg-foreground/5 text-foreground"
+                           : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t(`campaigns.kind.${k}`, { defaultValue: k.replace(/_/g, " ") })}
+              {/* A filled dot means it exists. The empty ones are the work left. */}
+              <span className={cn("h-1.5 w-1.5 rounded-full",
+                                  written.has(k) ? "bg-success" : "bg-muted-foreground/30")} />
+            </button>
+          ))}
+          {missing.length > 0 && (
+            <button onClick={() => generate.mutate(missing)} disabled={generate.isPending}
+                    className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+              {generate.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+              {t("campaigns.content.writeMissing", {
+                defaultValue: "Write the {{n}} missing", n: missing.length,
+              })}
+            </button>
+          )}
+        </div>
+      )}
+
+      {!shown.length ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-12 text-center">
+          <p className="text-xs text-muted-foreground">
+            {t("campaigns.content.emptyKind", {
+              defaultValue: "Nothing written for this yet.",
+            })}
+          </p>
+          <button onClick={() => generate.mutate([kind])} disabled={generate.isPending || !kind}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
             {generate.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-            {assets.length
-              ? t("campaigns.content.more", { defaultValue: "Write more" })
+            {owner
+              ? t("campaigns.content.askOwner", { defaultValue: "Ask {{name}} to write it", name: owner.name })
               : t("campaigns.content.write", { defaultValue: "Write content" })}
           </button>
-          <button onClick={onRemove} aria-label={t("common.remove", { defaultValue: "Remove" })}
-                  className="cursor-pointer rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
         </div>
-      </div>
-
-      {byKind.size > 0 && (
-        <div className="flex flex-col gap-3 border-t border-border pt-3">
-          {[...byKind.entries()].map(([kind, list]) => (
-            <div key={kind}>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {t(`campaigns.kind.${kind}`, { defaultValue: kind.replace(/_/g, " ") })}
-              </p>
-              <ul className="flex flex-col gap-1.5">
-                {list.map((a) => (
-                  <AssetRow key={a.id} asset={a} campaign={campaign} projectId={projectId} />
-                ))}
-              </ul>
-            </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          {shown.map((a) => (
+            <VariantCard key={a.id} asset={a} campaign={campaign} projectId={projectId} />
           ))}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
-function AssetRow({ asset, campaign, projectId }: {
-  asset: CampaignAsset; campaign: Campaign; projectId: string;
+/**
+ * One variant, as a card you can compare against its siblings side by side.
+ *
+ * The previous row layout made three options a vertical list, which is the one
+ * shape that makes comparison hard -- you cannot see B while reading C. Three
+ * columns is how a person actually picks between them.
+ */
+/**
+ * Which agent does this channel's work.
+ *
+ * The assignment existed and was invisible, so the campaign looked like it
+ * wrote itself. Every agent in the roster is offered -- "make available agents"
+ * means the whole team is reachable, not the one the planner happened to pick.
+ * Changing it changes who writes the copy, because the owner's brief is what
+ * shapes the generation.
+ */
+function OwnerPicker({ campaign, projectId, row, currentId }: {
+  campaign: Campaign; projectId: string;
+  row: NonNullable<Campaign["channels"]>[number];
+  currentId: string | null;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
   const refresh = useRefresh(campaign.id, projectId);
   const [open, setOpen] = useState(false);
+
+  const { data: registry } = useQuery({
+    queryKey: ["employees"], queryFn: () => listEmployees(), staleTime: 300_000,
+  });
+  const agents = registry?.employees ?? [];
+  const current = agents.find((a) => a.id === currentId);
+  const CurrentIcon = employeeIcon(current?.icon ?? "");
+
+  const assign = useMutation({
+    mutationFn: (employeeId: string) => patchCampaignChannel(campaign.id, row.id, {
+      channel: row.channel,
+      config: { ...(row.config ?? {}), owner: employeeId },
+    }),
+    onSuccess: () => { refresh(); setOpen(false); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <span className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex cursor-pointer items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/15"
+      >
+        <CurrentIcon className="h-2.5 w-2.5" strokeWidth={2.2} />
+        {current
+          ? t("campaigns.channels.ownedBy", { defaultValue: "{{name}} writes this", name: current.name })
+          : t("campaigns.channels.assign", { defaultValue: "Assign an agent" })}
+      </button>
+      {open && (
+        <div className="popover animate-scale-in absolute left-0 top-6 z-20 w-56 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+          {agents.map((a) => {
+            const Icon = employeeIcon(a.icon);
+            return (
+              <button
+                key={a.id}
+                onClick={() => assign.mutate(a.id)}
+                disabled={assign.isPending}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-muted",
+                  a.id === currentId && "bg-muted",
+                )}
+              >
+                <Icon className="h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-foreground">{a.name}</span>
+                  <span className="block truncate text-muted-foreground">{a.role}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function VariantCard({ asset, campaign, projectId }: {
+  asset: CampaignAsset; campaign: Campaign; projectId: string;
+}) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const refresh = useRefresh(campaign.id, projectId);
+  const [menu, setMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const refine = useMutation({
     mutationFn: (action: string) => refineCampaignAsset(campaign.id, asset.id, action),
-    onSuccess: () => { refresh(); setOpen(false); },
+    onSuccess: () => { refresh(); setMenu(false); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const choose = useMutation({
+    mutationFn: () => patchCampaignAsset(campaign.id, asset.id, { selected: !asset.selected }),
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const drop = useMutation({
+    mutationFn: () => deleteCampaignAsset(campaign.id, asset.id),
+    onSuccess: refresh,
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -237,34 +406,52 @@ function AssetRow({ asset, campaign, projectId }: {
   }
 
   return (
-    <li className="group rounded-lg border border-border p-2.5">
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+    <Card className={cn("flex flex-col gap-2.5 p-3.5 transition-colors",
+                        asset.selected ? "border-primary/40 bg-primary/5" : "")}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
           {asset.variant}
         </span>
-        <p className="min-w-0 flex-1 text-xs leading-relaxed text-foreground">{asset.body}</p>
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div className="flex items-center gap-0.5">
           <button onClick={copy} aria-label={t("common.copy", { defaultValue: "Copy" })}
                   className="cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground">
             {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
           </button>
-          <button onClick={() => setOpen((v) => !v)} aria-label={t("campaigns.content.refine", { defaultValue: "Refine" })}
+          <button onClick={() => setMenu((v) => !v)}
+                  aria-label={t("campaigns.content.refine", { defaultValue: "Refine" })}
                   className="cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground">
             {refine.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
           </button>
+          <button onClick={() => drop.mutate()} aria-label={t("common.remove", { defaultValue: "Remove" })}
+                  className="cursor-pointer rounded p-1 text-muted-foreground hover:text-destructive">
+            <Trash2 className="h-3 w-3" />
+          </button>
         </div>
       </div>
-      {open && (
-        <div className="mt-2 flex flex-wrap gap-1 border-t border-border pt-2">
+
+      <p className="min-h-[3.5rem] text-xs leading-relaxed text-foreground">{asset.body}</p>
+
+      {menu && (
+        <div className="flex flex-wrap gap-1 border-t border-border pt-2">
           {REFINEMENTS.map((r) => (
             <button key={r} onClick={() => refine.mutate(r)} disabled={refine.isPending}
-                    className="cursor-pointer rounded border border-border px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50">
+                    className="cursor-pointer rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50">
               {t(`campaigns.refine.${r}`, { defaultValue: r })}
             </button>
           ))}
         </div>
       )}
-    </li>
+
+      <button onClick={() => choose.mutate()}
+              className={cn("mt-auto cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                            asset.selected
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground")}>
+        {asset.selected
+          ? t("campaigns.content.chosen", { defaultValue: "Chosen" })
+          : t("campaigns.content.choose", { defaultValue: "Use this one" })}
+      </button>
+    </Card>
   );
 }
 
@@ -276,6 +463,7 @@ export function TimelineTab({ campaign, projectId }: { campaign: Campaign; proje
   const refresh = useRefresh(campaign.id, projectId);
   const [title, setTitle] = useState("");
   const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState<string | null>(null);
 
   const save = useMutation({
     mutationFn: ({ id, body }: { id?: string; body: Record<string, unknown> }) =>
@@ -291,6 +479,14 @@ export function TimelineTab({ campaign, projectId }: { campaign: Campaign; proje
 
   const tasks = [...(campaign.tasks ?? [])].sort((a, b) => a.day_offset - b.day_offset);
   const start = campaign.starts_on ? new Date(campaign.starts_on) : null;
+  const team = campaign.team ?? [];
+
+  // The track spans the work, not a fixed window: a campaign that starts
+  // planning three weeks out should not be squeezed into the same span as one
+  // that starts on Monday.
+  const first = Math.min(-7, ...tasks.map((x) => x.day_offset));
+  const last = Math.max(7, ...tasks.map((x) => x.day_offset));
+  const days = Array.from({ length: last - first + 1 }, (_, i) => first + i);
 
   function dayLabel(d: number) {
     if (d === 0) return t("campaigns.timeline.launch", { defaultValue: "Launch" });
@@ -302,69 +498,125 @@ export function TimelineTab({ campaign, projectId }: { campaign: Campaign; proje
     when.setDate(when.getDate() + d);
     return when.toLocaleDateString(undefined, { day: "numeric", month: "short" });
   }
+  function move(taskId: string, day: number, currentTitle: string) {
+    save.mutate({ id: taskId, body: { title: currentTitle, day_offset: day } });
+  }
+
+  const byDay = new Map<number, typeof tasks>();
+  for (const task of tasks) {
+    byDay.set(task.day_offset, [...(byDay.get(task.day_offset) ?? []), task]);
+  }
 
   return (
     <Section
       title={t("campaigns.timeline.title", { defaultValue: "Timeline" })}
       description={t("campaigns.timeline.subtitle", {
-        defaultValue: "Days relative to launch, so the plan holds whenever you start.",
+        defaultValue: "Days relative to launch, so the plan holds whenever you start. Drag a step to move it.",
       })}
     >
-      <ol className="flex flex-col">
-        {tasks.map((task) => (
-          <li key={task.id} className="group flex items-start gap-3 border-l-2 border-border py-2 pl-4">
-            <div className="w-20 shrink-0">
-              <p className={cn("text-[11px] font-semibold tabular-nums",
-                               task.day_offset === 0 ? "text-primary" : "text-muted-foreground")}>
-                {dayLabel(task.day_offset)}
-              </p>
-              {start && <p className="text-[10px] text-muted-foreground">{dateFor(task.day_offset)}</p>}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-foreground">{task.title}</p>
-              {task.detail && <p className="mt-0.5 text-[11px] text-muted-foreground">{task.detail}</p>}
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <select
-                value={task.day_offset}
-                onChange={(e) => save.mutate({ id: task.id, body: { title: task.title, day_offset: Number(e.target.value) } })}
-                aria-label={t("campaigns.timeline.move", { defaultValue: "Move task" })}
-                className="cursor-pointer rounded border border-border bg-background px-1.5 py-1 text-[10px] text-muted-foreground opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+      {/* A horizontal track with launch as the anchor. The previous version was
+          a vertical list where every row carried a 41-option dropdown, which is
+          neither a timeline nor a usable control -- you could not see the shape
+          of the campaign, only its rows. */}
+      <div className="overflow-x-auto rounded-xl border border-border bg-muted/10 p-4">
+        <div className="flex min-w-max gap-1">
+          {days.map((d) => {
+            const here = byDay.get(d) ?? [];
+            const isLaunch = d === 0;
+            return (
+              <div
+                key={d}
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData("text/plain");
+                  const task = tasks.find((x) => x.id === id);
+                  if (task && task.day_offset !== d) move(task.id, d, task.title);
+                  setDragging(null);
+                }}
+                className={cn(
+                  "flex w-[132px] shrink-0 flex-col gap-1.5 rounded-lg p-1.5 transition-colors",
+                  isLaunch && "bg-primary/5 ring-1 ring-primary/25",
+                  dragging && "outline-dashed outline-1 outline-border",
+                )}
               >
-                {Array.from({ length: 41 }, (_, i) => i - 20).map((d) => (
-                  <option key={d} value={d}>{dayLabel(d)}</option>
-                ))}
-              </select>
-              <button onClick={() => remove.mutate(task.id)}
-                      aria-label={t("common.remove", { defaultValue: "Remove" })}
-                      className="cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100">
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ol>
+                <div className="px-1">
+                  <p className={cn("text-[11px] font-semibold tabular-nums",
+                                   isLaunch ? "text-primary" : "text-muted-foreground")}>
+                    {dayLabel(d)}
+                  </p>
+                  {start && <p className="text-[10px] text-muted-foreground">{dateFor(d)}</p>}
+                </div>
+
+                {here.map((task) => {
+                  const owner = team.find((m) => m.id === task.owner);
+                  const OwnerIcon = employeeIcon(owner?.icon ?? "");
+                  return (
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={(e) => { e.dataTransfer.setData("text/plain", task.id); setDragging(task.id); }}
+                      onDragEnd={() => setDragging(null)}
+                      className={cn(
+                        "group cursor-grab rounded-lg border border-border bg-card p-2 active:cursor-grabbing",
+                        dragging === task.id && "opacity-40",
+                      )}
+                    >
+                      <p className="text-[11px] leading-snug text-foreground">{task.title}</p>
+                      <div className="mt-1.5 flex items-center justify-between gap-1">
+                        {owner ? (
+                          <span className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
+                            <OwnerIcon className="h-2.5 w-2.5 shrink-0" strokeWidth={2.2} />
+                            <span className="truncate">{owner.name}</span>
+                          </span>
+                        ) : <span />}
+                        <button
+                          onClick={() => remove.mutate(task.id)}
+                          aria-label={t("common.remove", { defaultValue: "Remove" })}
+                          className="shrink-0 cursor-pointer text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                        >
+                          <Trash2 className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <form
         onSubmit={(e) => { e.preventDefault(); if (title.trim()) save.mutate({ body: { title: title.trim(), day_offset: offset } }); }}
-        className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3"
+        className="flex flex-wrap items-center gap-2"
       >
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("campaigns.timeline.addPlaceholder", { defaultValue: "Add a step" })}
           aria-label={t("campaigns.timeline.addPlaceholder", { defaultValue: "Add a step" })}
-          className="min-w-[180px] flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
+          className="min-w-[200px] flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
-        <select value={offset} onChange={(e) => setOffset(Number(e.target.value))}
-                aria-label={t("campaigns.timeline.day", { defaultValue: "Day" })}
-                className="cursor-pointer rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground">
-          {Array.from({ length: 41 }, (_, i) => i - 20).map((d) => (
-            <option key={d} value={d}>{dayLabel(d)}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1.5">
+          {/* A stepper, not a 41-option select. Nobody scrolls a dropdown to
+              find D-12; they nudge from a sensible starting point. */}
+          <button type="button" onClick={() => setOffset((v) => Math.max(-30, v - 1))}
+                  aria-label={t("campaigns.timeline.earlier", { defaultValue: "Earlier" })}
+                  className="cursor-pointer rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground">
+            −
+          </button>
+          <span className="w-16 text-center text-xs font-semibold tabular-nums text-foreground">
+            {dayLabel(offset)}
+          </span>
+          <button type="button" onClick={() => setOffset((v) => Math.min(30, v + 1))}
+                  aria-label={t("campaigns.timeline.later", { defaultValue: "Later" })}
+                  className="cursor-pointer rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground">
+            +
+          </button>
+        </div>
         <button type="submit" disabled={!title.trim() || save.isPending}
-                className="cursor-pointer rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:border-foreground/20 disabled:opacity-50">
+                className="cursor-pointer rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
           {t("common.add", { defaultValue: "Add" })}
         </button>
       </form>
