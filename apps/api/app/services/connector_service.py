@@ -63,6 +63,15 @@ async def catalogue(org_id: uuid.UUID, db) -> list[dict]:
         out.append({
             "app": app,
             "label": server.label,
+            # Category and description come from the catalogue rather than a
+            # second table in the UI: one source, so a connector added to the
+            # roster cannot appear ungrouped or unexplained.
+            "category": server.category,
+            "description": server.description,
+            # Names the metered native tool when one already reaches this app.
+            # MCP would otherwise be a second, unmetered route to the same paid
+            # API, and the UI must say which path is live.
+            "nativeTool": server.native_tool,
             "permission": server.permission,
             "transport": server.transport,
             # An env-configured server stays supported so existing deployments
