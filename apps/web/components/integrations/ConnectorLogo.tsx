@@ -52,17 +52,31 @@ export function ConnectorLogo({ app, label, className }: {
   const [failed, setFailed] = useState(false);
   const slug = SLUG[app] ?? app.replace(/[^a-z0-9]/gi, "").toLowerCase();
 
-  // A brand with no mark in the set gets its initials, not a generic plug: at
-  // a glance "KL" in the Klaviyo row still distinguishes it from its
-  // neighbours, where the fourth identical plug does not.
+  // FIVE OF THESE HAVE NO MARK, and not because the slug is wrong. Simple
+  // Icons removes a logo when the brand's legal team asks it to; Canva,
+  // LinkedIn and Slack are among those removals, and Klaviyo was never added.
+  // Bundling their SVGs locally would be doing the exact thing those companies
+  // asked a public CDN to stop doing, so they get a lettermark instead.
+  //
+  // Tinted per brand rather than left grey: a row of identical grey squares is
+  // the problem the logos were meant to solve. The hue is derived from the
+  // name, so it is stable across renders and distinct between neighbours.
   if (failed) {
+    const initials = label.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean)
+      .slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+    let hash = 0;
+    for (const ch of app) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
     return (
-      <span className={cn(
-        "flex items-center justify-center rounded-lg bg-muted text-[11px] font-bold uppercase text-muted-foreground",
-        className,
-      )}>
-        {label.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean)
-          .slice(0, 2).map((w) => w[0]).join("") || <Plug className="h-4 w-4" strokeWidth={1.9} />}
+      <span
+        className={cn("flex items-center justify-center rounded-lg text-[11px] font-bold", className)}
+        style={{
+          // Fixed lightness in each theme so contrast holds both ways -- the
+          // mistake the forced-white logos made.
+          background: `hsl(${hash} 62% 92%)`,
+          color: `hsl(${hash} 70% 30%)`,
+        }}
+      >
+        {initials || <Plug className="h-4 w-4" strokeWidth={1.9} />}
       </span>
     );
   }
