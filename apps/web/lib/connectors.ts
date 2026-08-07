@@ -19,6 +19,12 @@ export interface ConnectorInfo {
   label: string;
   permission: string;
   transport: "http" | "stdio";
+  category: string;
+  description: string;
+  /** A metered native tool already reaches this app. */
+  nativeTool: string;
+  /** One-click OAuth is possible: the provider's client credentials exist. */
+  oauth: boolean;
   /** Configured by deployment environment rather than in the app. */
   fromEnvironment: boolean;
   connected: boolean;
@@ -65,4 +71,11 @@ export function toggleConnector(
 
 export function disconnectConnector(app: string): Promise<{ ok: boolean }> {
   return apiClient.delete(`/connectors/${app}`);
+}
+
+/** Begin a one-click connection. Returns the provider's consent URL. */
+export async function startConnectorOAuth(
+  app: string, body: { project_id?: string | null } = {},
+): Promise<{ ok: boolean; redirect_url?: string; error?: string }> {
+  return apiClient.post(`/connectors/${app}/oauth/start`, body);
 }

@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  connectConnector, disconnectConnector, listConnectors, testConnector,
-  toggleConnector, type ConnectorInfo,
+  connectConnector, disconnectConnector, listConnectors, startConnectorOAuth,
+  testConnector, toggleConnector, type ConnectorInfo,
 } from "@/lib/connectors";
 import { departmentAccent, employeeIcon } from "@/lib/employees";
 
@@ -204,8 +204,32 @@ function ConnectorRow({
         </div>
       </div>
 
+      {/* One click where the provider supports it. Asking a user for a server
+          URL and a bearer token is asking them to do the integration by hand --
+          they have to find the endpoint, mint a token, and scope it correctly.
+          The manual form stays below as an escape hatch for self-hosted or
+          unlisted servers, which is the only case that genuinely needs it. */}
+      {!connector.connected && connector.oauth && (
+        <button
+          onClick={async () => {
+            const r = await startConnectorOAuth(connector.app);
+            if (r.ok && r.redirect_url) window.location.href = r.redirect_url;
+          }}
+          className="btn-primary mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Connect {connector.label}
+        </button>
+      )}
+
       {editing && (
         <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3 animate-slide-up">
+          {connector.oauth && (
+            <p className="mb-2.5 rounded-lg border border-dashed border-border px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground">
+              {connector.label} connects in one click above. These fields are for
+              a self-hosted or unlisted server only.
+            </p>
+          )}
           <label className="block text-[10px] font-semibold text-muted-foreground" htmlFor={`url-${connector.app}`}>
             {t("connectors.url")}
           </label>
