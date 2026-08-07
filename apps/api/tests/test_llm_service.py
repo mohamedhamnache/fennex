@@ -54,8 +54,20 @@ async def test_get_org_llm_keys_returns_decrypted_dict(db, org_with_keys):
 
 @pytest.mark.asyncio
 async def test_get_org_llm_keys_empty_when_no_keys(db):
+    """No tenant keys AND no platform keys means no keys.
+
+    The platform fallback has to be cleared explicitly. Without that this test
+    asserted "empty" in an environment where OPENAI_API_KEY is configured --
+    so it failed permanently in dev and in CI-with-secrets, on correct code,
+    and stopped being read. A test that always fails protects nothing.
+    """
+    from app.core.config import settings
     from app.services.llm_service import get_org_llm_keys
-    keys = await get_org_llm_keys(FAKE_ORG_ID, db)
+
+    with patch.object(settings, "OPENAI_API_KEY", None), \
+         patch.object(settings, "ANTHROPIC_API_KEY", None), \
+         patch.object(settings, "GOOGLE_API_KEY", None):
+        keys = await get_org_llm_keys(FAKE_ORG_ID, db)
     assert keys == {}
 
 

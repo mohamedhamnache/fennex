@@ -105,9 +105,17 @@ def test_parse_llm_response_fallback_missing_meta_title():
 async def test_generate_article_task_no_keys():
     """When org has no API keys, article gets status=failed with informative error."""
     from app.workers.tasks.article_tasks import generate_article_task
+    from app.core.config import settings
+
     article_id = await _seed(with_key=False)
 
-    with patch("app.workers.tasks.article_tasks.async_session_factory", TestSessionLocal):
+    # "No API keys" has to mean the platform's as well as the org's. The task
+    # correctly falls back to a configured platform key, so without clearing it
+    # the article succeeds and this asserts a failure that should not happen.
+    with patch("app.workers.tasks.article_tasks.async_session_factory", TestSessionLocal), \
+         patch.object(settings, "OPENAI_API_KEY", None), \
+         patch.object(settings, "ANTHROPIC_API_KEY", None), \
+         patch.object(settings, "GOOGLE_API_KEY", None):
         await generate_article_task(ctx={}, article_id=str(article_id), org_id=str(FAKE_ORG_ID))
 
     async with TestSessionLocal() as session:

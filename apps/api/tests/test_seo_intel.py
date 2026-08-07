@@ -185,9 +185,17 @@ async def test_mock_provider_serp_deterministic():
 async def test_get_seo_provider_for_org_uses_project(db_session):
     """Sanity: _mk_project sets the domain used by later tasks."""
     from app.integrations.seo_apis import get_seo_provider_for_org
+    from unittest.mock import patch as _patch
+    from app.core.config import settings
+
     p = await _mk_project(db_session)
     assert p.domain == "pure-saveur.fr"
-    assert await get_seo_provider_for_org(FAKE_ORG_ID, db_session) is None
+    # No ORG credentials means no provider -- but only when there is no
+    # platform credential either. Without clearing it this asserted None in
+    # any environment with DATAFORSEO_* configured, and failed on correct code.
+    with _patch.object(settings, "DATAFORSEO_LOGIN", None), \
+         _patch.object(settings, "DATAFORSEO_PASSWORD", None):
+        assert await get_seo_provider_for_org(FAKE_ORG_ID, db_session) is None
 
 
 @pytest.mark.asyncio

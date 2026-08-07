@@ -292,11 +292,18 @@ async def test_add_document_failure_preserves_existing_document(monkeypatch, no_
 async def test_knowledge_write_skipped_without_org_keys(no_network):
     """No OpenAI key on the org -> skip the knowledge write rather than
     calling add_document (and never raise)."""
+    from unittest.mock import patch as _patch
+    from app.core.config import settings
+
     org_id = await _seed_org("no-key-org", with_openai_key=False)
     run_id = await _seed_run(org_id, ACME_RESULT)
 
-    async with TestSessionLocal() as db:
-        await prov.provision(run_id, persona=None, db=db)
+    # The org has no key; the PLATFORM may still have one, and the service
+    # correctly falls back to it. Clearing it is what makes this a test of
+    # "no keys" rather than of "no tenant keys in an empty environment".
+    with _patch.object(settings, "OPENAI_API_KEY", None):
+        async with TestSessionLocal() as db:
+            await prov.provision(run_id, persona=None, db=db)
 
     assert no_network["add_document"] == []
 

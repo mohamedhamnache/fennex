@@ -20,8 +20,14 @@ class DataForSEOProvider:
             resp.raise_for_status()
             data = resp.json()
         results = []
-        for task in data.get("tasks", []):
-            for item in task.get("result", [{}])[0].get("items", []):
+        for task in data.get("tasks", []) or []:
+            # `or [{}]` and not a dict default: DataForSEO returns the key with
+            # an explicit null when a task found nothing, and .get(k, default)
+            # returns that null rather than the default -- so the next subscript
+            # raised TypeError and killed the whole keyword-research job for
+            # every seed, not just the empty one. A task with no results is a
+            # normal outcome, not an error.
+            for item in (task.get("result") or [{}])[0].get("items", []) or []:
                 kw = item.get("keyword", "")
                 metrics = item.get("keyword_info", {})
                 results.append(KeywordData(
