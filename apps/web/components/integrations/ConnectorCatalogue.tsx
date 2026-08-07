@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2, Plug, Search, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import { listConnectors, type ConnectorInfo } from "@/lib/api";
+import { listConnectors, startConnectorOAuth, type ConnectorInfo } from "@/lib/api";
 import { employeeIcon } from "@/lib/employees";
 
 /**
@@ -23,7 +23,7 @@ import { employeeIcon } from "@/lib/employees";
  * server already returns that list, so the card cannot claim an employee that
  * does not declare the app.
  */
-export function ConnectorCatalogue() {
+export function ConnectorCatalogue({ projectId }: { projectId?: string }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("All");
 
@@ -114,15 +114,32 @@ export function ConnectorCatalogue() {
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {shown.map((c) => <ConnectorCard key={c.app} connector={c} />)}
+          {shown.map((c) => <ConnectorCard key={c.app} connector={c} projectId={projectId} />)}
         </div>
       )}
     </div>
   );
 }
 
-function ConnectorCard({ connector: c }: { connector: ConnectorInfo }) {
+function ConnectorCard({ connector: c, projectId }: {
+  connector: ConnectorInfo; projectId?: string;
+}) {
+  const [busy, setBusy] = useState(false);
   const gains = c.usedBy.slice(0, 3);
+
+  async function connect() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await startConnectorOAuth(c.app, { project_id: projectId ?? null });
+      // A full navigation, not a popup: the provider decides what its consent
+      // screen looks like and several refuse to render in a frame.
+      if (r.ok && r.redirect_url) window.location.href = r.redirect_url;
+      else setBusy(false);
+    } catch {
+      setBusy(false);
+    }
+  }
   return (
     <Card className={cn(
       "group flex flex-col gap-2.5 p-4 transition-colors",
@@ -177,6 +194,24 @@ function ConnectorCard({ connector: c }: { connector: ConnectorInfo }) {
           )}
         </div>
       )}
+
+      {/* Offered only where it will actually complete. An app whose client
+          credentials are not configured says so instead of showing a button
+          that dead-ends after the redirect. */}
+      {!c.connected && (c.oauth ? (
+        <button
+          onClick={connect}
+          disabled={busy}
+          className="mt-0.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plug className="h-3.5 w-3.5" />}
+          {busy ? "Opening…" : `Connect ${c.label}`}
+        </button>
+      ) : (
+        <span className="mt-0.5 block rounded-lg border border-dashed border-border px-3 py-2 text-center text-[11px] text-muted-foreground">
+          Setup required — add this provider's OAuth credentials
+        </span>
+      ))}
 
       {c.lastError && (
         <p className="truncate text-[10px] text-destructive" title={c.lastError}>

@@ -3087,6 +3087,10 @@ export interface ConnectorInfo {
    *  Set means Fennex has a first-class path and MCP would be a second,
    *  unmetered route to the same paid API. */
   nativeTool: string;
+  /** True when this provider's client credentials are configured, so the
+   *  one-click flow will actually complete. False means "setup required" --
+   *  never render a Connect button that dead-ends after the redirect. */
+  oauth: boolean;
   permission: string;
   transport: string;
   connected: boolean;
@@ -3105,4 +3109,11 @@ export interface ConnectorInfo {
 export async function listConnectors(): Promise<ConnectorInfo[]> {
   const r = await apiClient.get<{ connectors: ConnectorInfo[] }>("/connectors");
   return r.connectors ?? [];
+}
+
+/** Begin a one-click connection. Returns the provider's consent URL. */
+export async function startConnectorOAuth(
+  app: string, body: { project_id?: string | null; shop_domain?: string | null } = {},
+): Promise<{ ok: boolean; redirect_url?: string; error?: string }> {
+  return apiClient.post(`/connectors/${app}/oauth/start`, body);
 }

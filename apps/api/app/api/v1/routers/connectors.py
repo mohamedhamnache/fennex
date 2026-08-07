@@ -2,11 +2,15 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+import uuid
+
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from app.core.config import settings
 from app.core.dependencies import CurrentUser, DB
-from app.services import connector_service
+from app.services import connector_oauth, connector_service
 
 logger = logging.getLogger(__name__)
 
@@ -60,3 +64,60 @@ async def disconnect(app: str, current_user: CurrentUser, db: DB) -> dict:
     if not await connector_service.disconnect(current_user.org_id, app, db):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Connector not found")
     return {"ok": True}
+
+
+class OAuthStartRequest(BaseModel):
+    project_id: uuid.UUID | None = None
+    # Shopify authorises per shop, so its consent URL needs the domain.
+    shop_domain: str | None = None
+
+
+@router.post("/{app}/oauth/start")
+async def oauth_start(app: str, body: OAuthStartRequest, current_user: CurrentUser) -> dict:
+    """The provider's consent URL for a one-click connection.
+
+    The state is signed with the org and project baked in, so the callback
+    cannot be pointed at someone else's organisation.
+    """
+    return connector_oauth.start(app, current_user.org_id, body.project_id,
+                                 shop=(body.shop_domain or "").strip())
+
+
+@router.get("/{app}/oauth/callback")
+async def oauth_callback(app: str, request: Request, db: DB):
+    """Where the provider sends the user back.
+
+    No CurrentUser here -- the browser arrives from the provider without our
+    auth header, which is exactly why the state is signed: it is the only thing
+    identifying the organisation, so it is verified before anything is written.
+    """
+    params = dict(request.query_params)
+    front = settings.FRONTEND_URL.rstrip("/")
+
+    def fail(reason: str):
+        return RedirectResponse(f"{front}/integrations?connector_error={reason}")
+
+    if params.get("error"):
+        # The user pressed Cancel. Not an error worth a scary screen.
+        return RedirectResponse(f"{front}/integrations?connector=cancelled")
+
+    code = params.get("code")
+    claims = connector_oauth.read_state(params.get("state", ""))
+    if not code or claims is None:
+        return fail("invalid_state")
+
+    result = await connector_oauth.exchange(app, code, shop=params.get("shop", ""))
+    if not result.get("ok"):
+        return fail(result.get("error", "exchange_failed"))
+
+    try:
+        await connector_service.save_oauth_token(
+            uuid.UUID(claims["o"]), app, result["access_token"], db,
+            label=result.get("workspace"))
+    except Exception:  # noqa: BLE001
+        logger.exception("could not store the %s connector", app)
+        return fail("save_failed")
+
+    project = claims.get("p")
+    dest = f"{front}/{project}/integrations" if project else f"{front}/integrations"
+    return RedirectResponse(f"{dest}?connector={app}")

@@ -231,7 +231,7 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
             Connect a workspace once and every agent entitled to it gains the reach.
           </p>
         </div>
-        <ConnectorCatalogue />
+        <ConnectorCatalogue projectId={projectId} />
       </section>
 
       {modal === "shopify" && (
