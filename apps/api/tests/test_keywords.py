@@ -212,8 +212,17 @@ async def test_run_keyword_research_task():
         await session.commit()
         job_id = str(job.id)
 
-    # Patch async_session_factory in the worker task module to use the test DB
-    with patch("app.workers.tasks.keyword_tasks.async_session_factory", TestSessionLocal):
+    # Patch async_session_factory in the worker task module to use the test DB.
+    # The platform credentials are cleared too: with DATAFORSEO_* configured,
+    # get_seo_provider() resolves the REAL provider instead of the mock this
+    # test is written against, so it found 0 keywords and asserted 20. Same
+    # defect as the other "no keys" tests -- an environment with credentials is
+    # the normal one, and the test has to say which provider it means.
+    from app.core.config import settings
+
+    with patch("app.workers.tasks.keyword_tasks.async_session_factory", TestSessionLocal), \
+         patch.object(settings, "DATAFORSEO_LOGIN", None), \
+         patch.object(settings, "DATAFORSEO_PASSWORD", None):
         await run_keyword_research(ctx={}, job_id=job_id)
 
     # Verify outcomes
