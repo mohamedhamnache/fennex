@@ -225,6 +225,11 @@ HARD RULES:
 6. This campaign is work done by a TEAM OF AGENTS. Assign every channel and
    every timeline step to one agent by its id, chosen from THE TEAM list for
    what that agent actually produces. Never invent an agent id.
+7. A campaign reaches people through SEVERAL channels -- at least two, and a
+   launch needs at least one that reaches people who do not already visit the
+   site. A single-channel plan is a task, not a campaign.
+8. The timeline has at least three steps: something before launch, the launch
+   itself, and a review after it.
 
 Respond with ONLY a JSON object:
 {
@@ -245,6 +250,36 @@ Respond with ONLY a JSON object:
   "assumptions": [{"claim": "...", "rests_on": "..."}],
   "cannot_see": ["metric names you were told you cannot see and that limited this plan"]
 }"""
+
+
+def _usable_plan(text: str) -> bool:
+    """A plan is usable when it has a name, a summary, and at least one channel.
+
+    Structure alone is not enough: `{"name": "x", "channels": []}` parses and is
+    worthless. This is what decides whether the cheap band's answer stands or
+    the cascade pays for a better one, so it has to check for a plan rather than
+    for JSON.
+    """
+    try:
+        plan = json.loads(_FENCE.sub("", text or ""))
+    except (ValueError, TypeError):
+        return False
+    # The bar is what only a better model can fix, and nothing more.
+    #
+    # A cascade pays for BOTH calls when it escalates, so every requirement here
+    # costs 19x whenever the cheap band misses it. Measured: the cheap model
+    # writes a good name, summary and plan, but often proposes one channel where
+    # a launch wants three. That gap is filled below from the persona's own
+    # defaults at zero cost -- so it must NOT be in this bar, or every campaign
+    # pays twice for something a table already knows.
+    #
+    # What is left is what no default can repair: a plan with no name, no
+    # summary, or no channels at all.
+    return (isinstance(plan, dict)
+            and bool(str(plan.get("name") or "").strip())
+            and bool(str(plan.get("summary") or "").strip())
+            and isinstance(plan.get("channels"), list)
+            and len(plan["channels"]) >= 1)
 
 
 async def draft(project_id: uuid.UUID, org_id: uuid.UUID, goal: str,
@@ -279,7 +314,7 @@ async def draft(project_id: uuid.UUID, org_id: uuid.UUID, goal: str,
         keys=keys, feature="campaign_strategy", system_prompt=_SYSTEM, user_prompt=user,
         tier="balanced", weight="medium",
         locale=await project_locale(project_id, db),
-        validate=validators.json_object(("name", "channels")),
+        validate=_usable_plan,
         meter={"db": db, "org_id": org_id, "project_id": project_id,
                "feature": "campaign_strategy"},
     )
@@ -316,6 +351,22 @@ def _sanitise(plan: dict, ctx: dict) -> dict:
                          "owner": campaign_team.owner_for(key, c.get("owner")),
                          "budget_share": max(0.0, min(100.0, share)),
                          "why": str(c.get("why") or "")[:400]})
+    # Top up a thin channel mix from what this persona actually has, rather than
+    # escalating to a model 19x the price to be told the same thing. Ordered by
+    # the persona's own preference, so the additions are the ones a campaign of
+    # this shape would normally use.
+    if len(channels) < 2:
+        chosen = {c["channel"] for c in channels}
+        for candidate in ctx["channels"]:
+            if len(channels) >= 3:
+                break
+            key = candidate["key"]
+            if key in chosen:
+                continue
+            channels.append({"channel": key, "role": "", "owner": campaign_team.owner_for(key),
+                             "budget_share": 0.0,
+                             "why": "Added so the campaign reaches more than one place."})
+            chosen.add(key)
     plan["channels"] = channels
 
     timeline = []
