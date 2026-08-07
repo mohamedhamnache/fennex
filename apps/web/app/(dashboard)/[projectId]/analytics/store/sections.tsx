@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, CircleDot, Clock,
-  Lightbulb, PackageX, Store, TrendingDown, TrendingUp,
+  Lightbulb, PackageX, Tent, TrendingDown, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { FENNEX_AGENTS } from "@/lib/agents";
@@ -39,7 +39,7 @@ export function InsightsPanel({ data, projectId }: {
             "Audit my store and tell me the one thing limiting growth right now")}`}
           className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
         >
-          <Store className="h-3.5 w-3.5" strokeWidth={1.9} />
+          <Tent className="h-3.5 w-3.5" strokeWidth={1.9} />
           Ask {FENNEX_AGENTS.souk.name}
         </Link>
       }

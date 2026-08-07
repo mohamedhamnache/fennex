@@ -34,6 +34,10 @@ async def lifespan(app: FastAPI):
     # never fatal -- CI blocks the merge (tests/test_tenant_audit.py).
     from app.core.tenant_audit import assert_routes_are_tenant_scoped
     assert_routes_are_tenant_scoped()
+    # And that the roster is wired to itself: a produces_for slug nothing can
+    # act on is a button the user never sees, with no error to explain it.
+    from app.employees.coherence import assert_roster_is_coherent
+    assert_roster_is_coherent()
     if not (settings.OPENAI_API_KEY or settings.ANTHROPIC_API_KEY or settings.GOOGLE_API_KEY):
         logger.warning(
             "No platform LLM key configured (OPENAI_API_KEY/ANTHROPIC_API_KEY/GOOGLE_API_KEY). "

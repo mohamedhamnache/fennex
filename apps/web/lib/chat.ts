@@ -27,6 +27,17 @@ export interface RoutingCandidate {
 }
 
 export interface RoutingInfo {
+  /** Which model actually answered. Carried on the message so the cost of a
+   *  reply is visible beside the reply -- the agentic runtime picks its own
+   *  model, so this is reported from its telemetry rather than assumed. */
+  model?: string;
+  provider?: string;
+  /** What this reply cost, priced with the meter's own rates. Absent when the
+   *  rate is unknown -- the UI omits the figure rather than printing a
+   *  confident zero. */
+  credits?: number;
+  costMicros?: number;
+  tokens?: number;
   mode: "single" | "team" | "clarify";
   intent: {
     capabilities: string[];
@@ -56,7 +67,7 @@ export interface TeamStep {
 export interface ChatMessage {
   id: string;
   seq: number;
-  role: "user" | "employee" | "system" | "approval";
+  role: "user" | "employee" | "system" | "approval" | "assistant";   // "assistant" = Fennex speaking for itself
   employeeId: string | null;
   event: string | null;
   content: string;
@@ -124,6 +135,9 @@ export function sendMessage(
     conversation_id?: string | null;
     model_provider?: string | null;
     model_id?: string | null;
+    /** An image the user attached. Sent as an id, never a URL: the server
+     *  checks it against their organisation before any prompt reads it. */
+    attachment_image_id?: string | null;
   },
   onEvent: (event: ChatEvent) => void,
 ): { done: Promise<void>; cancel: () => void } {

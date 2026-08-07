@@ -1,11 +1,49 @@
 """Souk -- Ecommerce Growth Operator. Department: Growth."""
 
+from dataclasses import dataclass
+
 from app.employees.spec import (
-    Action, Employee, P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS,
+    Action, Employee, Evaluation, P_READ_ANALYTICS, P_READ_CONTENT, P_READ_PRODUCTS,
     SCOPE_PROJECT,
 )
 
-EMPLOYEE = Employee(
+# Fields whose emptiness the reviewer reads as failure, when it can equally
+# mean the honest answer.
+_RECOMMENDATION_FIELDS = ("push", "bundles", "reprice", "retire", "findings", "leaks", "flows")
+
+
+@dataclass
+class _Souk(Employee):
+    """Souk, with one hook overridden.
+
+    WHY. The shared reviewer grades an artifact on whether it delivered
+    recommendations, and it cannot know that "I have no catalogue, so I will
+    not name a product" IS the correct answer here. On a live run it scored
+    that 10/100 three times over -- "l'artefact manque des recommandations
+    concrètes" -- so the orchestrator retried twice and the merchant paid three
+    times for the same honest reply, and the model was pushed toward inventing
+    something to satisfy the grader. That pressure is precisely what the rest
+    of this agent exists to resist.
+
+    So a DECLINE passes: empty recommendation lists AND a populated
+    `cannot_see` naming what was missing. Narrow on purpose -- an empty answer
+    with no explanation still fails, because that is a failure.
+    """
+
+    async def evaluate(self, outcome, task, ctx) -> Evaluation:
+        structured = getattr(outcome, "structured", None) or {}
+        if outcome.ok and isinstance(structured, dict):
+            declared = [k for k in _RECOMMENDATION_FIELDS if k in structured]
+            all_empty = declared and all(not structured.get(k) for k in declared)
+            explained = bool(structured.get("cannot_see") or structured.get("blind_spots"))
+            if all_empty and explained:
+                return Evaluation(
+                    passed=True, score=80,
+                    feedback="Declined to recommend without the data, and said what was missing.")
+        return await super().evaluate(outcome, task, ctx)
+
+
+EMPLOYEE = _Souk(
     id="souk",
     name="Souk",
     codename="The Merchant",
@@ -13,7 +51,7 @@ EMPLOYEE = Employee(
     department="Growth",
     description="Runs the store like an operator, not a report: finds what limits "
                 "growth and says what to do about it this week.",
-    icon="store",
+    icon="tent",
     avatar="/employees/souk.png",
     version="1.0.0",
 
@@ -162,6 +200,23 @@ EMPLOYEE = Employee(
     supported_inputs=["text", "goal"],
     supported_outputs=["audit", "action-plan", "brief"],
 
-    consumes=["intel.competitor_scan", "research.market_report"],
-    produces_for=["content.article", "campaign.strategy", "content.product_copy"],
+    # intel.competitor_scan is not a slug -- the capability is
+    # intel.competitor_analysis. Nothing validated this, which is what
+    # employees/coherence.py now exists to catch.
+    consumes=["intel.competitor_analysis", "research.market_report"],
+    # What the company does NEXT with a finding, offered as buttons after Souk
+    # answers. These are the executable follow-ups: an audit that ends in
+    # "your product copy is thin" should hand the writing to Dune and the
+    # product shot to Mirage, not leave the merchant to work out who to ask.
+    #
+    # Every slug must exist in the taxonomy: resolve_action() silently skips an
+    # unknown one, so "content.product_copy" -- which is not a real slug, the
+    # capability is content.product_description -- dropped the whole
+    # product-copy handoff without any error.
+    produces_for=[
+        "content.product_description",   # Dune rewrites copy that is not converting
+        "image.product_photography",     # Mirage shoots the product that has no image
+        "content.article",               # Dune writes the piece the demand justifies
+        "campaign.strategy",             # Sirocco builds the campaign around a winner
+    ],
 )

@@ -7,6 +7,7 @@
  */
 import {
   BarChart3, Compass, Footprints, Palmtree, Radar, ScrollText, Sparkles,
+  Tent,
   Wand2, Wind, type LucideIcon,
 } from "lucide-react";
 import { apiClient } from "./api";
@@ -148,6 +149,7 @@ const ICONS: Record<string, LucideIcon> = {
   compass: Compass,
   "bar-chart": BarChart3,
   sparkles: Sparkles,
+  tent: Tent,
 };
 
 export function employeeIcon(name: string): LucideIcon {

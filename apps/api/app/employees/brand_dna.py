@@ -42,6 +42,10 @@ class BrandDNA:
     constraints: list[str] = field(default_factory=list)
     # context
     locale: str = "en"
+    # Titles this project has already published. Capped hard: this lands in
+    # every prompt on every turn, and an employee needs to know what exists,
+    # not to read the archive.
+    published: list = field(default_factory=list)
     project_profile: str = ""
     # A cached ~120-word summary of the project's own documents. Carried
     # always; the documents themselves are fetched only on request.
@@ -62,6 +66,7 @@ class BrandDNA:
             "vocabulary": self.vocabulary, "avoidWords": self.avoid_words,
             "negativePrompts": self.negative_prompts, "qualityRules": self.quality_rules,
             "constraints": self.constraints, "locale": self.locale,
+            "published": self.published,
         }
 
     # -- prompt rendering ------------------------------------------------------
@@ -90,6 +95,11 @@ class BrandDNA:
         add("Audience", self.audience)
         add("Products", self.products[:12])
         add("Competitors", self.competitors[:8])
+        # What the project has ALREADY done. Without it an employee proposes a
+        # piece that exists, recommends content that was published last month,
+        # and reads as a stranger rather than a colleague -- which is the whole
+        # difference between a prompt and an employee.
+        add("Already published (do not propose these again)", self.published[:10])
 
         if visual:
             add("Visual identity", self.visual_identity)
@@ -141,6 +151,22 @@ async def build(project_id: uuid.UUID, org_id: uuid.UUID, db) -> BrandDNA:
         dna.project_profile = await project_profile(project_id, db) or ""
     except Exception:
         dna.project_profile = ""
+
+    # What already exists. One small query, capped at ten titles: an employee
+    # that proposes an article the project published last month is not acting
+    # like someone who works here.
+    try:
+        from sqlalchemy import select as _select
+        from app.models.article import Article
+
+        rows = (await db.execute(
+            _select(Article.title)
+            .where(Article.project_id == project_id, Article.title.isnot(None))
+            .order_by(Article.created_at.desc()).limit(10)
+        )).scalars().all()
+        dna.published = [t for t in rows if t]
+    except Exception:  # noqa: BLE001 - context is an enhancement, never a blocker
+        dna.published = []
 
     try:
         project = await db.get(Project, project_id)

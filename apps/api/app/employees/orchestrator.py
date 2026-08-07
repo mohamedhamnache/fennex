@@ -97,7 +97,8 @@ async def understand(goal: str, persona: str, ctx: WorkContext) -> list[str]:
         user += f"\nPROJECT: {ctx.dna.project_profile[:800]}"
 
     try:
-        raw = await call_llm(provider, model, ctx.keys[provider], system, user, locale=ctx.locale)
+        raw = await call_llm(provider, model, ctx.keys[provider], system, user,
+                             locale=ctx.locale, feature="classification")
         parsed = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip()))
         wanted = [c for c in parsed.get("capabilities", []) if c in known][:MAX_TASKS]
         ctx.cost["calls"] += 1

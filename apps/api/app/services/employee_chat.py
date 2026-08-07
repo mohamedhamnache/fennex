@@ -270,12 +270,21 @@ async def run_action(convo: Conversation, employee_id: str, action_id: str, db,
 
 
 async def run_turn(convo: Conversation, message: str, db,
-                   user_id=None) -> AsyncIterator[dict]:
+                   user_id=None, attachment_image_id=None) -> AsyncIterator[dict]:
     """Handle one user message end to end, yielding UI events as they happen."""
     past = await history(convo.id, db)
-    await add_message(convo, db, role="user", content=message)
+
+    # Resolved here, once, and scoped to the conversation's org -- an image id
+    # arrives from the client and is guessable, so a bare lookup would let a
+    # caller pull another organisation's image into their own prompt.
+    attachment = await _resolve_attachment(attachment_image_id, convo, db)
+    await add_message(convo, db, role="user", content=message,
+                      structured={"attachment": attachment} if attachment else None)
 
     ctx = await _build_context(convo, message, db)
+    # Every employee sees it, not just the image ones: a user who attaches a
+    # product photo and asks Souk about it should not be told to attach it.
+    ctx.runtime["attachment"] = attachment
     if not ctx.available_providers():
         yield {"type": "error",
                "message": "No AI key configured. Add an Anthropic or OpenAI key in Settings."}
@@ -298,6 +307,15 @@ async def run_turn(convo: Conversation, message: str, db,
             if not convo.title or convo.title == message[:80]:
                 convo.title = brief["title"][:200]
                 await db.commit()
+
+    # A greeting, a thank-you, or a question about Fennex itself. Fennex
+    # answers in its own voice: waking a specialist for "how are you" both
+    # misrepresents who is speaking and spends a model call on a pleasantry.
+    if decision.mode == ai_router.MODE_ASSISTANT:
+        async for event in _assistant_reply(convo, ctx, db, message):
+            yield event
+        yield {"type": "done"}
+        return
 
     # The Router is not sure enough to hand over silently.
     if decision.mode == ai_router.MODE_CLARIFY:
@@ -807,6 +825,23 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                              for t in turns)
         user = f"CONVERSATION SO FAR:\n{rendered}\n\nLATEST MESSAGE: {message}"
 
+    attached = (ctx.runtime or {}).get("attachment")
+    if attached:
+        user += (f"\n\nTHE USER ATTACHED AN IMAGE: {attached['url']}"
+                 f" ({attached.get('width')}x{attached.get('height')}).\n"
+                 "It is theirs and it is the subject of this message. You CANNOT see its "
+                 "contents -- you have the URL, not the pixels -- so never describe it and "
+                 "never apologise for not seeing it. Say what you can do WITH it: an image "
+                 "employee can restyle, re-scene or edit it, and a product shot will use it "
+                 "as the source. Never ask them to attach an image they have already "
+                 "attached.")
+
+    # What the user is charged for. Surfaced on the message so the cost of an
+    # answer is visible where the answer is, rather than only in an admin
+    # report -- a reseller decides whether a reply was worth its model.
+    used_model, used_provider = model, provider
+    prompt_tokens = completion_tokens = 0
+
     chunks: list[str] = []
     try:
         if action is not None and action.agentic:
@@ -828,6 +863,13 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
                     yield {"type": "tool", "employeeId": employee.id,
                            "tool": event["tool"]}
                 elif event["type"] == "telemetry":
+                    # The runtime chose its own model; this is the only place
+                    # that reports which one actually answered.
+                    m = (event.get("metrics") or {})
+                    used_model = m.get("model_id") or m.get("model") or used_model
+                    used_provider = m.get("provider") or used_provider
+                    prompt_tokens = m.get("promptTokens") or prompt_tokens
+                    completion_tokens = m.get("completionTokens") or completion_tokens
                     yield event
                 elif event["type"] == "error":
                     raise RuntimeError(event.get("message") or "stream failed")
@@ -847,7 +889,10 @@ async def _speak(convo: Conversation, employee: Employee, decision, ctx: WorkCon
     text = "".join(chunks).strip()
     row = await add_message(
         convo, db, role="employee", employee_id=employee.id, content=text,
-        routing=decision.to_dict() if announce else None,
+        routing={**(decision.to_dict() if announce else {}),
+                 "model": used_model, "provider": used_provider,
+                 **await _message_cost(db, used_provider, used_model,
+                                       prompt_tokens, completion_tokens)},
         confidence=decision.confidence if announce else None,
         structured={"actionId": decision.action_id} if decision.action_id else None)
 
@@ -996,3 +1041,121 @@ async def decide_approval(approval_id: uuid.UUID, org_id: uuid.UUID, decision: s
     await db.commit()
     await db.refresh(approval)
     return approval
+
+
+async def _assistant_reply(convo: Conversation, ctx: WorkContext, db, message: str):
+    """Fennex answering for itself -- no specialist, no artifact.
+
+    It knows the roster, so "what can you do" is answered from the company as
+    it actually is rather than from a hardcoded blurb that drifts the moment an
+    employee is hired.
+    """
+    from app.employees import registry
+    from app.services.agents.tiers import resolve_model
+    from app.services.llm_service import stream_llm
+
+    roster = "\n".join(f"- {e.name}, {e.role}: {e.description}"
+                        for e in registry.all_employees())
+    system = (
+        "You are Fennex, the assistant in front of a company of AI specialists in SEO, "
+        "content, images and ecommerce.\n\n"
+
+        "The user has said something conversational, or asked something outside what this "
+        "company does. Answer in ONE OR TWO SHORT SENTENCES. Warm, human, never stiff.\n\n"
+
+        "IF IT IS A GREETING OR A THANK-YOU: greet them back and offer to get started. Do not "
+        "list the team unless they ask.\n\n"
+
+        "IF IT IS OUTSIDE WHAT FENNEX DOES: say so kindly and plainly -- that it is outside "
+        "what you can help with here -- then name in half a sentence what you CAN do, so they "
+        "leave with a way forward rather than a refusal. Never pretend to help, never guess at "
+        "an answer you have no business giving.\n\n"
+
+        "IF THEY ASKED WHO YOU ARE OR WHAT YOU CAN DO: two or three specialists and what they "
+        "would actually get, then invite the request. Never the whole roster -- a wall of names "
+        "is not an answer.\n\n"
+
+        "Speak as Fennex. Do not pretend to be one of the specialists, and do not start any "
+        "work yourself.\n\n"
+
+        f"THE TEAM BEHIND YOU:\n{roster}"
+    )
+
+    attached = (ctx.runtime or {}).get("attachment")
+    if attached:
+        system += ("\n\nTHE USER ATTACHED AN IMAGE. You cannot see its contents, only that "
+                   "it exists. Do not describe it and do not apologise -- say what the team "
+                   "can do with it (restyle it, re-scene it, use it as the source for a "
+                   "product shot) and offer that.")
+
+    providers = ctx.available_providers()
+    if not providers:
+        row = await add_message(convo, db, role="assistant", content=(
+            "Hello. Add an AI key in Settings and I can put the team to work for you."))
+        yield {"type": "message", "message": message_dict(row)}
+        return
+
+    # Always the cheap band: a pleasantry must never buy the expensive model.
+    provider, model = resolve_model("economy", "light", providers)
+    chunks: list[str] = []
+    try:
+        async for piece in stream_llm(provider, model, ctx.keys[provider], system,
+                                      message, locale=ctx.locale, feature="employee_chat"):
+            chunks.append(piece)
+            yield {"type": "delta", "employeeId": None, "text": piece}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("assistant reply failed")
+        row = await add_message(convo, db, role="assistant", content="", error=str(exc))
+        yield {"type": "error", "employeeId": None, "message": str(exc),
+               "messageRow": message_dict(row)}
+        return
+
+    row = await add_message(convo, db, role="assistant",
+                            content="".join(chunks).strip(),
+                            routing={"model": model, "provider": provider,
+                                     "mode": "assistant"})
+    yield {"type": "message", "message": message_dict(row)}
+
+
+async def _message_cost(db, provider: str, model: str,
+                        prompt_tokens: int, completion_tokens: int) -> dict:
+    """What this reply cost, priced with the meter's own rates.
+
+    Deliberately reads cost_rates rather than estimating: a second price table
+    would drift from billing, and a cost shown beside an answer that disagrees
+    with the invoice is worse than showing none. Returns {} when the rate is
+    unknown, so the UI omits the figure instead of printing a confident zero.
+    """
+    if not provider or (prompt_tokens <= 0 and completion_tokens <= 0):
+        return {}
+    try:
+        from app.core.credits import credits_from_micros
+        from app.services.metering.meter import rate
+
+        in_rate = await rate(db, provider, "input_token", model)
+        out_rate = await rate(db, provider, "output_token", model)
+        if in_rate == 0 and out_rate == 0:
+            return {}
+        micros = int(prompt_tokens * in_rate + completion_tokens * out_rate)
+        return {"costMicros": micros, "credits": credits_from_micros(micros),
+                "tokens": prompt_tokens + completion_tokens}
+    except Exception:  # noqa: BLE001 - a price is never worth failing a reply
+        logger.exception("could not price a chat message")
+        return {}
+
+
+async def _resolve_attachment(image_id, convo: Conversation, db) -> dict | None:
+    """The attached image, if it belongs to this conversation's organisation."""
+    if not image_id:
+        return None
+    from sqlalchemy import select
+    from app.models.image import GeneratedImage
+
+    row = (await db.execute(
+        select(GeneratedImage.id, GeneratedImage.image_url,
+               GeneratedImage.width, GeneratedImage.height)
+        .where(GeneratedImage.id == image_id, GeneratedImage.org_id == convo.org_id)
+    )).first()
+    if row is None or not row[1]:
+        return None
+    return {"imageId": str(row[0]), "url": row[1], "width": row[2], "height": row[3]}
