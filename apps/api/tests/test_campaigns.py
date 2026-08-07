@@ -41,6 +41,12 @@ SQLITE_COMPATIBLE_TABLES = [
     "organizations", "users", "projects",
     "articles", "generated_images", "social_posts", "gsc_query_stats", "analytics_snapshots",
     "campaigns", "campaign_steps", "api_keys", "recommendations", "provider_accounts",
+    # The campaign OS tables. The detail endpoint reads all of them on every
+    # response, so leaving one out fails every test in this file rather than
+    # just the tests that use it.
+    "campaign_channels", "campaign_assets", "campaign_tasks", "campaign_approvals",
+    "campaign_experiments", "campaign_learnings", "store_orders", "store_products",
+    "connectors",
 ]
 
 
@@ -131,14 +137,14 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_campaign_persists(db_session, org_and_project):
-    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="Get clients", persona="freelancer", status="planned")
+    c = Campaign(org_id=FAKE_ORG_ID, project_id=FAKE_PROJECT_ID, goal="Get clients", persona="freelancer", status="ready")
     db_session.add(c)
     await db_session.commit()
     step = CampaignStep(campaign_id=c.id, order=0, agent="zerda", action="zerda.pick_angle", status="pending")
     db_session.add(step)
     await db_session.commit()
     await db_session.refresh(c); await db_session.refresh(step)
-    assert c.status == "planned" and step.order == 0
+    assert c.status == "ready" and step.order == 0
 
 
 # ── Action catalog + executors ────────────────────────────────────────────────
@@ -328,7 +334,7 @@ async def test_create_campaign_persists_plan(client, org_and_project):
         r = await client.post(f"/api/v1/campaigns?project_id={FAKE_PROJECT_ID}", json={"goal": "grow"})
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["status"] == "planned" and len(body["steps"]) == 2
+    assert body["status"] == "ready" and len(body["steps"]) == 2
     assert "started_at" in body["steps"][0]
     assert body["source"] == "manual"
     assert body["week_of"] is None

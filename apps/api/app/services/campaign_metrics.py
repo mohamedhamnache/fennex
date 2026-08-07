@@ -37,20 +37,23 @@ from app.services.store_analytics import utm_params
 
 # Metric -> what a merchant must connect for it to become real. User-facing
 # wording: these strings are shown on the dashboard and quoted by the analyst.
+# Product names only, no prose: this string is rendered inside a sentence the
+# UI builds in the reader's own language, and an English clause here would
+# appear untranslated in a French interface.
 UNAVAILABLE_SOURCE = {
-    "spend": "Meta Ads or Google Ads",
-    "impressions": "Meta Ads or Google Ads",
+    "spend": "Meta Ads / Google Ads",
+    "impressions": "Meta Ads / Google Ads",
     "reach": "Meta Ads",
-    "clicks": "Meta Ads or Google Ads",
-    "ctr": "Meta Ads or Google Ads",
-    "cpc": "Meta Ads or Google Ads",
-    "roas": "Meta Ads or Google Ads (needs spend)",
-    "cac": "Meta Ads or Google Ads (needs spend)",
-    "conversion_rate": "Shopify Analytics API or Google Analytics",
-    "sessions": "Shopify Analytics API or Google Analytics",
-    "new_customers": "Shopify customer records",
-    "returning_rate": "Shopify customer records",
-    "profit": "per-product cost of goods, set in Shopify",
+    "clicks": "Meta Ads / Google Ads",
+    "ctr": "Meta Ads / Google Ads",
+    "cpc": "Meta Ads / Google Ads",
+    "roas": "Meta Ads / Google Ads",
+    "cac": "Meta Ads / Google Ads",
+    "conversion_rate": "Shopify Analytics / Google Analytics",
+    "sessions": "Shopify Analytics / Google Analytics",
+    "new_customers": "Shopify",
+    "returning_rate": "Shopify",
+    "profit": "Shopify",
 }
 
 # Below this many attributed orders, a percentage change is noise dressed as a

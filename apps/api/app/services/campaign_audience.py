@@ -119,13 +119,10 @@ async def decorate(audience: dict, project_id: uuid.UUID, org_id: uuid.UUID,
     out["resolvable"] = bool(resolver)
     out["resolver"] = resolver
     out["size"] = None          # never estimated. See the module docstring.
-    if not resolver:
-        out["needs"] = ("Fennex does not store customer records. Connect Klaviyo, "
-                        "Mailchimp, Shopify customers or Meta Ads to build this "
-                        "audience from real people.")
-    else:
-        out["needs"] = (f"This definition is ready to hand to {resolver}. Fennex "
-                        "does not hold the customer list itself.")
+    # No sentence here. The UI composes it in the reader's language from these
+    # two facts -- an English explanation returned by the API would show up
+    # untranslated in every non-English interface.
+    out.pop("needs", None)
     return out
 
 
