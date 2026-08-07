@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.campaign import Campaign, CampaignAsset, CampaignChannel
 from app.services import campaign_channels as ch
+from app.services import campaign_team
 from app.services.agents.cascade import call_with_cascade, validators
 from app.services.llm_service import get_org_llm_keys, project_locale
 
@@ -132,11 +133,25 @@ async def generate(campaign: Campaign, channel: CampaignChannel, kinds: list[str
     # Image prompts need the visual half of the brand DNA; copy does not.
     brand = await _brand(campaign.project_id, campaign.org_id, db,
                          visual=any(k == "image" for k in wanted))
+
+    # The agent that owns this channel writes it. A campaign is work produced by
+    # a team, so the copy carries that employee's brief rather than coming from
+    # an anonymous generator -- and the asset records who wrote it.
+    author = campaign_team.owner_for(channel.channel, (channel.config or {}).get("owner"))
+    voice = ""
+    if author:
+        from app.employees import registry
+        employee = registry.get(author)
+        if employee is not None:
+            voice = (f"\nYOU ARE {employee.name.upper()}, {employee.role}. Write as that "
+                     "specialist would: lead with what you are best at, and stay inside "
+                     "the campaign brief.\n")
     asked = "\n".join(f"- {k}: {KIND_LABELS[k]}" for k in wanted)
     user = (f"{campaign_brief(campaign)}\n\n"
             f"CHANNEL: {cdef.label if cdef else channel.channel}"
             f"{f' ({channel.role})' if channel.role else ''}\n"
             + (f"ANGLE FOR THIS CHANNEL: {angle}\n" if angle else "")
+            + voice
             + (f"\nBRAND VOICE:\n{brand}\n" if brand else "")
             + f"\nWRITE {len(VARIANTS)} VARIANTS OF EACH:\n{asked}")
 
@@ -164,9 +179,12 @@ async def generate(campaign: Campaign, channel: CampaignChannel, kinds: list[str
             text = str(body).strip()
             if not text:
                 continue
+            meta = {"by": author} if author else {}
+            if angle:
+                meta["angle"] = angle
             asset = CampaignAsset(campaign_id=campaign.id, channel_id=channel.id,
                                   kind=kind, variant=variant, body=text[:4000],
-                                  meta={"angle": angle} if angle else None)
+                                  meta=meta or None)
             db.add(asset)
             created.append(asset)
     await db.flush()

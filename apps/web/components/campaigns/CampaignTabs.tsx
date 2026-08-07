@@ -16,6 +16,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { employeeIcon } from "@/lib/employees";
 import { CheckRow, Metric, Section, Unavailable, money } from "./CampaignPrimitives";
 
 /** The refinements the studio offers. Mirrors REFINEMENTS on the API side. */
@@ -132,6 +133,9 @@ function ChannelCard({ campaign, projectId, row, info, onRemove }: {
   const toast = useToast();
   const refresh = useRefresh(campaign.id, projectId);
   const assets = (campaign.assets ?? []).filter((a) => a.channel_id === row.id);
+  // Who owns this channel's work, from the team the API already computed.
+  const owner = (campaign.team ?? []).find((m) => m.channels.includes(row.channel));
+  const OwnerIcon = employeeIcon(owner?.icon ?? "");
 
   const generate = useMutation({
     mutationFn: () => generateCampaignContent(campaign.id, row.id, info?.contentKinds ?? []),
@@ -153,6 +157,12 @@ function ChannelCard({ campaign, projectId, row, info, onRemove }: {
             {row.role && (
               <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                 {t(`campaigns.role.${row.role}`, { defaultValue: row.role })}
+              </span>
+            )}
+            {owner && (
+              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <OwnerIcon className="h-2.5 w-2.5" strokeWidth={2.2} />
+                {owner.name}
               </span>
             )}
           </p>
@@ -785,5 +795,97 @@ export function CopilotTab({ campaign }: { campaign: Campaign }) {
         </Card>
       )}
     </Section>
+  );
+}
+
+// ── the team ─────────────────────────────────────────────────────────────────
+
+/**
+ * Who is doing this campaign.
+ *
+ * This is the answer to the question a person actually has when they delegate
+ * work: not "which channels" but "who is on it, and what are they doing". A
+ * campaign is a piece of work produced by a combination of agents, so the team
+ * is not a footnote on the brief -- it is the brief's first section.
+ *
+ * The playbook canvas sits underneath when the campaign has agent steps to run.
+ * Campaigns created by the strategy engine have a team without steps; ones from
+ * the autopilot have steps. Both are the same team doing the same job.
+ */
+export function TeamTab({ campaign, children }: {
+  campaign: Campaign; children?: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  const team = campaign.team ?? [];
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Section
+        title={t("campaigns.team.title", { defaultValue: "Who is on this campaign" })}
+        description={t("campaigns.team.subtitle", {
+          defaultValue: "Each agent owns part of the work. Assignments come from the plan and stay when it is re-planned.",
+        })}
+      >
+        {!team.length ? (
+          <p className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">
+            {t("campaigns.team.empty", {
+              defaultValue: "Nobody assigned yet. Add a channel or generate a strategy and the work is shared out.",
+            })}
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {team.map((m) => {
+              const Icon = employeeIcon(m.icon);
+              return (
+                <Card key={m.id} className="flex flex-col gap-2.5 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Icon className="h-4 w-4 text-primary" strokeWidth={2} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{m.name}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{m.role}</p>
+                    </div>
+                  </div>
+
+                  {m.channels.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {m.channels.map((c) => (
+                        <span key={c} className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          {t(`campaigns.channel.${c}`, { defaultValue: c })}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {m.tasks.length > 0 && (
+                    <ul className="flex flex-col gap-1 border-t border-border pt-2">
+                      {m.tasks.slice(0, 4).map((task, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+                          <span className="w-10 shrink-0 tabular-nums">
+                            {task.day_offset === 0
+                              ? t("campaigns.timeline.launch", { defaultValue: "Launch" })
+                              : task.day_offset < 0 ? `D${task.day_offset}` : `D+${task.day_offset}`}
+                          </span>
+                          <span className="min-w-0 text-foreground/80">{task.title}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <p className="mt-auto text-[11px] text-muted-foreground">
+                    {t("campaigns.team.produced", {
+                      defaultValue: "{{n}} piece(s) produced", n: m.produced,
+                    })}
+                  </p>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+
+      {children}
+    </div>
   );
 }

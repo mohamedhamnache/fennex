@@ -1392,7 +1392,8 @@
       "launch": "Lancement",
       "performance": "Performance",
       "copilot": "Demander",
-      "agents": "Agents"
+      "agents": "Agents",
+      "team": "Équipe"
     },
     "brief": {
       "audience": "Audience",
@@ -1411,7 +1412,9 @@
       "ungrounded": "Aucune commande n'était synchronisée lors de la planification : rien ne l'ancre dans les chiffres de votre boutique.",
       "replan": "Replanifier avec les données actuelles",
       "audienceReady": "Prête à transmettre à {{app}}. Fennex ne détient pas lui-même la liste de clients.",
-      "audienceUnresolvable": "Fennex ne stocke aucune donnée client. Connectez Klaviyo, Mailchimp, Shopify ou Meta Ads pour construire cette audience à partir de vraies personnes."
+      "audienceUnresolvable": "Fennex ne stocke aucune donnée client. Connectez Klaviyo, Mailchimp, Shopify ou Meta Ads pour construire cette audience à partir de vraies personnes.",
+      "team": "Sur cette campagne",
+      "planning": "planification"
     },
     "channels": {
       "title": "Canaux",
@@ -1570,6 +1573,12 @@
       "retargeting": "Reciblage",
       "product_education": "Pédagogie produit",
       "brand_awareness": "Notoriété"
+    },
+    "team": {
+      "title": "Qui travaille sur cette campagne",
+      "subtitle": "Chaque agent est responsable d'une partie du travail. Les affectations viennent du plan et survivent à une replanification.",
+      "empty": "Personne d'affecté pour l'instant. Ajoutez un canal ou générez une stratégie et le travail sera réparti.",
+      "produced": "{{n}} élément(s) produit(s)"
     }
   },
   "autopilot": {

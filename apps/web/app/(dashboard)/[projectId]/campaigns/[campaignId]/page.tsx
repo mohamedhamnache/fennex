@@ -18,7 +18,7 @@ import { cn } from "@/lib/cn";
 import { statusBadgeClass } from "@/lib/campaignStatus";
 import { Assumption, Section, money } from "@/components/campaigns/CampaignPrimitives";
 import {
-  ChannelsTab, CopilotTab, LaunchTab, PerformanceTab, TimelineTab,
+  ChannelsTab, CopilotTab, LaunchTab, PerformanceTab, TeamTab, TimelineTab,
 } from "@/components/campaigns/CampaignTabs";
 import { CampaignCanvas } from "@/components/campaigns/CampaignCanvas";
 import { StepPanel } from "@/components/campaigns/StepPanel";
@@ -35,7 +35,7 @@ import { PackagePanel } from "@/components/campaigns/PackagePanel";
  * would otherwise become unreachable.
  */
 
-type Tab = "brief" | "channels" | "timeline" | "launch" | "performance" | "copilot" | "agents";
+type Tab = "brief" | "team" | "channels" | "timeline" | "launch" | "performance" | "copilot";
 
 export default function CampaignDetailPage({ params }: {
   params: { projectId: string; campaignId: string };
@@ -63,15 +63,18 @@ export default function CampaignDetailPage({ params }: {
     return <div className="m-6 h-64 animate-pulse rounded-xl border border-border bg-muted/30" />;
   }
 
-  const hasSteps = campaign.steps.length > 0;
+  // The team is a permanent tab in second place, not one that appears only for
+  // campaigns that happen to carry agent steps. A campaign IS work done by a
+  // combination of agents; hiding who is doing it made that invisible on every
+  // campaign the strategy engine created.
   const TABS: [Tab, typeof Target, string][] = [
     ["brief", Target, t("campaigns.tab.brief", { defaultValue: "Brief" })],
+    ["team", Bot, t("campaigns.tab.team", { defaultValue: "Team" })],
     ["channels", Layers, t("campaigns.tab.channels", { defaultValue: "Channels & content" })],
     ["timeline", CalendarClock, t("campaigns.tab.timeline", { defaultValue: "Timeline" })],
     ["launch", Rocket, t("campaigns.tab.launch", { defaultValue: "Launch" })],
     ["performance", BarChart3, t("campaigns.tab.performance", { defaultValue: "Performance" })],
     ["copilot", MessageSquare, t("campaigns.tab.copilot", { defaultValue: "Ask" })],
-    ...(hasSteps ? ([["agents", Bot, t("campaigns.tab.agents", { defaultValue: "Agents" })]] as [Tab, typeof Target, string][]) : []),
   ];
 
   return (
@@ -137,9 +140,15 @@ export default function CampaignDetailPage({ params }: {
       {tab === "launch" && <LaunchTab campaign={campaign} projectId={projectId} />}
       {tab === "performance" && <PerformanceTab campaign={campaign} />}
       {tab === "copilot" && <CopilotTab campaign={campaign} />}
-      {tab === "agents" && (
-        <AgentsTab campaign={campaign} projectId={projectId}
-                   selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
+      {tab === "team" && (
+        <TeamTab campaign={campaign}>
+          {/* The playbook canvas belongs with the team that runs it, not in a
+              tab of its own. Campaigns with no steps simply have no canvas. */}
+          {campaign.steps.length > 0 && (
+            <AgentsTab campaign={campaign} projectId={projectId}
+                       selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
+          )}
+        </TeamTab>
       )}
     </div>
   );
@@ -172,6 +181,25 @@ function BriefTab({ campaign, projectId }: { campaign: Campaign; projectId: stri
               })}
             </p>
           )}
+        </Card>
+      )}
+
+      {(campaign.team ?? []).length > 0 && (
+        <Card className="flex flex-wrap items-center gap-3 p-4">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("campaigns.brief.team", { defaultValue: "On this campaign" })}
+          </span>
+          {(campaign.team ?? []).map((m) => (
+            <span key={m.id} title={m.role}
+                  className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-foreground">
+              {m.name}
+              <span className="text-muted-foreground">
+                {m.channels.length
+                  ? m.channels.map((c) => t(`campaigns.channel.${c}`, { defaultValue: c })).join(", ")
+                  : t("campaigns.brief.planning", { defaultValue: "planning" })}
+              </span>
+            </span>
+          ))}
         </Card>
       )}
 
