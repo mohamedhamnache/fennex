@@ -174,6 +174,25 @@ CATALOGUE: dict[str, MCPServer] = {
     "hubspot": MCPServer(app="hubspot", label="HubSpot", category="Lifecycle",
                          description="CRM contacts, deals and marketing data.",
                          url=os.getenv("MCP_HUBSPOT_URL", ""), permission=P_READ_CONTENT),
+    # ── Creative ─────────────────────────────────────────────────────────────
+    # Where the visual work comes from. Adobe is deliberately absent: it has no
+    # mark in Simple Icons (removed on request), and a category built to look
+    # complete is not worth a row that cannot show its own logo.
+    "figma": MCPServer(app="figma", label="Figma", category="Creative",
+                       description="Design files, components and brand libraries.",
+                       url=os.getenv("MCP_FIGMA_URL", ""), permission=P_READ_CONTENT),
+    "unsplash": MCPServer(app="unsplash", label="Unsplash", category="Creative",
+                          description="Free photography for articles and social posts.",
+                          url=os.getenv("MCP_UNSPLASH_URL", ""), permission=P_READ_CONTENT),
+    "pexels": MCPServer(app="pexels", label="Pexels", category="Creative",
+                        description="Free stock photos and video.",
+                        url=os.getenv("MCP_PEXELS_URL", ""), permission=P_READ_CONTENT),
+    "behance": MCPServer(app="behance", label="Behance", category="Creative",
+                         description="Reference work and visual direction.",
+                         url=os.getenv("MCP_BEHANCE_URL", ""), permission=P_READ_CONTENT),
+    "framer": MCPServer(app="framer", label="Framer", category="Creative",
+                        description="Landing pages and site content.",
+                        url=os.getenv("MCP_FRAMER_URL", ""), permission=P_PUBLISH_EXTERNAL),
     "canva": MCPServer(app="canva", label="Canva", category="Creative",
                        description="Brand templates and design assets.",
                        url=os.getenv("MCP_CANVA_URL", ""), permission=P_PUBLISH_EXTERNAL),

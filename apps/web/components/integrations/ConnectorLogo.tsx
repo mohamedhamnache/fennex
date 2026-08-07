@@ -62,8 +62,14 @@ export function ConnectorLogo({ app, label, className }: {
   // the problem the logos were meant to solve. The hue is derived from the
   // name, so it is stable across renders and distinct between neighbours.
   if (failed) {
-    const initials = label.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean)
-      .slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+    // Two characters, always. One char per word gave "C" for Canva and "L"
+    // for LinkedIn -- a single letter in a tinted square reads as a missing
+    // asset, not as a mark. Multi-word names take an initial from each; a
+    // one-word name takes its first two letters.
+    const words = label.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean);
+    const initials = (words.length > 1
+      ? words.slice(0, 2).map((w) => w[0]).join("")
+      : (words[0] ?? "").slice(0, 2)).toUpperCase();
     let hash = 0;
     for (const ch of app) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
     return (
