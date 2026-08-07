@@ -65,7 +65,8 @@
     "previousPage": "← Anterior",
     "nextPage": "Próximo →",
     "page": "Página {{n}}",
-    "close": "Fechar"
+    "close": "Fechar",
+    "clear": "Limpar"
   },
   "auth": {
     "welcomeBack": "Bem-vindo de volta",
@@ -2779,7 +2780,14 @@
       "plannedNote_plural": "{{count}} competencias declaradas ainda nao estao ligadas a uma acao."
     },
     "filterLabel": "Filtrar por departamento",
-    "allDepartments": "Todos"
+    "allDepartments": "Todos",
+    "searchPlaceholder": "Procurar um agente, função ou capacidade",
+    "views": {
+      "team": "Equipa",
+      "connectors": "Conectores",
+      "knowledge": "Conhecimento"
+    },
+    "noMatch": "Nada corresponde a «{{query}}»."
   },
   "chat": {
     "title": "Assistente Fennex",

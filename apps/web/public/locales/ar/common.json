@@ -65,7 +65,8 @@
     "previousPage": "← السابق",
     "nextPage": "التالي →",
     "page": "صفحة {{n}}",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "clear": "مسح"
   },
   "auth": {
     "welcomeBack": "مرحبًا بعودتك",
@@ -2798,7 +2799,14 @@
       "plannedNote_plural": "{{count}} مهارات معلنة لم تُربط بعد بإجراء."
     },
     "filterLabel": "تصفية حسب القسم",
-    "allDepartments": "الكل"
+    "allDepartments": "الكل",
+    "searchPlaceholder": "ابحث عن وكيل أو دور أو قدرة",
+    "views": {
+      "team": "الفريق",
+      "connectors": "الموصلات",
+      "knowledge": "المعرفة"
+    },
+    "noMatch": "لا نتائج لـ «{{query}}»."
   },
   "chat": {
     "title": "مساعد Fennex",

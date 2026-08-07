@@ -12,6 +12,7 @@ import {
   testConnector, toggleConnector, type ConnectorInfo,
 } from "@/lib/connectors";
 import { departmentAccent, employeeIcon } from "@/lib/employees";
+import { ConnectorLogo } from "@/components/integrations/ConnectorLogo";
 
 /** Connect the tools the employees work through.
  *
@@ -33,8 +34,8 @@ export function ConnectorsPanel() {
   return (
     <section className="glass overflow-hidden">
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/12 text-primary">
-          <Plug className="h-4 w-4" strokeWidth={1.8} />
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Plug className="h-4 w-4" strokeWidth={1.9} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-sm font-bold text-foreground">
@@ -110,14 +111,7 @@ function ConnectorRow({
   return (
     <div className="px-5 py-4">
       <div className="flex flex-wrap items-start gap-3">
-        <span className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold uppercase",
-          connector.connected
-            ? failing ? "bg-destructive/12 text-destructive" : "bg-success/12 text-success"
-            : "bg-muted text-muted-foreground",
-        )}>
-          {connector.label.slice(0, 2)}
-        </span>
+        <ConnectorLogo app={connector.app} label={connector.label} className="h-9 w-9 shrink-0" />
 
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5">

@@ -162,7 +162,8 @@
     "previousPage": "← Previous",
     "nextPage": "Next →",
     "page": "Page {{n}}",
-    "close": "Close"
+    "close": "Close",
+    "clear": "Clear"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -2852,7 +2853,14 @@
       "plannedNote_plural": "{{count}} skills are declared but not yet wired to an action."
     },
     "filterLabel": "Filter by department",
-    "allDepartments": "All"
+    "allDepartments": "All",
+    "searchPlaceholder": "Search the team, a role, or a capability",
+    "views": {
+      "team": "Team",
+      "connectors": "Connectors",
+      "knowledge": "Knowledge"
+    },
+    "noMatch": "No one matches “{{query}}”."
   },
   "chat": {
     "title": "Fennex Assistant",

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { listConnectors, startConnectorOAuth, type ConnectorInfo } from "@/lib/api";
 import { employeeIcon } from "@/lib/employees";
+import { ConnectorLogo } from "./ConnectorLogo";
 
 /**
  * Everything the agents can be connected to.
@@ -156,12 +157,7 @@ function ConnectorCard({ connector: c, projectId }: {
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-            c.connected ? "bg-emerald-500/12 text-emerald-500" : "bg-muted text-muted-foreground",
-          )}>
-            <Plug className="h-4 w-4" strokeWidth={1.9} />
-          </span>
+          <ConnectorLogo app={c.app} label={c.label} className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{c.label}</p>
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{c.category}</p>
