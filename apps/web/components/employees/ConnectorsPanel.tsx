@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -31,6 +31,19 @@ export function ConnectorsPanel() {
   const connectors = data?.connectors ?? [];
   const live = connectors.filter((c) => c.connected).length;
 
+  const grouped = useMemo(() => {
+    const by = new Map<string, ConnectorInfo[]>();
+    for (const c of connectors) {
+      const k = c.category || "Other";
+      by.set(k, [...(by.get(k) ?? []), c]);
+    }
+    return [...by.entries()]
+      .map(([k, rows]) => [k, rows.sort(
+        (a, b) => Number(b.connected) - Number(a.connected) || a.label.localeCompare(b.label),
+      )] as [string, ConnectorInfo[]])
+      .sort((a, b) => a[0].localeCompare(b[0]));
+  }, [connectors]);
+
   return (
     <section className="glass overflow-hidden">
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-4">
@@ -56,13 +69,25 @@ export function ConnectorsPanel() {
         </p>
       )}
 
-      <div className="divide-y divide-border">
-        {connectors.map((connector) => (
-          <ConnectorRow
-            key={connector.app}
-            connector={connector}
-            onDone={refresh}
-          />
+      {/* Grouped, and connected first inside each group. A flat list of 29
+          rows ran nearly four screens with no landmarks -- the reader had to
+          hold "am I past Social yet?" in their head. Categories give the eye
+          somewhere to stop. */}
+      <div>
+        {grouped.map(([category, rows]) => (
+          <section key={category}>
+            <h3 className="sticky top-0 z-10 border-y border-border bg-card/95 px-5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
+              {category}
+              <span className="ml-1.5 font-normal normal-case tracking-normal opacity-70">
+                {rows.filter((r) => r.connected).length}/{rows.length}
+              </span>
+            </h3>
+            <div className="divide-y divide-border">
+              {rows.map((connector) => (
+                <ConnectorRow key={connector.app} connector={connector} onDone={refresh} />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </section>
@@ -207,7 +232,7 @@ function ConnectorRow({
             type="button"
             onClick={() => oauth.mutate()}
             disabled={oauth.isPending}
-            className="btn-primary flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-default disabled:opacity-60"
+            className="btn-primary flex w-fit cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-default disabled:opacity-60"
           >
             {oauth.isPending
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -28,26 +28,41 @@ const SLUG: Record<string, string> = {
   "tiktok-ads": "tiktok",
   "x": "x",
   threads: "threads",
-  email: "maildotru",
+  // No mapping for "email" on purpose: it is a generic connector, not a brand.
+  // It previously pointed at "maildotru", which renders the Mail.ru logo --
+  // a real company that has nothing to do with this connector. Falling back to
+  // initials is honest; borrowing someone's mark is not.
+  // klaviyo has no mark in Simple Icons (404) -- it falls back to initials.
   woocommerce: "woocommerce",
   wordpress: "wordpress",
 };
 
-// Marks that are essentially monochrome black and would vanish on a dark
-// surface. Simple Icons serves a colour per request, so these get white.
-const NEEDS_LIGHT = new Set(["x", "threads", "notion", "github", "vercel", "ghost"]);
+// Marks that are essentially monochrome black. They vanish on a dark surface
+// -- but forcing white made them vanish on a LIGHT one instead, which is what
+// happened to Canva, Notion and Ghost. Requesting the brand colour and
+// inverting only in dark mode is theme-aware, where a fixed colour cannot be:
+// the page can be either, and the CDN serves one image.
+const MONOCHROME = new Set([
+  "x", "threads", "notion", "github", "vercel", "ghost", "canva", "openai",
+]);
 
 export function ConnectorLogo({ app, label, className }: {
   app: string; label: string; className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const slug = SLUG[app] ?? app.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  const colour = NEEDS_LIGHT.has(app) ? "/white" : "";
 
+  // A brand with no mark in the set gets its initials, not a generic plug: at
+  // a glance "KL" in the Klaviyo row still distinguishes it from its
+  // neighbours, where the fourth identical plug does not.
   if (failed) {
     return (
-      <span className={cn("flex items-center justify-center rounded-lg bg-muted text-muted-foreground", className)}>
-        <Plug className="h-4 w-4" strokeWidth={1.9} />
+      <span className={cn(
+        "flex items-center justify-center rounded-lg bg-muted text-[11px] font-bold uppercase text-muted-foreground",
+        className,
+      )}>
+        {label.replace(/[^A-Za-z ]/g, "").split(" ").filter(Boolean)
+          .slice(0, 2).map((w) => w[0]).join("") || <Plug className="h-4 w-4" strokeWidth={1.9} />}
       </span>
     );
   }
@@ -55,11 +70,12 @@ export function ConnectorLogo({ app, label, className }: {
     <span className={cn("flex items-center justify-center rounded-lg bg-muted/60 p-1.5", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`https://cdn.simpleicons.org/${slug}${colour}`}
+        src={`https://cdn.simpleicons.org/${slug}`}
         alt=""                      /* decorative: the label is always beside it */
         loading="lazy"
         onError={() => setFailed(true)}
-        className="h-full w-full object-contain"
+        className={cn("h-full w-full object-contain",
+                      MONOCHROME.has(app) && "dark:invert")}
       />
     </span>
   );
