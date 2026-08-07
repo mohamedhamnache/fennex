@@ -3006,7 +3006,9 @@
       "failing": "Failing",
       "environment": "From environment"
     },
-    "connecting": "Connecting…"
+    "connecting": "Connecting…",
+    "searchPlaceholder": "Search a connector or an agent",
+    "connectedCount": "connected"
   },
   "knowledge": {
     "title": "What the team knows",

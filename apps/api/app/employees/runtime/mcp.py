@@ -168,10 +168,10 @@ CATALOGUE: dict[str, MCPServer] = {
     "airtable": MCPServer(app="airtable", label="Airtable", category="Workspace",
                           description="Bases and records used as a content calendar.",
                           url=os.getenv("MCP_AIRTABLE_URL", ""), permission=P_READ_CONTENT),
-    "hubspot": MCPServer(app="hubspot", label="HubSpot", category="Workspace",
+    "hubspot": MCPServer(app="hubspot", label="HubSpot", category="Lifecycle",
                          description="CRM contacts, deals and marketing data.",
                          url=os.getenv("MCP_HUBSPOT_URL", ""), permission=P_READ_CONTENT),
-    "canva": MCPServer(app="canva", label="Canva", category="Workspace",
+    "canva": MCPServer(app="canva", label="Canva", category="Creative",
                        description="Brand templates and design assets.",
                        url=os.getenv("MCP_CANVA_URL", ""), permission=P_PUBLISH_EXTERNAL),
 }

@@ -2933,7 +2933,9 @@
       "failing": "En echec",
       "environment": "Environnement"
     },
-    "connecting": "Connexion…"
+    "connecting": "Connexion…",
+    "searchPlaceholder": "Rechercher un connecteur ou un agent",
+    "connectedCount": "connectés"
   },
   "knowledge": {
     "title": "Ce que l'equipe sait",

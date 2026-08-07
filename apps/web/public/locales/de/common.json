@@ -2933,7 +2933,9 @@
       "failing": "Fehlerhaft",
       "environment": "Aus der Umgebung"
     },
-    "connecting": "Verbinden…"
+    "connecting": "Verbinden…",
+    "searchPlaceholder": "Konnektor oder Agent suchen",
+    "connectedCount": "verbunden"
   },
   "knowledge": {
     "title": "Was das Team weiss",

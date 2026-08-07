@@ -2933,7 +2933,9 @@
       "failing": "Com falhas",
       "environment": "Do ambiente"
     },
-    "connecting": "A ligar…"
+    "connecting": "A ligar…",
+    "searchPlaceholder": "Procurar um conector ou agente",
+    "connectedCount": "ligados"
   },
   "knowledge": {
     "title": "O que a equipa sabe",

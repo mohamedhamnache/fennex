@@ -2952,7 +2952,9 @@
       "failing": "فشل",
       "environment": "من البيئة"
     },
-    "connecting": "جارٍ الاتصال…"
+    "connecting": "جارٍ الاتصال…",
+    "searchPlaceholder": "ابحث عن موصل أو وكيل",
+    "connectedCount": "متصل"
   },
   "knowledge": {
     "title": "ما يعرفه الفريق",
