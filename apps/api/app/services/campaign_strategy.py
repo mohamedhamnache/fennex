@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.campaign import Campaign, CampaignLearning
 from app.models.store_product import StoreProduct
 from app.services import campaign_channels as ch
-from app.services import store_agent_context
+from app.services import campaign_personas, campaign_team, store_agent_context
 from app.services.agents.cascade import call_with_cascade, validators
 from app.services.llm_service import get_org_llm_keys, project_locale
 
@@ -38,23 +38,10 @@ logger = logging.getLogger(__name__)
 
 _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$")
 
-# What the merchant picked, in words the model can act on. The key is stored on
-# the campaign; the sentence is what shapes the plan.
-OBJECTIVE_BRIEFS = {
-    "launch_product": "Introduce a product that is new to this audience. Awareness "
-                      "and first purchases matter more than margin.",
-    "increase_sales": "Lift revenue from an existing catalogue over a short window.",
-    "clear_inventory": "Sell through specific stock. Volume matters more than AOV, "
-                       "and the offer is usually the lever.",
-    "acquire_customers": "Reach people who have never bought. Judge it on new "
-                         "customers, not on total revenue.",
-    "retarget_customers": "Reach people who already engaged but did not buy.",
-    "repeat_purchase": "Bring existing customers back for another order.",
-    "promote_collection": "Push a group of products together rather than one hero.",
-    "seasonal": "A dated moment with a hard start and end. Timing beats everything.",
-    "brand_awareness": "Reach and recall, not immediate orders. Do not promise ROAS.",
-    "custom": "Follow the merchant's own description of the goal.",
-}
+# Objective briefs live in campaign_personas, which also decides which are
+# OFFERED for a given persona. Re-exported here so existing callers keep
+# working and the two tables cannot drift apart.
+OBJECTIVE_BRIEFS = campaign_personas.OBJECTIVE_BRIEFS
 
 
 async def _products(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession,
@@ -112,7 +99,7 @@ async def _past_campaigns(project_id: uuid.UUID, org_id: uuid.UUID,
 
 
 async def build_context(project_id: uuid.UUID, org_id: uuid.UUID,
-                        db: AsyncSession) -> dict:
+                        db: AsyncSession, persona: str = "") -> dict:
     """Everything a strategy may rest on, with the blanks named as blanks."""
     try:
         store = await store_agent_context.build(project_id, org_id, db)
@@ -121,21 +108,39 @@ async def build_context(project_id: uuid.UUID, org_id: uuid.UUID,
         store = {"measured": {}, "unavailable": []}
 
     available = await ch.connected_apps(project_id, org_id, db)
+    # Channels this persona actually has. Offering a store channel to someone
+    # with no store is a dead option that makes the whole list untrustworthy.
+    profile = campaign_personas.profile(persona)
+    catalogue = [c for c in ch.catalogue(available) if c["key"] in profile.channels]
     return {
+        "persona": profile,
         "store": store,
         "products": await _products(project_id, org_id, db),
         "learnings": await _learnings(project_id, db),
         "past_campaigns": await _past_campaigns(project_id, org_id, db),
-        "channels": [c for c in ch.catalogue(available)],
+        "channels": catalogue,
         "connected_apps": sorted(a for a, ok in available.items() if ok),
+        "roster": campaign_team.roster_prompt(),
     }
 
 
 def _context_prompt(ctx: dict) -> str:
     store = ctx["store"]
+    profile = ctx.get("persona")
+    lines_head = []
+    if profile is not None:
+        lines_head.append(f"WHO THIS IS FOR: {profile.brief}")
+        if profile.outcome != "revenue":
+            lines_head.append(
+                "This project is NOT judged on orders or attributed revenue. "
+                f"Success here is measured by {campaign_personas.OUTCOME_MEASURED_BY[profile.outcome]}. "
+                "Do not set a revenue target, do not promise a return on spend, "
+                "and do not write a plan that only makes sense for a shop.")
+        lines_head.append("")
+
     window = store.get("window") or {}
-    lines = [f"WHAT YOU CAN SEE (measured from this store's real orders, "
-             f"last {window.get('days', 30)} days):"]
+    lines = lines_head + [
+        f"WHAT YOU CAN SEE (measured from real orders, last {window.get('days', 30)} days):"]
     measured = store.get("measured") or {}
     if measured:
         for k, v in measured.items():
@@ -187,6 +192,9 @@ def _context_prompt(ctx: dict) -> str:
         lines.append("\nWHAT THIS STORE HAS ALREADY LEARNED (weigh these heavily):")
         lines += [f"  {line}" for line in ctx["learnings"]]
 
+    lines.append("\nTHE TEAM you are assigning work to:")
+    lines.append(ctx["roster"])
+
     executable = [c["key"] for c in ctx["channels"] if c["executable"]]
     planned_only = [c["key"] for c in ctx["channels"] if not c["executable"]]
     lines.append("\nCHANNELS Fennex can execute today: " + (", ".join(executable) or "none"))
@@ -214,6 +222,9 @@ HARD RULES:
    that it will be written but not published.
 5. If the store has no synced orders, say the strategy is un-grounded and keep
    recommendations generic rather than inventing specifics.
+6. This campaign is work done by a TEAM OF AGENTS. Assign every channel and
+   every timeline step to one agent by its id, chosen from THE TEAM list for
+   what that agent actually produces. Never invent an agent id.
 
 Respond with ONLY a JSON object:
 {
@@ -224,12 +235,12 @@ Respond with ONLY a JSON object:
   "offer": {"type": "discount|bundle|free_shipping|gift|none", "value": "...",
             "description": "...", "why": "..."},
   "channels": [{"channel": "<key from the lists>", "role": "prospecting|retargeting|announce|reminder",
-                "budget_share": 0-100, "why": "..."}],
+                "owner": "<agent id from THE TEAM>", "budget_share": 0-100, "why": "..."}],
   "primary_kpi": "revenue|orders|aov|new_customers|reach",
   "secondary_kpis": ["..."],
-  "targets": {"revenue": number, "orders": number},
+  "targets": {"<only metrics this project is judged on>": number},
   "budget": {"amount": number, "currency": "EUR", "basis": "how you arrived at it"},
-  "timeline": [{"day_offset": -7, "title": "...", "owner": "...", "channel": "..."}],
+  "timeline": [{"day_offset": -7, "title": "...", "owner": "<agent id from THE TEAM>", "channel": "..."}],
   "content_plan": [{"channel": "...", "kinds": ["headline","primary_text"], "angle": "..."}],
   "assumptions": [{"claim": "...", "rests_on": "..."}],
   "cannot_see": ["metric names you were told you cannot see and that limited this plan"]
@@ -237,7 +248,8 @@ Respond with ONLY a JSON object:
 
 
 async def draft(project_id: uuid.UUID, org_id: uuid.UUID, goal: str,
-                objective: str, db: AsyncSession, *, hint: dict | None = None) -> dict:
+                objective: str, db: AsyncSession, *, hint: dict | None = None,
+                persona: str = "") -> dict:
     # `hint` carries constraints the merchant already set -- budget, dates,
     # products. A strategy that ignores them proposes a plan against a budget
     # the campaign does not have, and the assumptions block then explains a
@@ -251,7 +263,7 @@ async def draft(project_id: uuid.UUID, org_id: uuid.UUID, goal: str,
     if not keys:
         raise ValueError("No AI key configured. Add an Anthropic or OpenAI key in Settings.")
 
-    ctx = await build_context(project_id, org_id, db)
+    ctx = await build_context(project_id, org_id, db, persona)
     brief = OBJECTIVE_BRIEFS.get(objective, OBJECTIVE_BRIEFS["custom"])
 
     user = (f"OBJECTIVE: {objective} — {brief}\n"
@@ -298,6 +310,10 @@ def _sanitise(plan: dict, ctx: dict) -> dict:
         except (TypeError, ValueError):
             share = 0.0
         channels.append({"channel": key, "role": str(c.get("role") or "")[:30],
+                         # Falls back to the channel's natural owner rather than
+                         # leaving the work unassigned. An invented agent id is
+                         # dropped by owner_for, never displayed.
+                         "owner": campaign_team.owner_for(key, c.get("owner")),
                          "budget_share": max(0.0, min(100.0, share)),
                          "why": str(c.get("why") or "")[:400]})
     plan["channels"] = channels
@@ -312,7 +328,7 @@ def _sanitise(plan: dict, ctx: dict) -> dict:
         if not title:
             continue
         timeline.append({"day_offset": max(-60, min(60, offset)), "title": title[:200],
-                         "owner": str(t.get("owner") or "")[:30],
+                         "owner": campaign_team.valid_owner(str(t.get("owner") or "")) or "",
                          "channel": str(t.get("channel") or "")[:30],
                          "detail": str(t.get("detail") or "")[:600]})
     if len(timeline) < 3:

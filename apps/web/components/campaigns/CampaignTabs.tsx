@@ -525,34 +525,63 @@ export function PerformanceTab({ campaign }: { campaign: Campaign }) {
 
   if (!perf) return <div className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />;
   const cur = perf.currency;
+  // A campaign is work made by a team of agents. Only a project with something
+  // to sell is judged on what that work earned; for everyone else the work
+  // itself is the outcome, and a revenue row would be a verdict on a race the
+  // campaign was never entered in.
+  const sells = perf.judged_on_revenue;
 
   return (
     <div className="flex flex-col gap-5">
       <Card className="p-5">
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-          <Metric label={t("campaigns.kpi.revenue", { defaultValue: "Attributed revenue" })}
-                  value={money(perf.lifetime.revenue, cur)}
-                  sub={t("campaigns.perf.window", { defaultValue: "{{d}} days", d: perf.window.days })} />
-          <Metric label={t("campaigns.kpi.orders", { defaultValue: "Attributed orders" })}
-                  value={String(perf.lifetime.orders)} />
-          <Metric label={t("campaigns.kpi.aov", { defaultValue: "Average order value" })}
-                  value={money(perf.lifetime.aov, cur)} />
-          <Metric label={t("campaigns.perf.today", { defaultValue: "Today" })}
-                  value={money(perf.today.revenue, cur)}
-                  sub={t("campaigns.perf.yesterday", {
-                    defaultValue: "yesterday {{v}}", v: money(perf.yesterday.revenue, cur),
-                  })} />
+          {sells ? (
+            <>
+              <Metric label={t("campaigns.kpi.revenue", { defaultValue: "Attributed revenue" })}
+                      value={money(perf.lifetime.revenue, cur)}
+                      sub={t("campaigns.perf.window", { defaultValue: "{{d}} days", d: perf.window.days })} />
+              <Metric label={t("campaigns.kpi.orders", { defaultValue: "Attributed orders" })}
+                      value={String(perf.lifetime.orders)} />
+              <Metric label={t("campaigns.kpi.aov", { defaultValue: "Average order value" })}
+                      value={money(perf.lifetime.aov, cur)} />
+              <Metric label={t("campaigns.perf.today", { defaultValue: "Today" })}
+                      value={money(perf.today.revenue, cur)}
+                      sub={t("campaigns.perf.yesterday", {
+                        defaultValue: "yesterday {{v}}", v: money(perf.yesterday.revenue, cur),
+                      })} />
+            </>
+          ) : (
+            <>
+              <Metric label={t("campaigns.work.pieces", { defaultValue: "Pieces produced" })}
+                      value={String(perf.work.pieces)}
+                      sub={t("campaigns.work.selected", {
+                        defaultValue: "{{n}} chosen", n: perf.work.selected,
+                      })} />
+              <Metric label={t("campaigns.work.agentSteps", { defaultValue: "Agent steps done" })}
+                      value={`${perf.work.agent_steps_done}/${perf.work.agent_steps_total || 0}`} />
+              <Metric label={t("campaigns.work.artifacts", { defaultValue: "Deliverables" })}
+                      value={String(perf.work.artifacts.length)}
+                      sub={perf.work.artifacts.join(", ") || undefined} />
+              <Metric label={t("campaigns.perf.window", { defaultValue: "{{d}} days", d: perf.window.days })}
+                      value={String(perf.window.days)} tone="muted" />
+            </>
+          )}
         </div>
         <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-          {t("campaigns.perf.method", {
-            defaultValue: "Measured from {{n}} order(s) whose landing URL carried this campaign's tag.",
-            n: perf.attribution.matched_orders,
-          })}
+          {sells
+            ? t("campaigns.perf.method", {
+                defaultValue: "Measured from {{n}} order(s) whose landing URL carried this campaign's tag.",
+                n: perf.attribution.matched_orders,
+              })
+            : t("campaigns.perf.methodWork", {
+                defaultValue: "This project is measured by {{what}}, not by orders.",
+                what: perf.measured_by,
+              })}
         </p>
-        <Unavailable metrics={perf.unavailable} className="mt-4" />
+        {sells && <Unavailable metrics={perf.unavailable} className="mt-4" />}
       </Card>
 
-      {perf.targets.length > 0 && (
+      {sells && perf.targets.length > 0 && (
         <Section title={t("campaigns.perf.targets", { defaultValue: "Against target" })}>
           <ul className="flex flex-col gap-2">
             {perf.targets.map((tg) => (
@@ -584,7 +613,7 @@ export function PerformanceTab({ campaign }: { campaign: Campaign }) {
         </Section>
       )}
 
-      {perf.by_source.length > 0 && (
+      {sells && perf.by_source.length > 0 && (
         <Section title={t("campaigns.perf.bySource", { defaultValue: "Where the orders came from" })}>
           <Card className="flex flex-col divide-y divide-border p-0">
             {perf.by_source.map((r) => (

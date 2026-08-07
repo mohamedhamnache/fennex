@@ -5,7 +5,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles, X } from "lucide-react";
-import { campaignTemplates, createCampaign, type CampaignTemplate } from "@/lib/api";
+import {
+  campaignPersona, campaignTemplates, createCampaign, type CampaignTemplate,
+} from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 
@@ -19,12 +21,6 @@ import { cn } from "@/lib/cn";
  * then generating from those fields is a form with a spinner, not a strategist.
  */
 
-const OBJECTIVES = [
-  "launch_product", "increase_sales", "clear_inventory", "acquire_customers",
-  "retarget_customers", "repeat_purchase", "promote_collection", "seasonal",
-  "brand_awareness", "custom",
-] as const;
-
 export function CreateCampaign({ projectId, onClose }: {
   projectId: string; onClose: () => void;
 }) {
@@ -33,7 +29,15 @@ export function CreateCampaign({ projectId, onClose }: {
   const toast = useToast();
   const qc = useQueryClient();
 
-  const [objective, setObjective] = useState<string>("increase_sales");
+  // Objectives come from the project's persona. A creator offered "clear
+  // inventory" is being shown a product that does not know what they do.
+  const { data: persona } = useQuery({
+    queryKey: ["campaign-persona", projectId],
+    queryFn: () => campaignPersona(projectId),
+    staleTime: 600_000,
+  });
+  const objectives = persona?.objectives ?? [];
+  const [objective, setObjective] = useState<string>("");
   const [goal, setGoal] = useState("");
   const [templateKey, setTemplateKey] = useState<string>("");
   const [budget, setBudget] = useState("");
@@ -44,10 +48,13 @@ export function CreateCampaign({ projectId, onClose }: {
     staleTime: 600_000,
   });
 
+  // The first objective this persona offers is the default, once it is known.
+  const chosen = objective || objectives[0]?.key || "";
+
   const create = useMutation({
     mutationFn: () => createCampaign(projectId, {
       goal: goal.trim(),
-      objective,
+      objective: chosen,
       template_key: templateKey || undefined,
       with_ai: true,
       budget: budget ? Number(budget) : undefined,
@@ -84,9 +91,13 @@ export function CreateCampaign({ projectId, onClose }: {
               {t("campaigns.create.title", { defaultValue: "Create a campaign with AI" })}
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {t("campaigns.create.subtitle", {
-                defaultValue: "Two answers. The strategy comes from your store's own numbers.",
-              })}
+              {persona?.measuresRevenue
+                ? t("campaigns.create.subtitleSells", {
+                    defaultValue: "Two answers. The strategy comes from your store's own numbers, and a team of agents produces the work.",
+                  })
+                : t("campaigns.create.subtitle", {
+                    defaultValue: "Two answers. A team of agents plans the work and produces it.",
+                  })}
             </p>
           </div>
           <button onClick={onClose} aria-label={t("common.close", { defaultValue: "Close" })}
@@ -101,15 +112,16 @@ export function CreateCampaign({ projectId, onClose }: {
               {t("campaigns.create.objective", { defaultValue: "What are you trying to achieve?" })}
             </label>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {OBJECTIVES.map((key) => (
+              {objectives.map(({ key, brief }) => (
                 <button
                   key={key}
                   onClick={() => setObjective(key)}
-                  aria-pressed={objective === key}
+                  title={brief}
+                  aria-pressed={chosen === key}
                   className={cn(
                     "cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    objective === key
+                    chosen === key
                       ? "border-primary/40 bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:text-foreground",
                   )}
@@ -129,9 +141,13 @@ export function CreateCampaign({ projectId, onClose }: {
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               rows={2}
-              placeholder={t("campaigns.create.goalPlaceholder", {
-                defaultValue: "Sell more of our best-selling product this month",
-              })}
+              placeholder={persona?.measuresRevenue
+                ? t("campaigns.create.goalPlaceholderSells", {
+                    defaultValue: "Sell more of our best-selling product this month",
+                  })
+                : t("campaigns.create.goalPlaceholder", {
+                    defaultValue: "Reach more people who care about what we make",
+                  })}
               className="mt-2 w-full resize-none rounded-xl border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
           </div>
@@ -155,7 +171,7 @@ export function CreateCampaign({ projectId, onClose }: {
                         : "border-border text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {tpl.label}
+                    {t(`campaigns.template.${tpl.key}`, { defaultValue: tpl.label })}
                   </button>
                 ))}
               </div>
@@ -190,7 +206,7 @@ export function CreateCampaign({ projectId, onClose }: {
           </button>
           <button
             onClick={() => create.mutate()}
-            disabled={!goal.trim() || create.isPending}
+            disabled={!goal.trim() || !chosen || create.isPending}
             className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-default disabled:opacity-50"
           >
             {create.isPending

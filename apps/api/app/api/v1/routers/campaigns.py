@@ -26,7 +26,9 @@ from app.models.campaign import (Campaign, CampaignApproval, CampaignAsset,
                                  CampaignStep, CampaignTask)
 from app.services import (campaign_analyst, campaign_audience, campaign_channels,
                           campaign_content, campaign_metrics, campaign_readiness,
-                          campaign_strategy, campaign_templates, campaign_tracking)
+                          campaign_personas, campaign_strategy, campaign_team,
+                          campaign_templates,
+                          campaign_tracking)
 from app.services.campaign_director import draft_plan
 
 router = APIRouter()
@@ -240,17 +242,34 @@ class ExperimentResult(BaseModel):
 
 # ── catalogues (no campaign yet) ─────────────────────────────────────────────
 
+@router.get("/personas")
+async def persona_profile(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """What a campaign means for THIS project.
+
+    Objectives, and whether revenue is the outcome. A creator asked to "clear
+    inventory" is being offered a product that does not know what they do.
+    """
+    proj = await _project_or_404(project_id, current_user.org_id, db)
+    p = campaign_personas.profile(proj.persona)
+    return {"key": p.key, "label": p.label, "outcome": p.outcome,
+            "objectives": campaign_personas.objectives_for(proj.persona),
+            "measuresRevenue": campaign_personas.measures_revenue(proj.persona),
+            "measuredBy": campaign_personas.OUTCOME_MEASURED_BY[p.outcome]}
+
+
 @router.get("/templates")
 async def templates(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
-    await _project_or_404(project_id, current_user.org_id, db)
-    return campaign_templates.catalogue()
+    proj = await _project_or_404(project_id, current_user.org_id, db)
+    allowed = set(campaign_personas.profile(proj.persona).templates)
+    return [t for t in campaign_templates.catalogue() if t["key"] in allowed]
 
 
 @router.get("/channels")
 async def channels_catalogue(project_id: uuid.UUID, current_user: CurrentUser, db: DB):
-    await _project_or_404(project_id, current_user.org_id, db)
+    proj = await _project_or_404(project_id, current_user.org_id, db)
     available = await campaign_channels.connected_apps(project_id, current_user.org_id, db)
-    return campaign_channels.catalogue(available)
+    allowed = set(campaign_personas.profile(proj.persona).channels)
+    return [c for c in campaign_channels.catalogue(available) if c["key"] in allowed]
 
 
 @router.get("/audiences")
@@ -411,7 +430,8 @@ async def create_campaign(project_id: uuid.UUID, body: CampaignCreate,
             db.add(CampaignTask(campaign_id=campaign.id, day_offset=offset,
                                 title=title, owner=owner or None))
         for key in template.channels:
-            db.add(CampaignChannel(campaign_id=campaign.id, channel=key))
+            db.add(CampaignChannel(campaign_id=campaign.id, channel=key,
+                                   config={"owner": campaign_team.owner_for(key)}))
         if template.audience_key:
             preset = campaign_audience.preset(template.audience_key)
             if preset:
@@ -424,7 +444,8 @@ async def create_campaign(project_id: uuid.UUID, body: CampaignCreate,
                 project_id, current_user.org_id, body.goal, objective, db,
                 hint={"budget": f"{body.budget} {body.currency or 'EUR'}" if body.budget else "",
                       "starts_on": body.starts_on.isoformat() if body.starts_on else "",
-                      "template": template.label if template else ""})
+                      "template": template.label if template else ""},
+                persona=persona)
             await _apply_strategy(campaign, plan, db, replace_channels=not template)
             campaign.status = "planning"
         except ValueError as exc:
@@ -488,10 +509,13 @@ async def _apply_strategy(campaign: Campaign, plan: dict, db, *,
         for c in plan.get("channels") or []:
             if c["channel"] in have:
                 continue
-            db.add(CampaignChannel(campaign_id=campaign.id, channel=c["channel"],
-                                   role=c.get("role") or None,
-                                   budget_share=c.get("budget_share"),
-                                   config={"why": c.get("why")} if c.get("why") else None))
+            db.add(CampaignChannel(
+                campaign_id=campaign.id, channel=c["channel"],
+                role=c.get("role") or None, budget_share=c.get("budget_share"),
+                # Who on the team owns this channel's work. Kept on the row so
+                # it survives the strategy being regenerated or edited.
+                config={k: v for k, v in (("why", c.get("why")), ("owner", c.get("owner")))
+                        if v}))
 
     existing_tasks = (await db.execute(select(CampaignTask).where(
         CampaignTask.campaign_id == campaign.id))).scalars().first()
@@ -515,6 +539,7 @@ async def _full(campaign: Campaign, db) -> dict:
             model.campaign_id == campaign.id))).scalars().all()
         out[key] = [ser(r) for r in rows]
     out["tasks"].sort(key=lambda t: t["day_offset"])
+    out["team"] = await campaign_team.build(campaign.id, db)
     return out
 
 
@@ -546,7 +571,8 @@ async def regenerate_strategy(campaign_id: uuid.UUID, current_user: CurrentUser,
                             "A campaign that has launched cannot be re-planned.")
     try:
         plan = await campaign_strategy.draft(
-            c.project_id, current_user.org_id, c.goal, c.objective or "custom", db)
+            c.project_id, current_user.org_id, c.goal, c.objective or "custom", db,
+            persona=c.persona)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
     await _apply_strategy(c, plan, db)
@@ -564,6 +590,9 @@ async def add_channel(campaign_id: uuid.UUID, body: ChannelBody,
     c = await _load(campaign_id, current_user.org_id, db)
     if body.channel not in campaign_channels.CHANNELS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown channel {body.channel}")
+    if not campaign_personas.allows_channel(c.persona, body.channel):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            f"{body.channel} does not apply to a {c.persona} project.")
     existing = (await db.execute(select(CampaignChannel).where(
         CampaignChannel.campaign_id == c.id,
         CampaignChannel.channel == body.channel))).scalars().first()
@@ -611,6 +640,13 @@ async def generate_content(campaign_id: uuid.UUID, channel_id: uuid.UUID,
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
     await db.commit()
     return [_asset(a) for a in created]
+
+
+@router.get("/{campaign_id}/team")
+async def team(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Which agents are working on this campaign, and on what."""
+    c = await _load(campaign_id, current_user.org_id, db)
+    return await campaign_team.build(c.id, db)
 
 
 @router.get("/{campaign_id}/coverage")

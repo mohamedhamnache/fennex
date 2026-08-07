@@ -2554,6 +2554,7 @@ export interface Campaign {
   launched_at: string | null;
   created_at: string | null;
   steps: CampaignStep[];
+  team?: CampaignTeamMember[];
   channels?: CampaignChannelRow[];
   assets?: CampaignAsset[];
   tasks?: CampaignTask[];
@@ -2586,9 +2587,29 @@ export interface CampaignStrategy {
  *  These carry NO value on purpose -- see campaign_metrics on the API side. */
 export interface UnavailableMetric { metric: string; needs: string }
 
+export interface CampaignWork {
+  pieces: number;
+  selected: number;
+  agent_steps_done: number;
+  agent_steps_total: number;
+  artifacts: string[];
+}
+
+export interface CampaignTeamMember {
+  id: string; name: string; role: string; icon: string; department: string;
+  channels: string[];
+  tasks: { day_offset: number; title: string; status: string }[];
+  produced: number;
+}
+
 export interface CampaignPerformance {
   campaign_id: string;
   slug: string | null;
+  outcome: "revenue" | "content" | "pipeline";
+  measured_by: string;
+  /** False for a project with nothing to sell. Revenue is then context, not the verdict. */
+  judged_on_revenue: boolean;
+  work: CampaignWork;
   currency: string;
   window: { start: string; end: string; days: number };
   attribution: { method: string; matched_orders: number };
@@ -2607,9 +2628,27 @@ export interface CampaignPerformance {
   unavailable: UnavailableMetric[];
 }
 
+/** What a campaign means for this project. A creator has no orders to attribute,
+ *  so revenue is not the outcome and its absence is not failure. */
+export interface PersonaProfile {
+  key: string;
+  label: string;
+  outcome: "revenue" | "content" | "pipeline";
+  objectives: { key: string; brief: string }[];
+  measuresRevenue: boolean;
+  measuredBy: string;
+}
+
+export async function campaignPersona(projectId: string): Promise<PersonaProfile> {
+  return apiClient.get<PersonaProfile>(`/campaigns/personas?project_id=${projectId}`);
+}
+
 export interface CampaignPortfolio {
   total: number;
   by_status: Record<string, number>;
+  outcome: "revenue" | "content" | "pipeline";
+  judged_on_revenue: boolean;
+  measured_by: string;
   revenue: number;
   orders: number;
   aov: number;

@@ -31,8 +31,9 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.campaign import Campaign
+from app.models.campaign import Campaign, CampaignAsset, CampaignStep
 from app.models.store_order import StoreOrder
+from app.services import campaign_personas
 from app.services.store_analytics import utm_params
 
 # Metric -> what a merchant must connect for it to become real. User-facing
@@ -177,6 +178,28 @@ def _target_progress(measured: dict, targets: dict | None, budget: float | None)
     return out
 
 
+async def _work_done(campaign: Campaign, db: AsyncSession) -> dict:
+    """What the campaign has actually produced.
+
+    For a project that does not sell -- a creator, a freelancer, a consultancy --
+    this IS the outcome, not a consolation prize. A campaign is work made by a
+    combination of agents, and for most personas the honest measure of whether
+    it happened is whether the work exists and reached anyone.
+    """
+    assets = (await db.execute(select(CampaignAsset).where(
+        CampaignAsset.campaign_id == campaign.id))).scalars().all()
+    steps = (await db.execute(select(CampaignStep).where(
+        CampaignStep.campaign_id == campaign.id))).scalars().all()
+    artifacts = [s for s in steps if s.status == "completed" and s.artifact_type]
+    return {
+        "pieces": len(assets),
+        "selected": len([a for a in assets if a.selected]),
+        "agent_steps_done": len(artifacts),
+        "agent_steps_total": len(steps),
+        "artifacts": sorted({s.artifact_type for s in artifacts if s.artifact_type}),
+    }
+
+
 async def for_campaign(campaign: Campaign, db: AsyncSession) -> dict:
     """The campaign's performance: what is measured, and what is missing.
 
@@ -203,9 +226,19 @@ async def for_campaign(campaign: Campaign, db: AsyncSession) -> dict:
         "aov": totals["aov"],
     }
 
+    profile = campaign_personas.profile(campaign.persona)
+    sells = profile.outcome == "revenue"
+
     return {
         "campaign_id": str(campaign.id),
         "slug": campaign.slug,
+        # What this project is judged on. A creator campaign reporting 0.00
+        # attributed revenue as its headline reads as a failure, when in fact
+        # revenue was never the point and no store exists to produce it.
+        "outcome": profile.outcome,
+        "measured_by": campaign_personas.OUTCOME_MEASURED_BY[profile.outcome],
+        "judged_on_revenue": sells,
+        "work": await _work_done(campaign, db),
         "currency": currency or campaign.budget_currency or "EUR",
         "window": {"start": start.isoformat(), "end": end.isoformat(),
                    "days": max((end - start).days + 1, 0)},
@@ -261,9 +294,17 @@ async def portfolio(project_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) 
     total_budget = sum(float(c.budget_amount) for c in campaigns
                        if c.budget_amount is not None and c.status not in ("draft", "archived"))
 
+    # Persona is a property of the project, so every campaign in this roll-up
+    # shares it. Read from the first row rather than assumed.
+    persona = campaigns[0].persona if campaigns else None
+    profile = campaign_personas.profile(persona)
+
     return {
         "total": len(campaigns),
         "by_status": by_status,
+        "outcome": profile.outcome,
+        "judged_on_revenue": profile.outcome == "revenue",
+        "measured_by": campaign_personas.OUTCOME_MEASURED_BY[profile.outcome],
         "revenue": round(revenue, 2),
         "orders": order_count,
         "aov": round(revenue / order_count, 2) if order_count else 0.0,

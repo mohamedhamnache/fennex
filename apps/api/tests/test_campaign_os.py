@@ -87,7 +87,20 @@ async def test_performance_payload_has_no_roas_key(monkeypatch):
         return []
     monkeypatch.setattr(campaign_metrics, "attributed_orders", no_orders)
 
-    payload = await campaign_metrics.for_campaign(c, db=None)
+    # A session that answers every query with nothing. The payload's SHAPE is
+    # what is under test; a real database would only make the test slower and
+    # able to fail for reasons that have nothing to do with the assertion.
+    class _Empty:
+        def scalars(self):
+            return self
+        def all(self):
+            return []
+
+    class _Session:
+        async def execute(self, *_a, **_k):
+            return _Empty()
+
+    payload = await campaign_metrics.for_campaign(c, db=_Session())
     assert "roas" not in payload and "cac" not in payload and "spend" not in payload
     assert "revenue_vs_budget" in payload
     assert {u["metric"] for u in payload["unavailable"]} >= {"roas", "cac", "spend"}

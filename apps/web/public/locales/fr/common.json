@@ -1115,7 +1115,7 @@
   },
   "campaigns": {
     "title": "Campagnes",
-    "subtitle": "Une campagne, tous les canaux, une seule source de vérité.",
+    "subtitle": "Un brief, une équipe d'agents, un travail livré.",
     "newGoal": "Que voulez-vous accomplir ?",
     "goalPlaceholder": "ex. Gagner 3 nouveaux clients restaurateurs ce trimestre",
     "draft": "Préparer le plan",
@@ -1129,7 +1129,8 @@
     "empty": {
       "title": "Aucune campagne",
       "filtered": "Aucune campagne ne correspond.",
-      "body": "Dites ce que vous voulez vendre davantage. Fennex lit votre boutique et construit la stratégie, l'audience, l'offre, le contenu et le suivi autour."
+      "body": "Dites ce que vous voulez accomplir. Une équipe d'agents le planifie, le rédige et produit le travail sur chaque canal que vous utilisez.",
+      "bodySells": "Dites ce que vous voulez vendre davantage. Fennex lit votre boutique, puis une équipe d'agents construit la stratégie, l'audience, l'offre, le contenu et le suivi autour."
     },
     "yourCampaigns": "Vos campagnes",
     "newCampaign": "Nouvelle campagne",
@@ -1288,7 +1289,13 @@
       "vsBudget": "{{x}}x le budget prévu — ce n'est pas le ROAS",
       "attributed": "Attribué",
       "new_customers": "Nouveaux clients",
-      "reach": "Portée"
+      "reach": "Portée",
+      "live": "Campagnes actives",
+      "inProgress": "En préparation",
+      "done": "Terminées",
+      "total": "Toutes les campagnes",
+      "team": "Équipe",
+      "noTeam": "Pas encore assignée"
     },
     "unavailable": {
       "title": "Non mesuré",
@@ -1304,7 +1311,14 @@
       "promote_collection": "Promouvoir une collection",
       "seasonal": "Saisonnière",
       "brand_awareness": "Notoriété",
-      "custom": "Autre chose"
+      "custom": "Autre chose",
+      "grow_audience": "Développer l'audience",
+      "launch_content": "Lancer un contenu",
+      "repeat_engagement": "Réengager l'audience",
+      "promote_offer": "Promouvoir une offre",
+      "authority": "Asseoir sa crédibilité",
+      "generate_leads": "Générer des prospects",
+      "acquire_clients": "Trouver des clients"
     },
     "channel": {
       "meta_ads": "Meta Ads",
@@ -1359,15 +1373,17 @@
     },
     "create": {
       "title": "Créer une campagne avec l'IA",
-      "subtitle": "Deux réponses. La stratégie vient des chiffres de votre boutique.",
+      "subtitle": "Deux réponses. Une équipe d'agents planifie le travail et le produit.",
       "objective": "Que cherchez-vous à accomplir ?",
       "goal": "En une phrase, de quoi s'agit-il ?",
-      "goalPlaceholder": "Vendre davantage notre produit phare ce mois-ci",
+      "goalPlaceholder": "Toucher plus de personnes qui aiment ce que nous faisons",
       "template": "Partir d'un format connu (facultatif)",
       "budget": "Budget (facultatif)",
       "budgetHint": "Si vous en fixez un, le plan s'y tient. Sinon, il en proposera un et dira sur quoi la proposition repose.",
       "submit": "Construire la campagne",
-      "working": "Lecture de votre boutique…"
+      "working": "Lecture de votre boutique…",
+      "subtitleSells": "Deux réponses. La stratégie vient des chiffres de votre boutique, et une équipe d'agents produit le travail.",
+      "goalPlaceholderSells": "Vendre davantage notre produit phare ce mois-ci"
     },
     "tab": {
       "brief": "Brief",
@@ -1447,7 +1463,8 @@
       "method": "Mesuré à partir de {{n}} commande(s) dont l'URL d'arrivée portait le tag de cette campagne.",
       "targets": "Par rapport à l'objectif",
       "cannotScore": "Non mesurable — nécessite {{what}}",
-      "bySource": "D'où viennent les commandes"
+      "bySource": "D'où viennent les commandes",
+      "methodWork": "Ce projet est mesuré par {{what}}, pas par des commandes."
     },
     "signals": {
       "title": "À regarder"
@@ -1525,6 +1542,34 @@
       "noOffer": "Cet objectif nécessite généralement une offre, et aucune n'est définie.",
       "inventoryUnknown": "Les niveaux de stock ne sont pas vérifiés.",
       "inventoryUnknownFix": "La synchronisation produits stocke les titres et les prix, pas l'inventaire : Fennex ne peut pas vous alerter d'une rupture."
+    },
+    "work": {
+      "pieces": "Éléments produits",
+      "selected": "{{n}} retenus",
+      "agentSteps": "Étapes agents terminées",
+      "artifacts": "Livrables"
+    },
+    "measuredBy": {
+      "revenue": "Mesurée par les commandes dont l'URL d'arrivée portait le tag de la campagne.",
+      "content": "Mesurée par le travail publié et le trafic de recherche qu'il génère.",
+      "pipeline": "Mesurée par le travail publié et les demandes qu'il suscite."
+    },
+    "template": {
+      "product_launch": "Lancement de produit",
+      "black_friday": "Black Friday",
+      "summer_sale": "Soldes d'été",
+      "christmas": "Noël",
+      "valentines": "Saint-Valentin",
+      "flash_sale": "Vente flash",
+      "new_collection": "Nouvelle collection",
+      "back_in_stock": "Retour en stock",
+      "clearance": "Déstockage",
+      "winback": "Reconquête client",
+      "abandoned_cart": "Panier abandonné",
+      "vip": "Campagne VIP",
+      "retargeting": "Reciblage",
+      "product_education": "Pédagogie produit",
+      "brand_awareness": "Notoriété"
     }
   },
   "autopilot": {

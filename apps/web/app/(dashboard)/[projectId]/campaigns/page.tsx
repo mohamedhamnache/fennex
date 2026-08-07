@@ -8,8 +8,8 @@ import {
   AlertTriangle, CalendarDays, Lightbulb, Megaphone, Plus, Search, Sparkles, X,
 } from "lucide-react";
 import {
-  campaignCalendar, campaignLearnings, campaignOverview, listCampaigns,
-  type Campaign,
+  campaignCalendar, campaignLearnings, campaignOverview, campaignPersona,
+  listCampaigns, type Campaign,
 } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -49,6 +49,17 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
     staleTime: 30_000,
   });
 
+  // A campaign is work produced by a combination of agents. Whether that work
+  // is judged in revenue depends entirely on what this project is: a creator
+  // has no orders to attribute, so leading with "0.00 attributed revenue"
+  // reports a failure that never had a way to succeed.
+  const { data: persona } = useQuery({
+    queryKey: ["campaign-persona", projectId],
+    queryFn: () => campaignPersona(projectId),
+    staleTime: 600_000,
+  });
+  const sells = persona?.measuresRevenue ?? overview?.judged_on_revenue ?? false;
+
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ["campaigns", projectId, statusFilter],
     queryFn: () => listCampaigns(projectId, { status: statusFilter || undefined }),
@@ -74,7 +85,7 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
           </h1>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {t("campaigns.subtitle", {
-              defaultValue: "One campaign, every channel, one source of truth.",
+              defaultValue: "One brief, a team of agents, one piece of work.",
             })}
           </p>
         </div>
@@ -87,42 +98,74 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
         </button>
       </header>
 
-      {/* Measured money first. Everything here comes from real orders. */}
       <Card className="p-5">
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-          <Metric
-            label={t("campaigns.kpi.revenue", { defaultValue: "Attributed revenue" })}
-            value={money(overview?.revenue ?? 0, currency)}
-            sub={t("campaigns.kpi.revenueSub", {
-              defaultValue: "from orders carrying a campaign tag",
-            })}
-          />
-          <Metric
-            label={t("campaigns.kpi.orders", { defaultValue: "Attributed orders" })}
-            value={String(overview?.orders ?? 0)}
-            sub={t("campaigns.kpi.attributedIn", {
-              defaultValue: "across {{n}} campaign(s)",
-              n: overview?.campaigns_with_attributed_orders ?? 0,
-            })}
-          />
-          <Metric
-            label={t("campaigns.kpi.aov", { defaultValue: "Average order value" })}
-            value={money(overview?.aov ?? 0, currency)}
-          />
-          <Metric
-            label={t("campaigns.kpi.budget", { defaultValue: "Planned budget" })}
-            value={money(overview?.budget ?? null, currency)}
-            tone="muted"
-            sub={overview?.revenue_vs_budget != null
-              ? t("campaigns.kpi.vsBudget", {
-                  defaultValue: "{{x}}x revenue vs planned budget — not ROAS",
-                  x: overview.revenue_vs_budget,
-                })
-              : undefined}
-          />
+          {sells ? (
+            <>
+              <Metric
+                label={t("campaigns.kpi.revenue", { defaultValue: "Attributed revenue" })}
+                value={money(overview?.revenue ?? 0, currency)}
+                sub={t("campaigns.kpi.revenueSub", {
+                  defaultValue: "from orders carrying a campaign tag",
+                })}
+              />
+              <Metric
+                label={t("campaigns.kpi.orders", { defaultValue: "Attributed orders" })}
+                value={String(overview?.orders ?? 0)}
+                sub={t("campaigns.kpi.attributedIn", {
+                  defaultValue: "across {{n}} campaign(s)",
+                  n: overview?.campaigns_with_attributed_orders ?? 0,
+                })}
+              />
+              <Metric
+                label={t("campaigns.kpi.aov", { defaultValue: "Average order value" })}
+                value={money(overview?.aov ?? 0, currency)}
+              />
+              <Metric
+                label={t("campaigns.kpi.budget", { defaultValue: "Planned budget" })}
+                value={money(overview?.budget ?? null, currency)}
+                tone="muted"
+                sub={overview?.revenue_vs_budget != null
+                  ? t("campaigns.kpi.vsBudget", {
+                      defaultValue: "{{x}}x revenue vs planned budget — not ROAS",
+                      x: overview.revenue_vs_budget,
+                    })
+                  : undefined}
+              />
+            </>
+          ) : (
+            <>
+              <Metric
+                label={t("campaigns.kpi.live", { defaultValue: "Live campaigns" })}
+                value={String((overview?.by_status?.running ?? 0) + (overview?.by_status?.scheduled ?? 0))}
+              />
+              <Metric
+                label={t("campaigns.kpi.inProgress", { defaultValue: "In preparation" })}
+                value={String((overview?.by_status?.planning ?? 0) + (overview?.by_status?.draft ?? 0)
+                              + (overview?.by_status?.ready ?? 0))}
+              />
+              <Metric
+                label={t("campaigns.kpi.done", { defaultValue: "Completed" })}
+                value={String(overview?.by_status?.completed ?? 0)}
+              />
+              <Metric
+                label={t("campaigns.kpi.total", { defaultValue: "All campaigns" })}
+                value={String(overview?.total ?? 0)}
+                tone="muted"
+              />
+            </>
+          )}
         </div>
-        {overview?.unavailable?.length ? (
-          <Unavailable metrics={overview.unavailable} className="mt-5" />
+        {/* Says what this project is judged on, so an absent revenue figure
+            reads as "not the point" rather than as a zero. */}
+        <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+          {/* Translated from the outcome key, not from the API's sentence:
+              prose composed on the server cannot know the reader's language. */}
+          {t(`campaigns.measuredBy.${persona?.outcome ?? overview?.outcome ?? "content"}`,
+             { defaultValue: persona?.measuredBy ?? overview?.measured_by ?? "" })}
+        </p>
+        {sells && overview?.unavailable?.length ? (
+          <Unavailable metrics={overview.unavailable} className="mt-4" />
         ) : null}
       </Card>
 
@@ -187,10 +230,11 @@ export default function CampaignsPage({ params }: { params: { projectId: string 
               ))}
             </div>
           ) : !shown.length ? (
-            <EmptyState onCreate={() => setCreating(true)} hasAny={(overview?.total ?? 0) > 0} />
+            <EmptyState onCreate={() => setCreating(true)} hasAny={(overview?.total ?? 0) > 0}
+                        sells={sells} />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {shown.map((c) => <CampaignCard key={c.id} campaign={c} projectId={projectId} />)}
+              {shown.map((c) => <CampaignCard key={c.id} campaign={c} projectId={projectId} sells={sells} />)}
             </div>
           )}
         </>
@@ -223,7 +267,9 @@ function FilterChip({ label, count, active, onClick }: {
   );
 }
 
-function CampaignCard({ campaign: c, projectId }: { campaign: Campaign; projectId: string }) {
+function CampaignCard({ campaign: c, projectId, sells }: {
+  campaign: Campaign; projectId: string; sells: boolean;
+}) {
   const { t } = useTranslation();
   const revenue = c.performance?.revenue ?? 0;
   const orders = c.performance?.orders ?? 0;
@@ -254,15 +300,30 @@ function CampaignCard({ campaign: c, projectId }: { campaign: Campaign; projectI
 
         <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {t("campaigns.kpi.attributed", { defaultValue: "Attributed" })}
-            </p>
-            <p className="text-sm font-semibold tabular-nums text-foreground">
-              {money(revenue, c.budget.currency ?? "EUR")}
-              <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                {t("campaigns.ordersCount", { defaultValue: "{{n}} orders", n: orders })}
-              </span>
-            </p>
+            {sells ? (
+              <>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.kpi.attributed", { defaultValue: "Attributed" })}
+                </p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {money(revenue, c.budget.currency ?? "EUR")}
+                  <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                    {t("campaigns.ordersCount", { defaultValue: "{{n}} orders", n: orders })}
+                  </span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.kpi.team", { defaultValue: "Team" })}
+                </p>
+                <p className="text-sm font-semibold text-foreground">
+                  {c.team?.length
+                    ? c.team.map((m) => m.name).slice(0, 3).join(", ")
+                    : t("campaigns.kpi.noTeam", { defaultValue: "Not assigned yet" })}
+                </p>
+              </>
+            )}
           </div>
           {c.channels?.length ? (
             <div className="flex flex-wrap justify-end gap-1">
@@ -283,7 +344,9 @@ function CampaignCard({ campaign: c, projectId }: { campaign: Campaign; projectI
   );
 }
 
-function EmptyState({ onCreate, hasAny }: { onCreate: () => void; hasAny: boolean }) {
+function EmptyState({ onCreate, hasAny, sells }: {
+  onCreate: () => void; hasAny: boolean; sells: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
@@ -296,9 +359,15 @@ function EmptyState({ onCreate, hasAny }: { onCreate: () => void; hasAny: boolea
       {!hasAny && (
         <>
           <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-            {t("campaigns.empty.body", {
-              defaultValue: "Say what you want to sell more of. Fennex reads your store and builds the strategy, audience, offer, content and tracking around it.",
-            })}
+            {/* A creator is not selling more of anything. Same feature, but the
+                sentence has to describe their work, not a shop's. */}
+            {sells
+              ? t("campaigns.empty.bodySells", {
+                  defaultValue: "Say what you want to sell more of. Fennex reads your store, then a team of agents builds the strategy, audience, offer, content and tracking around it.",
+                })
+              : t("campaigns.empty.body", {
+                  defaultValue: "Say what you want to achieve. A team of agents plans it, writes it, and produces the work across every channel you use.",
+                })}
           </p>
           <button onClick={onCreate}
                   className="mt-1 flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
