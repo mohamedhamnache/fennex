@@ -2634,7 +2634,15 @@ export interface ChannelInfo {
   connectOneOf: { app: string; label: string }[];
 }
 
-export interface ReadinessItem { level: string; key: string; message: string; fix: string }
+export interface ReadinessItem {
+  level: string;
+  key: string;
+  /** English fallback. The UI renders `code` + `params` in the reader's language. */
+  message: string;
+  fix: string;
+  code: string;
+  params: Record<string, string | number>;
+}
 export interface CampaignReadiness {
   ready: boolean;
   blockers: ReadinessItem[];

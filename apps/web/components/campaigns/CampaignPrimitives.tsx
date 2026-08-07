@@ -95,14 +95,31 @@ const LEVEL_STYLE: Record<string, { icon: typeof Check; cls: string }> = {
 };
 
 export function CheckRow({ item }: { item: ReadinessItem }) {
+  const { t } = useTranslation();
   const style = LEVEL_STYLE[item.level] ?? LEVEL_STYLE.unknown;
   const Icon = style.icon;
+  // The server sends a code and its parameters; the sentence is built here,
+  // in the reader's language. `message`/`fix` are the English fallback, so a
+  // code with no translation degrades to readable text rather than a key.
+  // A channel's display name arrives in English ("Store", "Landing page"), so
+  // it is re-translated here from the key the server sends beside it. Without
+  // this the sentence is French and the noun inside it is not.
+  const params = { ...item.params };
+  if (typeof params.channelKey === "string") {
+    params.channel = t(`campaigns.channel.${params.channelKey}`, {
+      defaultValue: String(params.channel ?? params.channelKey),
+    });
+  }
+  const message = t(`campaigns.check.${item.code}`, { ...params, defaultValue: item.message });
+  const fix = item.fix
+    ? t(`campaigns.check.${item.code}Fix`, { ...params, defaultValue: item.fix })
+    : "";
   return (
     <li className="flex items-start gap-2.5 py-1.5">
       <Icon className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", style.cls)} strokeWidth={2.2} />
       <div className="min-w-0">
-        <p className="text-xs leading-relaxed text-foreground">{item.message}</p>
-        {item.fix && <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{item.fix}</p>}
+        <p className="text-xs leading-relaxed text-foreground">{message}</p>
+        {fix && <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{fix}</p>}
       </div>
     </li>
   );
