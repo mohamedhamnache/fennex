@@ -1393,7 +1393,10 @@
       "performance": "Performance",
       "copilot": "Demander",
       "agents": "Agents",
-      "team": "Équipe"
+      "team": "Équipe",
+      "plan": "Plan",
+      "work": "Le travail",
+      "results": "Résultats"
     },
     "brief": {
       "audience": "Audience",
@@ -1606,7 +1609,15 @@
     "unarchive": "Restaurer depuis les archives",
     "delete": "Supprimer",
     "deleteConfirm": "Supprimer cette campagne, ses canaux, son contenu, son calendrier et ses approbations ? Ce qu'elle vous a appris est conservé.",
-    "deleteYes": "Supprimer"
+    "deleteYes": "Supprimer",
+    "next": {
+      "running": "Elle est en ligne. Suivez ce qu'elle rapporte et demandez pourquoi quand ça bouge.",
+      "plan": "Pas encore de stratégie. Laissez l'équipe lire votre projet et en rédiger une.",
+      "channels": "Choisissez où cette campagne se joue. Il lui faut au moins un canal.",
+      "content": "Votre équipe est prête à rédiger. Rien n'a encore été produit.",
+      "approvals": "{{n}} action(s) attendent votre approbation avant toute diffusion.",
+      "launch": "Le travail est fait. Vérifiez ce qui reste et mettez-la en ligne."
+    }
   },
   "autopilot": {
     "badge": "Pilote automatique",

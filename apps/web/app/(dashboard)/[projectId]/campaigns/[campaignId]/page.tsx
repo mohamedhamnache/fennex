@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import {
   ArrowLeft, BarChart3, Bot, CalendarClock, Layers, Loader2, MessageSquare,
-  Pause, Play, RefreshCw, Rocket, Target,
+  Pause, Play, RefreshCw, Rocket, Sparkles, Target,
 } from "lucide-react";
 import {
   cancelCampaign, getCampaign, regenerateStrategy, runCampaign, setCampaignStatus,
@@ -35,7 +35,17 @@ import { PackagePanel } from "@/components/campaigns/PackagePanel";
  * would otherwise become unreachable.
  */
 
-type Tab = "brief" | "team" | "channels" | "timeline" | "launch" | "performance" | "copilot";
+/**
+ * Four stages, not seven tabs.
+ *
+ * Brief, Team, Channels, Timeline, Launch, Performance and Ask were seven
+ * places to look for one piece of work, and a person who just wants a campaign
+ * out had to learn all of them first. They collapse to the four questions
+ * actually being asked: what is the plan, what is being made, can it go, and
+ * did it work. The NextStep bar above them answers the only question most
+ * people have, which is "what do I do now".
+ */
+type Tab = "plan" | "work" | "launch" | "results";
 
 export default function CampaignDetailPage({ params }: {
   params: { projectId: string; campaignId: string };
@@ -44,7 +54,7 @@ export default function CampaignDetailPage({ params }: {
   const { t } = useTranslation();
   const toast = useToast();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>("brief");
+  const [tab, setTab] = useState<Tab>("plan");
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
 
   const { data: campaign, isLoading } = useQuery({
@@ -68,13 +78,10 @@ export default function CampaignDetailPage({ params }: {
   // combination of agents; hiding who is doing it made that invisible on every
   // campaign the strategy engine created.
   const TABS: [Tab, typeof Target, string][] = [
-    ["brief", Target, t("campaigns.tab.brief", { defaultValue: "Brief" })],
-    ["team", Bot, t("campaigns.tab.team", { defaultValue: "Team" })],
-    ["channels", Layers, t("campaigns.tab.channels", { defaultValue: "Channels & content" })],
-    ["timeline", CalendarClock, t("campaigns.tab.timeline", { defaultValue: "Timeline" })],
+    ["plan", Target, t("campaigns.tab.plan", { defaultValue: "Plan" })],
+    ["work", Layers, t("campaigns.tab.work", { defaultValue: "The work" })],
     ["launch", Rocket, t("campaigns.tab.launch", { defaultValue: "Launch" })],
-    ["performance", BarChart3, t("campaigns.tab.performance", { defaultValue: "Performance" })],
-    ["copilot", MessageSquare, t("campaigns.tab.copilot", { defaultValue: "Ask" })],
+    ["results", BarChart3, t("campaigns.tab.results", { defaultValue: "Results" })],
   ];
 
   return (
@@ -134,22 +141,97 @@ export default function CampaignDetailPage({ params }: {
         ))}
       </nav>
 
-      {tab === "brief" && <BriefTab campaign={campaign} projectId={projectId} />}
-      {tab === "channels" && <ChannelsTab campaign={campaign} projectId={projectId} />}
-      {tab === "timeline" && <TimelineTab campaign={campaign} projectId={projectId} />}
-      {tab === "launch" && <LaunchTab campaign={campaign} projectId={projectId} />}
-      {tab === "performance" && <PerformanceTab campaign={campaign} />}
-      {tab === "copilot" && <CopilotTab campaign={campaign} />}
-      {tab === "team" && (
-        <TeamTab campaign={campaign}>
-          {/* The playbook canvas belongs with the team that runs it, not in a
-              tab of its own. Campaigns with no steps simply have no canvas. */}
-          {campaign.steps.length > 0 && (
+      <NextStep campaign={campaign} onGo={setTab} />
+
+      {tab === "plan" && (
+        <div className="flex flex-col gap-8">
+          <BriefTab campaign={campaign} projectId={projectId} />
+          <TeamTab campaign={campaign}>
             <AgentsTab campaign={campaign} projectId={projectId}
                        selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
-          )}
-        </TeamTab>
+          </TeamTab>
+        </div>
       )}
+      {tab === "work" && (
+        <div className="flex flex-col gap-8">
+          <ChannelsTab campaign={campaign} projectId={projectId} />
+          <TimelineTab campaign={campaign} projectId={projectId} />
+        </div>
+      )}
+      {tab === "launch" && <LaunchTab campaign={campaign} projectId={projectId} />}
+      {tab === "results" && (
+        <div className="flex flex-col gap-8">
+          <PerformanceTab campaign={campaign} />
+          <CopilotTab campaign={campaign} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The one thing to do next.
+ *
+ * Derived from the campaign's own state rather than from a stored step, so it
+ * cannot go stale and there is no wizard to get stuck in. Everything stays
+ * reachable through the tabs -- this only removes the need to work out which
+ * tab, which is the part that made the tool feel like work.
+ */
+function NextStep({ campaign, onGo }: { campaign: Campaign; onGo: (tab: Tab) => void }) {
+  const { t } = useTranslation();
+
+  const channels = campaign.channels ?? [];
+  const assets = campaign.assets ?? [];
+  const pending = (campaign.approvals ?? []).filter((a) => a.state === "pending").length;
+
+  let step: { text: string; cta: string; tab: Tab } | null = null;
+
+  if (campaign.status === "completed" || campaign.status === "archived") {
+    step = null;
+  } else if (campaign.status === "running") {
+    step = { tab: "results",
+             text: t("campaigns.next.running", {
+               defaultValue: "It is live. Watch what it earns and ask why when something moves." }),
+             cta: t("campaigns.tab.results", { defaultValue: "Results" }) };
+  } else if (!campaign.strategy) {
+    step = { tab: "plan",
+             text: t("campaigns.next.plan", {
+               defaultValue: "No strategy yet. Let the team read your project and draft one." }),
+             cta: t("campaigns.brief.replan", { defaultValue: "Build the plan" }) };
+  } else if (!channels.length) {
+    step = { tab: "work",
+             text: t("campaigns.next.channels", {
+               defaultValue: "Pick where this campaign runs. It needs at least one channel." }),
+             cta: t("campaigns.channels.add", { defaultValue: "Add channel" }) };
+  } else if (!assets.length) {
+    step = { tab: "work",
+             text: t("campaigns.next.content", {
+               defaultValue: "Your team is ready to write. Nothing has been produced yet." }),
+             cta: t("campaigns.content.write", { defaultValue: "Write content" }) };
+  } else if (pending > 0) {
+    step = { tab: "launch",
+             text: t("campaigns.next.approvals", {
+               defaultValue: "{{n}} action(s) need your approval before anything can go out.",
+               n: pending }),
+             cta: t("campaigns.approvals.approve", { defaultValue: "Review them" }) };
+  } else {
+    step = { tab: "launch",
+             text: t("campaigns.next.launch", {
+               defaultValue: "The work is made. Check what is left and put it live." }),
+             cta: t("campaigns.launch.cta", { defaultValue: "Launch campaign" }) };
+  }
+
+  if (!step) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/25 bg-primary/5 p-3.5">
+      <Sparkles className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} />
+      <p className="min-w-0 flex-1 text-xs leading-relaxed text-foreground">{step.text}</p>
+      <button
+        onClick={() => onGo(step.tab)}
+        className="shrink-0 cursor-pointer rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        {step.cta}
+      </button>
     </div>
   );
 }
