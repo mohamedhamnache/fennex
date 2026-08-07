@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  connectConnector, disconnectConnector, listConnectors, startConnectorOAuth,
+  disconnectConnector, listConnectors, startConnectorOAuth,
   testConnector, toggleConnector, type ConnectorInfo,
 } from "@/lib/connectors";
 import { departmentAccent, employeeIcon } from "@/lib/employees";
@@ -21,7 +21,6 @@ import { departmentAccent, employeeIcon } from "@/lib/employees";
 export function ConnectorsPanel() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["connectors"], queryFn: listConnectors, staleTime: 30_000,
@@ -61,9 +60,7 @@ export function ConnectorsPanel() {
           <ConnectorRow
             key={connector.app}
             connector={connector}
-            editing={editing === connector.app}
-            onEdit={() => setEditing(editing === connector.app ? null : connector.app)}
-            onDone={() => { setEditing(null); refresh(); }}
+            onDone={refresh}
           />
         ))}
       </div>
@@ -72,23 +69,34 @@ export function ConnectorsPanel() {
 }
 
 function ConnectorRow({
-  connector, editing, onEdit, onDone,
+  connector, onDone,
 }: {
   connector: ConnectorInfo;
-  editing: boolean;
-  onEdit: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const [url, setUrl] = useState(connector.url);
-  const [token, setToken] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const connect = useMutation({
-    mutationFn: () => connectConnector({
-      app: connector.app, url, token: token || undefined,
-    }),
-    onSuccess: () => { setToken(""); onDone(); },
+  const oauth = useMutation({
+    mutationFn: () => startConnectorOAuth(connector.app),
+    onSuccess: (r) => {
+      if (r.ok && r.redirect_url) {
+        // A full navigation, not a popup: the provider owns its consent screen
+        // and several refuse to render inside a frame.
+        window.location.href = r.redirect_url;
+        return;
+      }
+      setError(
+        r.error === "not_configured"
+          ? `${connector.label} is not set up yet. Its OAuth client ID and secret need to be configured before anyone can connect it.`
+          : r.error === "shop_required"
+            ? `${connector.label} needs a shop domain, which this panel does not ask for yet.`
+            : `Could not start the connection${r.error ? ` (${r.error})` : ""}.`,
+      );
+    },
+    onError: () => setError("Could not reach the server. Try again."),
   });
+
   const check = useMutation({ mutationFn: () => testConnector(connector.app), onSuccess: onDone });
   const toggle = useMutation({
     mutationFn: () => toggleConnector(connector.app, !connector.enabled), onSuccess: onDone,
@@ -186,102 +194,40 @@ function ConnectorRow({
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={onEdit}
-            disabled={connector.fromEnvironment}
-            title={connector.fromEnvironment ? t("connectors.fromEnv") : undefined}
-            className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-              connector.connected
-                ? "border border-border text-foreground hover:bg-accent"
-                : "btn-primary",
-            )}
-          >
-            {editing ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-            {connector.connected ? t("connectors.edit") : t("connectors.connect")}
-          </button>
+          
         </div>
       </div>
 
-      {/* One click where the provider supports it. Asking a user for a server
-          URL and a bearer token is asking them to do the integration by hand --
-          they have to find the endpoint, mint a token, and scope it correctly.
-          The manual form stays below as an escape hatch for self-hosted or
-          unlisted servers, which is the only case that genuinely needs it. */}
-      {!connector.connected && connector.oauth && (
-        <button
-          onClick={async () => {
-            const r = await startConnectorOAuth(connector.app);
-            if (r.ok && r.redirect_url) window.location.href = r.redirect_url;
-          }}
-          className="btn-primary mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Connect {connector.label}
-        </button>
-      )}
+      {/* One click, always. The manual URL-and-token form is gone: asking a
+          user to find an MCP endpoint, mint a bearer token and scope it
+          correctly is asking them to do the integration by hand, and it was
+          the only path on offer for every connector.
 
-      {editing && (
-        <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3 animate-slide-up">
-          {connector.oauth && (
-            <p className="mb-2.5 rounded-lg border border-dashed border-border px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground">
-              {connector.label} connects in one click above. These fields are for
-              a self-hosted or unlisted server only.
+          When a provider has no client credentials configured the button still
+          appears and says so on click, rather than the card hiding the feature
+          entirely -- an explained gap is more useful than an absence the user
+          has to guess at. */}
+      {!connector.connected && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={() => oauth.mutate()}
+            disabled={oauth.isPending}
+            className="btn-primary flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-default disabled:opacity-60"
+          >
+            {oauth.isPending
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Plus className="h-3.5 w-3.5" />}
+            {oauth.isPending ? t("connectors.connecting") : `${t("connectors.connect")} ${connector.label}`}
+          </button>
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-[10px] leading-relaxed text-destructive">
+              {error}
             </p>
           )}
-          <label className="block text-[10px] font-semibold text-muted-foreground" htmlFor={`url-${connector.app}`}>
-            {t("connectors.url")}
-          </label>
-          <input
-            id={`url-${connector.app}`}
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://mcp.example.com/sse"
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
-          />
-
-          <label className="mt-2.5 block text-[10px] font-semibold text-muted-foreground" htmlFor={`token-${connector.app}`}>
-            {t("connectors.token")}
-            {connector.hasToken && (
-              <span className="ml-1 font-normal text-muted-foreground/70">
-                {t("connectors.tokenStored")}
-              </span>
-            )}
-          </label>
-          <input
-            id={`token-${connector.app}`}
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={connector.hasToken ? "••••••••" : t("connectors.tokenPlaceholder")}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30"
-          />
-
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => connect.mutate()}
-              disabled={!url.trim() || connect.isPending}
-              className="btn-primary flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-            >
-              {connect.isPending
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Check className="h-3 w-3" />}
-              {t("connectors.saveAndTest")}
-            </button>
-            {connect.isError && (
-              <span className="text-[10px] text-destructive">{t("connectors.failed")}</span>
-            )}
-            {connect.data?.test && !connect.data.test.ok && (
-              <span className="text-[10px] text-destructive">{connect.data.test.error}</span>
-            )}
-          </div>
-          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-            {t("connectors.hint")}
-          </p>
         </div>
       )}
+
     </div>
   );
 }

@@ -2924,7 +2924,8 @@
       "paused": "Pausado",
       "failing": "Con fallos",
       "environment": "Del entorno"
-    }
+    },
+    "connecting": "Conectando…"
   },
   "knowledge": {
     "title": "Lo que el equipo sabe",

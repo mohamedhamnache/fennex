@@ -2924,7 +2924,8 @@
       "paused": "Suspendu",
       "failing": "En echec",
       "environment": "Environnement"
-    }
+    },
+    "connecting": "Connexion…"
   },
   "knowledge": {
     "title": "Ce que l'equipe sait",

@@ -2943,7 +2943,8 @@
       "paused": "موقوف",
       "failing": "فشل",
       "environment": "من البيئة"
-    }
+    },
+    "connecting": "جارٍ الاتصال…"
   },
   "knowledge": {
     "title": "ما يعرفه الفريق",

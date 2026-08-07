@@ -2997,7 +2997,8 @@
       "paused": "Paused",
       "failing": "Failing",
       "environment": "From environment"
-    }
+    },
+    "connecting": "Connecting…"
   },
   "knowledge": {
     "title": "What the team knows",

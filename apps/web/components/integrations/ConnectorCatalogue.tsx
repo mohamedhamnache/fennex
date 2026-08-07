@@ -125,20 +125,29 @@ function ConnectorCard({ connector: c, projectId }: {
   connector: ConnectorInfo; projectId?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const gains = c.usedBy.slice(0, 3);
 
   async function connect() {
     if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       const r = await startConnectorOAuth(c.app, { project_id: projectId ?? null });
       // A full navigation, not a popup: the provider decides what its consent
       // screen looks like and several refuse to render in a frame.
-      if (r.ok && r.redirect_url) window.location.href = r.redirect_url;
-      else setBusy(false);
+      if (r.ok && r.redirect_url) { window.location.href = r.redirect_url; return; }
+      setError(
+        r.error === "not_configured"
+          ? `${c.label} is not set up yet — its OAuth client ID and secret need configuring first.`
+          : r.error === "unknown_connector"
+            ? `${c.label} has no connection flow yet.`
+            : `Could not start the connection${r.error ? ` (${r.error})` : ""}.`,
+      );
     } catch {
-      setBusy(false);
+      setError("Could not reach the server. Try again.");
     }
+    setBusy(false);
   }
   return (
     <Card className={cn(
@@ -198,7 +207,7 @@ function ConnectorCard({ connector: c, projectId }: {
       {/* Offered only where it will actually complete. An app whose client
           credentials are not configured says so instead of showing a button
           that dead-ends after the redirect. */}
-      {!c.connected && (c.oauth ? (
+      {!c.connected && (
         <button
           onClick={connect}
           disabled={busy}
@@ -207,11 +216,13 @@ function ConnectorCard({ connector: c, projectId }: {
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plug className="h-3.5 w-3.5" />}
           {busy ? "Opening…" : `Connect ${c.label}`}
         </button>
-      ) : (
-        <span className="mt-0.5 block rounded-lg border border-dashed border-border px-3 py-2 text-center text-[11px] text-muted-foreground">
-          Setup required — add this provider's OAuth credentials
-        </span>
-      ))}
+      )}
+
+      {error && (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-[10px] leading-relaxed text-destructive">
+          {error}
+        </p>
+      )}
 
       {c.lastError && (
         <p className="truncate text-[10px] text-destructive" title={c.lastError}>

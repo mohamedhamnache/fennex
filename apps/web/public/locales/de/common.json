@@ -2924,7 +2924,8 @@
       "paused": "Pausiert",
       "failing": "Fehlerhaft",
       "environment": "Aus der Umgebung"
-    }
+    },
+    "connecting": "Verbinden…"
   },
   "knowledge": {
     "title": "Was das Team weiss",
