@@ -1457,7 +1457,13 @@
       "subtitle": "Les blocages empêchent le lancement. Les avertissements non. « Non vérifié » signifie que Fennex n'a pas pu regarder.",
       "cta": "Lancer la campagne",
       "sendForReview": "Envoyer pour approbation",
-      "done": "La campagne est en ligne."
+      "done": "La campagne est en ligne.",
+      "ready": "Tout est prêt",
+      "blocked": "{{n}} point(s) à corriger avant de lancer",
+      "warnCount": "{{n}} avertissement(s)",
+      "unknownCount": "{{n}} non vérifié(s)",
+      "passCount": "{{n}} validé(s)",
+      "everythingElse": "Tout le reste"
     },
     "approvals": {
       "title": "Ce qui nécessite votre approbation",
@@ -1478,7 +1484,8 @@
       "targets": "Par rapport à l'objectif",
       "cannotScore": "Non mesurable — nécessite {{what}}",
       "bySource": "D'où viennent les commandes",
-      "methodWork": "Ce projet est mesuré par {{what}}, pas par des commandes."
+      "methodWork": "Ce projet est mesuré par {{what}}, pas par des commandes.",
+      "daily": "revenu attribué par jour"
     },
     "signals": {
       "title": "À regarder"
@@ -1593,7 +1600,13 @@
       "subtitle": "Chaque agent est responsable d'une partie du travail. Les affectations viennent du plan et survivent à une replanification.",
       "empty": "Personne d'affecté pour l'instant. Ajoutez un canal ou générez une stratégie et le travail sera réparti.",
       "produced": "{{n}} élément(s) produit(s)"
-    }
+    },
+    "manage": "Gérer la campagne",
+    "archive": "Archiver",
+    "unarchive": "Restaurer depuis les archives",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer cette campagne, ses canaux, son contenu, son calendrier et ses approbations ? Ce qu'elle vous a appris est conservé.",
+    "deleteYes": "Supprimer"
   },
   "autopilot": {
     "badge": "Pilote automatique",

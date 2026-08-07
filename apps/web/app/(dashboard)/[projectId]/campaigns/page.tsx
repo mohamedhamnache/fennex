@@ -5,12 +5,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import {
-  AlertTriangle, CalendarDays, Lightbulb, Megaphone, Plus, Search, Sparkles, X,
+  AlertTriangle, Archive, CalendarDays, Lightbulb, Megaphone, MoreHorizontal,
+  Plus, Search, Sparkles, Trash2, X,
 } from "lucide-react";
 import {
   campaignCalendar, campaignLearnings, campaignOverview, campaignPersona,
-  listCampaigns, type Campaign,
+  deleteCampaign, listCampaigns, setCampaignStatus, type Campaign,
 } from "@/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/Toast";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { STATUS_ORDER, STATUS_RAIL, statusBadgeClass } from "@/lib/campaignStatus";
@@ -278,12 +281,13 @@ function CampaignCard({ campaign: c, projectId, sells }: {
   return (
     <Link
       href={`/${projectId}/campaigns/${c.id}`}
-      className="group flex items-stretch gap-0 overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative flex items-stretch gap-0 rounded-xl border border-border bg-card transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* A status rail rather than a badge in the corner: state is the thing you
           scan a list for, and colour down the edge reads at a glance without
           spending a word. */}
-      <span aria-hidden className={cn("w-1 shrink-0", STATUS_RAIL[c.status] ?? "bg-border")} />
+      <span aria-hidden
+            className={cn("w-1 shrink-0 rounded-l-xl", STATUS_RAIL[c.status] ?? "bg-border")} />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 p-3.5">
         <div className="min-w-[180px] flex-1">
@@ -332,6 +336,8 @@ function CampaignCard({ campaign: c, projectId, sells }: {
           </div>
         ) : null}
 
+        <CampaignMenu campaign={c} projectId={projectId} />
+
         <div className="shrink-0 text-right">
           {sells ? (
             <>
@@ -355,6 +361,90 @@ function CampaignCard({ campaign: c, projectId, sells }: {
         </div>
       </div>
     </Link>
+  );
+}
+
+/**
+ * Archive or delete, from the list.
+ *
+ * Neither existed anywhere in the product: a campaign could be created and
+ * never removed, so the list only ever grew. Archive is offered first because
+ * it is the reversible one -- delete asks for confirmation and says what goes
+ * with it, since channels, content, timeline and approvals go too.
+ */
+function CampaignMenu({ campaign: c, projectId }: { campaign: Campaign; projectId: string }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  function refresh() {
+    qc.invalidateQueries({ queryKey: ["campaigns", projectId] });
+    qc.invalidateQueries({ queryKey: ["campaign-overview", projectId] });
+    setOpen(false);
+    setConfirming(false);
+  }
+  const archive = useMutation({
+    mutationFn: () => setCampaignStatus(c.id, c.status === "archived" ? "ready" : "archived"),
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteCampaign(c.id),
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <span className={cn("shrink-0", open ? "static" : "relative")}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label={t("campaigns.manage", { defaultValue: "Manage campaign" })}
+        aria-expanded={open}
+        className="cursor-pointer rounded-lg p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus:opacity-100 group-hover:opacity-100"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="popover animate-scale-in absolute right-3 top-12 z-50 w-60 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+          <button onClick={() => archive.mutate()} disabled={archive.isPending}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-foreground hover:bg-muted disabled:opacity-50">
+            <Archive className="h-3 w-3 shrink-0 text-muted-foreground" />
+            {c.status === "archived"
+              ? t("campaigns.unarchive", { defaultValue: "Restore from archive" })
+              : t("campaigns.archive", { defaultValue: "Archive" })}
+          </button>
+          {!confirming ? (
+            <button onClick={() => setConfirming(true)}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-3 w-3 shrink-0" />
+              {t("campaigns.delete", { defaultValue: "Delete" })}
+            </button>
+          ) : (
+            <div className="rounded-lg bg-destructive/5 p-2">
+              {/* Names what goes, rather than asking "are you sure". */}
+              <p className="text-[11px] leading-relaxed text-foreground">
+                {t("campaigns.deleteConfirm", {
+                  defaultValue: "Delete this campaign, its channels, content, timeline and approvals? What it taught you is kept.",
+                })}
+              </p>
+              <div className="mt-2 flex gap-1.5">
+                <button onClick={() => remove.mutate()} disabled={remove.isPending}
+                        className="cursor-pointer rounded-lg bg-destructive px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-destructive/90 disabled:opacity-50">
+                  {t("campaigns.deleteYes", { defaultValue: "Delete it" })}
+                </button>
+                <button onClick={() => setConfirming(false)}
+                        className="cursor-pointer rounded-lg px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground">
+                  {t("common.cancel", { defaultValue: "Cancel" })}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </span>
   );
 }
 

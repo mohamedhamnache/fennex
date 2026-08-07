@@ -566,6 +566,48 @@ async def patch_campaign(campaign_id: uuid.UUID, body: CampaignPatch,
     return await _full(c, db)
 
 
+@router.delete("/{campaign_id}", status_code=204)
+async def delete_campaign(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
+    """Delete a campaign and everything under it.
+
+    Channels, assets, tasks, approvals and experiments go with it through the
+    foreign keys. Two things do not, and both are deliberate:
+
+    Its LEARNINGS survive, with campaign_id set to NULL. A learning is a claim
+    about the store that outlived the campaign that produced it -- deleting a
+    finished campaign should not un-learn what it taught, only lose the
+    provenance link.
+
+    Its CALENDAR ENTRIES do not survive, and are removed here rather than by a
+    cascade: they are mirrored rows keyed on the campaign's tasks, and a
+    database-level cascade from tasks to calendar entries does not exist. Left
+    behind, they are steps on the calendar for a campaign that no longer is.
+
+    A running campaign is refused. Deleting something mid-flight loses the work
+    in progress with no way to tell what was lost; archive it instead.
+    """
+    c = await _load(campaign_id, current_user.org_id, db)
+    if c.status == "running":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This campaign is running. Pause or complete it before deleting, "
+            "or archive it to keep its record.")
+
+    task_ids = [t.id for t in (await db.execute(select(CampaignTask).where(
+        CampaignTask.campaign_id == c.id))).scalars().all()]
+    if task_ids:
+        from app.models.calendar_entry import CalendarEntry
+        for entry in (await db.execute(select(CalendarEntry).where(
+            CalendarEntry.project_id == c.project_id,
+            CalendarEntry.content_type == "campaign_task",
+            CalendarEntry.content_id.in_(task_ids),
+        ))).scalars().all():
+            await db.delete(entry)
+
+    await db.delete(c)
+    await db.commit()
+
+
 @router.post("/{campaign_id}/strategy")
 async def regenerate_strategy(campaign_id: uuid.UUID, current_user: CurrentUser, db: DB):
     """Re-run the strategy engine over the current store figures."""

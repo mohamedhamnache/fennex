@@ -18,6 +18,8 @@ import { listEmployees } from "@/lib/employees";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { Sparkline } from "@/components/ui/Sparkline";
+import { AlertTriangle } from "lucide-react";
 import { employeeIcon } from "@/lib/employees";
 import { CheckRow, Metric, Section, Unavailable, money } from "./CampaignPrimitives";
 
@@ -679,12 +681,60 @@ export function LaunchTab({ campaign, projectId }: { campaign: Campaign; project
         }
       >
         {readiness && (
-          <Card className="p-4">
-            <ul className="flex flex-col divide-y divide-border">
-              {[...readiness.blockers, ...readiness.warnings, ...readiness.unknown, ...readiness.passed]
-                .map((item) => <CheckRow key={item.key + item.message} item={item} />)}
-            </ul>
-          </Card>
+          <div className="flex flex-col gap-3">
+            {/* The verdict, before the detail. */}
+            <div className={cn(
+              "flex flex-wrap items-center gap-3 rounded-xl border p-4",
+              readiness.ready ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5",
+            )}>
+              {readiness.ready
+                ? <Check className="h-5 w-5 shrink-0 text-success" strokeWidth={2.4} />
+                : <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" strokeWidth={2.2} />}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {readiness.ready
+                    ? t("campaigns.launch.ready", { defaultValue: "Everything is ready" })
+                    : t("campaigns.launch.blocked", {
+                        defaultValue: "{{n}} thing(s) must be fixed first",
+                        n: readiness.blockers.length,
+                      })}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {[
+                    readiness.warnings.length && t("campaigns.launch.warnCount", {
+                      defaultValue: "{{n}} warning(s)", n: readiness.warnings.length }),
+                    readiness.unknown.length && t("campaigns.launch.unknownCount", {
+                      defaultValue: "{{n}} unchecked", n: readiness.unknown.length }),
+                    readiness.passed.length && t("campaigns.launch.passCount", {
+                      defaultValue: "{{n}} passed", n: readiness.passed.length }),
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            </div>
+
+            {/* Blockers on their own, because they are the only ones that stop
+                the launch. Everything else is folded away by default -- a
+                checklist that shows eight passes beside two blockers makes the
+                blockers harder to find, not the campaign more reassuring. */}
+            {readiness.blockers.length > 0 && (
+              <Card className="p-4">
+                <ul className="flex flex-col divide-y divide-border">
+                  {readiness.blockers.map((item) => <CheckRow key={item.key + item.message} item={item} />)}
+                </ul>
+              </Card>
+            )}
+
+            <details className="group rounded-xl border border-border">
+              <summary className="flex cursor-pointer items-center justify-between gap-2 p-3.5 text-xs font-medium text-foreground">
+                {t("campaigns.launch.everythingElse", { defaultValue: "Everything else" })}
+                <span className="text-[11px] text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <ul className="flex flex-col divide-y divide-border border-t border-border px-4 pb-2">
+                {[...readiness.warnings, ...readiness.unknown, ...readiness.passed]
+                  .map((item) => <CheckRow key={item.key + item.message} item={item} />)}
+              </ul>
+            </details>
+          </div>
         )}
       </Section>
 
@@ -829,6 +879,16 @@ export function PerformanceTab({ campaign }: { campaign: Campaign }) {
             </>
           )}
         </div>
+        {/* The shape of the period, from the series already in the payload. */}
+        {sells && perf.series.length > 2 && (
+          <div className="mt-4 flex items-end gap-3 border-t border-border pt-4">
+            <Sparkline data={perf.series.map((d) => d.revenue)} width={220} height={40}
+                       className="text-primary" />
+            <span className="pb-1 text-[11px] text-muted-foreground">
+              {t("campaigns.perf.daily", { defaultValue: "attributed revenue per day" })}
+            </span>
+          </div>
+        )}
         <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
           {sells
             ? t("campaigns.perf.method", {
@@ -915,9 +975,28 @@ export function PerformanceTab({ campaign }: { campaign: Campaign }) {
                    defaultValue: "Computed from what is in the campaign, not generated. Every point has a reason.",
                  })}>
           <Card className="p-4">
-            <p className="text-3xl font-semibold tabular-nums text-foreground">
-              {score.score}<span className="text-base text-muted-foreground">/100</span>
-            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <p className="text-3xl font-semibold tabular-nums text-foreground">
+                {score.score}<span className="text-base text-muted-foreground">/100</span>
+              </p>
+              {/* Each component as a bar, so a weak one is visible without
+                  reading seven rows of prose to find it. */}
+              <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+                {score.parts.filter((p) => p.max > 0).map((p) => (
+                  <div key={p.key} className="flex items-center gap-2">
+                    <span className="w-20 shrink-0 truncate text-[10px] text-muted-foreground">
+                      {t(`campaigns.score.${p.key}`, { defaultValue: p.key })}
+                    </span>
+                    <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                      <span className={cn("block h-full rounded-full",
+                                          p.points >= p.max * 0.9 ? "bg-success"
+                                            : p.points <= p.max * 0.5 ? "bg-warning" : "bg-primary")}
+                            style={{ width: `${Math.round((p.points / p.max) * 100)}%` }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
             <ul className="mt-3 flex flex-col divide-y divide-border">
               {score.parts.filter((p) => p.max > 0).map((p) => (
                 <li key={p.key} className="flex items-start justify-between gap-3 py-2 text-xs">

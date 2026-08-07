@@ -2802,6 +2802,9 @@ export async function campaignCalendar(projectId: string, days = 60): Promise<Ca
 export async function patchCampaign(id: string, body: Record<string, unknown>): Promise<Campaign> {
   return apiClient.patch<Campaign>(`/campaigns/${id}`, body);
 }
+export async function deleteCampaign(id: string): Promise<void> {
+  return apiClient.delete<void>(`/campaigns/${id}`);
+}
 export async function regenerateStrategy(id: string): Promise<Campaign> {
   return apiClient.post<Campaign>(`/campaigns/${id}/strategy`, {});
 }
