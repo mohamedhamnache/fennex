@@ -2767,7 +2767,7 @@
       "capabilities": "Habilidades",
       "tools": "Herramientas",
       "apps": "Apps conectadas",
-      "knowledge": "Conocimiento y memoria",
+      "knowledge": "Datos que utiliza",
       "memoryScope": "Alcance de memoria",
       "sources": "Fuentes",
       "io": "Entrada / salida",
@@ -2781,7 +2781,12 @@
       "tabs": {
         "overview": "Resumen",
         "access": "Acceso"
-      }
+      },
+      "canAct": "Puede actuar",
+      "canRead": "Puede leer",
+      "readOnly": "Solo lectura — no modifica nada",
+      "memoryTitle": "Memoria y contexto",
+      "alwaysKnows": "Sabe antes de empezar"
     },
     "filterLabel": "Filtrar por departamento",
     "allDepartments": "Todos",
@@ -2791,7 +2796,30 @@
       "connectors": "Conectores",
       "knowledge": "Conocimiento"
     },
-    "noMatch": "Nada coincide con «{{query}}»."
+    "noMatch": "Nada coincide con «{{query}}».",
+    "permission": {
+      "read_analytics": "Leer tus datos de analítica y búsqueda",
+      "read_content": "Leer tus artículos y documentos",
+      "read_products": "Leer tu catálogo de productos",
+      "read_competitors": "Leer páginas de la competencia indicadas",
+      "write_content": "Escribir y editar artículos",
+      "write_images": "Generar y editar imágenes",
+      "write_social": "Redactar y programar publicaciones",
+      "publish_external": "Publicar en tus sitios conectados",
+      "send_email": "Enviar correos en tu nombre",
+      "spend_credits": "Gastar créditos de IA"
+    },
+    "scopeExplain": {
+      "self": "Solo recuerda su propio trabajo. Nada llega a otros empleados.",
+      "department": "Comparte lo aprendido con su departamento, no con toda la empresa.",
+      "project": "Recuerda a nivel de proyecto. Lo aprendido sirve a todos los que trabajan en él.",
+      "org": "Recuerda en todos los proyectos de tu organización."
+    },
+    "context": {
+      "brand": "Tu marca: el proyecto, su visión, productos, audiencia y tono.",
+      "published": "Lo que ya has publicado, para no proponer lo que existe.",
+      "memory": "Lo aprendido en ejecuciones anteriores, dentro del alcance anterior."
+    }
   },
   "chat": {
     "title": "Asistente Fennex",

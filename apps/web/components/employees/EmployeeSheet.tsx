@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
+  ShieldCheck, Eye, Zap,
   Boxes, Brain, Database, Plug, Quote, Target, Wrench, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -246,62 +247,145 @@ export function EmployeeSheet({
           )}
 
           {tab === "access" && (<>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {employee.allowedTools.length > 0 && (
-              <Section icon={Wrench} title={t("company.sheet.tools")}>
-                <div className="flex flex-wrap gap-1">
-                  {employee.allowedTools.map((x) => <Chip key={x}>{x}</Chip>)}
-                </div>
-              </Section>
-            )}
-
-            {employee.connectedApps.length > 0 && (
-              <Section icon={Plug} title={t("company.sheet.apps")}>
-                <div className="flex flex-wrap gap-1">
-                  {employee.connectedApps.map((app) => {
-                    const connected = health?.connectedApps?.[app];
-                    return (
-                      <span
-                        key={app}
-                        title={connected ? t("company.sheet.connected") : t("company.sheet.notConnected")}
-                        className={cn(
-                          "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                          connected
-                            ? "bg-success/12 text-success"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
+          {/* PERMISSIONS LEAD. This tab answers "what can this thing do to my
+              account", and that was the last row on it, rendered as raw slugs.
+              Split read from act because the split is the whole question: a
+              reader skims the passive half and studies the consequential one. */}
+          <Section icon={ShieldCheck} title={t("company.sheet.permissions")}>
+            <div className="flex flex-col gap-3">
+              {(() => {
+                const acts = employee.permissions.filter((x) => !x.startsWith("read:"));
+                const reads = employee.permissions.filter((x) => x.startsWith("read:"));
+                return (
+                  <>
+                    <div>
+                      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full",
-                          connected ? "bg-success" : "bg-muted-foreground/40")} />
-                        {app}
+                          acts.length ? "bg-warning" : "bg-muted-foreground/40")} />
+                        {t("company.sheet.canAct")}
+                      </p>
+                      {acts.length ? (
+                        <ul className="flex flex-col gap-1">
+                          {acts.map((x) => (
+                            <li key={x} className="flex items-start gap-2 text-xs text-foreground">
+                              <Zap className="mt-0.5 h-3 w-3 shrink-0 text-warning" strokeWidth={2.2} />
+                              {t(`company.permission.${x.replace(":", "_")}`, { defaultValue: x })}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        // Worth stating outright rather than leaving blank: an
+                        // employee that can only read is a different risk, and
+                        // an empty section reads as missing data.
+                        <p className="text-xs text-muted-foreground">{t("company.sheet.readOnly")}</p>
+                      )}
+                    </div>
+
+                    {reads.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                          {t("company.sheet.canRead")}
+                        </p>
+                        <ul className="flex flex-col gap-1">
+                          {reads.map((x) => (
+                            <li key={x} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <Eye className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} />
+                              {t(`company.permission.${x.replace(":", "_")}`, { defaultValue: x })}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </Section>
+
+          {/* Apps, with their live state. An app the org has not connected is
+              reach this employee does not actually have, so the dot is the
+              point rather than decoration. */}
+          {employee.connectedApps.length > 0 && (
+            <Section icon={Plug} title={t("company.sheet.apps")}>
+              <ul className="flex flex-col gap-1">
+                {employee.connectedApps.map((app) => {
+                  const connected = health?.connectedApps?.[app];
+                  return (
+                    <li key={app} className="flex items-center gap-2 text-xs">
+                      <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full",
+                        connected ? "bg-success" : "bg-muted-foreground/40")} />
+                      <span className="text-foreground">{app}</span>
+                      <span className={cn("ml-auto text-[10px]",
+                        connected ? "text-success" : "text-muted-foreground")}>
+                        {connected ? t("company.sheet.connected") : t("company.sheet.notConnected")}
                       </span>
-                    );
+                    </li>
+                  );
+                })}
+              </ul>
+            </Section>
+          )}
+
+          {employee.allowedTools.length > 0 && (
+            <Section icon={Wrench} title={`${t("company.sheet.tools")} (${employee.allowedTools.length})`}>
+              <div className="flex flex-wrap gap-1">
+                {employee.allowedTools.map((x) => <Chip key={x}>{x}</Chip>)}
+              </div>
+            </Section>
+          )}
+
+          {/* MEMORY AND CONTEXT. The scope was a bare chip -- "project" tells a
+              reader nothing about what this employee actually remembers, or
+              what it is told before it starts. Both are the difference between
+              an employee and a prompt, so both are spelled out. */}
+          <Section icon={Brain} title={t("company.sheet.memoryTitle")}>
+            <div className="flex flex-col gap-3">
+              <div className="rounded-xl border border-border bg-muted/30 p-3">
+                <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                  <Database className="h-3.5 w-3.5 text-primary" strokeWidth={2} />
+                  {t(`company.scope.${employee.memoryScope}`)}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {t(`company.scopeExplain.${employee.memoryScope}`, {
+                    defaultValue: t("company.scopeExplain.project"),
                   })}
-                </div>
-              </Section>
-            )}
-          </div>
+                </p>
+              </div>
+
+              {/* What it is handed on EVERY run, before it does anything. */}
+              <div>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("company.sheet.alwaysKnows")}
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {[
+                    t("company.context.brand"),
+                    t("company.context.published"),
+                    t("company.context.memory"),
+                  ].map((line) => (
+                    <li key={line} className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+                      <span aria-hidden className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary/60" />
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Section>
 
           <Section icon={Database} title={t("company.sheet.knowledge")}>
             <dl className="flex flex-col gap-2 text-xs">
-              <Row label={t("company.sheet.memoryScope")}>
-                <Chip>{t(`company.scope.${employee.memoryScope}`)}</Chip>
-              </Row>
               <Row label={t("company.sheet.sources")}>
                 <div className="flex flex-wrap gap-1">
-                  {employee.knowledgeSources.map((s) => <Chip key={s}>{s}</Chip>)}
+                  {employee.knowledgeSources.map((x) => <Chip key={x}>{x}</Chip>)}
                 </div>
               </Row>
               <Row label={t("company.sheet.io")}>
-                <div className="flex flex-wrap gap-1">
-                  {employee.supportedInputs.map((s) => <Chip key={`in-${s}`}>{s}</Chip>)}
-                  <span aria-hidden className="text-muted-foreground">&rarr;</span>
-                  {employee.supportedOutputs.map((s) => <Chip key={`out-${s}`}>{s}</Chip>)}
-                </div>
-              </Row>
-              <Row label={t("company.sheet.permissions")}>
-                <div className="flex flex-wrap gap-1">
-                  {employee.permissions.map((p) => <Chip key={p}>{p}</Chip>)}
+                <div className="flex flex-wrap items-center gap-1">
+                  {employee.supportedInputs.map((x) => <Chip key={`in-${x}`}>{x}</Chip>)}
+                  <span aria-hidden className="px-0.5 text-muted-foreground">&rarr;</span>
+                  {employee.supportedOutputs.map((x) => <Chip key={`out-${x}`}>{x}</Chip>)}
                 </div>
               </Row>
             </dl>

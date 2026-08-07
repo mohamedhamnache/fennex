@@ -2767,7 +2767,7 @@
       "capabilities": "Faehigkeiten",
       "tools": "Werkzeuge",
       "apps": "Verbundene Apps",
-      "knowledge": "Wissen und Gedaechtnis",
+      "knowledge": "Genutzte Daten",
       "memoryScope": "Gedaechtnisbereich",
       "sources": "Quellen",
       "io": "Eingabe / Ausgabe",
@@ -2781,7 +2781,12 @@
       "tabs": {
         "overview": "Überblick",
         "access": "Zugriff"
-      }
+      },
+      "canAct": "Kann handeln",
+      "canRead": "Kann lesen",
+      "readOnly": "Nur lesend — ändert nichts",
+      "memoryTitle": "Gedächtnis und Kontext",
+      "alwaysKnows": "Weiß vor dem Start"
     },
     "filterLabel": "Nach Abteilung filtern",
     "allDepartments": "Alle",
@@ -2791,7 +2796,30 @@
       "connectors": "Konnektoren",
       "knowledge": "Wissen"
     },
-    "noMatch": "Nichts passt zu „{{query}}“."
+    "noMatch": "Nichts passt zu „{{query}}“.",
+    "permission": {
+      "read_analytics": "Deine Analyse- und Suchdaten lesen",
+      "read_content": "Deine Artikel und Dokumente lesen",
+      "read_products": "Deinen Produktkatalog lesen",
+      "read_competitors": "Angegebene Wettbewerberseiten lesen",
+      "write_content": "Artikel schreiben und bearbeiten",
+      "write_images": "Bilder erzeugen und bearbeiten",
+      "write_social": "Social Posts verfassen und planen",
+      "publish_external": "Auf deinen verbundenen Seiten veröffentlichen",
+      "send_email": "In deinem Namen E-Mails senden",
+      "spend_credits": "KI-Credits ausgeben"
+    },
+    "scopeExplain": {
+      "self": "Erinnert nur die eigene Arbeit. Nichts davon erreicht andere.",
+      "department": "Teilt Gelerntes mit der eigenen Abteilung, nicht dem ganzen Unternehmen.",
+      "project": "Erinnert projektweit. Gelerntes steht allen im Projekt zur Verfügung.",
+      "org": "Erinnert über alle Projekte deiner Organisation hinweg."
+    },
+    "context": {
+      "brand": "Deine Marke: Projekt, Vision, Produkte, Zielgruppe und Tonalität.",
+      "published": "Was bereits veröffentlicht ist, damit nichts doppelt vorgeschlagen wird.",
+      "memory": "Was es und seine Kollegen zuvor gelernt haben, im obigen Rahmen."
+    }
   },
   "chat": {
     "title": "Fennex Assistent",

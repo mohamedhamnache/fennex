@@ -2840,7 +2840,7 @@
       "capabilities": "Skills",
       "tools": "Tools",
       "apps": "Connected apps",
-      "knowledge": "Knowledge and memory",
+      "knowledge": "Data it draws on",
       "memoryScope": "Memory scope",
       "sources": "Sources",
       "io": "Input / output",
@@ -2854,7 +2854,12 @@
       "tabs": {
         "overview": "Overview",
         "access": "Access"
-      }
+      },
+      "canAct": "Can act",
+      "canRead": "Can read",
+      "readOnly": "Reads only — it cannot change anything",
+      "memoryTitle": "Memory and context",
+      "alwaysKnows": "Knows before it starts"
     },
     "filterLabel": "Filter by department",
     "allDepartments": "All",
@@ -2864,7 +2869,30 @@
       "connectors": "Connectors",
       "knowledge": "Knowledge"
     },
-    "noMatch": "No one matches “{{query}}”."
+    "noMatch": "No one matches “{{query}}”.",
+    "permission": {
+      "read_analytics": "Read your analytics and search data",
+      "read_content": "Read your articles and documents",
+      "read_products": "Read your product catalogue",
+      "read_competitors": "Read competitor pages it is given",
+      "write_content": "Write and edit articles",
+      "write_images": "Generate and edit images",
+      "write_social": "Draft and schedule social posts",
+      "publish_external": "Publish to your connected sites",
+      "send_email": "Send email on your behalf",
+      "spend_credits": "Spend AI credits"
+    },
+    "scopeExplain": {
+      "self": "Remembers only its own past work. Nothing it learns reaches another employee.",
+      "department": "Shares what it learns with its own department, not the whole company.",
+      "project": "Remembers across this project. What it learns is available to every employee working on it.",
+      "org": "Remembers across every project in your organisation."
+    },
+    "context": {
+      "brand": "Your brand: what the project is, its vision, products, audience and voice.",
+      "published": "What you have already published, so it does not propose work that exists.",
+      "memory": "What it and its colleagues learned on earlier runs, within the scope above."
+    }
   },
   "chat": {
     "title": "Fennex Assistant",

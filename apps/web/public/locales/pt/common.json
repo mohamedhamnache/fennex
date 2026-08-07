@@ -2767,7 +2767,7 @@
       "capabilities": "Competencias",
       "tools": "Ferramentas",
       "apps": "Apps ligadas",
-      "knowledge": "Conhecimento e memoria",
+      "knowledge": "Dados que utiliza",
       "memoryScope": "Ambito de memoria",
       "sources": "Fontes",
       "io": "Entrada / saida",
@@ -2781,7 +2781,12 @@
       "tabs": {
         "overview": "Resumo",
         "access": "Acesso"
-      }
+      },
+      "canAct": "Pode agir",
+      "canRead": "Pode ler",
+      "readOnly": "Apenas leitura — não altera nada",
+      "memoryTitle": "Memória e contexto",
+      "alwaysKnows": "Sabe antes de começar"
     },
     "filterLabel": "Filtrar por departamento",
     "allDepartments": "Todos",
@@ -2791,7 +2796,30 @@
       "connectors": "Conectores",
       "knowledge": "Conhecimento"
     },
-    "noMatch": "Nada corresponde a «{{query}}»."
+    "noMatch": "Nada corresponde a «{{query}}».",
+    "permission": {
+      "read_analytics": "Ler os teus dados de análise e pesquisa",
+      "read_content": "Ler os teus artigos e documentos",
+      "read_products": "Ler o teu catálogo de produtos",
+      "read_competitors": "Ler páginas de concorrentes indicadas",
+      "write_content": "Escrever e editar artigos",
+      "write_images": "Gerar e editar imagens",
+      "write_social": "Redigir e agendar publicações",
+      "publish_external": "Publicar nos teus sites ligados",
+      "send_email": "Enviar e-mails em teu nome",
+      "spend_credits": "Gastar créditos de IA"
+    },
+    "scopeExplain": {
+      "self": "Só recorda o seu próprio trabalho. Nada chega aos outros.",
+      "department": "Partilha o que aprende com o seu departamento, não com toda a empresa.",
+      "project": "Recorda ao nível do projeto. O que aprende serve todos os que nele trabalham.",
+      "org": "Recorda em todos os projetos da tua organização."
+    },
+    "context": {
+      "brand": "A tua marca: o projeto, visão, produtos, público e tom.",
+      "published": "O que já publicaste, para não propor o que existe.",
+      "memory": "O que ele e os colegas aprenderam antes, dentro do âmbito acima."
+    }
   },
   "chat": {
     "title": "Assistente Fennex",

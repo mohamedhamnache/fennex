@@ -2764,13 +2764,13 @@
     "sheet": {
       "goals": "Objectifs permanents",
       "actions": "Ce qu'il sait faire",
-      "capabilities": "Competences",
+      "capabilities": "Compétences",
       "tools": "Outils",
-      "apps": "Apps connectees",
-      "knowledge": "Connaissances et memoire",
-      "memoryScope": "Portee memoire",
+      "apps": "Apps connectées",
+      "knowledge": "Données qu'il exploite",
+      "memoryScope": "Portée mémoire",
       "sources": "Sources",
-      "io": "Entree / sortie",
+      "io": "Entrée / sortie",
       "permissions": "Permissions",
       "needsApproval": "Validation requise",
       "connected": "Connecte",
@@ -2781,7 +2781,12 @@
       "tabs": {
         "overview": "Aperçu",
         "access": "Accès"
-      }
+      },
+      "canAct": "Peut agir",
+      "canRead": "Peut lire",
+      "readOnly": "Lecture seule — ne modifie rien",
+      "memoryTitle": "Mémoire et contexte",
+      "alwaysKnows": "Sait avant de commencer"
     },
     "filterLabel": "Filtrer par departement",
     "allDepartments": "Tous",
@@ -2791,7 +2796,30 @@
       "connectors": "Connecteurs",
       "knowledge": "Connaissances"
     },
-    "noMatch": "Aucun résultat pour « {{query}} »."
+    "noMatch": "Aucun résultat pour « {{query}} ».",
+    "permission": {
+      "read_analytics": "Lire vos données d'analyse et de recherche",
+      "read_content": "Lire vos articles et documents",
+      "read_products": "Lire votre catalogue produits",
+      "read_competitors": "Lire les pages concurrentes fournies",
+      "write_content": "Rédiger et modifier des articles",
+      "write_images": "Générer et modifier des images",
+      "write_social": "Rédiger et programmer des posts",
+      "publish_external": "Publier sur vos sites connectés",
+      "send_email": "Envoyer des e-mails en votre nom",
+      "spend_credits": "Dépenser des crédits IA"
+    },
+    "scopeExplain": {
+      "self": "Ne se souvient que de son propre travail. Rien n'est transmis aux autres.",
+      "department": "Partage ce qu'il apprend avec son département, pas toute l'entreprise.",
+      "project": "Se souvient à l'échelle du projet. Ce qu'il apprend sert à tous ceux qui y travaillent.",
+      "org": "Se souvient à l'échelle de toute votre organisation."
+    },
+    "context": {
+      "brand": "Votre marque : le projet, sa vision, ses produits, son audience et son ton.",
+      "published": "Ce que vous avez déjà publié, pour ne pas reproposer ce qui existe.",
+      "memory": "Ce que lui et ses collègues ont appris précédemment, dans la portée ci-dessus."
+    }
   },
   "chat": {
     "title": "Assistant Fennex",
