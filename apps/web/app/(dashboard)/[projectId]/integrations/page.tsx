@@ -12,6 +12,7 @@ import {
   getShopifyStatus, getWooStatus, type ShopifyStatus, type WooStatus,
 } from "@/lib/api";
 import { LinkedInIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "@/components/studio/SocialIcons";
+import { ConnectorCatalogue } from "@/components/integrations/ConnectorCatalogue";
 import { ShopifyConnectModal } from "@/components/integrations/ShopifyConnectModal";
 import { WooConnectModal } from "@/components/integrations/WooConnectModal";
 import { SeoProviderModal } from "@/components/integrations/SeoProviderModal";
@@ -214,6 +215,24 @@ export default function IntegrationsPage({ params }: { params: { projectId: stri
           </section>
         );
       })}
+
+      {/* Everything else the agents can reach. Kept below the native section:
+          those are the supported, metered paths, and an app that has one is
+          filtered out of the catalogue rather than offered twice. */}
+      <section className="flex flex-col gap-3 border-t border-border pt-6">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Plug className="h-3.5 w-3.5" strokeWidth={2} />
+            </span>
+            More connectors
+          </h2>
+          <p className="ml-8 mt-0.5 text-xs text-muted-foreground">
+            Connect a workspace once and every agent entitled to it gains the reach.
+          </p>
+        </div>
+        <ConnectorCatalogue />
+      </section>
 
       {modal === "shopify" && (
         <ShopifyConnectModal

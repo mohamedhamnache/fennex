@@ -3075,3 +3075,34 @@ export async function getStoreDashboard(projectId: string, days = 30): Promise<S
 export async function exportStoreCsv(projectId: string, days = 30): Promise<string> {
   return apiClient.getText(`/shopify/analytics/export?project_id=${projectId}&days=${days}`);
 }
+
+// ── MCP connectors ───────────────────────────────────────────────────────────
+
+export interface ConnectorInfo {
+  app: string;
+  label: string;
+  category: string;
+  description: string;
+  /** The metered native tool that already reaches this app, when one exists.
+   *  Set means Fennex has a first-class path and MCP would be a second,
+   *  unmetered route to the same paid API. */
+  nativeTool: string;
+  permission: string;
+  transport: string;
+  connected: boolean;
+  enabled: boolean;
+  fromEnvironment: boolean;
+  url: string;
+  hasToken: boolean;
+  lastStatus: string | null;
+  lastError: string | null;
+  toolCount: number | null;
+  /** The employees that gain reach from this connector. A connector is
+   *  abstract until you can see who it puts to work. */
+  usedBy: { id: string; name: string; role: string; icon: string; department: string }[];
+}
+
+export async function listConnectors(): Promise<ConnectorInfo[]> {
+  const r = await apiClient.get<{ connectors: ConnectorInfo[] }>("/connectors");
+  return r.connectors ?? [];
+}
