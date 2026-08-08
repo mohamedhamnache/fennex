@@ -130,7 +130,10 @@ async def check(campaign: Campaign, db: AsyncSession) -> dict:
         items.append(_item(BLOCKER, "approval",
                            f"This campaign will {actions}. It has not been approved.",
                            "Send for review, then approve it.",
-                           code="needsApproval", params={"actions": actions}))
+                           code="needsApproval",
+                           # Keys, not a rendered English list -- the UI builds
+                           # the sentence in the reader's language.
+                           params={"actions": actions, "actionKeys": ",".join(required)}))
     elif required:
         items.append(_item(OK, "approval", "Approved.", code="approved"))
     if pending:

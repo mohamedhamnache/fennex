@@ -94,6 +94,39 @@ const LEVEL_STYLE: Record<string, { icon: typeof Check; cls: string }> = {
   ok: { icon: Check, cls: "text-success" },
 };
 
+/**
+ * A readiness check's sentence, in the reader's language.
+ *
+ * Exported because two screens render these and the first attempt fixed only
+ * one of them -- the overview built its own string and kept showing a French
+ * sentence with an English list of actions inside it.
+ */
+export function checkText(item: ReadinessItem,
+                          t: (k: string, o?: Record<string, unknown>) => string): {
+  message: string; fix: string;
+} {
+  const params: Record<string, unknown> = { ...item.params };
+  // The approval actions arrive as keys so the list is joined here rather than
+  // on the server, which cannot know the language.
+  if (typeof params.actionKeys === "string" && params.actionKeys) {
+    params.actions = String(params.actionKeys)
+      .split(",")
+      .map((k) => t(`campaigns.approvalAction.${k}`, { defaultValue: k.replace(/_/g, " ") }))
+      .join(", ");
+  }
+  // A channel's display name arrives in English ("Store", "Landing page"), so
+  // it is re-translated from the key the server sends beside it.
+  if (typeof params.channelKey === "string") {
+    params.channel = t(`campaigns.channel.${params.channelKey}`, {
+      defaultValue: String(params.channel ?? params.channelKey),
+    });
+  }
+  return {
+    message: t(`campaigns.check.${item.code}`, { ...params, defaultValue: item.message }),
+    fix: item.fix ? t(`campaigns.check.${item.code}Fix`, { ...params, defaultValue: item.fix }) : "",
+  };
+}
+
 export function CheckRow({ item }: { item: ReadinessItem }) {
   const { t } = useTranslation();
   const style = LEVEL_STYLE[item.level] ?? LEVEL_STYLE.unknown;
@@ -101,19 +134,7 @@ export function CheckRow({ item }: { item: ReadinessItem }) {
   // The server sends a code and its parameters; the sentence is built here,
   // in the reader's language. `message`/`fix` are the English fallback, so a
   // code with no translation degrades to readable text rather than a key.
-  // A channel's display name arrives in English ("Store", "Landing page"), so
-  // it is re-translated here from the key the server sends beside it. Without
-  // this the sentence is French and the noun inside it is not.
-  const params = { ...item.params };
-  if (typeof params.channelKey === "string") {
-    params.channel = t(`campaigns.channel.${params.channelKey}`, {
-      defaultValue: String(params.channel ?? params.channelKey),
-    });
-  }
-  const message = t(`campaigns.check.${item.code}`, { ...params, defaultValue: item.message });
-  const fix = item.fix
-    ? t(`campaigns.check.${item.code}Fix`, { ...params, defaultValue: item.fix })
-    : "";
+  const { message, fix } = checkText(item, t);
   return (
     <li className="flex items-start gap-2.5 py-1.5">
       <Icon className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", style.cls)} strokeWidth={2.2} />

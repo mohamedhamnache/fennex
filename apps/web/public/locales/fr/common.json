@@ -1396,7 +1396,8 @@
       "team": "Équipe",
       "plan": "Plan",
       "work": "Travail",
-      "results": "Résultats"
+      "results": "Résultats",
+      "overview": "Aperçu"
     },
     "brief": {
       "audience": "Audience",
@@ -1647,7 +1648,9 @@
       "noOutputYet": "Rien pour l'instant. Son travail est créé au lancement de la campagne.",
       "written": "{{n}} rédigés sur {{k}} type(s)",
       "notWritten": "Rien de rédigé",
-      "goToWork": "Ouvrir le travail"
+      "goToWork": "Ouvrir le travail",
+      "seePlan": "Voir le plan complet",
+      "objective": "Objectif"
     },
     "agentState": {
       "done": "terminé",
@@ -1655,6 +1658,14 @@
       "waiting": "en attente",
       "blocked": "bloqué",
       "idle": "inactif"
+    },
+    "approvalAction": {
+      "spend": "dépenser du budget",
+      "launch_ads": "lancer des publicités payantes",
+      "send_email": "envoyer des e-mails aux clients",
+      "send_sms": "envoyer des SMS aux clients",
+      "change_price": "modifier les prix des produits",
+      "create_discount": "créer un code de réduction"
     }
   },
   "autopilot": {

@@ -13,7 +13,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { employeeIcon } from "@/lib/employees";
-import { money } from "./CampaignPrimitives";
+import { checkText, money } from "./CampaignPrimitives";
 
 /**
  * The Plan tab: what Fennex is going to do, and what it needs from you.
@@ -40,10 +40,27 @@ const STATE_STYLE: Record<AgentState, { dot: string; label: string }> = {
   idle: { dot: "bg-border", label: "idle" },
 };
 
-export function CampaignPlan({ campaign, projectId, onGoToTab, children }: {
+/**
+ * Two views over the same campaign state.
+ *
+ * `overview` answers "where is this and does it need me" -- readiness, the
+ * campaign's own numbers, what is waiting on you, and a one-line read on the
+ * team. It is the first thing you land on and should be readable without
+ * scrolling.
+ *
+ * `plan` answers "what exactly is going to happen" -- the strategy, each agent
+ * and its tasks, the execution phases, the deliverables, and the graph. It is
+ * where you go when the overview raised a question.
+ *
+ * One component rather than two because they read the same derived values, and
+ * two copies of the readiness arithmetic is how the two views start disagreeing
+ * about whether a campaign is ready.
+ */
+export function CampaignPlan({ campaign, projectId, onGoToTab, view = "plan", children }: {
   campaign: Campaign;
   projectId: string;
-  onGoToTab: (tab: "work" | "launch" | "results") => void;
+  onGoToTab: (tab: "plan" | "work" | "launch" | "results") => void;
+  view?: "overview" | "plan";
   /** The execution graph, kept but demoted behind a disclosure. */
   children?: React.ReactNode;
 }) {
@@ -83,6 +100,55 @@ export function CampaignPlan({ campaign, projectId, onGoToTab, children }: {
   const open = (readiness?.blockers.length ?? 0) + (readiness?.warnings.length ?? 0);
   const total = passed + open;
   const pct = total ? Math.round((passed / total) * 100) : 0;
+
+  if (view === "overview") {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Readiness readiness={readiness} pct={pct} onGoToTab={onGoToTab} />
+          <Snapshot campaign={campaign} currency={currency} />
+          <YourInput pending={pending} onGoToTab={onGoToTab} />
+        </div>
+
+        {/* A one-line read on the team, not the full board -- the overview says
+            who is on it and how far along, and the Plan tab says what each of
+            them is actually doing. */}
+        <section className="rounded-xl border border-border p-4">
+          <SectionLabel>{t("campaigns.plan.team", { defaultValue: "AI team" })}</SectionLabel>
+          {!team.length ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {t("campaigns.team.empty", { defaultValue: "Nobody assigned yet." })}
+            </p>
+          ) : (
+            <>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                {team.map((m) => {
+                  const Icon = employeeIcon(m.icon);
+                  return (
+                    <span key={m.id} className="flex items-center gap-1.5 text-[11px]">
+                      <Icon className="h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
+                      <span className="font-medium text-foreground">{m.name}</span>
+                      <span className="text-muted-foreground">
+                        {m.channels.length
+                          ? m.channels.map((c) => t(`campaigns.channel.${c}`, { defaultValue: c })).join(", ")
+                          : t("campaigns.brief.planning", { defaultValue: "planning" })}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+              <button onClick={() => onGoToTab("plan")}
+                      className="mt-3 cursor-pointer text-[11px] font-medium text-primary hover:underline">
+                {t("campaigns.plan.seePlan", { defaultValue: "See the full plan" })}
+              </button>
+            </>
+          )}
+        </section>
+
+        <Deliverables campaign={campaign} onGoToTab={onGoToTab} />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_290px]">
@@ -272,110 +338,9 @@ export function CampaignPlan({ campaign, projectId, onGoToTab, children }: {
 
       {/* ── context rail ───────────────────────────────────────────────── */}
       <aside className="flex flex-col gap-5">
-        <div className="rounded-xl border border-border p-4">
-          <SectionLabel>{t("campaigns.plan.readiness", { defaultValue: "Readiness" })}</SectionLabel>
-          {!readiness ? (
-            <div className="mt-3 h-2 animate-pulse rounded-full bg-muted" />
-          ) : (
-            <>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                  <span className={cn("block h-full rounded-full transition-all",
-                                      readiness.ready ? "bg-success" : "bg-primary")}
-                        style={{ width: `${pct}%` }} />
-                </span>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{pct}%</span>
-              </div>
-              <p className={cn("mt-2 text-xs font-medium",
-                               readiness.ready ? "text-success" : "text-foreground")}>
-                {readiness.ready
-                  ? t("campaigns.launch.ready", { defaultValue: "Everything is ready" })
-                  : t("campaigns.launch.blocked", {
-                      defaultValue: "{{n}} thing(s) must be fixed first",
-                      n: readiness.blockers.length,
-                    })}
-              </p>
-              <ul className="mt-2.5 flex flex-col gap-1.5">
-                {[...readiness.blockers, ...readiness.warnings].slice(0, 3).map((item) => (
-                  <li key={item.key + item.message}
-                      className="flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                    <Circle className="mt-1 h-2 w-2 shrink-0 text-muted-foreground/50" strokeWidth={3} />
-                    <span>{t(`campaigns.check.${item.code}`, { ...item.params, defaultValue: item.message })}</span>
-                  </li>
-                ))}
-                {readiness.passed.slice(0, 2).map((item) => (
-                  <li key={item.key + item.message}
-                      className="flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                    <Check className="mt-0.5 h-2.5 w-2.5 shrink-0 text-success" strokeWidth={3} />
-                    <span>{t(`campaigns.check.${item.code}`, { ...item.params, defaultValue: item.message })}</span>
-                  </li>
-                ))}
-              </ul>
-              <button onClick={() => onGoToTab("launch")}
-                      className="mt-2.5 cursor-pointer text-[11px] font-medium text-primary hover:underline">
-                {t("campaigns.plan.seeMissing", { defaultValue: "See everything" })}
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Snapshot. Light rows, not cards -- five values do not need five
-            boxes, and the boxes were what made the page tall and empty. */}
-        <div className="rounded-xl border border-border p-4">
-          <SectionLabel>{t("campaigns.plan.snapshot", { defaultValue: "Campaign" })}</SectionLabel>
-          <dl className="mt-3 flex flex-col gap-2.5">
-            <Snap label={t("campaigns.create.objective", { defaultValue: "Objective" })}>
-              {campaign.objective
-                ? t(`campaigns.objective.${campaign.objective}`, { defaultValue: campaign.objective })
-                : "—"}
-            </Snap>
-            <Snap label={t("campaigns.brief.budget", { defaultValue: "Budget" })}>
-              {money(campaign.budget.amount, currency)}
-            </Snap>
-            <Snap label={t("campaigns.brief.dates", { defaultValue: "Dates" })}>
-              {campaign.starts_on
-                ? `${campaign.starts_on}${campaign.ends_on ? ` → ${campaign.ends_on}` : ""}`
-                : t("campaigns.brief.noStart", { defaultValue: "Not scheduled" })}
-            </Snap>
-            <Snap label={t("campaigns.brief.kpi", { defaultValue: "Primary KPI" })}>
-              {campaign.primary_kpi
-                ? `${t(`campaigns.kpi.${campaign.primary_kpi}`, { defaultValue: campaign.primary_kpi })}${
-                    campaign.targets?.[campaign.primary_kpi] !== undefined
-                      ? ` · ${campaign.primary_kpi === "revenue"
-                          ? money(campaign.targets[campaign.primary_kpi], currency)
-                          : campaign.targets[campaign.primary_kpi]}`
-                      : ""}`
-                : "—"}
-            </Snap>
-          </dl>
-        </div>
-
-        {/* What Fennex needs from you. Its own block, because hunting for this
-            through the page is the thing that makes a tool feel like work. */}
-        <div className={cn("rounded-xl border p-4",
-                           pending.length ? "border-warning/40 bg-warning/5" : "border-border")}>
-          <SectionLabel>{t("campaigns.plan.yourInput", { defaultValue: "Your input" })}</SectionLabel>
-          {!pending.length ? (
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              {t("campaigns.plan.nothingNeeded", { defaultValue: "Nothing needed right now." })}
-            </p>
-          ) : (
-            <>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {pending.map((a) => (
-                  <li key={a.id} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-foreground">
-                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-warning" strokeWidth={2.2} />
-                    {a.label}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={() => onGoToTab("launch")}
-                      className="mt-2.5 cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90">
-                {t("campaigns.plan.review", { defaultValue: "Review" })}
-              </button>
-            </>
-          )}
-        </div>
+        <Readiness readiness={readiness} pct={pct} onGoToTab={onGoToTab} />
+        <Snapshot campaign={campaign} currency={currency} />
+        <YourInput pending={pending} onGoToTab={onGoToTab} />
 
         <button onClick={() => replan.mutate()} disabled={replan.isPending}
                 className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-[11px] font-medium text-foreground hover:border-foreground/20 disabled:opacity-50">
@@ -388,6 +353,130 @@ export function CampaignPlan({ campaign, projectId, onGoToTab, children }: {
 }
 
 // ── pieces ───────────────────────────────────────────────────────────────────
+
+type ReadinessData = Awaited<ReturnType<typeof campaignReadiness>>;
+
+function Readiness({ readiness, pct, onGoToTab }: {
+  readiness?: ReadinessData; pct: number;
+  onGoToTab: (tab: "plan" | "work" | "launch" | "results") => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <SectionLabel>{t("campaigns.plan.readiness", { defaultValue: "Readiness" })}</SectionLabel>
+      {!readiness ? (
+        <div className="mt-3 h-2 animate-pulse rounded-full bg-muted" />
+      ) : (
+        <>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              <span className={cn("block h-full rounded-full transition-all",
+                                  readiness.ready ? "bg-success" : "bg-primary")}
+                    style={{ width: `${pct}%` }} />
+            </span>
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{pct}%</span>
+          </div>
+          <p className={cn("mt-2 text-xs font-medium",
+                           readiness.ready ? "text-success" : "text-foreground")}>
+            {readiness.ready
+              ? t("campaigns.launch.ready", { defaultValue: "Everything is ready" })
+              : t("campaigns.launch.blocked", {
+                  defaultValue: "{{n}} thing(s) must be fixed first",
+                  n: readiness.blockers.length,
+                })}
+          </p>
+          <ul className="mt-2.5 flex flex-col gap-1.5">
+            {[...readiness.blockers, ...readiness.warnings].slice(0, 3).map((item) => (
+              <li key={item.key + item.message}
+                  className="flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                <Circle className="mt-1 h-2 w-2 shrink-0 text-muted-foreground/50" strokeWidth={3} />
+                <span>{checkText(item, t).message}</span>
+              </li>
+            ))}
+            {readiness.passed.slice(0, 2).map((item) => (
+              <li key={item.key + item.message}
+                  className="flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                <Check className="mt-0.5 h-2.5 w-2.5 shrink-0 text-success" strokeWidth={3} />
+                <span>{checkText(item, t).message}</span>
+              </li>
+            ))}
+          </ul>
+          <button onClick={() => onGoToTab("launch")}
+                  className="mt-2.5 cursor-pointer text-[11px] font-medium text-primary hover:underline">
+            {t("campaigns.plan.seeMissing", { defaultValue: "See everything" })}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Snapshot({ campaign, currency }: { campaign: Campaign; currency: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <SectionLabel>{t("campaigns.plan.snapshot", { defaultValue: "Campaign" })}</SectionLabel>
+      <dl className="mt-3 flex flex-col gap-2.5">
+        <Snap label={t("campaigns.plan.objective", { defaultValue: "Objective" })}>
+          {campaign.objective
+            ? t(`campaigns.objective.${campaign.objective}`, { defaultValue: campaign.objective })
+            : "—"}
+        </Snap>
+        <Snap label={t("campaigns.brief.budget", { defaultValue: "Budget" })}>
+          {money(campaign.budget.amount, currency)}
+        </Snap>
+        <Snap label={t("campaigns.brief.dates", { defaultValue: "Dates" })}>
+          {campaign.starts_on
+            ? `${campaign.starts_on}${campaign.ends_on ? ` → ${campaign.ends_on}` : ""}`
+            : t("campaigns.brief.noStart", { defaultValue: "Not scheduled" })}
+        </Snap>
+        <Snap label={t("campaigns.brief.kpi", { defaultValue: "Primary KPI" })}>
+          {campaign.primary_kpi
+            ? `${t(`campaigns.kpi.${campaign.primary_kpi}`, { defaultValue: campaign.primary_kpi })}${
+                campaign.targets?.[campaign.primary_kpi] !== undefined
+                  ? ` · ${campaign.primary_kpi === "revenue"
+                      ? money(campaign.targets[campaign.primary_kpi], currency)
+                      : campaign.targets[campaign.primary_kpi]}`
+                  : ""}`
+            : "—"}
+        </Snap>
+      </dl>
+    </div>
+  );
+}
+
+function YourInput({ pending, onGoToTab }: {
+  pending: NonNullable<Campaign["approvals"]>;
+  onGoToTab: (tab: "plan" | "work" | "launch" | "results") => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className={cn("rounded-xl border p-4",
+                       pending.length ? "border-warning/40 bg-warning/5" : "border-border")}>
+      <SectionLabel>{t("campaigns.plan.yourInput", { defaultValue: "Your input" })}</SectionLabel>
+      {!pending.length ? (
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          {t("campaigns.plan.nothingNeeded", { defaultValue: "Nothing needed right now." })}
+        </p>
+      ) : (
+        <>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {pending.map((a) => (
+              <li key={a.id} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-foreground">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-warning" strokeWidth={2.2} />
+                {a.label}
+              </li>
+            ))}
+          </ul>
+          <button onClick={() => onGoToTab("launch")}
+                  className="mt-2.5 cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90">
+            {t("campaigns.plan.review", { defaultValue: "Review" })}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (

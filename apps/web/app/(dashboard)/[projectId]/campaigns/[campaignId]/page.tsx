@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import {
   ArrowLeft, BarChart3, Bot, CalendarClock, Layers, Loader2, MessageSquare,
-  Pause, Play, RefreshCw, Rocket, Sparkles, Target,
+  LayoutDashboard, Pause, Play, RefreshCw, Rocket, Sparkles, Target,
 } from "lucide-react";
 import {
   cancelCampaign, getCampaign, regenerateStrategy, runCampaign, setCampaignStatus,
@@ -46,7 +46,7 @@ import { PackagePanel } from "@/components/campaigns/PackagePanel";
  * did it work. The NextStep bar above them answers the only question most
  * people have, which is "what do I do now".
  */
-type Tab = "plan" | "work" | "launch" | "results";
+type Tab = "overview" | "plan" | "work" | "launch" | "results";
 
 export default function CampaignDetailPage({ params }: {
   params: { projectId: string; campaignId: string };
@@ -55,7 +55,7 @@ export default function CampaignDetailPage({ params }: {
   const { t } = useTranslation();
   const toast = useToast();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>("plan");
+  const [tab, setTab] = useState<Tab>("overview");
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
 
   const { data: campaign, isLoading } = useQuery({
@@ -79,6 +79,11 @@ export default function CampaignDetailPage({ params }: {
   // combination of agents; hiding who is doing it made that invisible on every
   // campaign the strategy engine created.
   const TABS: [Tab, typeof Target, string][] = [
+    // Overview answers "where is this and does it need me"; Plan answers "what
+    // exactly is going to happen". They were one tab, which meant landing on a
+    // page that opened with strategy prose when the question was usually
+    // whether anything was waiting.
+    ["overview", LayoutDashboard, t("campaigns.tab.overview", { defaultValue: "Overview" })],
     ["plan", Target, t("campaigns.tab.plan", { defaultValue: "Plan" })],
     ["work", Layers, t("campaigns.tab.work", { defaultValue: "Work" })],
     ["launch", Rocket, t("campaigns.tab.launch", { defaultValue: "Launch" })],
@@ -144,8 +149,12 @@ export default function CampaignDetailPage({ params }: {
 
       <NextStep campaign={campaign} onGo={setTab} />
 
+      {tab === "overview" && (
+        <CampaignPlan campaign={campaign} projectId={projectId}
+                      onGoToTab={setTab} view="overview" />
+      )}
       {tab === "plan" && (
-        <CampaignPlan campaign={campaign} projectId={projectId} onGoToTab={setTab}>
+        <CampaignPlan campaign={campaign} projectId={projectId} onGoToTab={setTab} view="plan">
           {campaign.steps.length > 0 && (
             <AgentsTab campaign={campaign} projectId={projectId}
                        selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
