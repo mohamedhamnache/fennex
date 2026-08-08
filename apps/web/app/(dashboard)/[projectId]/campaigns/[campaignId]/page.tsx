@@ -20,6 +20,7 @@ import { Assumption, Section, money } from "@/components/campaigns/CampaignPrimi
 import {
   ChannelsTab, CopilotTab, LaunchTab, PerformanceTab, TeamTab, TimelineTab,
 } from "@/components/campaigns/CampaignTabs";
+import { CampaignPlan } from "@/components/campaigns/CampaignPlan";
 import { CampaignCanvas } from "@/components/campaigns/CampaignCanvas";
 import { StepPanel } from "@/components/campaigns/StepPanel";
 import { LiveFeed } from "@/components/campaigns/LiveFeed";
@@ -144,17 +145,12 @@ export default function CampaignDetailPage({ params }: {
       <NextStep campaign={campaign} onGo={setTab} />
 
       {tab === "plan" && (
-        <div className="flex flex-col gap-10">
-          <Stage n={1} title={t("campaigns.plan.what", { defaultValue: "What this campaign is" })}>
-            <BriefTab campaign={campaign} projectId={projectId} />
-          </Stage>
-          <Stage n={2} title={t("campaigns.plan.who", { defaultValue: "Who is doing it" })}>
-            <TeamTab campaign={campaign} bare>
-              <AgentsTab campaign={campaign} projectId={projectId}
-                         selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
-            </TeamTab>
-          </Stage>
-        </div>
+        <CampaignPlan campaign={campaign} projectId={projectId} onGoToTab={setTab}>
+          {campaign.steps.length > 0 && (
+            <AgentsTab campaign={campaign} projectId={projectId}
+                       selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
+          )}
+        </CampaignPlan>
       )}
       {tab === "work" && (
         <div className="flex flex-col gap-8">

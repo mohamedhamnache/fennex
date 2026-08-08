@@ -1624,7 +1624,37 @@
     "plan": {
       "what": "Ce qu'est cette campagne",
       "who": "Qui la réalise",
-      "why": "Comprendre pourquoi"
+      "why": "Comprendre pourquoi",
+      "strategy": "Stratégie",
+      "goal": "Objectif",
+      "reasoning": "Pourquoi ce plan",
+      "team": "Équipe IA",
+      "teamCount": "{{n}} agents affectés",
+      "execution": "Plan d'exécution",
+      "noPhases": "Aucune étape planifiée. Elles arrivent avec la stratégie, ou ajoutez les vôtres dans l'onglet Travail.",
+      "graph": "Graphe d'exécution",
+      "deliverables": "Livrables attendus",
+      "readiness": "État de préparation",
+      "seeMissing": "Tout voir",
+      "snapshot": "Campagne",
+      "yourInput": "Votre intervention",
+      "nothingNeeded": "Rien à faire pour l'instant.",
+      "review": "Examiner",
+      "tasks": "Tâches",
+      "taskCount": "{{n}} tâches",
+      "noTasks": "Aucune tâche planifiée. Cet agent contribue via ses canaux plutôt que par le calendrier.",
+      "output": "Produit",
+      "noOutputYet": "Rien pour l'instant. Son travail est créé au lancement de la campagne.",
+      "written": "{{n}} rédigés sur {{k}} type(s)",
+      "notWritten": "Rien de rédigé",
+      "goToWork": "Ouvrir le travail"
+    },
+    "agentState": {
+      "done": "terminé",
+      "working": "en cours",
+      "waiting": "en attente",
+      "blocked": "bloqué",
+      "idle": "inactif"
     }
   },
   "autopilot": {

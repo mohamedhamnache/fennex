@@ -2897,6 +2897,11 @@ export async function campaignReport(id: string): Promise<CampaignReport> {
 export async function getCampaign(id: string): Promise<Campaign> {
   return apiClient.get<Campaign>(`/campaigns/${id}`);
 }
+/** Draft the agent steps that produce this campaign's work. Available on every
+ *  campaign, not only the ones the autopilot created. */
+export async function buildCampaignPlaybook(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/playbook`, {});
+}
 export async function updateCampaignPlan(id: string, stepIds: string[]): Promise<Campaign> {
   return apiClient.patch<Campaign>(`/campaigns/${id}/plan`, { step_ids: stepIds });
 }
