@@ -1115,7 +1115,7 @@
   },
   "campaigns": {
     "title": "Campagnes",
-    "subtitle": "Briefez le Pack une fois — il planifie et exécute toute une campagne",
+    "subtitle": "Un brief, une équipe d'agents, un travail livré.",
     "newGoal": "Que voulez-vous accomplir ?",
     "goalPlaceholder": "ex. Gagner 3 nouveaux clients restaurateurs ce trimestre",
     "draft": "Préparer le plan",
@@ -1126,17 +1126,28 @@
     "cancel": "Annuler",
     "remove": "Retirer l'étape",
     "why": "Pourquoi",
-    "empty": "Aucune campagne pour l'instant. Définissez un objectif pour commencer.",
+    "empty": {
+      "title": "Aucune campagne",
+      "filtered": "Aucune campagne ne correspond.",
+      "body": "Dites ce que vous voulez accomplir. Une équipe d'agents le planifie, le rédige et produit le travail sur chaque canal que vous utilisez.",
+      "bodySells": "Dites ce que vous voulez vendre davantage. Fennex lit votre boutique, puis une équipe d'agents construit la stratégie, l'audience, l'offre, le contenu et le suivi autour."
+    },
     "yourCampaigns": "Vos campagnes",
     "newCampaign": "Nouvelle campagne",
     "back": "Retour",
     "summary": "Résumé",
     "status": {
-      "planned": "Planifiée",
+      "planned": "Prête",
       "running": "En cours",
       "completed": "Terminée",
       "failed": "Échouée",
-      "cancelled": "Annulée"
+      "cancelled": "Annulée",
+      "draft": "Brouillon",
+      "planning": "En préparation",
+      "ready": "Prête",
+      "scheduled": "Programmée",
+      "paused": "En pause",
+      "archived": "Archivée"
     },
     "stepStatus": {
       "pending": "En attente",
@@ -1254,6 +1265,407 @@
         "label": "Campagne saisonnière",
         "goal": "Préparer une campagne saisonnière qui capte le pic à venir dans ma niche"
       }
+    },
+    "createWithAi": "Créer une campagne avec l'IA",
+    "search": "Rechercher une campagne",
+    "ordersCount": "{{n}} commandes",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "view": {
+      "list": "Campagnes",
+      "calendar": "Calendrier",
+      "learnings": "Ce que nous avons appris"
+    },
+    "filter": {
+      "all": "Toutes"
+    },
+    "kpi": {
+      "revenue": "Revenu attribué",
+      "revenueSub": "issu des commandes portant un tag de campagne",
+      "orders": "Commandes attribuées",
+      "attributedIn": "sur {{n}} campagne(s)",
+      "aov": "Panier moyen",
+      "budget": "Budget prévu",
+      "vsBudget": "{{x}}x le budget prévu — ce n'est pas le ROAS",
+      "attributed": "Attribué",
+      "new_customers": "Nouveaux clients",
+      "reach": "Portée",
+      "live": "Campagnes actives",
+      "inProgress": "En préparation",
+      "done": "Terminées",
+      "total": "Toutes les campagnes",
+      "team": "Équipe",
+      "noTeam": "Pas encore assignée"
+    },
+    "unavailable": {
+      "title": "Non mesuré",
+      "needs": "nécessite {{what}}"
+    },
+    "objective": {
+      "launch_product": "Lancer un produit",
+      "increase_sales": "Augmenter les ventes",
+      "clear_inventory": "Écouler le stock",
+      "acquire_customers": "Acquérir des clients",
+      "retarget_customers": "Recibler des clients",
+      "repeat_purchase": "Augmenter le réachat",
+      "promote_collection": "Promouvoir une collection",
+      "seasonal": "Saisonnière",
+      "brand_awareness": "Notoriété",
+      "custom": "Autre chose",
+      "grow_audience": "Développer l'audience",
+      "launch_content": "Lancer un contenu",
+      "repeat_engagement": "Réengager l'audience",
+      "promote_offer": "Promouvoir une offre",
+      "authority": "Asseoir sa crédibilité",
+      "generate_leads": "Générer des prospects",
+      "acquire_clients": "Trouver des clients"
+    },
+    "channel": {
+      "meta_ads": "Meta Ads",
+      "google_ads": "Google Ads",
+      "tiktok_ads": "TikTok Ads",
+      "pinterest": "Pinterest",
+      "email": "E-mail",
+      "sms": "SMS",
+      "push": "Notification push",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "tiktok": "TikTok",
+      "blog": "Blog",
+      "landing_page": "Page d'atterrissage",
+      "shopify": "Boutique"
+    },
+    "role": {
+      "prospecting": "Prospection",
+      "retargeting": "Reciblage",
+      "announce": "Annonce",
+      "reminder": "Rappel"
+    },
+    "kind": {
+      "headline": "Accroches",
+      "hook": "Phrases d'accroche",
+      "primary_text": "Texte principal",
+      "cta": "Appel à l'action",
+      "subject": "Objets d'e-mail",
+      "ad_concept": "Concepts publicitaires",
+      "post": "Publications",
+      "image": "Prompts d'image"
+    },
+    "refine": {
+      "improve": "Améliorer",
+      "shorten": "Raccourcir",
+      "premium": "Plus premium",
+      "emotional": "Plus émotionnel",
+      "direct": "Plus direct",
+      "playful": "Plus léger"
+    },
+    "offerType": {
+      "discount": "remise",
+      "bundle": "lot",
+      "free_shipping": "livraison offerte",
+      "gift": "cadeau",
+      "none": "aucune"
+    },
+    "confidence": {
+      "low": "Confiance faible",
+      "medium": "Confiance moyenne",
+      "high": "Confiance élevée"
+    },
+    "create": {
+      "title": "Créer une campagne avec l'IA",
+      "subtitle": "Deux réponses. Une équipe d'agents planifie le travail et le produit.",
+      "objective": "Que cherchez-vous à accomplir ?",
+      "goal": "En une phrase, de quoi s'agit-il ?",
+      "goalPlaceholder": "Toucher plus de personnes qui aiment ce que nous faisons",
+      "template": "Partir d'un format connu (facultatif)",
+      "budget": "Budget (facultatif)",
+      "budgetHint": "Si vous en fixez un, le plan s'y tient. Sinon, il en proposera un et dira sur quoi la proposition repose.",
+      "submit": "Construire la campagne",
+      "working": "Lecture de votre boutique…",
+      "subtitleSells": "Deux réponses. La stratégie vient des chiffres de votre boutique, et une équipe d'agents produit le travail.",
+      "goalPlaceholderSells": "Vendre davantage notre produit phare ce mois-ci"
+    },
+    "tab": {
+      "brief": "Brief",
+      "channels": "Canaux et contenu",
+      "timeline": "Calendrier",
+      "launch": "Lancement",
+      "performance": "Performance",
+      "copilot": "Demander",
+      "agents": "Agents",
+      "team": "Équipe",
+      "plan": "Plan",
+      "work": "Travail",
+      "results": "Résultats",
+      "overview": "Aperçu"
+    },
+    "brief": {
+      "audience": "Audience",
+      "offer": "Offre",
+      "budget": "Budget",
+      "dates": "Dates",
+      "kpi": "KPI principal",
+      "noAudience": "Aucune audience définie.",
+      "noOffer": "Aucune offre. Les textes n'en inventeront pas.",
+      "noStart": "Non programmée",
+      "unsupported": "Non exprimable sous forme de filtre :",
+      "assumptions": "Ce que ce plan suppose",
+      "assumptionsHint": "Des estimations, pas des mesures. Chacune indique sur quoi elle repose.",
+      "blind": "Ce que le plan n'a pas pu voir",
+      "blindHint": "Ces données étaient indisponibles au moment du plan : rien n'en dépend.",
+      "ungrounded": "Aucune commande n'était synchronisée lors de la planification : rien ne l'ancre dans les chiffres de votre boutique.",
+      "replan": "Replanifier avec les données actuelles",
+      "audienceReady": "Prête à transmettre à {{app}}. Fennex ne détient pas lui-même la liste de clients.",
+      "audienceUnresolvable": "Fennex ne stocke aucune donnée client. Connectez Klaviyo, Mailchimp, Shopify ou Meta Ads pour construire cette audience à partir de vraies personnes.",
+      "team": "Sur cette campagne",
+      "planning": "planification",
+      "restsOn": "Sur quoi ce plan repose",
+      "noOfferShort": "Aucune"
+    },
+    "channels": {
+      "title": "Canaux",
+      "subtitle": "Chaque canal partage le tag de suivi de la campagne : leurs commandes remontent à un seul chiffre.",
+      "add": "Ajouter un canal",
+      "allAdded": "Tous les canaux sont déjà sur cette campagne.",
+      "empty": "Aucun canal. Une campagne en exige au moins un pour être lancée.",
+      "manual": "manuel",
+      "notConnected": "non connecté",
+      "via": "Publie via {{app}}",
+      "manualHint": "Fennex l'écrit, vous l'envoyez",
+      "connectHint": "Le contenu est préparé. Connectez {{apps}} pour publier automatiquement.",
+      "ownedBy": "{{name}} le rédige",
+      "assign": "Affecter un agent"
+    },
+    "content": {
+      "write": "Rédiger le contenu",
+      "more": "Rédiger plus",
+      "refine": "Affiner",
+      "count": "{{n}} éléments",
+      "none": "Rien de rédigé",
+      "emptyKind": "Rien de rédigé pour ceci.",
+      "writeMissing": "Rédiger les {{n}} manquants",
+      "askOwner": "Demander à {{name}} de le rédiger",
+      "choose": "Choisir celui-ci",
+      "chosen": "Retenu"
+    },
+    "timeline": {
+      "title": "Calendrier",
+      "subtitle": "Des jours relatifs au lancement : le plan tient quelle que soit la date. Glissez une étape pour la déplacer.",
+      "launch": "Lancement",
+      "addPlaceholder": "Ajouter une étape",
+      "day": "Jour",
+      "move": "Déplacer l'étape",
+      "earlier": "Plus tôt",
+      "later": "Plus tard"
+    },
+    "launch": {
+      "title": "Avant de lancer",
+      "subtitle": "Les blocages empêchent le lancement. Les avertissements non. « Non vérifié » signifie que Fennex n'a pas pu regarder.",
+      "cta": "Lancer la campagne",
+      "sendForReview": "Envoyer pour approbation",
+      "done": "La campagne est en ligne.",
+      "ready": "Tout est prêt",
+      "blocked": "{{n}} point(s) à corriger avant de lancer",
+      "warnCount": "{{n}} avertissement(s)",
+      "unknownCount": "{{n}} non vérifié(s)",
+      "passCount": "{{n}} validé(s)",
+      "everythingElse": "Tout le reste"
+    },
+    "approvals": {
+      "title": "Ce qui nécessite votre approbation",
+      "subtitle": "Chaque ligne dit exactement ce qui va se passer. Rien ne dépense d'argent ni n'atteint un client sans approbation.",
+      "approve": "Approuver",
+      "reject": "Refuser",
+      "approved": "Approuvé",
+      "rejected": "Refusé"
+    },
+    "tracking": {
+      "title": "Suivi"
+    },
+    "perf": {
+      "window": "{{d}} jours",
+      "today": "Aujourd'hui",
+      "yesterday": "hier {{v}}",
+      "method": "Mesuré à partir de {{n}} commande(s) dont l'URL d'arrivée portait le tag de cette campagne.",
+      "targets": "Par rapport à l'objectif",
+      "cannotScore": "Non mesurable — nécessite {{what}}",
+      "bySource": "D'où viennent les commandes",
+      "methodWork": "Ce projet est mesuré par {{what}}, pas par des commandes.",
+      "daily": "revenu attribué par jour",
+      "breakdown": "Le détail"
+    },
+    "signals": {
+      "title": "À regarder"
+    },
+    "score": {
+      "title": "Score de la campagne",
+      "subtitle": "Calculé à partir du contenu de la campagne, non généré. Chaque point a une raison.",
+      "strategy": "Stratégie",
+      "audience": "Audience",
+      "offer": "Offre",
+      "creative": "Création",
+      "tracking": "Suivi",
+      "execution": "Exécution",
+      "performance": "Performance"
+    },
+    "copilot": {
+      "title": "Poser une question sur cette campagne",
+      "subtitle": "Les réponses ne viennent que de chiffres mesurés. Tout ce qui exige un connecteur absent est nommé comme tel, jamais estimé.",
+      "placeholder": "Pourquoi le revenu baisse-t-il cette semaine ?",
+      "ask": "Demander",
+      "q1": "Comment se porte cette campagne ?",
+      "q2": "Que devrais-je changer ?",
+      "q3": "Quel canal fonctionne le mieux ?",
+      "what": "Ce qui s'est passé",
+      "why": "Pourquoi",
+      "next": "Que faire",
+      "cannot": "Ce qu'il n'a pas pu répondre",
+      "smallSample": "Moins de cinq commandes attribuées appuient ceci. À lire comme une tendance précoce, pas comme un constat."
+    },
+    "agents": {
+      "title": "Playbook des agents",
+      "subtitle": "Les étapes que vos agents exécutent pour produire le travail de cette campagne.",
+      "run": "Lancer le playbook",
+      "build": "Construire le playbook",
+      "emptyBody": "Pas encore de playbook. Le brief dit quoi produire et qui en est responsable ; le playbook est la séquence que vos agents exécutent pour le produire réellement — recherche, angle, rédaction, visuel, diffusion."
+    },
+    "calendar": {
+      "title": "Programmé",
+      "conflicts": "Chevauchements à connaître",
+      "conflictsHint": "Deux campagnes visant la même audience les mêmes jours se disputent la même boîte de réception.",
+      "empty": "Rien de programmé. Une campagne apparaît ici dès qu'elle a une date de début.",
+      "tasks": "{{n}} étapes"
+    },
+    "learnings": {
+      "title": "Ce que vos campagnes ont établi",
+      "subtitle": "Écrit à la clôture d'une campagne, et lu par la stratégie de la suivante. La confiance est plafonnée par les preuves.",
+      "empty": "Rien pour l'instant. Les enseignements sont enregistrés à la fin d'une campagne, une fois ses résultats rapportés."
+    },
+    "check": {
+      "noChannels": "Aucun canal sélectionné.",
+      "noChannelsFix": "Ajoutez au moins un canal à la campagne.",
+      "noTracking": "Aucun tag de suivi.",
+      "noTrackingFix": "Une campagne sans utm_campaign ne peut pas être mesurée.",
+      "tracked": "Suivie via utm_campaign={{slug}}.",
+      "unknownChannel": "Canal inconnu : {{channel}}.",
+      "channelReady": "{{channel}} publiera via {{app}}.",
+      "channelManual": "{{channel}} n'a pas de connecteur — le contenu est produit pour que vous l'envoyiez vous-même.",
+      "channelManualFix": "Fennex ne peut pas publier sur ce canal.",
+      "channelBlocked": "{{channel}} est sélectionné mais non connecté.",
+      "channelBlockedFix": "Connectez {{apps}} pour lancer ce canal.",
+      "channelUnconnected": "{{channel}} n'est pas connecté — son contenu sera préparé mais non publié.",
+      "channelUnconnectedFix": "Connectez {{apps}} pour publier automatiquement.",
+      "noContent": "Aucun contenu rédigé pour {{channel}}.",
+      "noContentFix": "Générez le contenu dans l'onglet Canaux et contenu.",
+      "noBudget": "Des canaux payants sont sélectionnés mais aucun budget n'est défini.",
+      "noBudgetFix": "Définissez un budget avant de lancer des canaux payants.",
+      "noCurrency": "Le budget n'a pas de devise.",
+      "needsApproval": "Cette campagne va {{actions}}. Elle n'a pas été approuvée.",
+      "needsApprovalFix": "Envoyez-la pour approbation, puis approuvez-la.",
+      "approved": "Approuvée.",
+      "approvalPending": "{{n}} action(s) attendent encore une décision.",
+      "approvalPendingFix": "Approuvez-les ou refusez-les avant de lancer.",
+      "badDates": "La date de fin précède la date de début.",
+      "noDates": "Aucune date de début définie.",
+      "noDatesFix": "L'attribution compte les commandes à partir de la date de lancement.",
+      "noAudience": "Aucune audience définie.",
+      "noOffer": "Cet objectif nécessite généralement une offre, et aucune n'est définie.",
+      "inventoryUnknown": "Les niveaux de stock ne sont pas vérifiés.",
+      "inventoryUnknownFix": "La synchronisation produits stocke les titres et les prix, pas l'inventaire : Fennex ne peut pas vous alerter d'une rupture."
+    },
+    "work": {
+      "pieces": "Éléments produits",
+      "selected": "{{n}} retenus",
+      "agentSteps": "Étapes agents terminées",
+      "artifacts": "Livrables",
+      "piecesShort": "éléments"
+    },
+    "measuredBy": {
+      "revenue": "Mesurée par les commandes dont l'URL d'arrivée portait le tag de la campagne.",
+      "content": "Mesurée par le travail publié et le trafic de recherche qu'il génère.",
+      "pipeline": "Mesurée par le travail publié et les demandes qu'il suscite."
+    },
+    "template": {
+      "product_launch": "Lancement de produit",
+      "black_friday": "Black Friday",
+      "summer_sale": "Soldes d'été",
+      "christmas": "Noël",
+      "valentines": "Saint-Valentin",
+      "flash_sale": "Vente flash",
+      "new_collection": "Nouvelle collection",
+      "back_in_stock": "Retour en stock",
+      "clearance": "Déstockage",
+      "winback": "Reconquête client",
+      "abandoned_cart": "Panier abandonné",
+      "vip": "Campagne VIP",
+      "retargeting": "Reciblage",
+      "product_education": "Pédagogie produit",
+      "brand_awareness": "Notoriété"
+    },
+    "team": {
+      "title": "Qui travaille sur cette campagne",
+      "subtitle": "Chaque agent est responsable d'une partie du travail. Les affectations viennent du plan et survivent à une replanification.",
+      "empty": "Personne d'affecté pour l'instant. Ajoutez un canal ou générez une stratégie et le travail sera réparti.",
+      "produced": "{{n}} élément(s) produit(s)"
+    },
+    "manage": "Gérer la campagne",
+    "archive": "Archiver",
+    "unarchive": "Restaurer depuis les archives",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer cette campagne, ses canaux, son contenu, son calendrier et ses approbations ? Ce qu'elle vous a appris est conservé.",
+    "deleteYes": "Supprimer",
+    "next": {
+      "running": "Elle est en ligne. Suivez ce qu'elle rapporte et demandez pourquoi quand ça bouge.",
+      "plan": "Pas encore de stratégie. Laissez l'équipe lire votre projet et en rédiger une.",
+      "channels": "Choisissez où cette campagne se joue. Il lui faut au moins un canal.",
+      "content": "Votre équipe est prête à rédiger. Rien n'a encore été produit.",
+      "approvals": "{{n}} action(s) attendent votre approbation avant toute diffusion.",
+      "launch": "Le travail est fait. Vérifiez ce qui reste et mettez-la en ligne."
+    },
+    "plan": {
+      "what": "Ce qu'est cette campagne",
+      "who": "Qui la réalise",
+      "why": "Comprendre pourquoi",
+      "strategy": "Stratégie",
+      "goal": "Objectif",
+      "reasoning": "Pourquoi ce plan",
+      "team": "Équipe IA",
+      "teamCount": "{{n}} agents affectés",
+      "execution": "Plan d'exécution",
+      "noPhases": "Aucune étape planifiée. Elles arrivent avec la stratégie, ou ajoutez les vôtres dans l'onglet Travail.",
+      "graph": "Graphe d'exécution",
+      "deliverables": "Livrables attendus",
+      "readiness": "État de préparation",
+      "seeMissing": "Tout voir",
+      "snapshot": "Campagne",
+      "yourInput": "Votre intervention",
+      "nothingNeeded": "Rien à faire pour l'instant.",
+      "review": "Examiner",
+      "tasks": "Tâches",
+      "taskCount": "{{n}} tâches",
+      "noTasks": "Aucune tâche planifiée. Cet agent contribue via ses canaux plutôt que par le calendrier.",
+      "output": "Produit",
+      "noOutputYet": "Rien pour l'instant. Son travail est créé au lancement de la campagne.",
+      "written": "{{n}} rédigés sur {{k}} type(s)",
+      "notWritten": "Rien de rédigé",
+      "goToWork": "Ouvrir le travail",
+      "seePlan": "Voir le plan complet",
+      "objective": "Objectif"
+    },
+    "agentState": {
+      "done": "terminé",
+      "working": "en cours",
+      "waiting": "en attente",
+      "blocked": "bloqué",
+      "idle": "inactif"
+    },
+    "approvalAction": {
+      "spend": "dépenser du budget",
+      "launch_ads": "lancer des publicités payantes",
+      "send_email": "envoyer des e-mails aux clients",
+      "send_sms": "envoyer des SMS aux clients",
+      "change_price": "modifier les prix des produits",
+      "create_discount": "créer un code de réduction"
     }
   },
   "autopilot": {
@@ -2699,7 +3111,10 @@
     "dragHint": "Glissez une entrée vers un autre jour pour la reprogrammer.",
     "rescheduled": "Reprogrammé",
     "scheduledCount": "{{count}} planifié(s)",
-    "noPast": "Choisissez une date à venir."
+    "noPast": "Choisissez une date à venir.",
+    "type": {
+      "campaign_task": "Étape de campagne"
+    }
   },
   "company": {
     "title": "Votre entreprise IA",

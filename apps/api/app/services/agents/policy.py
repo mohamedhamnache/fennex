@@ -56,7 +56,21 @@ FEATURE_POLICY: dict[str, FeaturePolicy] = {
     "competitor_gap": FeaturePolicy(_STANDARD, 4096),
     "agent_reasoning": FeaturePolicy(_STANDARD, 4096),
     "employee_chat": FeaturePolicy(_STANDARD, 4096),
-    "campaign_plan": FeaturePolicy(_STANDARD, 4096, cascade=True),
+    # Same correction as campaign_strategy: measured at 7.31 credits on gpt-4o
+    # for a call that picks steps from a fixed catalogue of nine actions.
+    "campaign_plan": FeaturePolicy(_CHEAP, 4096, cascade=True),
+    # The campaign OS. All four start CHEAP and escalate only on a failed
+    # validation, which is what the cascade is for.
+    #
+    # Strategy sat at `standard` and was measured buying gpt-4o at ~9.8 credits
+    # per call against gpt-4o-mini's 0.17 -- 58x, on a feature whose output is
+    # a structured plan the validator can check. The escalation still happens
+    # when the cheap model returns something thin or malformed, so the expensive
+    # model is bought when it is needed rather than by default.
+    "campaign_strategy": FeaturePolicy(_CHEAP, 4096, cascade=True),
+    "campaign_analysis": FeaturePolicy(_CHEAP, 2048, cascade=True),
+    "campaign_content": FeaturePolicy(_CHEAP, 2048, cascade=True),
+    "campaign_audience": FeaturePolicy(_CHEAP, 1024, cascade=True),
     "digest": FeaturePolicy(_STANDARD, 2048),
     "monitoring": FeaturePolicy(_STANDARD, 2048),
 

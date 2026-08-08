@@ -11,7 +11,11 @@ from app.models.image import GeneratedImage
 from app.models.publishing import PublishingConnection
 from app.models.social import SocialPost
 
-VALID_TYPES = {"article", "social", "banner"}
+# "campaign_task" is a step on a campaign's timeline rather than a piece of
+# content. It appears on the calendar so a campaign's plan and the publishing
+# schedule are one view instead of two -- but it can never be ARMED, because
+# there is nothing to publish. See _validate_target.
+VALID_TYPES = {"article", "social", "banner", "campaign_task"}
 VALID_TARGETS = {"wordpress", "linkedin"}
 
 
@@ -43,11 +47,22 @@ async def _content_title(content_type: str, content_id: uuid.UUID, project_id, o
         if not row:
             return None
         return (row.caption or row.seo_filename or (row.prompt or "")[:60] or "Banner")
+    if content_type == "campaign_task":
+        from app.models.campaign import Campaign, CampaignTask
+        row = (await db.execute(select(CampaignTask).join(
+            Campaign, Campaign.id == CampaignTask.campaign_id).where(
+            CampaignTask.id == content_id, Campaign.org_id == org_id,
+            Campaign.project_id == project_id))).scalars().first()
+        return row.title if row else None
     return None
 
 
 async def _validate_target(entry: CalendarEntry, org_id, db: AsyncSession) -> None:
     """Raise CalendarError if the entry cannot be armed to 'scheduled'."""
+    if entry.content_type == "campaign_task":
+        # A campaign step is a plan, not a payload. Arming one would promise a
+        # publish that has nothing to publish.
+        raise CalendarError("A campaign step is a plan, not something to publish.")
     if entry.target_kind not in VALID_TARGETS:
         raise CalendarError("A publish target is required before scheduling.")
     if entry.target_kind == "wordpress":

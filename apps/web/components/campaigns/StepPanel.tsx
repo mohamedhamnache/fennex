@@ -156,7 +156,7 @@ export function StepPanel({ step, campaign, projectId, onClose, onRemove, removi
         </p>
       )}
 
-      {campaign.status === "planned" && (
+      {["ready", "planning", "draft", "planned"].includes(campaign.status) && (
         <button
           type="button"
           onClick={() => onRemove(step.id)}

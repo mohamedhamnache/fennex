@@ -31,7 +31,7 @@
   },
   "calendar": {
     "title": "Content calendar",
-    "subtitle": "Plan and schedule articles, social posts and banners",
+    "subtitle": "Plan and schedule articles, social posts, banners and campaign steps",
     "addContent": "Add content",
     "prev": "Previous",
     "next": "Next",
@@ -53,7 +53,8 @@
     "type": {
       "article": "Article",
       "social": "Social",
-      "banner": "Banner"
+      "banner": "Banner",
+      "campaign_task": "Campaign step"
     },
     "pickDate": "Date & time",
     "save": "Save",

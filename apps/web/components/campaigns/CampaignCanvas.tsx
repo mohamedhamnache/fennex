@@ -6,6 +6,8 @@ import { computeLayout, edgePath } from "./canvasLayout";
 import { CanvasNode } from "./CanvasNode";
 import { cn } from "@/lib/cn";
 
+const PRE_RUN = ["ready", "planning", "draft", "planned"];
+
 interface CampaignCanvasProps {
   campaign: Campaign;
   activeStepId: string | null;
@@ -15,7 +17,8 @@ interface CampaignCanvasProps {
 
 export function CampaignCanvas({ campaign, activeStepId, selectedStepId, onSelectStep }: CampaignCanvasProps) {
   const layout = useMemo(() => computeLayout(campaign.steps), [campaign.steps]);
-  const mode = campaign.status === "planned" ? "plan" : campaign.status === "running" ? "run" : "package";
+  const mode = PRE_RUN.includes(campaign.status) ? "plan"
+    : campaign.status === "running" ? "run" : "package";
   const byId = useMemo(() => new Map(campaign.steps.map((s) => [s.id, s])), [campaign.steps]);
   const done = campaign.steps.filter((s) => s.status === "completed" && s.artifact_type).length;
   const total = campaign.steps.length;

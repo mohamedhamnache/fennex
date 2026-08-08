@@ -2364,7 +2364,10 @@ export async function decomposeImage(
 
 // ── Unified Content Calendar ──────────────────────────────────────────────────
 
-export type CalendarContentType = "article" | "social" | "banner";
+/** A calendar entry's kind. `campaign_task` is a step mirrored from a campaign
+ *  timeline -- it appears alongside content but can never be published, because
+ *  "produce the creative" is a plan, not a payload. */
+export type CalendarContentType = "article" | "social" | "banner" | "campaign_task";
 export type CalendarState = "planned" | "scheduled" | "publishing" | "published" | "failed";
 
 export interface CalendarEntry {
@@ -2417,7 +2420,12 @@ export async function publishCalendarEntryNow(id: string): Promise<CalendarEntry
 
 // ── Orchestrated Campaigns ─────────────────────────────────────────────────────
 
-export type CampaignStatus = "planned" | "running" | "completed" | "failed" | "cancelled";
+// The lifecycle grew from three states to the full one. "planned" is gone --
+// migrated to "ready" -- but old rows may still be in flight in a cached query,
+// so it stays in the union rather than becoming a type error at runtime.
+export type CampaignStatus =
+  | "draft" | "planning" | "ready" | "scheduled" | "running"
+  | "paused" | "completed" | "archived" | "failed" | "planned" | "cancelled";
 export type CampaignStepStatus = "pending" | "running" | "completed" | "failed" | "skipped";
 
 export interface CampaignStep {
@@ -2437,25 +2445,462 @@ export interface CampaignStep {
   finished_at: string | null;
 }
 
+export interface CampaignChannelRow {
+  id: string;
+  channel: string;
+  connector_app: string | null;
+  status: string;
+  role: string | null;
+  budget_share: number | null;
+  scheduled_at: string | null;
+  config: Record<string, unknown> | null;
+  external_ref: string | null;
+  last_error: string | null;
+}
+
+export interface CampaignAsset {
+  id: string;
+  channel_id: string | null;
+  kind: string;
+  variant: string | null;
+  body: string | null;
+  image_id: string | null;
+  meta: Record<string, unknown> | null;
+  status: string;
+  selected: boolean;
+}
+
+export interface CampaignTask {
+  id: string;
+  day_offset: number;
+  title: string;
+  detail: string | null;
+  owner: string | null;
+  channel: string | null;
+  status: string;
+  due_at: string | null;
+  date?: string | null;
+}
+
+export interface CampaignApproval {
+  id: string;
+  action: string;
+  label: string;
+  channel_id: string | null;
+  preview: string;
+  payload: Record<string, unknown> | null;
+  state: "pending" | "approved" | "rejected";
+  note: string | null;
+  decided_at: string | null;
+}
+
+export interface CampaignExperiment {
+  id: string;
+  dimension: string;
+  hypothesis: string | null;
+  variant_a_id: string | null;
+  variant_b_id: string | null;
+  metric: string | null;
+  status: string;
+  a: { trials: number | null; wins: number | null; value: number | null };
+  b: { trials: number | null; wins: number | null; value: number | null };
+  winner: string | null;
+  confidence: number | null;
+  revenue_impact: number | null;
+}
+
+export interface CampaignAudience {
+  key?: string;
+  label?: string;
+  definition?: string;
+  rule?: { all: { field: string; op: string; value: unknown }[] };
+  unsupported?: string[];
+  source?: string;
+  /** Whether any connected system can turn this definition into real people.
+   *  Fennex holds no customer records, so this is false until one is connected. */
+  resolvable?: boolean;
+  resolver?: string | null;
+  /** Always null. An audience size Fennex did not count is a number it invented. */
+  size?: null;
+  needs?: string;
+}
+
 export interface Campaign {
   id: string;
   goal: string;
+  name: string;
+  description: string | null;
+  objective: string | null;
   persona: string;
   status: CampaignStatus;
+  slug: string | null;
   director_summary: string | null;
-  steps: CampaignStep[];
+  brief_summary: string | null;
   source: string;
+  template_key: string | null;
   week_of: string | null;
+  product_ids: string[];
+  collections: string[];
+  audience: CampaignAudience | null;
+  offer: { type?: string; value?: string; description?: string; why?: string } | null;
+  budget: { amount: number | null; currency: string | null };
+  starts_on: string | null;
+  ends_on: string | null;
+  primary_kpi: string | null;
+  secondary_kpis: string[];
+  targets: Record<string, number>;
+  strategy: CampaignStrategy | null;
+  score: number | null;
+  score_detail: CampaignScore | null;
+  approval_state: "draft" | "review" | "approved" | "rejected";
+  autopilot: boolean;
+  launched_at: string | null;
+  created_at: string | null;
+  steps: CampaignStep[];
+  team?: CampaignTeamMember[];
+  channels?: CampaignChannelRow[];
+  assets?: CampaignAsset[];
+  tasks?: CampaignTask[];
+  approvals?: CampaignApproval[];
+  experiments?: CampaignExperiment[];
+  performance?: { revenue: number; orders: number };
 }
 
-export async function createCampaign(projectId: string, goal: string): Promise<Campaign> {
-  return apiClient.post<Campaign>(`/campaigns?project_id=${projectId}`, { goal });
+export interface CampaignStrategy {
+  name?: string;
+  summary?: string;
+  audience?: CampaignAudience;
+  offer?: Record<string, string>;
+  channels?: { channel: string; role: string; budget_share: number; why: string }[];
+  primary_kpi?: string;
+  secondary_kpis?: string[];
+  targets?: Record<string, number>;
+  budget?: { amount?: number; currency?: string; basis?: string };
+  timeline?: { day_offset: number; title: string; owner?: string; channel?: string }[];
+  content_plan?: { channel: string; kinds: string[]; angle: string }[];
+  /** Every estimate the strategy made, with what it rests on. */
+  assumptions?: { claim: string; rests_on: string }[];
+  /** Metrics the store could not show it, which limited the plan. */
+  cannot_see?: string[];
+  /** False when no orders were synced, so nothing grounded the plan. */
+  grounded?: boolean;
 }
-export async function listCampaigns(projectId: string): Promise<Campaign[]> {
-  return apiClient.get<Campaign[]>(`/campaigns?project_id=${projectId}`);
+
+/** A metric nobody can currently measure, and the connector that would fix it.
+ *  These carry NO value on purpose -- see campaign_metrics on the API side. */
+export interface UnavailableMetric { metric: string; needs: string }
+
+export interface CampaignWork {
+  pieces: number;
+  selected: number;
+  agent_steps_done: number;
+  agent_steps_total: number;
+  artifacts: string[];
+}
+
+export interface CampaignTeamMember {
+  id: string; name: string; role: string; icon: string; department: string;
+  channels: string[];
+  tasks: { day_offset: number; title: string; status: string }[];
+  produced: number;
+}
+
+export interface CampaignPerformance {
+  campaign_id: string;
+  slug: string | null;
+  outcome: "revenue" | "content" | "pipeline";
+  measured_by: string;
+  /** False for a project with nothing to sell. Revenue is then context, not the verdict. */
+  judged_on_revenue: boolean;
+  work: CampaignWork;
+  currency: string;
+  window: { start: string; end: string; days: number };
+  attribution: { method: string; matched_orders: number };
+  lifetime: { revenue: number; orders: number; aov: number };
+  today: { revenue: number; orders: number; aov: number };
+  yesterday: { revenue: number; orders: number; aov: number };
+  series: { date: string; revenue: number; orders: number }[];
+  by_source: { key: string; revenue: number; orders: number }[];
+  by_medium: { key: string; revenue: number; orders: number }[];
+  by_content: { key: string; revenue: number; orders: number }[];
+  /** Revenue divided by PLANNED budget. Not ROAS -- nobody reported spend. */
+  revenue_vs_budget: number | null;
+  budget: number | null;
+  targets: { key: string; target: number; current?: number; pct?: number;
+             measurable: boolean; needs?: string }[];
+  unavailable: UnavailableMetric[];
+}
+
+/** What a campaign means for this project. A creator has no orders to attribute,
+ *  so revenue is not the outcome and its absence is not failure. */
+export interface PersonaProfile {
+  key: string;
+  label: string;
+  outcome: "revenue" | "content" | "pipeline";
+  objectives: { key: string; brief: string }[];
+  measuresRevenue: boolean;
+  measuredBy: string;
+}
+
+export async function campaignPersona(projectId: string): Promise<PersonaProfile> {
+  return apiClient.get<PersonaProfile>(`/campaigns/personas?project_id=${projectId}`);
+}
+
+export interface CampaignPortfolio {
+  total: number;
+  by_status: Record<string, number>;
+  outcome: "revenue" | "content" | "pipeline";
+  judged_on_revenue: boolean;
+  measured_by: string;
+  revenue: number;
+  orders: number;
+  aov: number;
+  budget: number | null;
+  revenue_vs_budget: number | null;
+  campaigns_with_attributed_orders: number;
+  unavailable: UnavailableMetric[];
+}
+
+export interface ChannelInfo {
+  key: string;
+  label: string;
+  group: "paid" | "owned" | "social" | "onsite";
+  utm: { source: string; medium: string };
+  contentKinds: string[];
+  /** Which agent writes each kind here. Sent by the API so the UI cannot drift
+   *  from it -- an image artisan must never be offered to write a subject line. */
+  kindOwners: Record<string, string | null>;
+  approvals: { action: string; label: string }[];
+  spendsMoney: boolean;
+  /** No connector exists for this channel at all -- content is produced to send by hand. */
+  manualOnly: boolean;
+  executor: string | null;
+  executable: boolean;
+  connectOneOf: { app: string; label: string }[];
+}
+
+export interface ReadinessItem {
+  level: string;
+  key: string;
+  /** English fallback. The UI renders `code` + `params` in the reader's language. */
+  message: string;
+  fix: string;
+  code: string;
+  params: Record<string, string | number>;
+}
+export interface CampaignReadiness {
+  ready: boolean;
+  blockers: ReadinessItem[];
+  warnings: ReadinessItem[];
+  /** Checks Fennex cannot perform, with the reason. Not the same as passing. */
+  unknown: ReadinessItem[];
+  passed: ReadinessItem[];
+  requiredApprovals: { action: string; label: string }[];
+}
+
+export interface CampaignScore {
+  score: number;
+  parts: { key: string; points: number; max: number; note: string }[];
+  strengths: string[];
+  weaknesses: string[];
+  not_scored: string[];
+}
+
+export interface CampaignSignal {
+  key: string;
+  severity: "high" | "medium" | "info";
+  title: string;
+  detail: string;
+  action: string;
+}
+
+export interface CampaignAnalysis {
+  headline: string;
+  what_happened: string;
+  why: string;
+  recommendations: { action: string; why: string; effort: string; needs_approval: boolean }[];
+  /** Questions that need a connector nobody has attached. */
+  cannot_answer: { question: string; needs: string }[];
+  measured: { revenue: number; orders: number; aov: number };
+  /** True when fewer than five attributed orders back the analysis. */
+  sample_warning: boolean;
+}
+
+export interface CampaignTemplate {
+  key: string; label: string; objective: string; description: string;
+  channels: string[]; audienceKey: string; primaryKpi: string;
+  offerType: string; durationDays: number;
+  timeline: { day_offset: number; title: string; owner: string }[];
+}
+
+export interface CampaignLearning {
+  id: string; statement: string; confidence: "low" | "medium" | "high";
+  evidence: Record<string, unknown> | null; tags: string[] | null;
+  source: string; campaign_id: string | null; created_at: string | null;
+}
+
+export interface CampaignCreateBody {
+  goal: string;
+  name?: string;
+  objective?: string;
+  template_key?: string;
+  with_ai?: boolean;
+  starts_on?: string;
+  budget?: number;
+  currency?: string;
+}
+
+export async function createCampaign(projectId: string,
+                                     body: string | CampaignCreateBody): Promise<Campaign> {
+  // The old signature took a bare goal and is still used by the delegate flow
+  // and the autopilot, so both shapes are accepted rather than breaking them.
+  const payload = typeof body === "string" ? { goal: body, with_ai: false } : body;
+  return apiClient.post<Campaign>(`/campaigns?project_id=${projectId}`, payload);
+}
+
+export interface CampaignFilters {
+  status?: string; objective?: string; channel?: string; q?: string;
+}
+
+export async function listCampaigns(projectId: string,
+                                    filters: CampaignFilters = {}): Promise<Campaign[]> {
+  const qs = new URLSearchParams({ project_id: projectId });
+  if (filters.status) qs.set("status_filter", filters.status);
+  if (filters.objective) qs.set("objective", filters.objective);
+  if (filters.channel) qs.set("channel", filters.channel);
+  if (filters.q) qs.set("q", filters.q);
+  return apiClient.get<Campaign[]>(`/campaigns?${qs.toString()}`);
+}
+
+export async function campaignOverview(projectId: string): Promise<CampaignPortfolio> {
+  return apiClient.get<CampaignPortfolio>(`/campaigns/overview?project_id=${projectId}`);
+}
+export async function campaignTemplates(projectId: string): Promise<CampaignTemplate[]> {
+  return apiClient.get<CampaignTemplate[]>(`/campaigns/templates?project_id=${projectId}`);
+}
+export async function campaignChannels(projectId: string): Promise<ChannelInfo[]> {
+  return apiClient.get<ChannelInfo[]>(`/campaigns/channels?project_id=${projectId}`);
+}
+export async function campaignAudiences(projectId: string): Promise<CampaignAudience[]> {
+  return apiClient.get<CampaignAudience[]>(`/campaigns/audiences?project_id=${projectId}`);
+}
+export async function interpretAudience(projectId: string, text: string): Promise<CampaignAudience> {
+  return apiClient.post<CampaignAudience>(
+    `/campaigns/audiences/interpret?project_id=${projectId}`, { text });
+}
+export async function campaignLearnings(projectId: string): Promise<CampaignLearning[]> {
+  return apiClient.get<CampaignLearning[]>(`/campaigns/learnings?project_id=${projectId}`);
+}
+export interface CampaignCalendar {
+  entries: (Pick<Campaign, "id" | "name" | "status" | "starts_on" | "ends_on" | "objective">
+    & { audience: string | null; tasks: CampaignTask[] })[];
+  conflicts: { campaigns: string[]; names: string[]; audience: string;
+               from: string; to: string; message: string }[];
+}
+export async function campaignCalendar(projectId: string, days = 60): Promise<CampaignCalendar> {
+  return apiClient.get<CampaignCalendar>(
+    `/campaigns/calendar?project_id=${projectId}&days=${days}`);
+}
+
+export async function patchCampaign(id: string, body: Record<string, unknown>): Promise<Campaign> {
+  return apiClient.patch<Campaign>(`/campaigns/${id}`, body);
+}
+export async function deleteCampaign(id: string): Promise<void> {
+  return apiClient.delete<void>(`/campaigns/${id}`);
+}
+export async function regenerateStrategy(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/strategy`, {});
+}
+export async function addCampaignChannel(id: string, channel: string,
+                                         extra: Record<string, unknown> = {}): Promise<CampaignChannelRow> {
+  return apiClient.post<CampaignChannelRow>(`/campaigns/${id}/channels`, { channel, ...extra });
+}
+export async function patchCampaignChannel(id: string, channelId: string,
+                                           body: Record<string, unknown>): Promise<CampaignChannelRow> {
+  return apiClient.patch<CampaignChannelRow>(`/campaigns/${id}/channels/${channelId}`, body);
+}
+export async function removeCampaignChannel(id: string, channelId: string): Promise<void> {
+  return apiClient.delete<void>(`/campaigns/${id}/channels/${channelId}`);
+}
+export async function generateCampaignContent(id: string, channelId: string,
+                                              kinds: string[], angle = ""): Promise<CampaignAsset[]> {
+  return apiClient.post<CampaignAsset[]>(
+    `/campaigns/${id}/channels/${channelId}/content`, { kinds, angle });
+}
+export async function refineCampaignAsset(id: string, assetId: string,
+                                          action: string, locale = ""): Promise<CampaignAsset> {
+  return apiClient.post<CampaignAsset>(`/campaigns/${id}/assets/${assetId}/refine`,
+                                       { action, locale });
+}
+export async function patchCampaignAsset(id: string, assetId: string,
+                                         body: Record<string, unknown>): Promise<CampaignAsset> {
+  return apiClient.patch<CampaignAsset>(`/campaigns/${id}/assets/${assetId}`, body);
+}
+export async function deleteCampaignAsset(id: string, assetId: string): Promise<void> {
+  return apiClient.delete<void>(`/campaigns/${id}/assets/${assetId}`);
+}
+export async function saveCampaignTask(id: string, body: Record<string, unknown>,
+                                       taskId?: string): Promise<CampaignTask> {
+  return taskId
+    ? apiClient.patch<CampaignTask>(`/campaigns/${id}/tasks/${taskId}`, body)
+    : apiClient.post<CampaignTask>(`/campaigns/${id}/tasks`, body);
+}
+export async function deleteCampaignTask(id: string, taskId: string): Promise<void> {
+  return apiClient.delete<void>(`/campaigns/${id}/tasks/${taskId}`);
+}
+export async function campaignReadiness(id: string): Promise<CampaignReadiness> {
+  return apiClient.get<CampaignReadiness>(`/campaigns/${id}/readiness`);
+}
+export interface TrackingPlan {
+  utm_campaign: string | null; base_url: string; note: string;
+  links: { channel: string; channel_id: string; utm_source: string;
+           utm_medium: string; utm_campaign: string | null;
+           utm_content: string; url: string }[];
+}
+export async function campaignTracking(id: string): Promise<TrackingPlan> {
+  return apiClient.get<TrackingPlan>(`/campaigns/${id}/tracking`);
+}
+export async function sendCampaignForReview(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/review`, {});
+}
+export async function decideCampaignApproval(id: string, approvalId: string,
+                                             approve: boolean, note?: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/approvals/${approvalId}`, { approve, note });
+}
+export async function launchCampaign(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/launch`, {});
+}
+export async function setCampaignStatus(id: string, status: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/status`, { status });
+}
+export async function campaignPerformance(id: string): Promise<CampaignPerformance> {
+  return apiClient.get<CampaignPerformance>(`/campaigns/${id}/performance`);
+}
+export async function campaignSignals(id: string): Promise<CampaignSignal[]> {
+  return apiClient.get<CampaignSignal[]>(`/campaigns/${id}/signals`);
+}
+export async function campaignScore(id: string): Promise<CampaignScore> {
+  return apiClient.get<CampaignScore>(`/campaigns/${id}/score`);
+}
+export async function analyseCampaign(id: string, question = ""): Promise<CampaignAnalysis> {
+  return apiClient.post<CampaignAnalysis>(`/campaigns/${id}/analyse`, { question });
+}
+export interface CampaignReport {
+  summary: string; what_worked: string[]; what_failed: string[]; why: string;
+  repeat: string[]; stop: string[]; test_next: string[];
+  learnings: { statement: string; evidence: string; confidence: string }[];
+  metrics: CampaignPerformance; score: CampaignScore;
+}
+export async function campaignReport(id: string): Promise<CampaignReport> {
+  return apiClient.post<CampaignReport>(`/campaigns/${id}/report`, {});
 }
 export async function getCampaign(id: string): Promise<Campaign> {
   return apiClient.get<Campaign>(`/campaigns/${id}`);
+}
+/** Draft the agent steps that produce this campaign's work. Available on every
+ *  campaign, not only the ones the autopilot created. */
+export async function buildCampaignPlaybook(id: string): Promise<Campaign> {
+  return apiClient.post<Campaign>(`/campaigns/${id}/playbook`, {});
 }
 export async function updateCampaignPlan(id: string, stepIds: string[]): Promise<Campaign> {
   return apiClient.patch<Campaign>(`/campaigns/${id}/plan`, { step_ids: stepIds });
