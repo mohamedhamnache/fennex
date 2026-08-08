@@ -2667,6 +2667,9 @@ export interface ChannelInfo {
   group: "paid" | "owned" | "social" | "onsite";
   utm: { source: string; medium: string };
   contentKinds: string[];
+  /** Which agent writes each kind here. Sent by the API so the UI cannot drift
+   *  from it -- an image artisan must never be offered to write a subject line. */
+  kindOwners: Record<string, string | null>;
   approvals: { action: string; label: string }[];
   spendsMoney: boolean;
   /** No connector exists for this channel at all -- content is produced to send by hand. */

@@ -205,6 +205,9 @@ function ChannelWorkspace({ campaign, projectId, row, info, onRemove }: {
 
   const shown = assets.filter((a) => a.kind === kind);
   const missing = kinds.filter((k) => !written.has(k));
+  // Who writes THIS kind, not who owns the channel.
+  const kindOwnerId = info?.kindOwners?.[kind] ?? null;
+  const kindOwner = (campaign.team ?? []).find((m) => m.id === kindOwnerId);
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -252,6 +255,11 @@ function ChannelWorkspace({ campaign, projectId, row, info, onRemove }: {
               )}
             >
               {t(`campaigns.kind.${k}`, { defaultValue: k.replace(/_/g, " ") })}
+              {(() => {
+                const id = info?.kindOwners?.[k];
+                const who = (campaign.team ?? []).find((m) => m.id === id);
+                return who ? <span className="text-muted-foreground">{who.name}</span> : null;
+              })()}
               {/* A filled dot means it exists. The empty ones are the work left. */}
               <span className={cn("h-1.5 w-1.5 rounded-full",
                                   written.has(k) ? "bg-success" : "bg-muted-foreground/30")} />
@@ -279,8 +287,8 @@ function ChannelWorkspace({ campaign, projectId, row, info, onRemove }: {
           <button onClick={() => generate.mutate([kind])} disabled={generate.isPending || !kind}
                   className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
             {generate.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-            {owner
-              ? t("campaigns.content.askOwner", { defaultValue: "Ask {{name}} to write it", name: owner.name })
+            {kindOwner
+              ? t("campaigns.content.askOwner", { defaultValue: "Ask {{name}} to write it", name: kindOwner.name })
               : t("campaigns.content.write", { defaultValue: "Write content" })}
           </button>
         </div>
@@ -903,78 +911,98 @@ export function PerformanceTab({ campaign }: { campaign: Campaign }) {
         {sells && <Unavailable metrics={perf.unavailable} className="mt-4" />}
       </Card>
 
-      {sells && perf.targets.length > 0 && (
-        <Section title={t("campaigns.perf.targets", { defaultValue: "Against target" })}>
-          <ul className="flex flex-col gap-2">
-            {perf.targets.map((tg) => (
-              <li key={tg.key} className="rounded-xl border border-border p-3">
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="font-medium text-foreground">
-                    {t(`campaigns.kpi.${tg.key}`, { defaultValue: tg.key })}
-                  </span>
-                  {tg.measurable ? (
-                    <span className="tabular-nums text-muted-foreground">
-                      {tg.key === "revenue" ? money(tg.current ?? 0, cur) : tg.current} / {tg.key === "revenue" ? money(tg.target, cur) : tg.target}
-                      <span className="ml-2 font-semibold text-foreground">{tg.pct}%</span>
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground">
-                      {t("campaigns.perf.cannotScore", { defaultValue: "Cannot be scored — needs {{what}}", what: tg.needs })}
-                    </span>
-                  )}
-                </div>
-                {tg.measurable && (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-primary transition-all"
-                         style={{ width: `${Math.min(tg.pct ?? 0, 100)}%` }} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
-      {sells && perf.by_source.length > 0 && (
-        <Section title={t("campaigns.perf.bySource", { defaultValue: "Where the orders came from" })}>
-          <Card className="flex flex-col divide-y divide-border p-0">
-            {perf.by_source.map((r) => (
-              <div key={r.key} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs">
-                <span className="truncate text-foreground">{r.key}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">
-                  {money(r.revenue, cur)} · {t("campaigns.ordersCount", { defaultValue: "{{n}} orders", n: r.orders })}
-                </span>
-              </div>
-            ))}
-          </Card>
-        </Section>
-      )}
-
       {signals.length > 0 && (
         <Section title={t("campaigns.signals.title", { defaultValue: "What to look at" })}>
           <ul className="flex flex-col gap-2">
-            {signals.map((s) => (
-              <li key={s.key} className={cn(
+            {signals.map((sig) => (
+              <li key={sig.key} className={cn(
                 "rounded-xl border p-3",
-                s.severity === "high" ? "border-destructive/30 bg-destructive/5"
-                  : s.severity === "medium" ? "border-warning/30 bg-warning/5"
+                sig.severity === "high" ? "border-destructive/30 bg-destructive/5"
+                  : sig.severity === "medium" ? "border-warning/30 bg-warning/5"
                   : "border-border",
               )}>
-                <p className="text-xs font-semibold text-foreground">{s.title}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{s.detail}</p>
-                <p className="mt-1.5 text-[11px] font-medium text-foreground">{s.action}</p>
+                <p className="text-xs font-semibold text-foreground">{sig.title}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{sig.detail}</p>
+                <p className="mt-1.5 text-[11px] font-medium text-foreground">{sig.action}</p>
               </li>
             ))}
           </ul>
         </Section>
       )}
 
-      {score && (
-        <Section title={t("campaigns.score.title", { defaultValue: "Campaign score" })}
-                 description={t("campaigns.score.subtitle", {
-                   defaultValue: "Computed from what is in the campaign, not generated. Every point has a reason.",
-                 })}>
-          <Card className="p-4">
+      {/* Targets, the channel split and the score breakdown are what you check
+          once you have a question -- folded so the two things that answer
+          "how is it going" are not fourth and fifth on the page. */}
+      {(sells && (perf.targets.length > 0 || perf.by_source.length > 0)) || score ? (
+        <details className="group rounded-xl border border-border">
+          <summary className="flex cursor-pointer items-center justify-between gap-2 p-3.5 text-xs font-medium text-foreground">
+            {t("campaigns.perf.breakdown", { defaultValue: "The detail" })}
+            <span className="text-[11px] text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div className="flex flex-col gap-5 border-t border-border p-4">
+            {sells && perf.targets.length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.perf.targets", { defaultValue: "Against target" })}
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {perf.targets.map((tg) => (
+                    <li key={tg.key} className="rounded-xl border border-border p-3">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-medium text-foreground">
+                          {t(`campaigns.kpi.${tg.key}`, { defaultValue: tg.key })}
+                        </span>
+                        {tg.measurable ? (
+                          <span className="tabular-nums text-muted-foreground">
+                            {tg.key === "revenue" ? money(tg.current ?? 0, cur) : tg.current} / {tg.key === "revenue" ? money(tg.target, cur) : tg.target}
+                            <span className="ml-2 font-semibold text-foreground">{tg.pct}%</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">
+                            {t("campaigns.perf.cannotScore", { defaultValue: "Cannot be scored — needs {{what}}", what: tg.needs })}
+                          </span>
+                        )}
+                      </div>
+                      {tg.measurable && (
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-primary transition-all"
+                               style={{ width: `${Math.min(tg.pct ?? 0, 100)}%` }} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {sells && perf.by_source.length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.perf.bySource", { defaultValue: "Where the orders came from" })}
+                </p>
+                <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
+                  {perf.by_source.map((r) => (
+                    <div key={r.key} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs">
+                      <span className="truncate text-foreground">{r.key}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {money(r.revenue, cur)} · {t("campaigns.ordersCount", { defaultValue: "{{n}} orders", n: r.orders })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {score && (
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.score.title", { defaultValue: "Campaign score" })}
+                </p>
+                <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+                  {t("campaigns.score.subtitle", {
+                    defaultValue: "Computed from what is in the campaign, not generated. Every point has a reason.",
+                  })}
+                </p>
+                <Card className="p-4">
             <div className="flex flex-wrap items-center gap-4">
               <p className="text-3xl font-semibold tabular-nums text-foreground">
                 {score.score}<span className="text-base text-muted-foreground">/100</span>
@@ -1009,10 +1037,13 @@ export function PerformanceTab({ campaign }: { campaign: Campaign }) {
                   <span className="shrink-0 tabular-nums text-muted-foreground">{p.points}/{p.max}</span>
                 </li>
               ))}
-            </ul>
-          </Card>
-        </Section>
-      )}
+                  </ul>
+                </Card>
+              </div>
+            )}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -1143,8 +1174,10 @@ export function CopilotTab({ campaign }: { campaign: Campaign }) {
  * Campaigns created by the strategy engine have a team without steps; ones from
  * the autopilot have steps. Both are the same team doing the same job.
  */
-export function TeamTab({ campaign, children }: {
+export function TeamTab({ campaign, children, bare = false }: {
   campaign: Campaign; children?: React.ReactNode;
+  /** Drop the heading when a stage above already says who this is about. */
+  bare?: boolean;
 }) {
   const { t } = useTranslation();
   const team = campaign.team ?? [];
@@ -1152,7 +1185,7 @@ export function TeamTab({ campaign, children }: {
   return (
     <div className="flex flex-col gap-5">
       <Section
-        title={t("campaigns.team.title", { defaultValue: "Who is on this campaign" })}
+        title={bare ? "" : t("campaigns.team.title", { defaultValue: "Who is on this campaign" })}
         description={t("campaigns.team.subtitle", {
           defaultValue: "Each agent owns part of the work. Assignments come from the plan and stay when it is re-planned.",
         })}

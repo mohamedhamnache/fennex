@@ -49,6 +49,39 @@ DEFAULT_OWNER = {
 }
 
 
+# Who does each KIND of work, regardless of where it runs.
+#
+# Ownership was per channel, so whoever owned Instagram was asked to write its
+# subject lines and its captions and its image prompts. That put Mirage -- the
+# image artisan -- on copy, which is not what it does. A channel is a place;
+# the work on it is several different crafts, and each has an owner.
+#
+# The channel's owner is the LEAD: it decides the angle and takes anything with
+# no specialist. These override it per kind.
+KIND_OWNER = {
+    "image": "mirage",          # image artisan
+    "ad_concept": "sirocco",    # creative director: what the ad shows and why
+    "hook": "sirocco",          # the scroll-stopping first line is art direction
+    "headline": "dune",
+    "primary_text": "dune",
+    "cta": "dune",
+    "subject": "dune",
+    "post": "dune",
+}
+
+
+def owner_for_kind(channel: str, kind: str, assigned: str | None = None) -> str | None:
+    """Who writes this particular kind of thing on this channel.
+
+    The store is the exception: product copy is merchandising, so Souk keeps it
+    even though Dune owns written work everywhere else.
+    """
+    if channel == "shopify" and kind in ("primary_text", "headline", "cta"):
+        return valid_owner("souk") or owner_for(channel, assigned)
+    specialist = valid_owner(KIND_OWNER.get(kind))
+    return specialist or owner_for(channel, assigned)
+
+
 def valid_owner(employee_id: str | None) -> str | None:
     """The id if it names a live employee, else None."""
     if not employee_id:
@@ -110,7 +143,7 @@ async def build(campaign_id: uuid.UUID, db: AsyncSession) -> list[dict]:
         by = valid_owner((a.meta or {}).get("by"))
         if by is None and a.channel_id in by_channel_id:
             row = by_channel_id[a.channel_id]
-            by = owner_for(row.channel, (row.config or {}).get("owner"))
+            by = owner_for_kind(row.channel, a.kind, (row.config or {}).get("owner"))
         if by and (entry := slot(by)) is not None:
             entry["produced"] += 1
 

@@ -141,7 +141,7 @@ export function Section({ title, description, action, children, className }: {
     <section className={cn("flex flex-col gap-3", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          {title && <h2 className="text-sm font-semibold text-foreground">{title}</h2>}
           {description && (
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
           )}

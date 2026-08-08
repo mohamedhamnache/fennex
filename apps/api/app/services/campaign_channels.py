@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.employees.runtime import mcp
 from app.models.connector import Connector
+from app.services import campaign_team
 
 # Approval gates. These name consequences, not features: each one is money
 # leaving the account, a message reaching a customer, or a price changing.
@@ -178,6 +179,9 @@ def describe(channel: str, available: dict[str, bool]) -> dict:
         "key": c.key, "label": c.label, "group": c.group,
         "utm": {"source": c.utm_source, "medium": c.utm_medium},
         "contentKinds": c.content_kinds,
+        # Who writes each kind here. Sent rather than mirrored in the frontend,
+        # so "ask Mirage to write the subject line" cannot come back.
+        "kindOwners": {k: campaign_team.owner_for_kind(c.key, k) for k in c.content_kinds},
         "approvals": [{"action": a, "label": APPROVAL_LABELS[a]} for a in c.approvals],
         "spendsMoney": c.spends_money,
         "manualOnly": c.manual_only,

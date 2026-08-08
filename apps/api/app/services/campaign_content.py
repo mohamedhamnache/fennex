@@ -134,10 +134,27 @@ async def generate(campaign: Campaign, channel: CampaignChannel, kinds: list[str
     brand = await _brand(campaign.project_id, campaign.org_id, db,
                          visual=any(k == "image" for k in wanted))
 
-    # The agent that owns this channel writes it. A campaign is work produced by
-    # a team, so the copy carries that employee's brief rather than coming from
-    # an anonymous generator -- and the asset records who wrote it.
-    author = campaign_team.owner_for(channel.channel, (channel.config or {}).get("owner"))
+    # Split the request by craft. Asking one agent for a subject line AND an
+    # image prompt asks a specialist to work outside its speciality -- the image
+    # artisan was being handed copy because it owned the channel.
+    assigned = (channel.config or {}).get("owner")
+    by_author: dict[str, list[str]] = {}
+    for kind in wanted:
+        author = campaign_team.owner_for_kind(channel.channel, kind, assigned) or ""
+        by_author.setdefault(author, []).append(kind)
+
+    created: list[CampaignAsset] = []
+    for author, kinds_for_author in by_author.items():
+        created += await _write(campaign, channel, kinds_for_author, db,
+                                angle=angle, author=author, cdef=cdef)
+    await db.flush()
+    return created
+
+
+async def _write(campaign: Campaign, channel: CampaignChannel, wanted: list[str],
+                 db: AsyncSession, *, angle: str, author: str, cdef) -> list[CampaignAsset]:
+    """One agent, the kinds it is the specialist for."""
+    keys = await get_org_llm_keys(campaign.org_id, db)
     voice = ""
     if author:
         from app.employees import registry

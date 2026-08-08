@@ -149,7 +149,7 @@ export default function CampaignDetailPage({ params }: {
             <BriefTab campaign={campaign} projectId={projectId} />
           </Stage>
           <Stage n={2} title={t("campaigns.plan.who", { defaultValue: "Who is doing it" })}>
-            <TeamTab campaign={campaign}>
+            <TeamTab campaign={campaign} bare>
               <AgentsTab campaign={campaign} projectId={projectId}
                          selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
             </TeamTab>
@@ -166,7 +166,9 @@ export default function CampaignDetailPage({ params }: {
       {tab === "results" && (
         <div className="flex flex-col gap-8">
           <PerformanceTab campaign={campaign} />
-          <CopilotTab campaign={campaign} />
+          <Stage n={3} title={t("campaigns.plan.why", { defaultValue: "Ask why" })}>
+            <CopilotTab campaign={campaign} />
+          </Stage>
         </div>
       )}
     </div>
@@ -282,175 +284,137 @@ function BriefTab({ campaign, projectId }: { campaign: Campaign; projectId: stri
   const audience = campaign.audience;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-      <div className="flex min-w-0 flex-col gap-5">
-        {campaign.brief_summary && (
-          <div>
-            <p className="text-[15px] leading-relaxed text-foreground">{campaign.brief_summary}</p>
-            {strategy?.grounded === false && (
-              <p className="mt-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-[11px] leading-relaxed text-foreground">
-                {t("campaigns.brief.ungrounded", {
-                  defaultValue: "No orders were synced when this was planned, so nothing grounded it in your store's own numbers.",
-                })}
-              </p>
+    /* One column, read top to bottom. The two-column version put a tall narrow
+       rail beside a short narrative, which left four hundred pixels of dead
+       space under the text and squeezed the audience definition into a column
+       too narrow to read it in. A brief is a document, not a dashboard. */
+    <div className="flex max-w-3xl flex-col gap-6">
+      {campaign.brief_summary && (
+        <p className="text-[15px] leading-relaxed text-foreground">{campaign.brief_summary}</p>
+      )}
+      {strategy?.grounded === false && (
+        <p className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-[11px] leading-relaxed text-foreground">
+          {t("campaigns.brief.ungrounded", {
+            defaultValue: "No orders were synced when this was planned, so nothing grounded it in your store's own numbers.",
+          })}
+        </p>
+      )}
+
+      {/* The facts, across rather than down. Five short values in a row are
+          read at a glance; the same five stacked in a 300px column are a
+          scroll. */}
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-4">
+        <Fact label={t("campaigns.brief.offer", { defaultValue: "Offer" })}>
+          {campaign.offer?.type && campaign.offer.type !== "none"
+            ? `${campaign.offer.value ?? ""} · ${t(`campaigns.offerType.${campaign.offer.type}`, { defaultValue: campaign.offer.type })}`
+            : t("campaigns.brief.noOfferShort", { defaultValue: "None" })}
+        </Fact>
+        <Fact label={t("campaigns.brief.budget", { defaultValue: "Budget" })}>
+          {money(campaign.budget.amount, currency)}
+        </Fact>
+        <Fact label={t("campaigns.brief.dates", { defaultValue: "Dates" })}>
+          {campaign.starts_on
+            ? `${campaign.starts_on}${campaign.ends_on ? ` → ${campaign.ends_on}` : ""}`
+            : t("campaigns.brief.noStart", { defaultValue: "Not scheduled" })}
+        </Fact>
+        <Fact label={t("campaigns.brief.kpi", { defaultValue: "Primary KPI" })}>
+          {/* The target, not the KPI's own name again -- the label above already
+              says which KPI this is. */}
+          {campaign.primary_kpi
+            ? (campaign.targets?.[campaign.primary_kpi] !== undefined
+                ? (campaign.primary_kpi === "revenue"
+                    ? money(campaign.targets[campaign.primary_kpi], currency)
+                    : String(campaign.targets[campaign.primary_kpi]))
+                : t(`campaigns.kpi.${campaign.primary_kpi}`, { defaultValue: campaign.primary_kpi }))
+            : "—"}
+        </Fact>
+      </dl>
+
+      {/* Audience is a paragraph, not a field, so it gets the width to be one. */}
+      <div>
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("campaigns.brief.audience", { defaultValue: "Audience" })}
+        </p>
+        {audience?.label ? (
+          <>
+            <p className="text-sm font-medium text-foreground">{audience.label}</p>
+            {audience.definition && (
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{audience.definition}</p>
             )}
-          </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              {audience.resolvable
+                ? t("campaigns.brief.audienceReady", {
+                    defaultValue: "Ready to hand to {{app}}. Fennex does not hold the customer list itself.",
+                    app: audience.resolver,
+                  })
+                : t("campaigns.brief.audienceUnresolvable", {
+                    defaultValue: "Fennex stores no customer records. Connect Klaviyo, Mailchimp, Shopify or Meta Ads to build this audience from real people.",
+                  })}
+            </p>
+            {audience.unsupported?.length ? (
+              <p className="mt-1 text-[11px] leading-relaxed text-warning">
+                {t("campaigns.brief.unsupported", { defaultValue: "Not expressible as a filter:" })}{" "}
+                {audience.unsupported.join("; ")}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {t("campaigns.brief.noAudience", { defaultValue: "No audience defined." })}
+          </p>
         )}
-
-        {(campaign.team ?? []).length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("campaigns.brief.team", { defaultValue: "On this campaign" })}
-            </span>
-            {(campaign.team ?? []).map((m) => (
-              <span key={m.id} title={m.role}
-                    className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-foreground">
-                {m.name}
-                <span className="text-muted-foreground">
-                  {m.channels.length
-                    ? m.channels.map((c) => t(`campaigns.channel.${c}`, { defaultValue: c })).join(", ")
-                    : t("campaigns.brief.planning", { defaultValue: "planning" })}
-                </span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {(strategy?.assumptions?.length || strategy?.cannot_see?.length) ? (
-          <details className="group rounded-xl border border-border">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 p-3 text-xs font-medium text-foreground">
-              {t("campaigns.brief.restsOn", { defaultValue: "What this plan rests on" })}
-              <span className="text-[11px] text-muted-foreground transition-transform group-open:rotate-180">▾</span>
-            </summary>
-            <div className="flex flex-col gap-4 border-t border-border p-3.5">
-              {strategy?.assumptions?.length ? (
-                <div>
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("campaigns.brief.assumptions", { defaultValue: "What this plan assumes" })}
-                  </p>
-                  <ul className="flex flex-col gap-2 border-l-2 border-border pl-4">
-                    {strategy.assumptions.map((a, i) => (
-                      <Assumption key={i} claim={a.claim} restsOn={a.rests_on} />
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {strategy?.cannot_see?.length ? (
-                <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("campaigns.brief.blind", { defaultValue: "What the plan could not see" })}
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    {strategy.cannot_see.join(", ")}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </details>
-        ) : null}
-
-        <button onClick={() => replan.mutate()} disabled={replan.isPending}
-                className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-foreground hover:border-foreground/20 disabled:opacity-50">
-          {replan.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          {t("campaigns.brief.replan", { defaultValue: "Re-plan from current store data" })}
-        </button>
       </div>
 
-      {/* The facts rail. A definition list, not cards: these are checked, not
-          read, and eight bordered boxes made scanning them slower than a table
-          would have. */}
-      <aside className="flex flex-col divide-y divide-border rounded-xl border border-border">
-        <Fact label={t("campaigns.brief.audience", { defaultValue: "Audience" })}>
-          {audience?.label ? (
-            <>
-              <p className="text-xs font-medium text-foreground">{audience.label}</p>
-              {audience.definition && (
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{audience.definition}</p>
-              )}
-              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                {audience.resolvable
-                  ? t("campaigns.brief.audienceReady", {
-                      defaultValue: "Ready to hand to {{app}}. Fennex does not hold the customer list itself.",
-                      app: audience.resolver,
-                    })
-                  : t("campaigns.brief.audienceUnresolvable", {
-                      defaultValue: "Fennex stores no customer records. Connect Klaviyo, Mailchimp, Shopify or Meta Ads to build this audience from real people.",
-                    })}
-              </p>
-              {audience.unsupported?.length ? (
-                <p className="mt-1 text-[11px] leading-relaxed text-warning">
-                  {t("campaigns.brief.unsupported", { defaultValue: "Not expressible as a filter:" })}{" "}
-                  {audience.unsupported.join("; ")}
+      {(strategy?.assumptions?.length || strategy?.cannot_see?.length) ? (
+        <details className="group rounded-xl border border-border">
+          <summary className="flex cursor-pointer items-center justify-between gap-2 p-3 text-xs font-medium text-foreground">
+            {t("campaigns.brief.restsOn", { defaultValue: "What this plan rests on" })}
+            <span className="text-[11px] text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div className="flex flex-col gap-4 border-t border-border p-3.5">
+            {strategy?.assumptions?.length ? (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.brief.assumptions", { defaultValue: "What this plan assumes" })}
                 </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {t("campaigns.brief.noAudience", { defaultValue: "No audience defined." })}
-            </p>
-          )}
-        </Fact>
+                <ul className="flex flex-col gap-2 border-l-2 border-border pl-4">
+                  {strategy.assumptions.map((a, i) => (
+                    <Assumption key={i} claim={a.claim} restsOn={a.rests_on} />
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {strategy?.cannot_see?.length ? (
+              <div>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("campaigns.brief.blind", { defaultValue: "What the plan could not see" })}
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {strategy.cannot_see.join(", ")}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
 
-        <Fact label={t("campaigns.brief.offer", { defaultValue: "Offer" })}>
-          {campaign.offer?.type && campaign.offer.type !== "none" ? (
-            <>
-              <p className="text-xs font-medium text-foreground">
-                {campaign.offer.value} · {t(`campaigns.offerType.${campaign.offer.type}`, { defaultValue: campaign.offer.type })}
-              </p>
-              {campaign.offer.description && (
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{campaign.offer.description}</p>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {t("campaigns.brief.noOffer", { defaultValue: "No offer. Copy will not invent one." })}
-            </p>
-          )}
-        </Fact>
-
-        <Fact label={t("campaigns.brief.budget", { defaultValue: "Budget" })}>
-          <p className="text-sm font-semibold tabular-nums text-foreground">
-            {money(campaign.budget.amount, currency)}
-          </p>
-          {strategy?.budget?.basis && (
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{strategy.budget.basis}</p>
-          )}
-        </Fact>
-
-        <Fact label={t("campaigns.brief.dates", { defaultValue: "Dates" })}>
-          <p className="text-xs font-medium tabular-nums text-foreground">
-            {campaign.starts_on ?? t("campaigns.brief.noStart", { defaultValue: "Not scheduled" })}
-            {campaign.ends_on ? ` → ${campaign.ends_on}` : ""}
-          </p>
-        </Fact>
-
-        <Fact label={t("campaigns.brief.kpi", { defaultValue: "Primary KPI" })}>
-          <p className="text-xs font-medium text-foreground">
-            {campaign.primary_kpi
-              ? t(`campaigns.kpi.${campaign.primary_kpi}`, { defaultValue: campaign.primary_kpi })
-              : "—"}
-          </p>
-          {Object.keys(campaign.targets).length > 0 && (
-            <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-              {Object.entries(campaign.targets)
-                .map(([k, v]) => `${t(`campaigns.kpi.${k}`, { defaultValue: k })} ${k === "revenue" ? money(v, currency) : v}`)
-                .join(" · ")}
-            </p>
-          )}
-        </Fact>
-      </aside>
+      <button onClick={() => replan.mutate()} disabled={replan.isPending}
+              className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-foreground hover:border-foreground/20 disabled:opacity-50">
+        {replan.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        {t("campaigns.brief.replan", { defaultValue: "Re-plan from current store data" })}
+      </button>
     </div>
   );
 }
 
-/** One row of the facts rail. */
+/** One short fact in the strip. */
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="p-3.5">
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="min-w-0">
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
-      </p>
-      {children}
+      </dt>
+      <dd className="mt-1 truncate text-sm font-medium tabular-nums text-foreground">{children}</dd>
     </div>
   );
 }

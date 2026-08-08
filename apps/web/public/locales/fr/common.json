@@ -1418,7 +1418,8 @@
       "audienceUnresolvable": "Fennex ne stocke aucune donnée client. Connectez Klaviyo, Mailchimp, Shopify ou Meta Ads pour construire cette audience à partir de vraies personnes.",
       "team": "Sur cette campagne",
       "planning": "planification",
-      "restsOn": "Sur quoi ce plan repose"
+      "restsOn": "Sur quoi ce plan repose",
+      "noOfferShort": "Aucune"
     },
     "channels": {
       "title": "Canaux",
@@ -1489,7 +1490,8 @@
       "cannotScore": "Non mesurable — nécessite {{what}}",
       "bySource": "D'où viennent les commandes",
       "methodWork": "Ce projet est mesuré par {{what}}, pas par des commandes.",
-      "daily": "revenu attribué par jour"
+      "daily": "revenu attribué par jour",
+      "breakdown": "Le détail"
     },
     "signals": {
       "title": "À regarder"
@@ -1621,7 +1623,8 @@
     },
     "plan": {
       "what": "Ce qu'est cette campagne",
-      "who": "Qui la réalise"
+      "who": "Qui la réalise",
+      "why": "Comprendre pourquoi"
     }
   },
   "autopilot": {
